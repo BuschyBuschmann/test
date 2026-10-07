@@ -1,7 +1,7 @@
 # Design-Brief v1, Ergänzung 2: Manny-Chat und Nachrichten (nur sichtbar, ohne Funktion)
 
 Status: **FREIGEGEBEN (2026-10-07)** · Umsetzung nach Freigabe: `flutter-developer` · Bezug: `docs/design/design-brief-v1.md` (freigegeben 2026-10-07) und `docs/design/design-brief-v1-ergaenzung-1.md` (freigegeben 2026-10-07)
-Quellen: Spec 7 (Manny als KI-Chatbot), Spec 8 (Health Social, nur Patientensicht), `docs/plan/ki-plan-v1.md` Abschnitt 10 (KS-1 bis KS-10), Grunddesign K3 (vom Nutzer freigegeben, Varianten 1A, V2 und Nachrichten-Button B).
+Quellen: Spec 7 (Manny als KI-Chatbot), Spec 8 (Health Social, nur Patientensicht), `docs/plan/ki-plan-v1.md` Abschnitt 11 (KS-1 bis KS-10), Grunddesign K3 (vom Nutzer freigegeben, Varianten 1A, V2 und Nachrichten-Button B).
 Orientierungsbilder (kein Pixel-Vorbild, Datum und Wochentage darin sind keine Vorgabe): `docs/design/mockups/pfad-v4.png`, `heute-v4.png`, `manny-chat-v1.png`, `nachrichten-v1.png`, `nachrichten-chat-v1.png`.
 
 **Geltung.** Tokens (Brief v1 3.1 bis 3.6), Komponenten (5, Ergänzung 1 Abschnitt 2), Regeln (Abschnitt 4 Akzent-Rollen, Abschnitt 8) und die Errata E-1/E-2 gelten unverändert. Diese Ergänzung fügt hinzu und ändert **ausdrücklich genannte** Stellen (Abschnitt 1, Tabelle "Änderungen"). **UI-1 bis UI-69 bleiben gültig, außer den dort mit neuem Wortlaut genannten.** Neue Kriterien beginnen bei **UI-70**.
@@ -25,7 +25,7 @@ Orientierungsbilder (kein Pixel-Vorbild, Datum und Wochentage darin sind keine V
 | K9 | Brief v1 Abschnitt 13 / 6.0: "Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8)" sind nicht enthalten. | **Teilweise aufgehoben:** Manny-Chat nur als sichtbarer Platzhalter ohne Funktion, Nachrichten-Übersicht und Beispiel-Chats nur ansehbar. Weiterhin nicht enthalten: Sprachfunktion, Community, jede echte Chat-, KI-, Sende- oder Benachrichtigungsfunktion. |
 | K10 | Direktnachrichten haben **keine Spec**. Spec 8 führt Chat Patient-Physio ausdrücklich als Out of Scope (Spec 4 listet "In-App Chat mit Physio" als Out of Scope), Familie und Freunde nur als offene Frage ("Form der Unterstützung"), für Ärzte gibt es keine Aussage (Haftung, DSGVO Art. 9 ungeklärt). | Die Nachrichten-Screens sind ein **unverbindlicher Platzhalter**. Sie legen keine Funktion, Kategorie oder Datenstruktur fest und ersetzen keine Spec. Das steht im Code-Kommentar der Screens und im Abschlussbericht. In der App sind sie als "Beispiel" gekennzeichnet (3.3). |
 | K11 | Rückgängig-Fenster (UI-39) endet bei Wechsel auf den Pfad, damit freie Zonen unberührt bleiben. | Es endet **auch beim Öffnen von Manny-Chat oder Nachrichten** (neue Route über Heute). Präzisierung in UI-39 (Tabelle unten). |
-| K12 | Der KI-Plan (KS-1 bis KS-10) verlangt, dass der Chat später ohne Umbau der Screens aktiviert wird. | Chat-Screen besteht aus zwei gemeinsamen Bausteinen (`ChatMessageList`, `ChatComposer`), deren Zustand aus Daten kommt, nicht fest im Screen steht (Abschnitt 2.2 und 6). |
+| K12 | Der KI-Plan (KS-1 bis KS-10) verlangt, dass der Chat später ohne Umbau der Screens ergänzt wird. | Chat-Screen besteht aus zwei gemeinsamen Bausteinen (`ChatMessageList`, `ChatComposer`); die Nachrichten kommen aus Daten, nicht fest im Screen (Abschnitt 2.2 und 6). Die aktive Eingabe wird im KI-Brief KI-D gestaltet, nicht jetzt vorbereitet. |
 
 ### Änderungen an freigegebenen Kriterien (neuer Wortlaut ersetzt den alten im Wortlaut)
 
@@ -55,7 +55,7 @@ Alle mit vorhandenen Tokens. **Keine neuen Tokens.** Neue Widgets sind unten mar
 | `ChatScreenScaffold` (neu) | Vollbild-Route ohne Nav: Statusleiste, Kopf (opak `bg`, 1 dp `border-hair` unten), Inhalt, optional fester Fuß. Wiederverwendet für Manny-Chat, Nachrichten und Beispiel-Chat. Kein `BackdropFilter`. |
 | `ChatHeader` (neu) | Zurück-Pfeil (`HeaderIconButton`-Stil, 48 dp), Avatar oder Manny-Emblem 32 bis 36 dp, Titel (`heading`, 18/24), Untertitel (`secondary` 13 sp `text-2`). |
 | `ChatMessageList` (neu, **gemeinsamer Baustein**) | Stellt eine Liste von Nachrichten dar (Autor: Nutzer, Manny, Hinweis; Art: Text, Eskalation, Disclaimer, Blase; Status: sendend, streamend, fertig, abgebrochen, fehlgeschlagen). Stellt Manny-Text ohne Blase dar, Nutzer-Text in einer Blase (2.2). Kann eine **letzte Nachricht darstellen, deren Text wächst** (kein Abschneiden, keine Überlagerung; folgt dem Ende, solange der Nutzer am Ende steht, und springt nicht, wenn er hochgescrollt hat). Status außer "fertig" werden in diesem Ausschnitt nicht eigens gestaltet und wie "fertig" dargestellt (Gestaltung folgt im KI-Brief). |
-| `ChatComposer` (neu, **gemeinsamer Baustein**) | Eingabeleiste mit Zustand **deaktiviert + Hinweis** (2.2). Wird vom Manny-Chat und vom Beispiel-Chat verwendet. Der Zustand "aktiv" ist als Variante des Widgets angelegt (2.2), aber in der App nicht erreichbar. |
+| `ChatComposer` (neu, **gemeinsamer Baustein**) | Eingabeleiste mit Zustand **deaktiviert + Hinweis** (2.2). Wird vom Manny-Chat und vom Beispiel-Chat verwendet. Es gibt in diesem Ausschnitt **nur** den deaktivierten Zustand. Der aktive Zustand folgt in KI-D. |
 | `ContactRow` (neu) | Zeile der Nachrichten-Übersicht (3.3). |
 | `ExampleNotice` (neu, auf `GlassCard`) | Hinweiskarte "Beispiel" (E1-Glas, Radius 16, Innenabstand 10/14, Info-Icon 20 dp `text-2`, Text `secondary`). Dauerhaft sichtbar, nicht ausblendbar. |
 | `ChatBubble` Mensch (neu) | Blase im Beispiel-Chat: du rechts (`surface-opaque`, Rand `border-hair`), Gegenüber links (Glas E1 ohne Blur). Radius 20, Ecke zur Absenderseite 6 dp, höchstens 80 % Breite, Innenabstand 12/16, `body`, `text-1`. |
@@ -80,8 +80,8 @@ Alle mit vorhandenen Tokens. **Keine neuen Tokens.** Neue Widgets sind unten mar
 **Eingabeleiste (`ChatComposer`):**
 - Pill, Radius 28, mindestens 56 dp hoch, 16 dp Seitenrand, Füllung `surface-opaque`, Rand 1 dp `border-hair`.
 - **Zustand deaktiviert (einziger erreichbarer Zustand):** Platzhaltertext "Schreib Manny" (`body`, `text-2`), rechts Senden-Kreis 40 dp (Hit-Area 48 dp) mit Pfeil-nach-oben-Icon `text-3` auf Weiß 10 %. Antippen öffnet **keine Tastatur** und tut nichts. Fokus erreicht die Leiste nicht, Screenreader liest sie vor. Direkt **über** der Leiste steht dauerhaft sichtbar (nicht nur als Platzhalter) die Hinweiszeile: Info-Icon 18 dp plus Text (`secondary` 14 sp, `text-1`).
-- **Zustand aktiv** (als Variante im Widget vorhanden, in der App nicht erreichbar, im nächsten Ausschnitt nur aktiviert und vom KI-Brief bestätigt): Rand `border-control`, mehrzeilig bis 5 Zeilen, Text `text-1`, Senden-Kreis 48 dp mit Füllung `accent` und Icon `on-accent`, deaktiviert (wie oben), solange die Eingabe leer ist.
-- Ob geschrieben werden darf, kommt aus **einer Quelle** (Chat-Repository, `canSend`), nicht aus einer festen Annahme im Screen. Im ersten Ausschnitt liefert sie immer "nein".
+- **Zustand aktiv:** folgt in KI-D (Brief des KI-Ausschnitts). Er wird in diesem Ausschnitt weder gestaltet noch vorbereitet.
+- Im ersten Ausschnitt gibt es keinen Wert "darf senden" und keine Umschaltung; die Leiste ist fest deaktiviert.
 - **Disclaimer** (nur im Manny-Chat): unter der Leiste, mittig, `caption` (13 sp) `text-3` (7,24:1 auf `bg`), dauerhaft sichtbar: "Manny ersetzt keine medizinische Beratung."
 - Der feste Fußbereich (Hinweiszeile, Leiste, Disclaimer) belegt höchstens 40 % der Bildschirmhöhe. Würde er bei großer Schrift mehr brauchen, scrollen Hinweiszeile und Disclaimer ab Skalierung 1,5 am Ende des Verlaufs mit (der Disclaimer bleibt am Ende der Liste erreichbar und die Leiste bleibt unten fest).
 
@@ -205,7 +205,7 @@ Betroffen sind (künftige) Dateien: Pfad- und Heute-Seite (Button-Gruppe, Reihe,
 |---|---|
 | KS-1, KS-2, KS-3 | Blasen und Fakten kommen aus einer austauschbaren Quelle (Platzhalter-Quelle, Fakten mit ID plus Text), der Kontext (Name, Verletzung, Woche, Streak …) ist eine reine Dart-Klasse. **Sichtbar ändert sich nichts**: Blasentexte und Anlässe bleiben wie in Brief v1 6.2. Kein neues UI-Kriterium. |
 | KS-4 | Der Beispielverlauf besteht aus Nachrichten mit Autor (Nutzer, Manny, Hinweis), Art und Status, nicht aus fest verdrahteten Widgets (UI-76). |
-| KS-5 | Ob geschrieben werden darf (`canSend`), kommt aus einer Quelle. Im ersten Ausschnitt "nein". Die Eingabeleiste und der Senden-Kreis folgen diesem Wert (UI-77). |
+| KS-5 | Nicht Teil dieses Ausschnitts: Es gibt kein Chat-Repository und keinen Wert "darf senden" (kommt mit KI-D). Die Leiste ist fest deaktiviert (UI-77). |
 | KS-6 | `ChatMessageList` und `ChatComposer` sind eigene, gemeinsame Widgets (2.2). Die Liste verkraftet eine wachsende letzte Nachricht (UI-76). |
 | KS-7 | Der erste Ausschnitt **speichert zum Chat nichts** (feste Beispielnachrichten). Ein eigener Speicherschlüssel entfällt, bis es etwas zu speichern gibt. Sichtbare Folge: "Alles löschen" lässt keinen Chat-Rest zurück (UI-82). |
 | KS-8 | Alle Chat-Texte inklusive Disclaimer und Hinweiszeile liegen in `strings_de.dart` (3.5, UI-81). |
@@ -228,7 +228,7 @@ Weitere Hinweise: Die Button-Gruppe liegt in einer eigenen Ebene (Overlay oder S
 
 **Manny-Chat**
 - UI-76: Der Manny-Chat zeigt Kopf (Zurück, Manny-Emblem, "Manny", "Dein Reha-Begleiter"), eine feste Karte "Beispielverlauf / So sieht dein Chat bald aus." und den Beispielverlauf (3.2). Manny-Nachrichten stehen ohne Blase auf `bg` (Emblem je Manny-Block), Nutzer-Nachrichten in einer Blase rechts (`surface-opaque`, Rand `border-hair`, höchstens 80 % Breite). Die Nachrichten werden aus Datenobjekten (Autor, Art, Status) durch `ChatMessageList` gerendert; ein Widget-Test mit einer letzten Nachricht, deren Text wächst, zeigt: nichts wird abgeschnitten oder überlagert, am Ende folgt die Liste dem Text, nach Hochscrollen springt sie nicht.
-- UI-77: Unten stehen die Hinweiszeile "Schreiben kann ich bald, heute noch nicht.", die deaktivierte Eingabeleiste "Schreib Manny" mit deaktiviertem Senden-Kreis und der Disclaimer "Manny ersetzt keine medizinische Beratung." Tipp auf die Leiste öffnet keine Tastatur und löst nichts aus. Der Zustand folgt einem Wert "darf senden" (Test: mit "ja" ist die aktive Variante darstellbar, in der App nicht erreichbar). Hinweiszeile und Disclaimer sind dauerhaft sichtbar, nicht nur als Platzhalter.
+- UI-77: Unten stehen die Hinweiszeile "Schreiben kann ich bald, heute noch nicht.", die deaktivierte Eingabeleiste "Schreib Manny" mit deaktiviertem Senden-Kreis und der Disclaimer "Manny ersetzt keine medizinische Beratung." Tipp auf die Leiste öffnet keine Tastatur und löst nichts aus. Hinweiszeile und Disclaimer sind dauerhaft sichtbar, nicht nur als Platzhalter.
 - UI-78: Im Manny-Chat gibt es kein Mikrofon, keinen "Neuer Chat"-Eintrag, kein Menü, keine Vorschlags-Chips und kein `accent` (Code-Suche und Screenshot).
 
 **Nachrichten**
@@ -262,7 +262,7 @@ Weitere Hinweise: Die Button-Gruppe liegt in einer eigenen Ebene (Overlay oder S
 
 ## 8. Offene Entscheidungen und Rückfragen
 
-**Nutzerentscheidungen bei Freigabe (2026-10-07):** Glow im Manny-Chat bleibt wie im Mockup (Errata E-1 gilt). Eingabeleiste: im ersten Ausschnitt **nur die deaktivierte Variante** bauen; die aktive Variante aus 2.2 wird nicht vorbereitet, sondern im KI-Brief "KI-D" gestaltet (UI-77: der Test mit "darf senden = ja" entfällt; Schnittstellen schlank laut KI-Plan-Review). Übrige Rückfragen gelten wie vorgeschlagen (Emblem je Manny-Block, Snackbar über der Button-Gruppe, Hinweiszeile ab Skalierung 1,5 mitscrollend, Rückgängig-Fenster endet beim Öffnen von Chat/Nachrichten). Direktnachrichten bleiben unverbindlicher Platzhalter ohne Spec.
+**Nutzerentscheidungen bei Freigabe (2026-10-07):** Glow im Manny-Chat bleibt wie im Mockup (Errata E-1 gilt). Eingabeleiste: im ersten Ausschnitt **nur die deaktivierte Variante** bauen; die aktive Variante aus 2.2 wird nicht vorbereitet, sondern im KI-Brief "KI-D" gestaltet (UI-77: der Test mit "darf senden = ja" entfällt; Schnittstellen schlank laut KI-Plan-Review). Bereinigt 2026-10-07 gemäß Freigabe-Entscheidung (keine inhaltliche Änderung). Übrige Rückfragen gelten wie vorgeschlagen (Emblem je Manny-Block, Snackbar über der Button-Gruppe, Hinweiszeile ab Skalierung 1,5 mitscrollend, Rückgängig-Fenster endet beim Öffnen von Chat/Nachrichten). Direktnachrichten bleiben unverbindlicher Platzhalter ohne Spec.
 
 Keine blockiert den Start. Bis zur Klärung gilt der genannte Vorschlag.
 
@@ -271,7 +271,7 @@ Keine blockiert den Start. Bis zur Klärung gilt der genannte Vorschlag.
 3. **Hinweiszeile scrollt ab Skalierung 1,5 mit** (2.2, 3.3). Alternative: immer fest. *Auswirkung:* bei 200 % bleibt sonst zu wenig Platz auf kleinen Displays.
 4. **Rückgängig-Fenster endet beim Öffnen von Chat/Nachrichten** (K11). Alternative: Fenster läuft weiter und die Snackbar bleibt unter der neuen Route nicht erreichbar. *Auswirkung:* Alternative lässt den Nutzer etwas "rückgängig" machen, das er nicht sieht.
 5. **Direktnachrichten ohne Spec** (K10, Platzhalter). Eine Entscheidung des Produktverantwortlichen und eigene Specs sind vor jeder echten Funktion nötig: Chat Patient-Physio (Spec 8 Out of Scope, Spec 4 Abgrenzung anzupassen), Familie und Freunde (Spec 8 offene Fragen: Form der Unterstützung, Sichtbarkeit, Push), Ärzte-Chat (Haftung und DSGVO Art. 9 mit Anwalt). Die Kategorie "Ärzte" im Platzhalter ist keine Zusage.
-6. **Gestaltung der KI-Zustände** (Senden, Streaming, Abbrechen, Fehler, Offline, Limit, Einwilligung, Eskalationskarte, aktive Eingabe) folgt im Brief "KI-D" und bestätigt oder ändert die vorläufige aktive Variante in 2.2.
+6. **Gestaltung der KI-Zustände** (Senden, Streaming, Abbrechen, Fehler, Offline, Limit, Einwilligung, Eskalationskarte, aktive Eingabe) folgt im Brief "KI-D" und gestaltet auch die aktive Eingabe (2.2).
 
 ## 9. Nicht enthalten
 
