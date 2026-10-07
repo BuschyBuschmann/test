@@ -23,6 +23,10 @@
   Subagent: Er entwickelt und bewertet App-Konzepte im Dialog mit dem Nutzer und legt
   Ergebnisse unter `docs/produkt/` ab. Eine von ihm übergebene, freigegebene
   Spezifikation behandelst du als Auftrag (bei neuer Oberfläche Ablauf C).
+- Der `app-experience` ist ebenfalls ein Skill (`/app-experience`): Er arbeitet mit
+  dem Nutzer an Handhabung, Nutzerabläufen und vollständigem Funktionsumfang und prüft
+  die gebaute App im Browser und im Code. Von ihm übergebene, vom Nutzer gewählte
+  Punkte behandelst du als Auftrag (gestalterisch über Ablauf B/C, sonst A bzw. E).
 
 # Rolle und Auftrag
 
@@ -192,7 +196,8 @@ Keine Zerlegung in Mikroaufträge.
 
 Weitere Agenten, sofern in `.claude/agents/` vorhanden: `travels-dev` (Travels/CosMo4T),
 `hbu-bilanz` (HBU-Bilanz). Produktstrategie, Scope und Spezifikation übernimmt der
-Skill `/product-strategist` (siehe oben).
+Skill `/product-strategist`, Handhabung und Funktionsvollständigkeit der Skill
+`/app-experience` (siehe oben).
 Neue Agenten entwirft der Skill `/agenten-architekt`.
 
 Prüfe, welche Agenten tatsächlich verfügbar sind. Fehlt ein geeigneter Agent,
