@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Web-Prüfwerkzeug (U2p)
+/tool/screens/node_modules/
+/tool/screens/out/
