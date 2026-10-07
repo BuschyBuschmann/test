@@ -7,7 +7,8 @@
 ## Plattform: Claude Code
 
 - Die Arbeitsgruppe liegt in `.claude/agents/` und wird über das `Agent`-Tool mit
-  `subagent_type` aufgerufen: `software-engineer`, `ui-designer`, `reviewer`.
+  `subagent_type` aufgerufen: `software-engineer`, `ui-designer`, `reviewer`,
+  `flutter-developer`.
 - Modellwahl pro Aufruf über den Parameter `model` des `Agent`-Tools; zulässig sind nur
   die dort angebotenen Werte (z. B. `haiku`, `sonnet`, `opus`). Ohne Angabe gilt das
   Modell aus der Agentendefinition bzw. der Hauptsession.
@@ -187,6 +188,7 @@ Keine Zerlegung in Mikroaufträge.
 | `software-engineer` | Programmierung, Numerik, Bugfixes, Analyse bestehenden Codes, Umsetzung von Design-Briefs | ja (außer im Analyse- und Planungspaket) |
 | `ui-designer` | Design-Konzepte und Design-Briefs, kleine lokale UI-Änderungen, Design-Abnahme | nur kleine UI-Änderungen |
 | `reviewer` | Unabhängige Prüfung von Code- und UI-Umsetzungen gegen Auftrag und Brief | nein (read-only) |
+| `flutter-developer` | Flutter-Mobile-Apps (iOS/Android) inkl. Firebase/Supabase-Anbindung; Umsetzung von Spezifikationen und Design-Briefs in Flutter; externe Cloud-Aktionen nur vorbereitet | ja (außer im Analyse- und Planungspaket) |
 
 Weitere Agenten, sofern in `.claude/agents/` vorhanden: `travels-dev` (Travels/CosMo4T),
 `hbu-bilanz` (HBU-Bilanz). Produktstrategie, Scope und Spezifikation übernimmt der
@@ -223,10 +225,18 @@ benenne die Lücke und kläre eine Alternative.
    Den `ui-designer` mit der Antwort fortsetzen; wiederholen, bis der Nutzer zustimmt.
 3. Danach liefert der `ui-designer` den Design-Brief (Status `BRIEF ZUR FREIGABE`).
    Brief vollständig dem Nutzer zur Freigabe vorlegen.
-4. Umsetzungspaket an `software-engineer` mit dem freigegebenen Brief im Wortlaut.
+4. Umsetzungspaket an `software-engineer` mit dem freigegebenen Brief im Wortlaut,
+   bei Flutter-Apps an `flutter-developer`.
 5. Abnahme parallel, da beide read-only: Design-Abnahme an `ui-designer`,
    Code-Review an `reviewer` (wenn Review gewünscht).
-6. Befunde aus beiden zusammenführen und als Korrekturpaket an `software-engineer`.
+6. Befunde aus beiden zusammenführen und als Korrekturpaket an den Umsetzer.
+
+**E. Flutter-App**
+1. Neue App oder größeres Feature: Planungspaket an `flutter-developer`, Plan inkl.
+   Backend-Vorschlag dem Nutzer zur Freigabe vorlegen. Gestaltung vorher über Ablauf C.
+2. Umsetzungspaket an `flutter-developer`; Review-Angebot.
+3. Gemeldete „Externe Schritte“ (Deploy, Projektanlage, Store) nie ungefragt
+   ausführen, sondern dem Nutzer einzeln zur Freigabe vorlegen.
 
 **D. Analyse bestehenden Codes**
 1. Analysepaket an `software-engineer` (read-only).
