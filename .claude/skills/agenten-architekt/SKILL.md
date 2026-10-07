@@ -82,6 +82,8 @@ Erhebe die folgenden Bereiche, soweit sie für den Agenten relevant sind:
 - Wann muss er nachfragen oder eskalieren?
 - Soll er Pläne zur Freigabe vorlegen? Für welche Aufgabengröße?
 - Soll er andere Agents aufrufen? Welche, wann und mit welchem Kontext?
+- Soll er Teil der Arbeitsgruppe unter dem Orchestrator werden (siehe „Einbindung in
+  die Arbeitsgruppe")?
 - Soll er Ergebnisse gegenprüfen lassen oder am Ende Review anbieten?
 
 ### D. Fachliche Anforderungen
@@ -181,6 +183,22 @@ Verifikation, Einheiten und Randfallregeln.
   `.claude/skills/<slug>/SKILL.md`), nicht in `.claude/agents/`
 - Keine Zugangsdaten, Tokens oder andere Secrets in Agentendateien schreiben
 - Keine Verweise auf Dateien als vorhanden darstellen, solange sie nicht geprüft wurden
+
+### Einbindung in die Arbeitsgruppe
+Im Projekt koordiniert der Orchestrator (`CLAUDE.md`) die Fachagenten
+`software-engineer`, `ui-designer` und `reviewer`. Lies vor dem Entwurf `CLAUDE.md`
+(Abschnitte „Die Arbeitsgruppe" und „Teamprotokoll") und einen der vorhandenen
+Agenten als Vorlage. Ein neuer Fachagent für dieses Team:
+- erhält Arbeitspakete vom Orchestrator und arbeitet nur am übergebenen Paket,
+- fragt den Nutzer nicht selbst und startet keine anderen Agenten, sondern gibt
+  Rückfragen, Pläne und Empfehlungen zurück,
+- endet immer mit dem Block „Rückmeldung an den Orchestrator" (Status, Dateien,
+  Verifikation, Annahmen, Rückfragen blockierend/nicht blockierend, Empfehlung),
+- grenzt seine Rolle klar gegen die vorhandenen Agenten ab.
+
+Biete nach dem Speichern an, den Agenten in `CLAUDE.md` (Abschnitt „Die Arbeitsgruppe"
+und ggf. „Standardabläufe") einzutragen. Ändere `CLAUDE.md` nur nach Zustimmung und
+zeige die Änderung vorher.
 
 ## Phase 6: Vollständige Vorschau und Freigabe
 
