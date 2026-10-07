@@ -180,8 +180,13 @@ class AppController extends ChangeNotifier {
         debugPrint('Verwerfen unlesbarer Daten fehlgeschlagen: $err');
         _loadStatus = LoadStatus.error;
       }
-    } catch (e) {
+    } catch (e, stack) {
+      // Plattformfehler oder Programmierfehler (`Error`): Daten bleiben
+      // erhalten, Fehlerzustand mit „Nochmal versuchen“. Im Debug-Modus mit
+      // Stacktrace sichtbar; kein assert/rethrow, damit auch Debug-Builds die
+      // Fehleransicht zeigen statt abzustürzen (Release-Verhalten prüfbar).
       debugPrint('Lesefehler: $e');
+      if (kDebugMode && e is Error) debugPrint('$stack');
       _loadStatus = LoadStatus.error;
     }
     notifyListeners();

@@ -70,10 +70,15 @@ AppState decodeDocument(
     return AppState.fromJson(migrated, today);
   } on UnreadableDataException {
     rethrow;
-  } catch (e) {
-    // Fehler einer (künftigen) Migrationsfunktion oder unerwartete Typen:
-    // gehören zum Inhalt, nicht zur Plattform (sonst Fehlerzustand mit
-    // „Nochmal versuchen“ statt Neustart).
+  } on Exception catch (e) {
+    // Nur `Exception`-Typen (z. B. `FormatException` einer Migration) gelten
+    // als Datenfehler → unlesbar → Neustart (N-12). `Error`-Typen
+    // (`TypeError`, `StateError`, `ArgumentError`, `RangeError` …) sind
+    // Programmierfehler: "Bug ≠ Datenverlust". Sie werden nicht gefangen und
+    // führen im Controller zum Fehlerzustand mit „Nochmal versuchen“; die Daten
+    // bleiben erhalten. Legitime Datenfehler melden `json_support.dart` und die
+    // `fromJson`-Konstruktoren ausschließlich über explizite `is`-Prüfungen
+    // als `UnreadableDataException` (keine Casts auf fremde JSON-Werte).
     throw UnreadableDataException('Dokument nicht verarbeitbar: $e');
   }
 }

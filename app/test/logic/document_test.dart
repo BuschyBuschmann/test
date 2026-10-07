@@ -416,12 +416,11 @@ void main() {
     });
 
     test(
-      '(c) Fehler einer Migrationsfunktion werden zu UnreadableDataException',
+      '(c) Exception einer Migration (Datenfehler) → UnreadableDataException',
       () {
         for (final Json Function(Json) broken in <Json Function(Json)>[
-          (Json j) => throw StateError('kaputt'),
-          (Json j) => (j['gibtsNicht']! as Map<String, Object?>),
           (Json j) => throw const FormatException('x'),
+          (Json j) => throw Exception('Datenfehler'),
         ]) {
           expect(
             () => decodeDocument(
@@ -435,5 +434,48 @@ void main() {
         }
       },
     );
+
+    test('Bug ≠ Datenverlust: Error-Typen aus Migrationen werden nicht verschluckt', () {
+      for (final Json Function(Json) buggy in <Json Function(Json)>[
+        (Json j) => throw ArgumentError('Programmierfehler'),
+        (Json j) => throw StateError('Programmierfehler'),
+        (Json j) => throw RangeError('Programmierfehler'),
+        (Json j) => (j['gibtsNicht']! as Map<String, Object?>),
+      ]) {
+        expect(
+          () => decodeDocument(
+            jsonEncode(minimalDoc()),
+            kToday,
+            currentSchema: 2,
+            migrations: <int, Json Function(Json)>{1: buggy},
+          ),
+          throwsA(allOf(isA<Error>(), isNot(isA<UnreadableDataException>()))),
+        );
+      }
+    });
+
+    test('falsche JSON-Typen sind sauber unlesbar (kein TypeError)', () {
+      const String head =
+          '{"schema":1,"onboarding":{"completed":false,"step":0}';
+      for (final String bad in <String>[
+        '$head,"streak":[]}',
+        '$head,"day":{"custom":[{"id":1}]}}',
+        '$head,"manny":{"lastShown":{"fact":5}}}',
+        '$head,"path":{"completedUnitIds":[1]}}',
+        '$head,"celebration":"x"}',
+        '$head,"consent":{"acceptedAt":7}}',
+        '{"schema":"x","onboarding":{}}',
+        '{"schema":{},"onboarding":{}}',
+      ]) {
+        expectUnreadable(bad);
+      }
+    });
+
+    test('NITPICK: alte v1-Form mit celebration.streak wird gelesen, Feld ignoriert', () {
+      final Map<String, Object?> doc =
+          jsonDecode(fixtureRaw) as Map<String, Object?>;
+      (doc['celebration']! as Map<String, Object?>)['streak'] = 13;
+      expect(decode(doc), expectedV1());
+    });
   });
 }

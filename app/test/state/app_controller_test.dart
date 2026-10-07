@@ -153,6 +153,31 @@ void main() {
       },
     );
 
+    test('Programmierfehler (Error) beim Lesen: Fehlerzustand, Daten bleiben erhalten', () async {
+      final InMemoryStore raw = InMemoryStore(
+        '{"schema":1,"onboarding":{"completed":false,"step":0}}',
+      );
+      final Harness h = await Harness.boot(raw: _ThrowingErrorStore(raw));
+      expect(h.controller.loadStatus, LoadStatus.error);
+      expect(h.controller.startNotice, StartNotice.none);
+      expect(raw.deletes, 0);
+      expect(raw.raw, isNotNull);
+      h.dispose();
+    });
+
+    test(
+      'falscher JSON-Typ im Dokument: unlesbar → Neustart (Store geleert)',
+      () async {
+        final CorruptStore raw = CorruptStore(
+          '{"schema":1,"onboarding":{"completed":false,"step":0},"streak":[]}',
+        );
+        final Harness h = await Harness.boot(raw: raw);
+        expect(raw.deleted, isTrue);
+        expect(h.controller.startNotice, StartNotice.unreadable);
+        h.dispose();
+      },
+    );
+
     test('FailingStore: Fehlerzustand statt Neustart', () async {
       final Harness h = await Harness.boot(raw: FailingStore());
       expect(h.controller.loadStatus, LoadStatus.error);
@@ -813,4 +838,20 @@ class _CorruptUndeletable implements RawDocumentStore {
 
   @override
   Future<void> deleteAll() => Future<void>.error(StateError('nicht löschbar'));
+}
+
+/// Wirft beim Lesen einen `Error` (Programmierfehler), löscht nichts.
+class _ThrowingErrorStore implements RawDocumentStore {
+  _ThrowingErrorStore(this.inner);
+
+  final InMemoryStore inner;
+
+  @override
+  Future<String?> read() => Future<String?>.error(ArgumentError('Bug'));
+
+  @override
+  Future<void> write(String raw) => inner.write(raw);
+
+  @override
+  Future<void> deleteAll() => inner.deleteAll();
 }
