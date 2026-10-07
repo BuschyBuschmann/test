@@ -94,6 +94,9 @@ abstract final class S {
   static const String unitBoss = 'Return to Sport';
 
   static const String hintDone = 'Erledigt. Das hast du geschafft.';
+
+  /// Boss in der laufenden Woche 12 (Nutzerentscheidung).
+  static const String hintBossGoal = 'Dein Ziel: zurück in deinen Sport.';
   static const String hintThisWeek = 'Kommt noch diese Woche';
   static String hintComesInWeek(int week) => 'Kommt in Woche $week';
   static String hintPhaseEndComesInWeek(int week) =>

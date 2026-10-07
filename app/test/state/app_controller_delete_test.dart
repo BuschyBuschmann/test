@@ -37,6 +37,7 @@ AppState rich(AppState s) => s.copyWith(
 );
 
 void main() {
+  minor1Tests();
   test(
     'Erfolg: Zustand initial, Store leer, Hinweis „gelöscht“, Transientes weg',
     () async {
@@ -202,6 +203,80 @@ void main() {
 
   test('Store-Schlüssel: nach Löschen kein Schlüssel aus kAllStorageKeys (UI-51/UI-82)', () {
     expect(kAllStorageKeys, <String>{kStateStorageKey});
+  });
+}
+
+void minor1Tests() {
+  group('R-U1 MINOR-1: Löschablauf', () {
+    test(
+      '(a)/T2: Löschen schlägt fehl → eingereihter Stand wird nachgeschrieben',
+      () async {
+        final List<String> log = <String>[];
+        final Harness h = await Harness.onboarded();
+        final AppController c = AppController(
+          clock: FakeClock().call,
+          store: h.store,
+          mannyText: h.controller.mannyText,
+          erasers: <DataEraser>[RecordingEraser('a', log, fail: true)],
+        );
+        await c.load();
+        c.setName('Before');
+        await c.idle;
+        c.setName('B'); // Schreibauftrag eingereiht, noch nicht gelaufen
+        await expectLater(c.deleteAll(), throwsStateError);
+        await c.idle;
+        expect(c.state.onboarding.name, 'B');
+        expect((await h.store.load())!.onboarding.name, 'B');
+        c.dispose();
+        h.dispose();
+      },
+    );
+
+    test('(b)/T3: Änderung nach dem Löschen wird bei completeDeletion nachgeschrieben', () async {
+      final Harness h = await Harness.onboarded();
+      await h.controller.deleteAll();
+      h.controller.setName('NachLoeschen');
+      await h.controller.idle;
+      expect((h.raw as InMemoryStore).raw, isNull); // gesperrt
+      h.controller.completeDeletion();
+      await h.controller.idle;
+      expect((await h.store.load())!.onboarding.name, 'NachLoeschen');
+      h.dispose();
+    });
+
+    test('(b) completeDeletion ohne Änderung schreibt nichts (Store bleibt leer, UI-51)', () async {
+      final Harness h = await Harness.onboarded();
+      await h.controller.deleteAll();
+      h.controller.completeDeletion();
+      await h.controller.idle;
+      expect((h.raw as InMemoryStore).raw, isNull);
+      h.dispose();
+    });
+
+    test('(c) zweiter deleteAll() erhält den laufenden Vorgang (gleiches Future, gleicher Fehler)', () async {
+      final Completer<void> gate = Completer<void>();
+      final Harness h = await Harness.onboarded();
+      final AppController c = AppController(
+        clock: FakeClock().call,
+        store: h.store,
+        mannyText: h.controller.mannyText,
+        erasers: <DataEraser>[
+          RecordingEraser('a', <String>[], fail: true, gate: gate),
+        ],
+      );
+      await c.load();
+      final Future<void> first = c.deleteAll();
+      final Future<void> second = c.deleteAll();
+      expect(identical(first, second), isTrue);
+      gate.complete();
+      await expectLater(first, throwsStateError);
+      await expectLater(second, throwsStateError);
+      // nach dem Fehler ist ein neuer Versuch möglich
+      expect(identical(c.deleteAll(), first), isFalse);
+      await expectLater(c.deleteAll(), throwsStateError);
+      c.dispose();
+      h.dispose();
+    });
   });
 }
 

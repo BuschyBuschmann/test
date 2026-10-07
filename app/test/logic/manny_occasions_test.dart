@@ -20,7 +20,7 @@ void main() {
   group('Priorität (A-20)', () {
     test('Feier > Neustart > Begrüßung > Streak-Gefahr > Fakt', () {
       AppState s = withStreak(3).copyWith(
-        celebration: CelebrationState(day: kToday, streak: 4, unitId: 'w5-d1'),
+        celebration: CelebrationState(day: kToday, unitId: 'w5-d1'),
         manny: const MannyState(greetingPending: true),
         streak: withStreak(3).streak.copyWith(resetNoticePending: true),
       );
@@ -36,7 +36,7 @@ void main() {
 
     test('Posen: Feier feiernd, Neustart motiviert (A-17)', () {
       final AppState c = onboardedState().copyWith(
-        celebration: CelebrationState(day: kToday, streak: 1, unitId: 'w5-d1'),
+        celebration: CelebrationState(day: kToday, unitId: 'w5-d1'),
         path: const PathState(pulsePending: 'w5-d1'),
       );
       final BubbleDecision d = nextBubble(c, at(10))!;

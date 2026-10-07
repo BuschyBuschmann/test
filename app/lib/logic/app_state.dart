@@ -87,6 +87,32 @@ class OnboardingState {
       Object.hash(completed, step, name, injuryType, injuryOther, injuryDate);
 }
 
+final RegExp _utcTimestamp = RegExp(
+  r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?Z$',
+);
+
+/// Streng: nur `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` (so wird geschrieben) und nur
+/// echte Kalender-/Uhrzeitwerte. `DateTime.tryParse` allein rechnet ungültige
+/// Angaben still um (z. B. Monat 13), das wäre kein „unlesbar“ (Plan 6.2).
+DateTime _parseUtcTimestamp(String text) {
+  final RegExpMatch? m = _utcTimestamp.firstMatch(text);
+  if (m == null) unreadable('consent.acceptedAt: ungültiges Format');
+  int g(int i) => int.parse(m.group(i)!);
+  final DateTime t = DateTime.utc(g(1), g(2), g(3), g(4), g(5), g(6));
+  if (t.year != g(1) ||
+      t.month != g(2) ||
+      t.day != g(3) ||
+      t.hour != g(4) ||
+      t.minute != g(5) ||
+      t.second != g(6)) {
+    unreadable('consent.acceptedAt: ungültiges Datum');
+  }
+  final String? frac = m.group(7);
+  if (frac == null) return t;
+  final String padded = frac.padRight(6, '0');
+  return t.add(Duration(microseconds: int.parse(padded)));
+}
+
 /// Einwilligung (Schritt 2): Zeitstempel in UTC und Version.
 class ConsentState {
   const ConsentState({required this.acceptedAt, required this.version});
@@ -95,11 +121,9 @@ class ConsentState {
   static const String kVersion = 'prototype-0';
 
   factory ConsentState.fromJson(Json j) {
-    final String text = reqString(j, 'acceptedAt');
-    final DateTime parsed =
-        DateTime.tryParse(text) ?? unreadable('consent.acceptedAt: ungültig');
+    final DateTime parsed = _parseUtcTimestamp(reqString(j, 'acceptedAt'));
     return ConsentState(
-      acceptedAt: parsed.toUtc(),
+      acceptedAt: parsed,
       version: optString(j, 'version', kVersion),
     );
   }
@@ -191,41 +215,26 @@ class PrefsState {
 /// Ausstehende Feier (erst beim nächsten Pfad-Besuch nach dem Rückgängig-
 /// Fenster, nur am selben Tag).
 class CelebrationState {
-  const CelebrationState({
-    required this.day,
-    required this.streak,
-    this.unitId,
-  });
+  const CelebrationState({required this.day, this.unitId});
 
   factory CelebrationState.fromJson(Json j) => CelebrationState(
     day: reqDay(j, 'day'),
-    streak: optInt(j, 'streak', 0),
     unitId: optStringOrNull(j, 'unitId'),
   );
 
   final LocalDay day;
 
-  /// Streak-Stand beim Eintragen („Das war Tag N“).
-  final int streak;
-
   /// Erledigte Unit; `null`, wenn keine mehr offen war (Endfall, A-11).
   final String? unitId;
 
-  Json toJson() => <String, Object?>{
-    'day': day.toString(),
-    'streak': streak,
-    'unitId': unitId,
-  };
+  Json toJson() => <String, Object?>{'day': day.toString(), 'unitId': unitId};
 
   @override
   bool operator ==(Object other) =>
-      other is CelebrationState &&
-      other.day == day &&
-      other.streak == streak &&
-      other.unitId == unitId;
+      other is CelebrationState && other.day == day && other.unitId == unitId;
 
   @override
-  int get hashCode => Object.hash(day, streak, unitId);
+  int get hashCode => Object.hash(day, unitId);
 }
 
 /// Schema des Dokuments; erhöht bei jeder inkompatiblen Änderung (Plan 6.2).
@@ -262,11 +271,29 @@ class AppState {
   /// wird ignoriert; sonst [UnreadableDataException]. [today] ersetzt einen
   /// fehlenden `day.dayKey`.
   factory AppState.fromJson(Json j, LocalDay today) {
-    final Json? consent = optJson(j, 'consent');
+    final Json? consentJson = optJson(j, 'consent');
     final Json? celebration = optJson(j, 'celebration');
+    final OnboardingState onboarding = OnboardingState.fromJson(
+      reqJson(j, 'onboarding'),
+    );
+    final ConsentState? consent = consentJson == null
+        ? null
+        : ConsentState.fromJson(consentJson);
+    // Widersprüchlich: abgeschlossenes Onboarding ohne seine Pflichtangaben.
+    // Es gibt keine sinnvolle Reparatur (Name, Typ, Datum und Einwilligung
+    // lassen sich nicht erraten); deshalb unlesbar, also Neustart (N-12).
+    if (onboarding.completed &&
+        (onboarding.firstName.isEmpty ||
+            onboarding.injuryType == null ||
+            onboarding.injuryDate == null ||
+            consent == null)) {
+      unreadable(
+        'onboarding.completed ohne Name, Typ, Datum oder Einwilligung',
+      );
+    }
     return AppState(
-      onboarding: OnboardingState.fromJson(reqJson(j, 'onboarding')),
-      consent: consent == null ? null : ConsentState.fromJson(consent),
+      onboarding: onboarding,
+      consent: consent,
       streak: StreakState.fromJson(optJson(j, 'streak') ?? <String, Object?>{}),
       path: PathState.fromJson(optJson(j, 'path') ?? <String, Object?>{}),
       day: DayProgramState.fromJson(

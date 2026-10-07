@@ -127,7 +127,10 @@ void main() {
 
     test('einzelnes fehlendes Feld in einem Block → Standardwert', () {
       final Map<String, Object?> doc = minimalDoc()
-        ..['streak'] = <String, Object?>{'count': 4}
+        ..['streak'] = <String, Object?>{
+          'count': 4,
+          'lastTrainingDay': '2026-10-06',
+        }
         ..['prefs'] = <String, Object?>{}
         ..['day'] = <String, Object?>{'done': true};
       final AppState s = decode(doc);
@@ -317,5 +320,120 @@ void main() {
       expect((j['onboarding']! as Json)['injuryDate'], '2026-09-07');
       expect((j['day']! as Json)['dayKey'], '2026-10-07');
     });
+  });
+  group('R-U1 MINOR-5: Lesestrenge', () {
+    String consentDoc(String ts) =>
+        '{"schema":1,"onboarding":{"completed":false,"step":0},'
+        '"consent":{"acceptedAt":"$ts","version":"prototype-0"}}';
+
+    test(
+      '(a) ungültige Zeitstempel sind unlesbar (statt still umgerechnet)',
+      () {
+        for (final String bad in <String>[
+          '2026-13-45T99:00:00Z',
+          '+999999-01-01T00:00:00Z',
+          '2026-02-30T10:00:00Z',
+          '2026-10-07T24:00:00Z',
+          '2026-10-07T10:61:00Z',
+          '2026-10-07',
+          '2026-10-07T10:00:00', // ohne Z
+          'gestern',
+        ]) {
+          expectUnreadable(consentDoc(bad));
+        }
+      },
+    );
+
+    test('(a) gültige Zeitstempel (mit/ohne Bruchteil) werden gelesen', () {
+      expect(
+        decodeDocument(
+          consentDoc('2026-10-07T08:12:30Z'),
+          kToday,
+        ).consent!.acceptedAt,
+        DateTime.utc(2026, 10, 7, 8, 12, 30),
+      );
+      expect(
+        decodeDocument(
+          consentDoc('2026-10-07T08:12:30.123Z'),
+          kToday,
+        ).consent!.acceptedAt,
+        DateTime.utc(2026, 10, 7, 8, 12, 30, 123),
+      );
+      expect(
+        decodeDocument(
+          consentDoc('2026-10-07T08:12:30.123456Z'),
+          kToday,
+        ).consent!.acceptedAt,
+        DateTime.utc(2026, 10, 7, 8, 12, 30, 123, 456),
+      );
+    });
+
+    test('(b) Streak > 0 ohne lastTrainingDay ist unlesbar (T6)', () {
+      expectUnreadable(
+        '{"schema":1,"onboarding":{"completed":false,"step":0},'
+        '"streak":{"count":5}}',
+      );
+      // Streak 0 ohne Datum ist der Normalfall.
+      expect(
+        decodeDocument(
+          '{"schema":1,"onboarding":{"completed":false,"step":0},'
+          '"streak":{"count":0}}',
+          kToday,
+        ).streak.count,
+        0,
+      );
+    });
+
+    test('(b) completed: true ohne Name, Typ, Datum oder Einwilligung ist unlesbar', () {
+      final Map<String, Object?> good =
+          jsonDecode(fixtureRaw) as Map<String, Object?>;
+      Map<String, Object?> variant(void Function(Map<String, Object?>) edit) {
+        final Map<String, Object?> d =
+            jsonDecode(fixtureRaw) as Map<String, Object?>;
+        edit(d);
+        return d;
+      }
+
+      expect(decode(good), expectedV1());
+      for (final Map<String, Object?> bad in <Map<String, Object?>>[
+        variant((d) => d['consent'] = null),
+        variant(
+          (d) => (d['onboarding']! as Map<String, Object?>)['name'] = '  ',
+        ),
+        variant(
+          (d) =>
+              (d['onboarding']! as Map<String, Object?>)['injuryType'] = null,
+        ),
+        variant(
+          (d) =>
+              (d['onboarding']! as Map<String, Object?>)['injuryDate'] = null,
+        ),
+      ]) {
+        expectUnreadable(jsonEncode(bad));
+      }
+      // Nicht abgeschlossenes Onboarding darf unvollständig sein.
+      expect(decode(minimalDoc()).onboarding.completed, isFalse);
+    });
+
+    test(
+      '(c) Fehler einer Migrationsfunktion werden zu UnreadableDataException',
+      () {
+        for (final Json Function(Json) broken in <Json Function(Json)>[
+          (Json j) => throw StateError('kaputt'),
+          (Json j) => (j['gibtsNicht']! as Map<String, Object?>),
+          (Json j) => throw const FormatException('x'),
+        ]) {
+          expect(
+            () => decodeDocument(
+              jsonEncode(minimalDoc()),
+              kToday,
+              currentSchema: 2,
+              migrations: <int, Json Function(Json)>{1: broken},
+            ),
+            throwsA(isA<UnreadableDataException>()),
+          );
+        }
+      },
+    );
   });
 }

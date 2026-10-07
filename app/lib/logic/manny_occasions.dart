@@ -62,7 +62,8 @@ BubbleDecision? nextBubble(
     return BubbleDecision(
       occasion: MannyOccasion.celebration,
       pose: MannyPose.feiernd,
-      pulseUnitId: celebration.unitId ?? s.path.pulsePending,
+      // Puls nur, wenn er vorgemerkt ist (Profiländerung leert ihn, n3).
+      pulseUnitId: s.path.pulsePending,
     );
   }
 

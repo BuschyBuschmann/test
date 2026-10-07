@@ -283,13 +283,13 @@ List<(String, int)> extractStringLiterals(String code) {
 
 /// Zahl-Literale (ohne Hex), die ungleich 0 sind.
 final RegExp _numberLiteral = RegExp(
-  r'(?<![\w.$])(?:\d+\.\d+|\d+|\.\d+)(?![\w])',
+  r'(?<![\w.$])(?:0[xX][0-9a-fA-F]+|(?:\d+\.\d+|\d+|\.\d+)(?:[eE][+-]?\d+)?)(?![\w])',
 );
 
 List<String> nonZeroNumbers(String expr) {
   final List<String> out = <String>[];
   for (final RegExpMatch m in _numberLiteral.allMatches(expr)) {
-    final double? v = double.tryParse(m.group(0)!);
+    final num? v = num.tryParse(m.group(0)!);
     if (v != null && v != 0) out.add(m.group(0)!);
   }
   return out;

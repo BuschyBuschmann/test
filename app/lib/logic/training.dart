@@ -66,11 +66,7 @@ TrainingApplied applyTraining(AppState s, LocalDay forDay) {
               pulsePending: unitId,
             ),
       day: s.day.copyWith(done: true),
-      celebration: CelebrationState(
-        day: forDay,
-        streak: streak.count,
-        unitId: unitId,
-      ),
+      celebration: CelebrationState(day: forDay, unitId: unitId),
     ),
     snapshot: snapshot,
     countedForStreak: true,

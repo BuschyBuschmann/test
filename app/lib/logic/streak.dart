@@ -27,10 +27,16 @@ class StreakState {
     if (count < 0 || covered < 0 || uncovered < 0) {
       unreadable('streak: negative Zahl');
     }
+    final LocalDay? last = optDay(j, 'lastTrainingDay');
+    // Streak > 0 ohne letzten Trainingstag wäre nie auswertbar (verfiele
+    // nie). Keine sinnvolle Reparatur, daher unlesbar (N-12).
+    if (count > 0 && last == null) {
+      unreadable('streak.count > 0 ohne lastTrainingDay');
+    }
     return StreakState(
       count: count,
       freezes: inRange(freezes, 0, kStartFreezes, 'streak.freezes'),
-      lastTrainingDay: optDay(j, 'lastTrainingDay'),
+      lastTrainingDay: last,
       evaluatedThrough: optDay(j, 'evaluatedThrough'),
       coveredInGap: covered,
       uncoveredInGap: uncovered,

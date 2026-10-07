@@ -60,13 +60,22 @@ AppState decodeDocument(
   } on FormatException catch (e) {
     throw UnreadableDataException('kein gültiges JSON: ${e.message}');
   }
-  final Json doc = asJson(decoded, 'Dokument');
-  final Json migrated = migrateToCurrent(
-    doc,
-    currentSchema: currentSchema,
-    migrations: migrations,
-  );
-  return AppState.fromJson(migrated, today);
+  try {
+    final Json doc = asJson(decoded, 'Dokument');
+    final Json migrated = migrateToCurrent(
+      doc,
+      currentSchema: currentSchema,
+      migrations: migrations,
+    );
+    return AppState.fromJson(migrated, today);
+  } on UnreadableDataException {
+    rethrow;
+  } catch (e) {
+    // Fehler einer (künftigen) Migrationsfunktion oder unerwartete Typen:
+    // gehören zum Inhalt, nicht zur Plattform (sonst Fehlerzustand mit
+    // „Nochmal versuchen“ statt Neustart).
+    throw UnreadableDataException('Dokument nicht verarbeitbar: $e');
+  }
 }
 
 /// Schreibt den Zustand als Dokument.

@@ -72,8 +72,13 @@ void main() {
       expect(args[3].value.trim(), 'd');
     });
 
-    test('Zahl-Literale: Hex und Null zählen nicht', () {
-      expect(nonZeroNumbers('0xFF112233'), isEmpty);
+    test('Zahl-Literale: Hex und Exponent zählen, Null nicht (MINOR-2)', () {
+      expect(nonZeroNumbers('0xFF112233'), <String>['0xFF112233']);
+      expect(nonZeroNumbers('0x10'), <String>['0x10']);
+      expect(nonZeroNumbers('1e1'), <String>['1e1']);
+      expect(nonZeroNumbers('2.5E-3'), <String>['2.5E-3']);
+      expect(nonZeroNumbers('0x0'), isEmpty);
+      expect(nonZeroNumbers('0e0'), isEmpty);
       expect(nonZeroNumbers('0'), isEmpty);
       expect(nonZeroNumbers('0.0'), isEmpty);
       expect(nonZeroNumbers('x2 + CuraSpace.s4 * 3'), <String>['3']);
@@ -758,6 +763,161 @@ void main() {
       );
       expect(
         checkRule16(<String, String>{'lib/ui/a.dart': 'TextField()'}),
+        isEmpty,
+      );
+    });
+  });
+  group('Selbsttest R-U1 MINOR-2: bisher übersehene Muster', () {
+    const String u = 'lib/ui/today/a.dart';
+    List<Violation> r(int rule, String code, [String path = u]) =>
+        kRules[rule]!(<String, String>{path: code});
+
+    test(
+      'Regel 8: Text.rich/TextSpan, tooltip, announce, Semantics hint/value',
+      () {
+        expect(r(8, "Text.rich(TextSpan(text: 'Hallo'))"), isNotEmpty);
+        expect(
+          r(8, "RichText(text: TextSpan(children: [TextSpan(text: 'x')]))"),
+          isNotEmpty,
+        );
+        expect(r(8, "IconButton(tooltip: 'Schließen')"), isNotEmpty);
+        expect(r(8, "SemanticsService.announce('Gespeichert', d)"), isNotEmpty);
+        expect(r(8, "Semantics(hint: 'Doppeltippen')"), isNotEmpty);
+        expect(r(8, "Semantics(value: '3 von 4')"), isNotEmpty);
+        expect(
+          r(8, "InputDecoration(helperText: 'x', errorText: \"y\")"),
+          hasLength(2),
+        );
+        // erlaubt
+        expect(r(8, 'Text.rich(TextSpan(text: S.title))'), isEmpty);
+        expect(r(8, 'IconButton(tooltip: S.close)'), isEmpty);
+        expect(r(8, 'SemanticsService.announce(S.saved, d)'), isEmpty);
+        expect(r(8, 'Semantics(hint: S.hint)'), isEmpty);
+      },
+    );
+
+    test('Regel 2: BorderRadius.only, Radius, SizedBox.square, Size, Hex, Exponent', () {
+      expect(
+        r(2, 'BorderRadius.only(topLeft: Radius.circular(20))'),
+        isNotEmpty,
+      );
+      expect(r(2, 'BorderRadius.all(Radius.circular(8))'), isNotEmpty);
+      expect(r(2, 'SizedBox.square(dimension: 8)'), isNotEmpty);
+      expect(r(2, 'Size(48, 48)'), isNotEmpty);
+      expect(r(2, 'Size.fromHeight(56)'), isNotEmpty);
+      expect(r(2, 'EdgeInsets.all(0x10)'), isNotEmpty);
+      expect(r(2, 'EdgeInsets.all(1e1)'), isNotEmpty);
+      expect(r(2, 'BorderRadius.only(topLeft: CuraRadius.card)'), isEmpty);
+      expect(r(2, 'SizedBox.square(dimension: CuraSpace.s2)'), isEmpty);
+      expect(r(2, 'Size.zero'), isEmpty);
+    });
+
+    test('Regel 5: apply(color:), ButtonStyle(foregroundColor:), Alias', () {
+      expect(r(5, 'type.body.apply(color: colors.accent)'), isNotEmpty);
+      expect(
+        r(
+          5,
+          'ButtonStyle(foregroundColor: WidgetStatePropertyAll(colors.accent))',
+        ),
+        isNotEmpty,
+      );
+      expect(
+        r(5, 'final c = colors.accent;\nfinal s = TextStyle(color: c);'),
+        isNotEmpty,
+      );
+      expect(
+        r(
+          5,
+          'final c = colors.accent;\nfinal s = type.body.copyWith(color: c);',
+        ),
+        isNotEmpty,
+      );
+      expect(r(5, 'type.body.apply(color: colors.accentHi)'), isEmpty);
+      expect(r(5, 'final c = colors.accentHi;\nTextStyle(color: c)'), isEmpty);
+      // accent als Fläche/Symbol bleibt erlaubt
+      expect(r(5, 'Icon(Icons.add, color: colors.accent)'), isEmpty);
+      expect(
+        r(5, 'DecoratedBox(decoration: BoxDecoration(color: colors.accent))'),
+        isEmpty,
+      );
+    });
+
+    test('Regel 15: Tear-off und neue Methoden', () {
+      const String p = 'lib/ui/chat/a.dart';
+      expect(r(15, 'onPressed: c.markBubbleShown', p), isNotEmpty);
+      expect(r(15, 'AppScope.of(context).completeDeletion()', p), isNotEmpty);
+      expect(r(15, 'c.clearStartNotice();', p), isNotEmpty);
+      expect(r(15, 'await c.load();', p), isNotEmpty);
+      expect(r(15, 'c..setName(x)', p), isNotEmpty);
+      expect(r(15, 'final n = c.state.onboarding.name;', p), isEmpty);
+    });
+
+    test('Regel 3: Pfad statt Dateiname', () {
+      expect(
+        r(3, 'BackdropFilter(filter: f)', 'lib/ui/today/cura_blur.dart'),
+        isNotEmpty,
+      );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/today/floating_nav.dart'),
+        isNotEmpty,
+      );
+      expect(r(3, 'ImageFilter.blur(sigmaX: 1)', 'lib/ui/a.dart'), isNotEmpty);
+      expect(
+        r(3, 'ImageFiltered(imageFilter: f)', 'lib/ui/a.dart'),
+        isNotEmpty,
+      );
+      expect(
+        r(3, 'BackdropFilter(filter: f)', 'lib/ui/components/cura_blur.dart'),
+        isEmpty,
+      );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/components/floating_nav.dart'),
+        isEmpty,
+      );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/routes/cura_sheet_route.dart'),
+        isEmpty,
+      );
+    });
+
+    test('Regel 4: Status-Token über Variable und in Handlungselement', () {
+      expect(
+        r(4, 'final c = colors.statusError;\nFoo(onPressed: x, color: c)'),
+        isNotEmpty,
+      );
+      expect(
+        r(4, 'final c = colors.statusError;\nText(style: TextStyle(color: c))'),
+        isNotEmpty,
+      );
+      expect(r(4, 'final c = colors.text1;'), isEmpty);
+    });
+
+    test('Regel 7: transitiver Flutter-Import in lib/logic', () {
+      final Map<String, String> files = <String, String>{
+        'lib/logic/a.dart': "import '../theme/t.dart';",
+        'lib/theme/t.dart': "import 'package:flutter/material.dart';",
+      };
+      final List<Violation> v = checkRule7(files);
+      expect(v, hasLength(1));
+      expect(
+        v.single.message,
+        contains('lib/logic/a.dart -> lib/theme/t.dart'),
+      );
+      // über zwei Stufen und per package:-Import
+      expect(
+        checkRule7(<String, String>{
+          'lib/logic/a.dart': "import 'package:curaone/data/b.dart';",
+          'lib/data/b.dart': "import 'c.dart';",
+          'lib/data/c.dart': "import 'dart:ui';",
+        }),
+        hasLength(1),
+      );
+      // sauber, Zyklen enden
+      expect(
+        checkRule7(<String, String>{
+          'lib/logic/a.dart': "import 'b.dart';",
+          'lib/logic/b.dart': "import 'a.dart'; import 'dart:async';",
+        }),
         isEmpty,
       );
     });

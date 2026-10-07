@@ -69,6 +69,20 @@ void _addMatches(
   }
 }
 
+/// Variablen, denen ein Treffer von [token] zugewiesen wird
+/// (`final c = colors.accent;`). Ihre Verwendung zählt wie das Token selbst
+/// (False Negatives wiegen schwerer als False Positives, Plan 12.3).
+Set<String> _aliasesOf(String code, RegExp token) {
+  final Set<String> out = <String>{};
+  final RegExp decl = RegExp(
+    r'\b(?:final|var|const|Color|TextStyle|WidgetStateProperty\w*)(?:<[^>]*>)?\s+([A-Za-z_]\w*)\s*=\s*([^;]*);',
+  );
+  for (final RegExpMatch m in decl.allMatches(code)) {
+    if (token.hasMatch(m.group(2)!)) out.add(m.group(1)!);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Regel 1: Farben und Schriftgrößen nur aus lib/theme/
 // ---------------------------------------------------------------------------
@@ -107,7 +121,12 @@ class _NumRule {
 const List<_NumRule> _r2Rules = <_NumRule>[
   _NumRule(r'\bEdgeInsets(?:Directional)?\s*\.\s*\w+\s*\('),
   _NumRule(r'\bSizedBox\s*\(', <String>{'width', 'height'}),
-  _NumRule(r'\bBorderRadius\s*\.\s*circular\s*\('),
+  _NumRule(
+    r'\bBorderRadius(?:Directional)?\s*\.\s*(?:circular|only|all|vertical|horizontal)\s*\(',
+  ),
+  _NumRule(r'\bRadius\s*\.\s*(?:circular|elliptical)\s*\('),
+  _NumRule(r'\bSizedBox\s*\.\s*(?:square|fromSize)\s*\('),
+  _NumRule(r'\bSize\s*(?:\.\s*\w+)?\s*\('),
   _NumRule(r'\bDuration\s*\(', <String>{'milliseconds'}),
   _NumRule(r'\bPositioned\s*\(', <String>{
     'left',
@@ -154,31 +173,36 @@ List<Violation> checkRule2(Map<String, String> files) {
 // Regel 3: BackdropFilter und CuraBlur nur an festen Stellen
 // ---------------------------------------------------------------------------
 
-const Set<String> _r3BackdropFiles = <String>{'cura_blur.dart'};
-const Set<String> _r3BlurFiles = <String>{
-  'cura_blur.dart',
-  'floating_nav.dart',
-  'manny_bubble.dart',
-  'cura_sheet_route.dart',
+/// Vollständige Pfade (nicht nur Dateinamen): `lib/ui/today/cura_blur.dart`
+/// darf keinen Blur enthalten.
+const Set<String> _r3BackdropFiles = <String>{
+  'lib/ui/components/cura_blur.dart',
 };
-final RegExp _r3Backdrop = RegExp(r'\bBackdropFilter\b');
+const Set<String> _r3BlurFiles = <String>{
+  'lib/ui/components/cura_blur.dart',
+  'lib/ui/components/floating_nav.dart',
+  'lib/ui/components/manny_bubble.dart',
+  'lib/ui/routes/cura_sheet_route.dart',
+};
+final RegExp _r3Backdrop = RegExp(
+  r'\b(?:BackdropFilter|ImageFiltered)\b|\bImageFilter\s*\.\s*blur\b',
+);
 final RegExp _r3Blur = RegExp(r'\bCuraBlur\b');
 
 List<Violation> checkRule3(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
   _stripped(files).forEach((String path, String code) {
-    final String name = baseName(path);
-    if (!_r3BackdropFiles.contains(name)) {
+    if (!_r3BackdropFiles.contains(path)) {
       _addMatches(
         out,
         3,
         path,
         code,
         _r3Backdrop,
-        'BackdropFilter nur in cura_blur.dart',
+        'BackdropFilter/Blur nur in lib/ui/components/cura_blur.dart',
       );
     }
-    if (!_r3BlurFiles.contains(name)) {
+    if (!_r3BlurFiles.contains(path)) {
       _addMatches(
         out,
         3,
@@ -212,6 +236,10 @@ List<Violation> checkRule4(Map<String, String> files) {
   _stripped(files).forEach((String path, String code) {
     if (_isTheme(path)) return;
     final List<RegExpMatch> hits = _r4Token.allMatches(code).toList();
+    for (final String alias in _aliasesOf(code, _r4Token)) {
+      // Erste Fundstelle ist die Zuweisung selbst; sie ist schon ein Treffer.
+      hits.addAll(RegExp('\\b$alias\\b').allMatches(code).skip(1));
+    }
     if (hits.isEmpty && !kStatusTokenAllowlist.contains(path)) return;
 
     if (kStatusTokenAllowlist.contains(path)) {
@@ -282,33 +310,41 @@ List<Violation> checkRule4(Map<String, String> files) {
 // ---------------------------------------------------------------------------
 
 final RegExp _r5Accent = RegExp(r'\baccent\b');
-final RegExp _r5TextStyle = RegExp(r'\bTextStyle\s*\(');
-final RegExp _r5CopyWith = RegExp(r'\.\s*copyWith\s*\(');
-final RegExp _r5StyleFrom = RegExp(r'\.\s*styleFrom\s*\(');
+final RegExp _r5Calls = RegExp(
+  r'\b(?:TextStyle|ButtonStyle|DefaultTextStyle)\s*\(|\.\s*(?:copyWith|apply|merge|styleFrom)\s*\(',
+);
+const Set<String> _r5Args = <String>{
+  'color',
+  'foregroundColor',
+  'textColor',
+  'labelColor',
+  'unselectedLabelColor',
+};
 
 List<Violation> checkRule5(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
   _stripped(files).forEach((String path, String code) {
     if (kAccentTextAllowlist.contains(path)) return;
-    void scan(RegExp pattern, String argName) {
-      for (final Call call in findCalls(code, pattern)) {
-        final Arg? arg = call.named(argName);
-        if (arg != null && _r5Accent.hasMatch(arg.value)) {
+    final Set<String> aliases = _aliasesOf(code, _r5Accent);
+    final RegExp? aliasUse = aliases.isEmpty
+        ? null
+        : RegExp('\\b(?:${aliases.join('|')})\\b');
+    for (final Call call in findCalls(code, _r5Calls)) {
+      for (final Arg arg in call.args) {
+        if (arg.name == null || !_r5Args.contains(arg.name)) continue;
+        if (_r5Accent.hasMatch(arg.value) ||
+            (aliasUse != null && aliasUse.hasMatch(arg.value))) {
           out.add(
             Violation(
               5,
               path,
               lineOf(code, arg.offset),
-              'accent als Textfarbe in ${call.name}($argName: …): accentHi oder text1 verwenden',
+              'accent als Textfarbe in ${call.name}(${arg.name}: …): accentHi oder text1 verwenden',
             ),
           );
         }
       }
     }
-
-    scan(_r5TextStyle, 'color');
-    scan(_r5CopyWith, 'color');
-    scan(_r5StyleFrom, 'foregroundColor');
   });
   return out;
 }
@@ -388,18 +424,68 @@ final RegExp _r7Import = RegExp(
   r'''\b(?:import|export)\s+['"](?:package:flutter[^'"]*|dart:ui)['"]''',
 );
 
+final RegExp _importUri = RegExp(r'''\b(?:import|export)\s+['"]([^'"]+)['"]''');
+
+/// Löst einen Import-URI auf einen Pfad `lib/…` auf; `null` für fremde Pakete
+/// und `dart:`-Bibliotheken.
+String? _resolveImport(String from, String uri) {
+  if (uri.startsWith('package:curaone/')) {
+    return 'lib/${uri.substring('package:curaone/'.length)}';
+  }
+  if (uri.contains(':')) return null;
+  final List<String> parts = from.split('/')..removeLast();
+  for (final String seg in uri.split('/')) {
+    if (seg == '..') {
+      if (parts.isNotEmpty) parts.removeLast();
+    } else if (seg != '.') {
+      parts.add(seg);
+    }
+  }
+  return parts.join('/');
+}
+
 List<Violation> checkRule7(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
-  _stripped(files).forEach((String path, String code) {
+  final Map<String, String> code = _stripped(files);
+  code.forEach((String path, String src) {
     if (!inDir(path, 'lib/logic') && !inDir(path, 'lib/l10n')) return;
     _addMatches(
       out,
       7,
       path,
-      code,
+      src,
       _r7Import,
       'Flutter-/dart:ui-Import in reiner Logik',
     );
+    // Transitiv: kein Import (innerhalb lib/) führt zu einer Datei mit
+    // Flutter-/dart:ui-Import.
+    final Set<String> seen = <String>{path};
+    final List<List<String>> queue = <List<String>>[
+      <String>[path],
+    ];
+    while (queue.isNotEmpty) {
+      final List<String> chain = queue.removeAt(0);
+      final String current = chain.last;
+      for (final RegExpMatch m in _importUri.allMatches(code[current] ?? '')) {
+        final String? target = _resolveImport(current, m.group(1)!);
+        if (target == null || !seen.add(target)) continue;
+        final String? targetSrc = code[target];
+        if (targetSrc == null) continue;
+        final List<String> next = <String>[...chain, target];
+        if (_r7Import.hasMatch(targetSrc)) {
+          out.add(
+            Violation(
+              7,
+              path,
+              1,
+              'importiert transitiv Flutter/dart:ui: ${next.join(' -> ')}',
+            ),
+          );
+        } else {
+          queue.add(next);
+        }
+      }
+    }
   });
   return out;
 }
@@ -411,7 +497,11 @@ List<Violation> checkRule7(Map<String, String> files) {
 final RegExp _r8Text = RegExp(r'\bText\s*\(');
 final RegExp _r8Semantics = RegExp(r'\bSemantics\s*\(');
 final RegExp _r8Tooltip = RegExp(r'\bTooltip\s*\(');
-final RegExp _r8Named = RegExp(r'\b(hintText|labelText|semanticsLabel)\s*:\s*');
+final RegExp _r8Named = RegExp(
+  r'\b(hintText|labelText|semanticsLabel|semanticLabel|tooltip|helperText|errorText|counterText|prefixText|suffixText|onTapHint|onLongPressHint|increasedValue|decreasedValue)\s*:\s*',
+);
+final RegExp _r8TextSpan = RegExp(r'\bTextSpan\s*\(');
+final RegExp _r8Announce = RegExp(r'\bSemanticsService\s*\.\s*\w+\s*\(');
 
 List<Violation> checkRule8(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
@@ -431,14 +521,42 @@ List<Violation> checkRule8(Map<String, String> files) {
       }
     }
     for (final Call c in findCalls(code, _r8Semantics)) {
-      final Arg? a = c.named('label');
+      for (final String name in <String>['label', 'hint', 'value']) {
+        final Arg? a = c.named(name);
+        if (a != null && hasStringLiteral(a.value)) {
+          out.add(
+            Violation(
+              8,
+              path,
+              lineOf(code, a.offset),
+              'String-Literal in Semantics($name:): Text aus strings_de.dart',
+            ),
+          );
+        }
+      }
+    }
+    for (final Call c in findCalls(code, _r8TextSpan)) {
+      final Arg? a = c.named('text') ?? c.firstPositional;
       if (a != null && hasStringLiteral(a.value)) {
         out.add(
           Violation(
             8,
             path,
             lineOf(code, a.offset),
-            'String-Literal in Semantics(label:): Text aus strings_de.dart',
+            'String-Literal in TextSpan(text:): Text aus strings_de.dart',
+          ),
+        );
+      }
+    }
+    for (final Call c in findCalls(code, _r8Announce)) {
+      final Arg? a = c.firstPositional;
+      if (a != null && hasStringLiteral(a.value)) {
+        out.add(
+          Violation(
+            8,
+            path,
+            lineOf(code, a.offset),
+            'String-Literal in SemanticsService: Text aus strings_de.dart',
           ),
         );
       }
@@ -775,12 +893,15 @@ const List<String> kMutatingControllerMethods = <String>[
   'updateProfile',
   'deleteAll',
   'retryLoad',
+  'load',
+  'completeDeletion',
+  'clearStartNotice',
 ];
 final RegExp _r15Storage = RegExp(
   r'\b(?:StateStore|PrefsStateStore|SharedPreferences\w*|DataEraser)\b',
 );
 final RegExp _r15Mutator = RegExp(
-  '\\.\\s*(?:${kMutatingControllerMethods.join('|')})\\s*\\(',
+  '\\.\\s*(?:${kMutatingControllerMethods.join('|')})\\b',
 );
 
 List<Violation> checkRule15(Map<String, String> files) {

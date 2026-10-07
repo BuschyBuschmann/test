@@ -1,5 +1,6 @@
-// Streak S1–S24 (Plan 7.1). S25 steht in training_test.dart, S18 auch in
-// undo_test.dart (hier der reine Zustandsvergleich).
+// Streak S1–S24 (Plan 7.1). S25 steht in day_rollover_test.dart (und über den
+// Controller in app_controller_test.dart), S18 dort ebenfalls mit Undo (hier
+// der reine Zustandsvergleich).
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/streak.dart';
 import 'package:flutter_test/flutter_test.dart';

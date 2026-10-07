@@ -480,6 +480,7 @@ void main() {
         );
         final AppState before = h.state;
         final TrainingResult r = h.controller.logTraining(forDay: kToday);
+        expect(r.applied, isTrue);
         expect(r.dayChanged, isFalse);
         expect(r.snapshot, isNotNull);
         expect(h.state.streak.count, 13);
@@ -505,6 +506,7 @@ void main() {
         h.controller.logTraining(forDay: kToday);
         h.transient.endUndoWindow();
         final TrainingResult r = h.controller.logTraining(forDay: kToday);
+        expect(r.applied, isFalse);
         expect(r.snapshot, isNull);
         expect(h.transient.undoWindowOpen, isFalse);
         expect(h.state.streak.count, 1);
@@ -538,6 +540,7 @@ void main() {
       h.clock.set(DateTime(2026, 10, 8, 0, 1));
       final TrainingResult r = h.controller.logTraining(forDay: openedDay);
       expect(r.dayChanged, isTrue);
+      expect(r.applied, isTrue); // MINOR-4: eingetragen, aber ohne Undo
       expect(r.snapshot, isNull);
       expect(h.transient.undoWindowOpen, isFalse);
       expect(h.state.day, DayProgramState.fresh(tomorrow));
@@ -566,6 +569,7 @@ void main() {
         // Zustand wurde beim Start bereits auf den 8.10. gerollt.
         expect(h.state.day.dayKey, tomorrow);
         final TrainingResult r = h.controller.logTraining(forDay: kToday);
+        expect(r.applied, isFalse); // MINOR-4: abgelehnt, nicht nur ohne Undo
         expect(r.snapshot, isNull);
         expect(h.state.day.done, isFalse);
         expect(h.state.streak.count, 0);

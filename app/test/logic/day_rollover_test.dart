@@ -66,7 +66,7 @@ void main() {
 
     test('Feier vom Vortag verfällt samt Puls; Feier von heute bleibt', () {
       AppState s = onboardedState().copyWith(
-        celebration: CelebrationState(day: kToday, streak: 3, unitId: 'w5-d1'),
+        celebration: CelebrationState(day: kToday, unitId: 'w5-d1'),
         path: const PathState(
           completedUnitIds: <String>['w5-d1'],
           pulsePending: 'w5-d1',
@@ -108,7 +108,7 @@ void main() {
       expect(a.state.path.pulsePending, 'w5-d1');
       expect(
         a.state.celebration,
-        CelebrationState(day: kToday, streak: 13, unitId: 'w5-d1'),
+        CelebrationState(day: kToday, unitId: 'w5-d1'),
       );
       expect(a.snapshot, isNotNull);
     });

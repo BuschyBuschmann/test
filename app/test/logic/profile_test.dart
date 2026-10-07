@@ -1,6 +1,7 @@
 import 'package:curaone/logic/app_state.dart';
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/injury_type.dart';
+import 'package:curaone/logic/manny_occasions.dart';
 import 'package:curaone/logic/path_generator.dart';
 import 'package:curaone/logic/profile.dart';
 import 'package:curaone/logic/streak.dart';
@@ -196,5 +197,20 @@ void main() {
 
   test('Datumstyp: ProfileDraft kennt LocalDay', () {
     expect(same.injuryDate, isA<LocalDay>());
+  });
+
+  test('MAJOR-1 (T1): behaltene Feier löst nach Profiländerung keinen Ring-Puls aus', () {
+    final ProfileUpdate u = applyProfile(
+      base,
+      same.copyWith(injuryDate: kToday.addDays(-60)),
+      kToday,
+    );
+    expect(u.state.path.pulsePending, isNull);
+    expect(u.state.celebration, isNotNull);
+    final BubbleDecision d = nextBubble(u.state, DateTime(2026, 10, 7, 12))!;
+    expect(d.occasion, MannyOccasion.celebration);
+    expect(d.pulseUnitId, isNull);
+    // Ohne Profiländerung bleibt der Puls.
+    expect(nextBubble(base, DateTime(2026, 10, 7, 12))!.pulseUnitId, 'w5-d1');
   });
 }

@@ -58,6 +58,54 @@ abstract final class CuraTheme {
       splashFactory: NoSplash.splashFactory,
       extensions: <ThemeExtension<dynamic>>[colors, type],
       datePickerTheme: datePickerTheme(colors, type),
+      // `primary` bleibt `accent` (Flächen, Ringe, Auswahl). Alles, was
+      // Material daraus als **Text** färbt, wird auf `accentHi` bzw. `text-1`
+      // umgelenkt (Brief-E-2, UI-4): Textbuttons, Eingabefeld-Labels.
+      textButtonTheme: TextButtonThemeData(
+        style: _textButtonStyle(colors, type),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.text1,
+          textStyle: type.bodyStrong,
+        ),
+      ),
+      inputDecorationTheme: inputDecorationTheme(colors, type),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: colors.accentHi,
+        selectionHandleColor: colors.accentHi,
+      ),
+    );
+  }
+
+  static ButtonStyle _textButtonStyle(CuraColors colors, CuraTypography type) =>
+      TextButton.styleFrom(
+        foregroundColor: colors.accentHi,
+        textStyle: type.bodyStrong,
+        minimumSize: const Size(CuraSize.touchTarget, CuraSize.touchTarget),
+      );
+
+  /// Eingabefelder (auch im Eingabe-Modus der Datumsauswahl): Label `text-2`,
+  /// fokussiert bzw. schwebend `accentHi`, nie `accent` als Text.
+  static InputDecorationTheme inputDecorationTheme(
+    CuraColors colors,
+    CuraTypography type,
+  ) {
+    return InputDecorationTheme(
+      labelStyle: type.secondary.copyWith(color: colors.text2),
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith((
+        Set<WidgetState> states,
+      ) {
+        return type.secondary.copyWith(
+          color: states.contains(WidgetState.error)
+              ? colors.statusError
+              : (states.contains(WidgetState.focused)
+                    ? colors.accentHi
+                    : colors.text2),
+        );
+      }),
+      hintStyle: type.body.copyWith(color: colors.text2),
+      helperStyle: type.secondary.copyWith(color: colors.text2),
     );
   }
 
@@ -68,11 +116,7 @@ abstract final class CuraTheme {
     CuraColors colors,
     CuraTypography type,
   ) {
-    final ButtonStyle textButton = TextButton.styleFrom(
-      foregroundColor: colors.accentHi,
-      textStyle: type.bodyStrong,
-      minimumSize: const Size(CuraSize.touchTarget, CuraSize.touchTarget),
-    );
+    final ButtonStyle textButton = _textButtonStyle(colors, type);
     return DatePickerThemeData(
       backgroundColor: colors.surfaceOpaque,
       surfaceTintColor: Colors.transparent,
@@ -103,6 +147,7 @@ abstract final class CuraTheme {
             : colors.accentHi;
       }),
       todayBorder: BorderSide(color: colors.accentHi),
+      inputDecorationTheme: inputDecorationTheme(colors, type),
     );
   }
 }

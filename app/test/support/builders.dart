@@ -77,7 +77,6 @@ AppState expectedV1() => AppState(
   ),
   celebration: const CelebrationState(
     day: LocalDay(2026, 10, 7),
-    streak: 13,
     unitId: 'w5-d2',
   ),
 );

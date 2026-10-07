@@ -197,6 +197,9 @@ String? nodeHintText(PathUnit unit, UnitStatus status, int currentWeek) {
     case UnitStatus.done:
       return S.hintDone;
     case UnitStatus.locked:
+      if (unit.kind == UnitKind.boss && unit.week == currentWeek) {
+        return S.hintBossGoal; // Nutzerentscheidung: eigener Text in Woche 12
+      }
       if (unit.week == currentWeek) {
         return S.hintThisWeek;
       }

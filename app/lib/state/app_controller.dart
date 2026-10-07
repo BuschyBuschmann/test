@@ -48,7 +48,16 @@ class DayChangeResult {
 }
 
 class TrainingResult {
-  const TrainingResult({required this.snapshot, required this.dayChanged});
+  const TrainingResult({
+    required this.applied,
+    required this.snapshot,
+    required this.dayChanged,
+  });
+
+  /// `true`, wenn ein Training eingetragen wurde (auch über Mitternacht, dort
+  /// ohne [snapshot]); `false`, wenn der Eintrag abgelehnt wurde (falscher
+  /// Tag, schon erledigt).
+  final bool applied;
 
   /// Schnappschuss für „Rückgängig“; `null`, wenn nichts eingetragen wurde
   /// oder der Eintrag über Mitternacht ging (dort gibt es kein Fenster).
@@ -117,6 +126,8 @@ class AppController extends ChangeNotifier {
   LoadStatus _loadStatus = LoadStatus.loading;
   StartNotice _startNotice = StartNotice.none;
   bool _deleting = false;
+  Future<void>? _deleteFuture;
+  AppState? _stateAfterDelete;
   Future<void> _writeChain = Future<void>.value();
   int _customSeq = 0;
 
@@ -396,7 +407,11 @@ class AppController extends ChangeNotifier {
       );
       _transient.endUndoWindow();
       _commit(r.state, force: r.changed);
-      return TrainingResult(snapshot: null, dayChanged: r.changed);
+      return TrainingResult(
+        applied: applied.snapshot != null,
+        snapshot: null,
+        dayChanged: r.changed,
+      );
     }
     final DayChangeResult dc = _applyRollover();
     final training_logic.TrainingApplied applied = training_logic.applyTraining(
@@ -406,7 +421,11 @@ class AppController extends ChangeNotifier {
     _commit(applied.state, force: dc.changed);
     final undo_logic.TrainingSnapshot? snapshot = applied.snapshot;
     if (snapshot != null) _transient.startUndoWindow(TrainingUndo(snapshot));
-    return TrainingResult(snapshot: snapshot, dayChanged: dc.changed);
+    return TrainingResult(
+      applied: snapshot != null,
+      snapshot: snapshot,
+      dayChanged: dc.changed,
+    );
   }
 
   /// Rückgängig für „Training eintragen“; nach einem Tageswechsel abgelehnt.
@@ -480,10 +499,16 @@ class AppController extends ChangeNotifier {
   /// Schreibschlange warten, (3) alle Löscher der Reihe nach, (4) Erfolg:
   /// Zustand zurücksetzen, Transientes verwerfen; das Schreiben bleibt gesperrt,
   /// bis die UI nach dem Neuaufbau des Onboardings [completeDeletion] ruft;
-  /// (5) Fehler: Zustand unverändert, Schreiben wieder erlaubt, Fehler wird
-  /// weitergereicht. Ein zweiter Aufruf während des Löschens tut nichts.
-  Future<void> deleteAll() async {
-    if (_deleting) return;
+  /// (5) Fehler: Zustand unverändert, Schreiben wieder erlaubt, der Stand wird
+  /// nachgeschrieben (während der Sperre verworfene Aufträge gehen nicht
+  /// verloren), Fehler wird weitergereicht.
+  ///
+  /// Ein zweiter Aufruf während des Löschens erhält denselben Vorgang (gleiches
+  /// Future, auch denselben Fehler); nach Erfolg ist er wirkungslos, bis
+  /// [completeDeletion] gerufen wurde.
+  Future<void> deleteAll() => _deleteFuture ??= _runDelete();
+
+  Future<void> _runDelete() async {
     _deleting = true;
     notifyListeners();
     try {
@@ -491,20 +516,29 @@ class AppController extends ChangeNotifier {
       await _eraseAll();
     } catch (_) {
       _deleting = false;
+      _deleteFuture = null;
+      _enqueueWrite(); // RAM und Speicher wieder angleichen
       notifyListeners();
       rethrow;
     }
     _state = AppState.initial(today);
+    _stateAfterDelete = _state;
     _transient.reset();
     _startNotice = StartNotice.deleted;
     notifyListeners();
   }
 
-  /// Hebt die Schreibsperre nach erfolgreichem Löschen auf (Neuaufbau ist
-  /// erfolgt).
+  /// Hebt die Schreibsperre nach erfolgreichem Löschen auf. **Vertrag:** Die
+  /// UI ruft das sofort nach dem Neuaufbau des Onboardings, vor jeder Eingabe.
+  /// Was bis dahin im Speicher geändert wurde, wird jetzt nachgeschrieben;
+  /// ist der Zustand noch der leere Ausgangszustand, wird nichts geschrieben
+  /// (der Store bleibt ohne Schlüssel, UI-51).
   void completeDeletion() {
-    if (!_deleting) return;
+    if (!_deleting || _deleteFuture == null) return;
     _deleting = false;
+    _deleteFuture = null;
+    if (_state != _stateAfterDelete) _enqueueWrite();
+    _stateAfterDelete = null;
     notifyListeners();
   }
 

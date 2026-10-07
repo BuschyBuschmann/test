@@ -188,6 +188,33 @@ void main() {
     });
   });
 
+  group('Boss-Hinweis in Woche 12 (Nutzerentscheidung)', () {
+    String? bossHint(int daysAgo) {
+      final PathProgress p = progress(daysAgo);
+      final int i = kSamplePath.indexWhere((u) => u.id == 'boss');
+      return nodeHintText(kSamplePath[i], p.statuses[i], p.week);
+    }
+
+    test('laufende Woche 12: „Dein Ziel: zurück in deinen Sport.“', () {
+      expect(bossHint(84), 'Dein Ziel: zurück in deinen Sport.');
+      expect(bossHint(200), 'Dein Ziel: zurück in deinen Sport.');
+    });
+
+    test('andere Wochen unverändert; übrige Units in Woche 12 auch', () {
+      expect(bossHint(30), 'Return to Sport kommt in Woche 12');
+      expect(bossHint(0), 'Return to Sport kommt in Woche 12');
+      final PathProgress p = progress(84);
+      PathUnit u(String id) => kSamplePath.firstWhere((x) => x.id == id);
+      String? h(String id) => nodeHintText(
+        u(id),
+        p.statuses[kSamplePath.indexWhere((x) => x.id == id)],
+        p.week,
+      );
+      expect(h('w12-d2'), 'Kommt noch diese Woche');
+      expect(h('p3-end'), 'Kommt noch diese Woche');
+    });
+  });
+
   group('Screenreader-Labels (A-14)', () {
     final PathProgress p = progress(30);
     String label(String id) {

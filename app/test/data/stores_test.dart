@@ -6,7 +6,10 @@ import 'package:curaone/logic/migrations.dart';
 import 'package:flutter_test/flutter_test.dart';
 // Transitive Abhängigkeit von shared_preferences (freigegebenes Paket); nur
 // für den In-Memory-Ersatz der Plattform im Test, deshalb kein Eintrag in der
-// pubspec.yaml.
+// pubspec.yaml. Risiko: Ein Update von shared_preferences kann das Paket oder
+// seinen Pfad ändern oder entfernen; dann bricht dieser Test (nicht die App).
+// Bei Bruch: als dev_dependency eintragen (nach Freigabe) oder die Plattform-
+// Fakes selbst implementieren.
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 // ignore: depend_on_referenced_packages
