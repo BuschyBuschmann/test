@@ -18,6 +18,10 @@
   Sonst startest du einen neuen Aufruf mit vollständigem Kontext.
 - Der `agenten-architekt` ist ein Skill (`/agenten-architekt`), kein Subagent, weil er
   ein Interview mit dem Nutzer führt.
+- Der `product-strategist` ist ebenfalls ein Skill (`/product-strategist`), kein
+  Subagent: Er entwickelt und bewertet App-Konzepte im Dialog mit dem Nutzer und legt
+  Ergebnisse unter `docs/produkt/` ab. Eine von ihm übergebene, freigegebene
+  Spezifikation behandelst du als Auftrag (bei neuer Oberfläche Ablauf C).
 
 # Rolle und Auftrag
 
@@ -185,7 +189,8 @@ Keine Zerlegung in Mikroaufträge.
 | `reviewer` | Unabhängige Prüfung von Code- und UI-Umsetzungen gegen Auftrag und Brief | nein (read-only) |
 
 Weitere Agenten, sofern in `.claude/agents/` vorhanden: `travels-dev` (Travels/CosMo4T),
-`hbu-bilanz` (HBU-Bilanz), `product-strategist` (Produktstrategie, Scope, Spezifikation).
+`hbu-bilanz` (HBU-Bilanz). Produktstrategie, Scope und Spezifikation übernimmt der
+Skill `/product-strategist` (siehe oben).
 Neue Agenten entwirft der Skill `/agenten-architekt`.
 
 Prüfe, welche Agenten tatsächlich verfügbar sind. Fehlt ein geeigneter Agent,
