@@ -1,13 +1,16 @@
-# Flutter-Plan v1.1 (überarbeitet nach Review): CuraOne, erster Ausschnitt
+# Flutter-Plan v1.2 (überarbeitet nach Review und Brief-Ergänzung 2): CuraOne, erster Ausschnitt
 
-Status: **PLAN ZUR FREIGABE** · v1.1, überarbeitet nach Review (reviewer R-P1, ui-designer A-P1, Nutzerentscheidungen 2026-10-07) · Paket P1-K1 · Autor: `flutter-developer` · Stand 2026-10-07
+Status: **PLAN ZUR FREIGABE** · v1.2 (v1.1 überarbeitet nach Review R-P1/A-P1; v1.2 ergänzt um Brief-Ergänzung 2 „Manny-Chat und Nachrichten“, KI-Plan Abschnitt 11 und `KONVENTIONEN.md`) · Paket P1-K2 · Autor: `flutter-developer` · Stand 2026-10-07
 
 Verbindliche Vorgaben (gelten im Wortlaut, dieser Plan setzt sie nur technisch um):
 - `docs/design/design-brief-v1.md` (freigegeben, UI-1 … UI-36, Nutzerentscheidungen Abschnitt 12) **einschließlich Abschnitt 14 „Errata"**: Erratum E-1 (UI-7 neue Fassung, Glow-Regel nach Untergrund) und Erratum E-2 (UI-4 präzisiert, `accent` als Text nur auf `bg`). Wo dieser Plan UI-4 oder UI-7 nennt, gilt die Errata-Fassung.
 - `docs/design/design-brief-v1-ergaenzung-1.md` (freigegeben, UI-37 … UI-69, Nutzerentscheidungen Abschnitt 8)
+- `docs/design/design-brief-v1-ergaenzung-2.md` (freigegeben, UI-70 … UI-89; **neue Fassungen** von UI-24, UI-31, UI-59 und Ergänzung 1 Abschnitt 3.5; Präzisierungen von UI-37, UI-39, UI-41, UI-63; Brief v1 Abschnitt 13 teilweise aufgehoben; Nutzerentscheidungen Abschnitt 8: Glow im Chat bleibt, **nur die deaktivierte Eingabeleiste** wird gebaut). Wo dieser Plan eines dieser Kriterien nennt, gilt die Fassung aus Ergänzung 2.
+- `docs/plan/ki-plan-v1.md` Abschnitt 11 (KS-1 … KS-10) in der vom Nutzer **verschlankten** Form (N-17): KS-1 synchron, KS-4 minimal ohne JSON/Speicherung, KS-5 **nur `messages`** (lesend; `canSend` entfällt mit der aktiven Variante, Präzisierung des Orchestrators zu P1-K2), KS-6 nur, was der Brief verlangt (`ChatComposer` **nur deaktiviert**, keine aktive Variante, kein Variantentest), KS-7 entfällt, KS-9 Löscher-Liste. Keine KI, kein Netzwerk, keine Red-Flag-Vorprüfung im ersten Ausschnitt.
+- `/home/user/test/KONVENTIONEN.md` (verbindlich, Regeln 1–5). Die Abschnittsnummer 12.1 dieses Plans wird dort zitiert und bleibt deshalb stabil.
 - Logik-Entscheidungen des Nutzers aus dem Arbeitspaket P1 und aus der Review-Runde (Abschnitt 18)
 
-Kontext: Spec 1, 2, 3 (`Spec 1-7.docx`), `docs/UEBERGABE.md`, `docs/produkt/curaone-vollstaendigkeit.md`, Mockups `docs/design/mockups/*-v3.png`.
+Kontext: Spec 1, 2, 3 (`Spec 1-7.docx`), `docs/UEBERGABE.md`, `docs/produkt/curaone-vollstaendigkeit.md`, Mockups `docs/design/mockups/*-v3.png` (v1) sowie `pfad-v4.png`, `heute-v4.png`, `manny-chat-v1.png`, `nachrichten-v1.png`, `nachrichten-chat-v1.png` (Ergänzung 2; nur Orientierung).
 
 Kennzeichnung: **A-n** = Annahme (gilt bis zur Klärung), **F-n** = offene Frage (Abschnitt 17), **N-n** = Nutzerentscheidung (Abschnitt 18), **Brief-E-n** = Erratum im Brief, **K-n** = bekannte Einschränkung des Prototyps.
 
@@ -20,15 +23,16 @@ Kennzeichnung: **A-n** = Annahme (gilt bis zur Klärung), **F-n** = offene Frage
 | Ort im Repo | Neues Flutter-Projekt unter `/home/user/test/app/` (Repo-Stamm bleibt für Docs/Specs) |
 | Plattformen | Android, iOS, Web (Web nur als Prüfumgebung für Screenshots, kein Produktziel) |
 | State-Management | Flutter-Bordmittel: ein `AppController` (`ChangeNotifier`) über `InheritedNotifier`, plus lokale `State`-Objekte für reine UI-Zustände. Kein Zusatzpaket |
-| Navigation | Navigator 1.0 mit `navigatorKey`; zwei Wurzel-Routen (Onboarding, Home mit Tabs in `IndexedStack` + `TickerMode`); eigene Routen für Sheets/Dialoge; Löschen und Neustart nach unlesbaren Daten per `pushAndRemoveUntil` |
+| Navigation | Navigator 1.0 mit `navigatorKey`; zwei Wurzel-Routen (Onboarding, Home mit Tabs in `IndexedStack` + `TickerMode`); eigene Routen für Sheets/Dialoge; Vollbild-Routen für Manny-Chat, Nachrichten und Beispiel-Chat (ohne Nav); Löschen und Neustart nach unlesbaren Daten per `pushAndRemoveUntil` |
 | Speicherung | Ein versioniertes JSON-Dokument unter einem festen Schlüssel in `shared_preferences`, hinter `StateStore`; Migrationskette je Schemaversion; unlesbare Daten → automatischer Neustart (N-12) |
-| Reine Logik | `lib/logic/` ohne Flutter-Import: Tag/Uhr, Streak, Pfad-Generator und -Layout, Pools, Tagesprogramm/Tageswechsel, Rückgängig, Manny-Anlässe, Profiländerung, Plural-Helfer |
+| Reine Logik | `lib/logic/` ohne Flutter-Import: Tag/Uhr, Streak, Pfad-Generator und -Layout, Pools, Tagesprogramm/Tageswechsel, Rückgängig, Manny-Anlässe, Manny-Textquelle und -Kontext (KS-1–3), Chat-Datenmodell (KS-4), Profiländerung, Plural-Helfer |
 | Tokens | `ThemeExtension`s `CuraColors` (inkl. `scrim`), `CuraTypography`; Konstanten `CuraSpace`, `CuraRadius`, `CuraSize`, `CuraShadow`, `CuraMotion`; Variante „Hoher Kontrast" als eigener Token-Satz |
 | Pakete | `shared_preferences` (pub.dev) und `flutter_localizations` (SDK). Sonst nichts |
 | Fonts | Variable TTFs von Bricolage Grotesque und DM Sans als Assets inkl. `OFL.txt`; Gewicht per `fontWeight` **und** `FontVariation` |
 | Backend | Nicht angebunden. Entscheidungsvorlage: **Supabase (EU-Region)** empfohlen, Firebase als Alternative (Abschnitt 11) |
 | Verifikation | `flutter analyze`, Unit-, Widget-, Golden-Tests, gestufte Matrix, statische Code-Regeln als Test, Web-Screenshots per Playwright/Chromium inkl. CDP-Farbsehschwäche-Simulation und Pixel-Kontrastmessung. Gerätekriterien explizit markiert |
-| Umsetzung | 6 Umsetzungspakete (sonnet): U1a, U1b, U2a, U2b, U3, U4; nacheinander, ein Schreiber (Abschnitt 14) |
+| Chat/Nachrichten | Nur sichtbar, ohne Funktion: Manny-Chat mit festem Beispielverlauf und deaktivierter Eingabeleiste, Nachrichten-Übersicht und Beispiel-Chats nur ansehbar; nichts gespeichert, nichts gesendet; Einstieg über Button-Gruppe (Pfad, Heute) und Manny auf dem Pfad |
+| Umsetzung | 8 Umsetzungspakete (sonnet): U1a, U1b, U2a, U2b, U2c (neu: Chat + Nachrichten), U3a (Pfad), U3b (Heute), U4; nacheinander, ein Schreiber (Abschnitt 14) |
 
 ---
 
@@ -69,7 +73,7 @@ app/                                   # flutter create --org com.example --proj
     main.dart                          # Produktions-Einstieg: echter Store, Systemuhr, Systemsignale
     main_preview.dart                  # NUR Prüfumgebung (Web): Szenario, Uhrzeit, Skalierung, HC, RM, Text-Dump per URL
     app.dart                           # CuraApp: MaterialApp, Theme, Locale de, navigatorKey, AppScope, ContentFrame
-    l10n/strings_de.dart               # alle sichtbaren Texte, Screenreader-Labels, Tooltips, Hinweistexte
+    l10n/strings_de.dart               # alle sichtbaren Texte, Screenreader-Labels, Tooltips, Hinweistexte (Konvention 4); OHNE Flutter-Import, damit lib/logic/ sie nutzen darf
     logic/                             # reine Dart-Logik, KEIN import 'package:flutter/...'
       clock.dart                       # typedef Clock, LocalDay
       plural.dart                      # tage(n): "1 Tag" / "n Tage"
@@ -83,11 +87,16 @@ app/                                   # flutter create --org com.example --proj
       undo.dart                        # TrainingSnapshot (Rückgängig)
       manny_occasions.dart             # welche Blase wann (Anlässe, einmal pro Tag)
       profile.dart                     # Profil, Verletzungstyp, Profiländerung inkl. Neuberechnung
+      manny_text_source.dart           # KS-1: MannyTextSource (synchron) + PlaceholderMannyTextSource
+      manny_context.dart               # KS-3: MannyContext.from(AppState, LocalDay) + toJson
+      chat_model.dart                  # KS-4: ChatMessage {id, author, kind, status, text}, Enums; kein JSON
       app_state.dart                   # AppState (unveränderlich) + JSON
       migrations.dart                  # Migrationskette Schema n -> n+1, Lesetoleranz
     data/
       state_store.dart                 # abstract StateStore {load, save, deleteAll}, kAllStorageKeys
-      prefs_state_store.dart           # shared_preferences-Implementierung
+      prefs_state_store.dart           # shared_preferences-Implementierung (zugleich erster DataEraser)
+      data_eraser.dart                 # KS-9: abstract DataEraser {eraseAll}; Liste im AppController
+      manny_chat_source.dart           # KS-5: MannyChatSource {messages(vorname)} + ExampleMannyChatSource (kein canSend)
     state/
       app_controller.dart              # ChangeNotifier: hält AppState, ruft Logik, schreibt Store
       app_scope.dart                   # InheritedNotifier<AppController>
@@ -103,12 +112,14 @@ app/                                   # flutter create --org com.example --proj
       contrast.dart                    # WCAG-Berechnung (für Test UI-3 und UI-7)
     ui/
       components/                      # Bausteine aus Brief 5 und Ergänzung 2 (siehe Abschnitt 9)
-      routes/                          # CuraSheetRoute, CuraDialogRoute, Platzhalterseite Datenschutz
+      routes/                          # CuraSheetRoute, CuraDialogRoute, CuraFullscreenRoute (Chat/Nachrichten), Platzhalterseite Datenschutz
       onboarding/                      # OnboardingFlow, Step1Name … Step4Date
       home/                            # HomeShell (Tabs, Zurück, Lifecycle)
       path/                            # PathScreen, PathView (Painter), PathHeader-Anbindung
       today/                           # TodayScreen, TrainingModeSheet, CustomExerciseDialog
       data_sheet/                      # DataSheet „Deine Daten", DeleteDialog, DiscardDialog
+      chat/                            # MannyChatScreen (Vollbild-Route)
+      messages/                        # MessagesScreen, ExampleChatScreen, example_contacts.dart (KS-10, eigene feste Daten, Kommentar „unverbindlicher Platzhalter, keine Spec“)
     dev/scenarios.dart                 # benannte AppState-Fixtures (für Tests und main_preview)
   test/
     flutter_test_config.dart           # lädt Fonts + MaterialIcons für alle Tests
@@ -143,12 +154,16 @@ Begründung: Trennung `logic` (rein Dart, Brief 9 und Ergänzung 5) / `state` (B
 | `CuraSheetRoute` | eigene `PopupRoute` | „Wie willst du trainieren?" (Heute), „Deine Daten" (Pfad) |
 | `CuraDialogRoute` | eigene `RawDialogRoute`-Variante | „Eigene Übung", „Alles löschen?", „Änderungen verwerfen?" |
 | System-Datumsauswahl | `showDatePicker` | Onboarding Schritt 4 und Sheet (gleiche `DateCard`) |
+| `MannyChatRoute` | `CuraFullscreenRoute` (eigene `PageRoute`) | Manny-Chat, Vollbild ohne Nav (Ergänzung 2, 3.2) |
+| `MessagesRoute` | `CuraFullscreenRoute` | Nachrichten-Übersicht (Ergänzung 2, 3.3) |
+| `ExampleChatRoute(contactId)` | `CuraFullscreenRoute` | Beispiel-Chat eines Kontakts (Ergänzung 2, 3.4); wird über `MessagesRoute` gelegt |
 
 Übergänge:
 - `StartGate` → `pushReplacement` auf Onboarding (Schritt aus dem Speicher, UI-16) oder Home (Onboarding abgeschlossen).
 - Gespeicherte Daten unlesbar oder unbekanntes Schema (N-12): Daten verwerfen (`deleteAll`), `OnboardingRoute(step: 0, notice: neustart)`. Snackbar über der Mikrofon-Zeile: „Deine gespeicherten Daten waren nicht lesbar. Du startest neu." (4 s, ohne Aktion, Muster wie „Alle Daten sind gelöscht.") – Text und Form A-34.
 - Onboarding Schritt 4 „Weiter" → `pushAndRemoveUntil(HomeRoute, (_) => false)`; Home öffnet auf Tab **Pfad** (A-1), Manny-Begrüßung (Anlass Begrüßung).
 - Löschen bestätigt → `pushAndRemoveUntil(OnboardingRoute(step: 0, notice: gelöscht), (_) => false)` (Ergänzung 3.2, UI-51). Damit sind Sheet, Dialog, Home und alle Tab-States entfernt; der `AppController` setzt seinen Zustand auf `AppState.initial()` und verwirft Schnappschuss, Timer und offene Hinweise.
+- Manny-Chat und Nachrichten werden aus `HomeShell` per `push` über die `HomeRoute` gelegt (Einstieg: Button-Gruppe auf Pfad/Heute, Manny auf dem Pfad). Der Beispiel-Chat wird über die Nachrichten gelegt; Zurück führt in die Übersicht, danach auf den Tab, von dem aus geöffnet wurde (der Tab bleibt im `IndexedStack` unverändert, UI-80). Vor dem `push`: Rückgängig-Fenster beenden, Snackbar schließen, `NodeHint` schließen, sichtbare Blase schließen (zählt als gezeigt) (Ergänzung 2 K11, 3.1; UI-39, UI-86).
 - Tabwechsel ist **keine** Route; Tabs bleiben im `IndexedStack` erhalten (Scrollposition). Der inaktive Tab läuft in `TickerMode(enabled: false)`, damit keine Animation im Hintergrund weiterläuft (UI-8); Timer des inaktiven Tabs (Snackbar, `NodeHint`) werden beim Tabwechsel beendet.
 
 ### 4.2 Fortsetzen nach Neustart (UI-16, UI-43, UI-51)
@@ -165,9 +180,10 @@ Umsetzung mit `PopScope(canPop: false, onPopInvokedWithResult: …)` auf Onboard
 | Onboarding | **nichts** – Mannys Blase zählt im Onboarding nicht als offenes Overlay (N-13) | Schritt 2–4: einen Schritt zurück (Eingaben bleiben, Seitenwechsel in Gegenrichtung). Schritt 1: App schließen (`SystemNavigator.pop`) |
 | Home, Tab Heute | (Heute hat keine Blase/Hinweise) | Wechsel auf Tab Pfad (beendet ein Rückgängig-Fenster, Ergänzung 3.3 Punkt 5) |
 | Home, Tab Pfad | Manny-Blase oder `NodeHint` sichtbar → schließen | App schließen (`SystemNavigator.pop`) |
+| Manny-Chat, Nachrichten, Beispiel-Chat | – (keine Overlays) | Route schließen (`canPop: true`); Beispiel-Chat → Nachrichten → Tab (UI-80, UI-86) |
 
 - Snackbars werden von Zurück nicht gesondert behandelt; auf Heute führt Zurück zum Pfad, wodurch die Snackbar endet.
-- Escape: Sheets/Dialoge über die Standard-`DismissIntent` der Modal-Routen (geht durch `PopScope`). Blase und `NodeHint` über eigene `Shortcuts`/`Actions`. Die Snackbar schließt mit Escape (Ergänzung 3.3 Punkt 5). Im Onboarding schließt Escape die Blase (Brief 8), die Zurück-Taste nicht (N-13).
+- Escape: Sheets/Dialoge über die Standard-`DismissIntent` der Modal-Routen (geht durch `PopScope`). Die Vollbild-Routen bekommen in `ChatScreenScaffold` ein eigenes `Shortcuts`/`Actions`-Paar Escape → `maybePop`, weil `DismissIntent` nur Modal-Routen schließt (in U2c per Test bestätigen). Blase und `NodeHint` über eigene `Shortcuts`/`Actions`. Die Snackbar schließt mit Escape (Ergänzung 3.3 Punkt 5). Im Onboarding schließt Escape die Blase (Brief 8), die Zurück-Taste nicht (N-13).
 - iOS: `SystemNavigator.pop` ist dort wirkungslos; iOS hat keine Zurück-Taste, das ist erwartetes Verhalten.
 - **Web (n6):** Flutter Web leitet den Browser-Zurück-Button an `popRoute` weiter; damit gilt dieselbe Tabelle wie für Android. Festgelegtes Verhalten: Browser-Zurück = Android-Zurück; auf Pfad bzw. Schritt 1 bleibt die Seite stehen (`SystemNavigator.pop` ist im Web wirkungslos). Prüfung in U2b mit Playwright `page.goBack()` (Onboarding Schritt 3 → 2, Heute → Pfad). Weicht das Web ab, wird das dokumentiert; maßgeblich bleiben die Widget-Tests mit `handlePopRoute`.
 - Android 14+ „Predictive Back": mit `canPop: false` keine Vorschau-Animation; gewollt, weil die Aktion kontextabhängig ist.
@@ -179,20 +195,35 @@ Umsetzung mit `PopScope(canPop: false, onPopInvokedWithResult: …)` auf Onboard
 - **`CuraDialogRoute`**: Scrim `scrim`, Einblenden `dur-base` (RM: ≤ `dur-fast`), kein Skalieren, kein Blur. Scrim → `maybePop`.
 - Routennamen für Screenreader (`namesRoute`/`scopesRoute`): „Deine Daten", „Wie willst du trainieren?", „Eigene Übung", „Alles löschen?" und „Änderungen verwerfen?" (beide als `alertdialog`-Semantik über `SemanticsRole.alertDialog`, in Flutter 3.47 vorhanden).
 - Fokus: Beim Öffnen bekommt die Route einen eigenen `FocusScope`; Startfokus im Dialog auf der sicheren Aktion (`autofocus`). Screenreader-Fokus beim Öffnen von „Deine Daten" auf dem Titel (Routenname), Tastatur-Reihenfolge beginnt mit „Schließen" (A-30; laut ui-designer kein Konflikt). Beim Schließen: `await route.popped; if (trigger.context?.mounted ?? false) trigger.focusNode.requestFocus();` – der Auslöser kann durch Tageswechsel oder Löschen nicht mehr existieren (n5).
+- **`CuraFullscreenRoute`** (Chat, Nachrichten, Beispiel-Chat): opake `PageRoute`, Übergang Einblenden + 24 dp Schiebung von rechts (`dur-base`, `curve`); RM: Einblenden ≤ `dur-fast`, keine Schiebung (Ergänzung 2, 2.1, 4). Kein Scrim, kein Blur. Routennamen „Manny, Chat“, „Nachrichten“, „Beispiel-Chat [Name]“. **Anfangsfokus** auf dem Zurück-Pfeil (`autofocus`), Screenreader liest zuerst den Titel (Kopf vor dem Zurück-Pfeil in der Semantik-Reihenfolge per `OrdinalSortKey`, sichtbare Tastatur-Reihenfolge beginnt beim Zurück-Pfeil). **Fokusrückgabe** an das auslösende Element (Manny-Button, Nachrichten-Button, Kontaktzeile) mit `mounted`-Prüfung wie oben; wurde über Manny auf dem Pfad geöffnet (keine eigene Fokusstation), geht der Fokus an den Manny-Button (A-38).
 - Heute-Routen werden im `HomeShell` registriert, damit der Tageswechsel genau diese schließen kann (`navigator.removeRoute`); „Deine Daten" bleibt offen (Ergänzung 3.4, UI-44). Ausnahme Trainings-Sheet bei Eintrag über Mitternacht: 7.5.
 
 ### 4.5 Screens (Kurzüberblick, Details im Brief)
 - **Gemeinsam:** `ContentFrame` (B-3, Brief 7): Inhalte volle Breite bis 560 dp, darüber mittig auf 560 dp begrenzt; Hintergrund und Glow laufen über die volle Breite. Die `FloatingNav` und fixe Buttons liegen innerhalb des Rahmens.
 - **Onboarding** (Brief 6.1): gemeinsames Layout, Schritte 1–4, `StepProgress`, Manny + Blase, `MicButton`-Zeile, fester Primärbutton über Tastatur (`Scaffold.resizeToAvoidBottomInset`), Inhalt scrollt, Snackbar-Platz über der Mikrofon-Zeile. Seitenwechsel als `SlideTransition` 24 dp + Einblenden (`dur-base`), bei Zurück in Gegenrichtung; RM: Sofortwechsel (B-8).
-- **Pfad** (Brief 6.2, Ergänzung 3.1/3.5): `PathHeader` (fix), Pfad scrollt darunter (Zukunft oben, oben/unten gepolstert, 7.3), Manny auf aktueller Unit, Blase, `NodeHint`, keine Snackbar, freie Zonen unten links/rechts.
-- **Heute** (Brief 6.3, Ergänzung 3.3/3.4): Datum, „Heute, [Name]", Segment, TERMINE, ÜBUNGEN · CA. N MIN, „+ Eigene Übung", fester Primärbutton über der Nav, Snackbar 12 dp über dem Button.
+- **Pfad** (Brief 6.2, Ergänzung 1 3.1/3.5, Ergänzung 2 3.1): `PathHeader` (fix), Pfad scrollt darunter (Zukunft oben, oben/unten gepolstert, 7.3), Manny auf aktueller Unit (antippbar → Manny-Chat), Blase, `NodeHint`, keine Snackbar; unten links frei, unten rechts nur die Button-Gruppe (UI-24 neu).
+- **Manny-Chat, Nachrichten, Beispiel-Chat** (Ergänzung 2, 3.2–3.4): Vollbild-Routen über `ChatScreenScaffold`, ohne Nav und ohne Button-Gruppe, Glow wie auf den anderen Screens, 0 `BackdropFilter`.
+- **Heute** (Brief 6.3, Ergänzung 1 3.3/3.4, Ergänzung 2 K3–K5): Datum, „Heute, [Name]", Segment, TERMINE, ÜBUNGEN · CA. N MIN, „+ Eigene Übung", feste **Primärbutton-Reihe** über der Nav („Training starten“ + Manny-Button), Nachrichten-Button rechtsbündig 8 dp darüber, Snackbar 12 dp über der Button-Gruppe (Oberkante Nachrichten-Button), Scroll-Reserve am Listenende (4.6).
 - **Deine Daten** (Ergänzung 3.2): Sheet mit fixem Kopf und fixer Fußleiste, Scrollbereich dazwischen.
+
+### 4.6 Button-Gruppe, Manny-Tipp, Scroll-Reserven (Ergänzung 2, 3.1)
+- **Sichtbarkeit:** nur in `HomeShell` (Tabs Pfad und Heute). Nicht im Onboarding (eigene Route ohne Gruppe), nicht in den Vollbild-Routen (die `HomeRoute` ist verdeckt). Unter Sheets und Dialogen liegt sie unter dem Scrim; `ModalBarrier` blockiert die Semantik darunter, der neue `FocusScope` hält den Tastaturfokus in der Modal-Route (UI-70: per Test bestätigen: keine Semantik-Knoten der Gruppe und kein Fokus bei offenem Sheet/Dialog).
+- **Ebene:** Die Gruppe liegt über dem Scrollinhalt, neben der Nav und unterhalb aller Routen. Konkret: `HomeShell`-`Stack` = [Tab-Inhalt (`IndexedStack`), Pfad-`ActionCluster` (nur bei Tab Pfad), `FloatingNav`]; auf Heute ist der Manny-Button Teil der fixen Primärbutton-Reihe von `TodayScreen`, der Nachrichten-Button sitzt rechtsbündig 8 dp darüber (gleiches Widget `ActionCluster` im Modus `today`).
+- **Positionen:** Pfad: rechts 16 dp, Manny-Button 16 dp über der Nav-Oberkante, Nachrichten-Button rechtsbündig 8 dp darüber. Heute: Reihe = `PillButton` Primär (Breite = verfügbare Breite − 56 − 8; bei 320 dp genau 224 dp) + 8 dp + Manny-Button 56 dp, `CrossAxisAlignment.end` (unten bündig; nur der Primärbutton wächst bei Umbruch). Positionen innerhalb des `ContentFrame`.
+- **Scroll-Reserven aus gemessenen Höhen** (nicht aus festen Pixelwerten; Messung per `LayoutBuilder`/`SizeChangedLayoutNotifier` der Reihe und der Nav):
+  - Heute (UI-31 neu): Reserve am Listenende = Höhe der Primärbutton-Reihe + Nav-Höhe inkl. Abstand + 16 dp + 56 dp (Nachrichten-Button 48 + 8).
+  - Pfad (UI-75): `padBottom` = max(7.3-Zentrier-Polster, Nav inkl. Abstand + 16 + 56 + 8 + 48 + 16 dp), damit die unterste Unit über die Gruppe geschoben werden kann.
+- **Snackbar auf Heute:** 12 dp über der Oberkante des Nachrichten-Buttons, 16 dp Seitenrand; verdeckt nur Listeninhalt (UI-37/41 präzisiert, UI-73).
+- **Manny-Tipp auf dem Pfad (UI-59 neu, UI-74):** `MannyPlaceholder` ist auf dem Pfad nicht mehr `IgnorePointer`. Eigener Hit-Bereich: gezeichnete Form (Pfad aus dem Painter) + 8 dp Rand, mindestens 48 × 48 dp, **unten abgeschnitten an der Standlinie** (Fußunterkante); umgesetzt per `CustomPainter.hitTest` bzw. eigener `RenderBox.hitTestSelf`, nicht als `GestureDetector` über der Unit. `GestureDetector(excludeFromSemantics: true)`, `ExcludeFocus` → keine eigene Fokusstation, kein Semantik-Button; das Bild-Label „Manny, dein Begleiter“ bleibt. Pressed: Form 10 % heller (keine Animation, keine Pose-Änderung). Tipp schließt eine sichtbare Blase (zählt als gezeigt) und öffnet den Manny-Chat; Tab bleibt. Die Unit reagiert nur außerhalb der Manny-Fläche (Ergänzung 1 3.5 neuer Satz). Onboarding-Manny und Manny im Button/Chat sind nicht als Chat-Einstieg tippbar.
+- **Kollisionen:** `MannyBubble` wechselt über Manny, wenn sie rechts weniger als 8 dp über der Oberkante des Nachrichten-Buttons enden würde; `NodeHint` weicht nach oben bzw. links aus, Pfeil bleibt an der Unit. Beide prüfen gegen das Rechteck der Gruppe (vom `ActionCluster` per `GlobalKey` bereitgestellt) (UI-75).
+- **Fokusreihenfolge** (Ergänzung 2, 4) per `FocusTraversalGroup` + `OrderedTraversalPolicy`: Pfad: Kopf (Text, Freeze, Streak, „Deine Daten“), Units, Nachrichten-Button, Manny-Button, Nav. Heute: Kopf, Zeitwahl, Karten und Aktionen, „Eigene Übung“, Nachrichten-Button, „Training starten“, Manny-Button, Nav.
+- **Tageswechsel bei offenem Chat/Nachrichten:** `HomeShell` erkennt den Wechsel weiterhin über `onResume`; die Snackbar „Neuer Tag, neues Programm.“ erscheint nur, wenn Tab Heute aktiv **und** `HomeRoute` die oberste Route ist. Sonst zeigt Heute beim Zurückkehren das neue Datum ohne Snackbar (Ergänzung 2, 3.1, A-5 dort). Die Ansage „Neuer Tag. …“ entfällt dann ebenfalls (A-39).
 
 ---
 
 ## 5. State-Management
 
-**Ansatz:** Bordmittel. Ein `AppController extends ChangeNotifier` hält den unveränderlichen `AppState`, eine `Clock` und einen `StateStore`. Bereitstellung über `AppScope extends InheritedNotifier<AppController>`. Screens lesen per `AppScope.of(context)`. Reine UI-Zustände (Textfeld-Entwurf im Sheet, offene `NodeHint`, Snackbar-Timer, Fokus) liegen in `State`-Objekten der Screens bzw. in `TransientUi` (zweiter, nicht persistierter `ChangeNotifier`).
+**Ansatz:** Bordmittel. Ein `AppController extends ChangeNotifier` hält den unveränderlichen `AppState`, eine `Clock`, einen `StateStore`, eine `MannyTextSource` (KS-1) und eine `List<DataEraser>` (KS-9), alle per Konstruktor injiziert. Die `MannyChatSource` (KS-5) gehört nicht in den Controller (nichts wird gespeichert) und wird über ein eigenes `InheritedWidget` (`ChatSourceScope`) bereitgestellt. Bereitstellung über `AppScope extends InheritedNotifier<AppController>`. Screens lesen per `AppScope.of(context)`. Reine UI-Zustände (Textfeld-Entwurf im Sheet, offene `NodeHint`, Snackbar-Timer, Fokus) liegen in `State`-Objekten der Screens bzw. in `TransientUi` (zweiter, nicht persistierter `ChangeNotifier`).
 
 **Begründung:**
 - Umfang: ein Gerät, ein Nutzer, ein Zustandsdokument, keine Netzwerk-Streams. `ChangeNotifier` reicht und kostet keine Abhängigkeit (Rollenvorgabe „Pakete nur mit Grund", Brief 9).
@@ -202,7 +233,7 @@ Umsetzung mit `PopScope(canPop: false, onPopInvokedWithResult: …)` auf Onboard
 - Verworfen: Riverpod/Bloc/Provider (zusätzliche Abhängigkeit ohne Mehrwert in diesem Umfang).
 
 **Controller-Methoden:**
-`load()`, `retryLoad()`; Onboarding: `setName`, `setStep`, `acceptConsent`, `selectInjury`, `setInjuryOther`, `setInjuryDate`, `completeOnboarding`; Heute: `selectTime`, `swapExercise`, `removeExercise` → Undo-Token, `undoRemove`, `addCustomExercise`, `logTraining({required LocalDay forDay})` → `TrainingResult {snapshot?, dayChanged}`, `undoTraining(snapshot)`, `endUndoWindow()`; Tag: `checkDayChange()` → `DayChangeResult`; Pfad: `onPathVisible()` → nächste Blase/Feier, `markBubbleShown`, `consumeCelebration`; Profil: `updateProfile(ProfileDraft)` → `ProfileUpdateResult {nameChanged, pathRecomputed}`; `deleteAll()`.
+`load()`, `retryLoad()`; Onboarding: `setName`, `setStep`, `acceptConsent`, `selectInjury`, `setInjuryOther`, `setInjuryDate`, `completeOnboarding`; Heute: `selectTime`, `swapExercise`, `removeExercise` → Undo-Token, `undoRemove`, `addCustomExercise`, `logTraining({required LocalDay forDay})` → `TrainingResult {snapshot?, dayChanged}`, `undoTraining(snapshot)`, `endUndoWindow()`; Tag: `checkDayChange()` → `DayChangeResult`; Pfad: `onPathVisible()` → nächste Blase/Feier, `markBubbleShown`, `consumeCelebration`; Profil: `updateProfile(ProfileDraft)` → `ProfileUpdateResult {nameChanged, pathRecomputed}`; `deleteAll()` (ruft die Löscher der Reihe nach, 6.3); Chat/Nachrichten: `beforeOpenFullscreen()` (beendet Undo-Fenster, keine Zustandsänderung am Dokument).
 
 **Tageswechsel zuerst (N-11):** Jede mutierende Methode ruft als Erstes `checkDayChange()` auf (gemeinsamer Wrapper `_mutate`). Einzige Ausnahme ist `logTraining(forDay)` mit `forDay` < heute (Eintrag über Mitternacht, 7.5): dort wird erst der Eintrag für `forDay` angewendet, danach der Tageswechsel. Liefert `checkDayChange()` einen Wechsel, bekommt die UI ihn als Ergebnis (Snackbar, Routen schließen, Undo beenden), bevor die eigentliche Aktion auf dem neuen Tag wirkt. Tests: jede mutierende Methode mit FakeClock einen Tag weiter → Wechsel wird zuerst angewendet.
 
@@ -270,7 +301,8 @@ Umsetzung mit `PopScope(canPop: false, onPopInvokedWithResult: …)` auf Onboard
 ### 6.3 Store und Löschen
 - `abstract class StateStore { Future<AppState?> load(); Future<void> save(AppState s); Future<void> deleteAll(); }`
 - `PrefsStateStore` mit `SharedPreferencesAsync`. **Feste Schlüsselliste** `kAllStorageKeys = {'curaone.state.v1'}` (wächst mit jeder neuen Schlüssel-Einführung); `deleteAll()` ruft `clear(allowList: kAllStorageKeys)` – `SharedPreferencesAsync.clear` arbeitet mit exakten Schlüsseln, nicht mit Präfixen (n4).
-- **Ablauf `deleteAll()` im Controller (n4):** (1) Flag `_deleting = true`, neue Schreibaufträge werden ab jetzt verworfen; (2) auf das Leerlaufen der seriellen Schreibschlange warten; (3) `store.deleteAll()`; (4) Erfolg: Zustand `AppState.initial()`, Transientes verwerfen, Navigation (4.1), `_deleting` bleibt bis zum Neuaufbau gesetzt; (5) Fehler: RAM-Zustand **unverändert**, `_deleting = false`, Schreiben wieder erlaubt, Fehler an den Dialog.
+- **Löscher-Liste (KS-9):** `abstract class DataEraser { Future<void> eraseAll(); }` in `lib/data/data_eraser.dart`; `PrefsStateStore` implementiert ihn. Der `AppController` erhält `List<DataEraser>` per Konstruktor; im ersten Ausschnitt **genau ein** Löscher (der Store). Reihenfolge = Listenreihenfolge, der erste Fehler bricht ab. Kein Chat-Speicherschlüssel (KS-7 entfällt; Chat und Nachrichten speichern nichts, `kAllStorageKeys` unverändert, UI-82). Risiko für später (R-9): Bei mehreren Löschern kann ein Fehler im zweiten einen Teil-Löschstand hinterlassen; im ersten Ausschnitt ausgeschlossen.
+- **Ablauf `deleteAll()` im Controller (n4):** (1) Flag `_deleting = true`, neue Schreibaufträge werden ab jetzt verworfen; (2) auf das Leerlaufen der seriellen Schreibschlange warten; (3) alle `DataEraser` der Reihe nach (`eraseAll()`); (4) Erfolg: Zustand `AppState.initial()`, Transientes verwerfen, Navigation (4.1), `_deleting` bleibt bis zum Neuaufbau gesetzt; (5) Fehler: RAM-Zustand **unverändert**, `_deleting = false`, Schreiben wieder erlaubt, Fehler an den Dialog.
 - **Sperren während des Löschens (n4):** Solange `busy`: Zurück/Escape/Scrim wirkungslos (`PopScope(canPop: false)`, Barriere ignoriert), „Ja, alles löschen" deaktiviert (ab 300 ms zusätzlich Fortschrittskreis), Doppeltipp löst nur einen Vorgang aus.
 - Testvarianten: `InMemoryStore`, `FailingStore` (wirft bei `load`/`deleteAll`), `SlowStore` (Completer), `CorruptStore` (liefert vorgegebenen Rohtext).
 - Sicherheit: Speicher unverschlüsselt; vertretbar für den Prototyp ohne echte Patientendaten. Vor Echtbetrieb verschlüsselte Speicherung im Datenschutz-Konzept entscheiden (R-3).
@@ -368,7 +400,7 @@ IDs stabil: `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`.
 ### 7.3 Pfad-Layout (`path_layout.dart`)
 Reine Funktion `layout(units, width, viewportHeight) → {placements: List<NodePlacement {center, diameter}>, totalHeight, padTop, padBottom}`. Vertikal von unten (Woche 1) nach oben (Boss), konstanter Abstand je Unit plus Durchmesser; x alternierend über eine Sinuskurve innerhalb `width − 2×16 dp` (Brief 7). Verbindungen als kubische Bézier-Strecken.
 
-**Polster (M4, B-7):** Oben und unten wird der Scrollinhalt so gepolstert, dass **jede** Unit, auch die erste (Woche 1, Tag 1) und die letzte (Boss), auf 55 % der Viewport-Höhe gescrollt werden kann: `padBottom = 0,45 × viewportHeight` (abzüglich des Platzes, den die erste Unit unten ohnehin hat), `padTop = 0,55 × viewportHeight` entsprechend. Damit begrenzt der Scrollbereich das initiale `jumpTo` nicht mehr. Initiales Scrollen und Neuberechnung nach Profiländerung (UI-55): Offset so, dass die aktuelle Unit (bzw. Manny-Unit) auf 55 % liegt; `jumpTo` (RM und Neuberechnung ohne Animation, Ergänzung 4).
+**Polster (M4, B-7):** Oben und unten wird der Scrollinhalt so gepolstert, dass **jede** Unit, auch die erste (Woche 1, Tag 1) und die letzte (Boss), auf 55 % der Viewport-Höhe gescrollt werden kann: `padBottom = 0,45 × viewportHeight` (abzüglich des Platzes, den die erste Unit unten ohnehin hat), `padTop = 0,55 × viewportHeight` entsprechend. Damit begrenzt der Scrollbereich das initiale `jumpTo` nicht mehr. Zusätzlich gilt unten die Reserve für die Button-Gruppe (4.6, Ergänzung 2): `padBottom = max(Zentrier-Polster, Nav + 16 + 56 + 8 + 48 + 16 dp)` aus gemessenen Höhen. Initiales Scrollen und Neuberechnung nach Profiländerung (UI-55): Offset so, dass die aktuelle Unit (bzw. Manny-Unit) auf 55 % liegt; `jumpTo` (RM und Neuberechnung ohne Animation, Ergänzung 4).
 
 Tests: x innerhalb der Grenzen inkl. Durchmesser; nicht alle x gleich (UI-20); y streng monoton; Durchmesser 48/60/72/92; bei 320 und 430 dp gültig; für erste, letzte und mittlere Unit existiert ein gültiger Offset, der sie auf 55 % setzt.
 
@@ -402,6 +434,19 @@ Tests: Priorität, 17:59 vs. 18:00, einmal pro Tag, am Folgetag wieder (UI-45), 
 ### 7.8 Profil (`profile.dart`)
 `ProfileDraft`, `isDirty` (Name nach `trim()`), `canSave` (dirty, Name nicht leer, Datum ≤ heute), `apply(state, draft, today)` → neuer Zustand + `{nameChanged, pathRecomputed}` für Ansage „Gespeichert. Pfad neu berechnet." bzw. „Gespeichert.".
 
+### 7.9 Manny-Textquelle, Kontext, Fakten (KS-1, KS-2, KS-3)
+- **KS-1 `MannyTextSource` (synchron, rein):** `lib/logic/manny_text_source.dart` mit `abstract class MannyTextSource { String bubbleText(MannyOccasion occasion, MannyContext ctx); FactRef fact(MannyContext ctx); }` und `PlaceholderMannyTextSource`, die exakt die bisherigen Platzhaltertexte aus `strings_de.dart` liefert (Name eingesetzt, Plural-Helfer). Injektion in den `AppController` wie `Clock`; `nextBubble` (7.7) liefert weiter nur den **Anlass**, der Text kommt aus der Quelle. Anlasslogik, Priorität, `lastShown` und „Tageswechsel zuerst" bleiben unverändert. Tests: U: Platzhalterquelle liefert für jeden Anlass die bisherigen Texte (≤ 2 Sätze); W: Pfad zeigt den Text einer `FakeMannyTextSource`.
+- **KS-2 Fakten als ID + Text:** `FactRef {String id, String text}` in `placeholder_pools.dart`; der Beispielfakt erhält eine feste ID. Test: IDs eindeutig und stabil, Text unverändert.
+- **KS-3 `MannyContext`:** `lib/logic/manny_context.dart`, `MannyContext.from(AppState s, LocalDay today)` mit Vorname (getrimmt), `injuryType`, Verletzungsdatum, Woche, Phase, Streak, Freezes, heute erledigt, Zeitwahl, Anzahl Übungen heute; **kein** „Anderes"-Freitext. `toJson()` mit festen Feldnamen (wie im KI-Plan; reine Funktion, nichts wird gesendet oder gespeichert). Tests: Woche/Phase identisch zur Kopfzeile, Werte nach Training, Reset, Profiländerung; `toJson` stabil.
+- `strings_de.dart` hat keinen Flutter-Import, damit `lib/logic/` die Texte nutzen darf (Konvention 3 und 4; statische Regel 7 prüft `lib/logic/` und `lib/l10n/`).
+
+### 7.10 Chat-Datenmodell und Beispielverlauf (KS-4, KS-5, KS-10)
+- **KS-4 (minimal):** `lib/logic/chat_model.dart`: `ChatMessage {String id, ChatAuthor author, ChatKind kind, ChatStatus status, String text}` mit `copyWith`; Enums `ChatAuthor {user, manny, notice}`, `ChatKind {text, escalation, disclaimer, bubble}`, `ChatStatus {sending, streaming, done, aborted, failed}` (Werte aus Brief-Ergänzung 2, 2.2). **Kein JSON, keine Persistenz, kein Zeitstempel.** Test: Gleichheit/`copyWith`.
+- **KS-5 (nur lesend):** `lib/data/manny_chat_source.dart`: `abstract class MannyChatSource { List<ChatMessage> messages(String vorname); }` und `ExampleMannyChatSource` mit dem Beispielverlauf aus Ergänzung 2, 3.2 (Texte aus `strings_de.dart`, Name aus dem Onboarding eingesetzt). **Kein** `canSend`, `send`, `cancel`, `retry`, `deleteAll`, `Stream` (kommt im KI-Ausschnitt). Bereitstellung per `ChatSourceScope`.
+- **Eingabeleiste:** `ChatComposer` existiert **nur in der deaktivierten Form** (Nutzerentscheidung Ergänzung 2 Abschnitt 8, Präzisierung des Orchestrators): kein `canSend`-Wert, keine aktive Variante, kein Variantentest. Die aktive Variante und `canSend` folgen im KI-Ausschnitt (KI-D/KI-5).
+- **KS-10 Nachrichten getrennt:** Die Beispielkontakte und Beispiel-Chats liegen als eigene feste Daten in `lib/ui/messages/example_contacts.dart` (eigener kleiner Typ `ExampleContact {id, section, initials, nameKey, roleKey, lines: [(fromMe, textKey)], dayKey}`), **nicht** als `ChatMessage`. Gemeinsam mit dem Manny-Chat ist nur Darstellung (`ChatScreenScaffold`, `ChatHeader`, `ExampleNotice`, `ChatComposer`). Dateikopf-Kommentar: „Unverbindlicher Platzhalter, keine Spec (Brief-Ergänzung 2, K10).“ (statische Regeln 13, 14).
+- **Nichts wird gespeichert** (UI-82): Chat- und Nachrichten-Code greift weder auf `StateStore` noch auf mutierende `AppController`-Methoden zu (statische Regel 15); nach „Alles löschen" und neuem Onboarding zeigt der Chat denselben Beispielverlauf mit dem neuen Namen.
+
 ---
 
 ## 8. Token-Architektur und Darstellung
@@ -423,16 +468,17 @@ Tests: Priorität, 17:59 vs. 18:00, einmal pro Tag, am Folgetag wieder (UI-45), 
 - **Prüfregel (statt Abstand, Brief-E-1):** Für jeden `RenderParagraph` wird der Glow-Alpha am dem jeweiligen Mittelpunkt nächstgelegenen Punkt des Text-Rechtecks berechnet. Untergrund: „Glas", wenn ein Vorfahr `GlassCard` oder eine E2-Fläche (`FloatingNav`, `MannyBubble`, Sheet) ist (A-35: E2 streng wie Glas behandelt), sonst `bg`; opake Flächen (Snackbar, Dialog, Hinweis) sind glowfrei. Schwellen: `bg` ≤ 24 %; `text-1/2/3` auf Glas ≤ 16 %; farbiger Text und `accent-hi` auf Glas ≤ 12 % **und** zusätzlich berechneter WCAG-Kontrast ≥ 4,5 bei diesem Alpha. Hinweis: Laut Errata-Tabelle erreicht `accent-hi` auf Glas bei 12 % nur 4,34 und `cat-frist` 4,19; die Zusatzbedingung macht das explizit (praktisch: `accent-hi` als Text auf Glas nur bei ≤ 9 % Glow, `cat-physio` ≤ 13 %). Im Ausschnitt ist kein `accent-hi`-Text auf Glas vorgesehen (Snackbar-Aktion liegt auf `surface-opaque`). Eine „benannte Ausnahme" gibt es nicht mehr.
 
 ### 8.3 Blur-Budget
-Einzige Stelle mit `BackdropFilter`: `CuraBlur`, verwendet nur von `FloatingNav`, `MannyBubble` und `CuraSheetRoute`. Bei `blurEnabled == false` (HC) nur opake Fläche. Dialog, Snackbar, `NodeHint`, Karten, Chips: nie Blur. Öffnen von „Deine Daten" schließt eine sichtbare Blase (Ergänzung K3).
+Einzige Stelle mit `BackdropFilter`: `CuraBlur`, verwendet nur von `FloatingNav`, `MannyBubble` und `CuraSheetRoute`. Button-Gruppe, Hinweiskarten, Kontaktzeilen, Blasen und Eingabeleiste: kein Blur. Manny-Chat, Nachrichten und Beispiel-Chat: **0** `BackdropFilter` (keine Nav) (UI-85). Bei `blurEnabled == false` (HC) nur opake Fläche. Dialog, Snackbar, `NodeHint`, Karten, Chips: nie Blur. Öffnen von „Deine Daten" schließt eine sichtbare Blase (Ergänzung K3).
 
 ### 8.4 Schatten, Schein, Linien (B-8)
 - Primärbutton: Schein 0/8/28 dp `accent` 28 %; bei HC entfällt er (`shadowsEnabled`).
 - Nav und Sheet: Schatten 0/10/30 dp Schwarz 45 %; unter der Nav blendet der Inhalt mit einem Verlauf in `bg` aus.
 - Pfad: erledigte Verbindung `text-1` 3 dp, runde Enden; zukünftige Strecke gepunktet Weiß 22 % 3 dp; aktuelle Unit mit Ring 1,5 dp `accent` 40 % im Abstand 9 dp und weichem Schein (Radialverlauf `accent` 50 %).
 - Pressed: Primär +10 % Helligkeit (`#DD7240`), Neutral hell → reines Weiß, Umriss → Füllung Weiß 10 %.
+- Manny-Button und Nachrichten-Button: Schatten 0/6/16 dp Schwarz 40 % (Wert aus Ergänzung 2, als `CuraShadow.actionButton` in `tokens.dart`; kein neuer Design-Token, nur die Ablage des Brief-Werts). Dieser Schatten **bleibt bei HC** (Ergänzung 2, 4) und hängt deshalb nicht an `shadowsEnabled`. Pressed: Überlagerung Weiß 10 %. Kein Glow, kein Akzent-Ring.
 
 ### 8.5 Hoher Kontrast
-`darkHighContrast`: `cardFill`/`floatFill` = `surface-opaque`, `controlBorder` = `border-control-hc` (auch Kartenrand), `scrim` 72 %, kein Blur, kein Glow, keine Schatten/Scheine; `HeaderIconButton` mit Kreisrand. Plattform: Signal nur iOS 13+ und Android API 34+ (R-5).
+`darkHighContrast`: `cardFill`/`floatFill` = `surface-opaque`, `controlBorder` = `border-control-hc` (auch Kartenrand), `scrim` 72 %, kein Blur, kein Glow, keine Schatten/Scheine; `HeaderIconButton` mit Kreisrand. Ergänzung 2: Manny-/Nachrichten-Button, `ExampleNotice`, Eingabeleiste, Blasen (auch die Glas-Blase des Gegenübers) und Avatare `surface-opaque` mit `border-control-hc` (UI-87). Plattform: Signal nur iOS 13+ und Android API 34+ (R-5).
 
 ### 8.6 Fonts
 - `BricolageGrotesque[opsz,wdth,wght].ttf`, `DMSans[opsz,wght].ttf` und die beiden `OFL.txt` aus `github.com/google/fonts` (`ofl/bricolagegrotesque`, `ofl/dmsans`), unverändert.
@@ -441,7 +487,7 @@ Einzige Stelle mit `BackdropFilter`: `CuraBlur`, verwendet nur von `FloatingNav`
 
 ---
 
-## 9. Komponenten (Brief 5, Ergänzung 2) → Dateien
+## 9. Komponenten (Brief 5, Ergänzung 1 Abschnitt 2, Ergänzung 2 Abschnitt 2) → Dateien
 
 | Baustein | Datei (`lib/ui/components/`) | Hinweise |
 |---|---|---|
@@ -454,19 +500,31 @@ Einzige Stelle mit `BackdropFilter`: `CuraBlur`, verwendet nur von `FloatingNav`
 | `FloatingNav` | `floating_nav.dart` | Labels über `MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3)`, Ausblend-Verlauf |
 | `PathNode` | `path_node.dart` | Größen, Zustände, Ring-Puls (RM: aus), Fokus/Enter/Leertaste, Semantics-Button |
 | `PathView` | `../path/path_view.dart` | ein `CustomPainter` für Linien (ausgeblendet für Screenreader), Units als Widgets, Polster 7.3 |
-| `MannyPlaceholder` | `manny.dart` | `CustomPainter`, Posen `neutral/motiviert/feiernd`, statisch, `IgnorePointer`, Label „Manny, dein Begleiter" |
+| `MannyPlaceholder` | `manny.dart` | `CustomPainter`, Posen `neutral/motiviert/feiernd`, statisch, Label „Manny, dein Begleiter"; Parameter `crop: full | head` (Kopf für Manny-Button ca. 38 dp und Chat-Emblem 26/34 dp, eine Zeichnung, nicht doppelt); `hitPath()` für den Manny-Tipp (Form + 8 dp, bis Standlinie, 4.6); außerhalb des Pfads `IgnorePointer` |
 | `MannyBubble` | `manny_bubble.dart` | E2 mit `CuraBlur`, X 48 dp, Platzierung rechts bzw. oberhalb (< 140 dp), max. 280 dp, Live-Region, nicht modal; Tipp irgendwo schließt (durchlässiger `Listener`) |
 | `ChoiceCard`, `StepProgress`, `CuraTextField`, `DateCard`, `MicButton` | je eigene Datei | **eine** Implementierung für Onboarding und Sheet (UI-53) |
 | `PathHeader` + `StatPill` + `HeaderIconButton` | `path_header.dart`, `stat_pill.dart`, `header_icon_button.dart` | Zeilen- und Umbruch-Layout (linker Block < 150 dp → Umbruch); Freeze- und Streak-Pill sind **reine Info** mit Semantics-Label, keine Schaltflächen, kein Tap-Ziel (B-8); „eingefroren"; Tooltip „Deine Daten" |
 | `CuraSnackbar` + `SnackbarHost` | `cura_snackbar.dart` | opak, eine gleichzeitig, Live-Region, Dauern 4 s („Alle Daten sind gelöscht.", Neustart-Hinweis), 5 s („Neuer Tag, neues Programm."), 8 s („Eingetragen.", „Entfernt.") (B-8); Pause bei Fokus/Hover, ohne Timer bei `accessibleNavigation`; Aktion ab Skalierung 1,3 unter dem Text |
 | `NodeHint` | `node_hint.dart` | `OverlayEntry`, opak, Pfeil, Breite min(240, Breite − 32), geklemmt, oben/unten-Wahl, schließt bei Tipp/Scroll/Escape/Tab/5 s |
-| `CuraDialog` | `cura_dialog.dart` | Aufbau Ergänzung 2, Buttons gestapelt, Inhalt scrollt |
+| `CuraDialog` | `cura_dialog.dart` | Aufbau Ergänzung 1 Abschnitt 2, Buttons gestapelt, Inhalt scrollt |
 | `CuraLabel` | `cura_label.dart` | Großbuchstaben nur visuell |
 | `FocusRing` | `focus_ring.dart` | `focus-ring` 2 dp, 2 dp Abstand |
+| `MannyChatButton` | `manny_chat_button.dart` | Kreis 56 dp, `surface-opaque`, Rand 1,5 dp `border-control` (HC `-hc`), Schatten 8.4, Manny-Kopf; Tooltip/Semantik „Manny, Chat öffnen"; `focus-ring`, Enter/Leertaste |
+| `MessagesButton` | `messages_button.dart` | Kreis 48 dp, sonst wie oben; Icon `chat_bubble_outline_rounded` 24 dp `text-1`; „Nachrichten" |
+| `ActionCluster` | `action_cluster.dart` | Modus `path` (beide Buttons gestapelt) / `today` (nur Nachrichten-Button über der Reihe); stellt sein Rechteck per `GlobalKey` für Blase/Hinweis bereit (4.6) |
+| `PrimaryActionRow` | `../today/primary_action_row.dart` | „Training starten"/„Heute erledigt"/deaktiviert + 8 dp + `MannyChatButton`, unten bündig; meldet ihre Höhe für die Scroll-Reserve |
+| `ChatScreenScaffold` | `chat_screen_scaffold.dart` | Vollbild ohne Nav: Glow, Kopf (opak `bg`, 1 dp `border-hair` unten), Inhalt, optional fester Fuß; Escape → `maybePop`; kein `BackdropFilter` |
+| `ChatHeader` | `chat_header.dart` | Zurück-Pfeil (48 dp, `HeaderIconButton`-Stil, `autofocus`), Emblem/Avatar 32–36 dp, Titel `heading`, Untertitel `secondary` `text-2` (A-40) |
+| `ExampleNotice` | `example_notice.dart` | `GlassCard` Radius 16, Innenabstand 10/14, Info-Icon 20 dp `text-2`, optional `CuraLabel` + Text `secondary`; nicht ausblendbar |
+| `ChatMessageList` | `chat_message_list.dart` | rendert `List<ChatMessage>` nach Autor: Manny ohne Blase auf `bg` mit Emblem 26 dp **je Manny-Block**, Text ab 36 dp, max. 560 dp; Nutzer-Blase rechts (`surface-opaque`, `border-hair`, Radius 20, Ecke unten rechts 6 dp, ≤ 80 % Breite, 12/16); Abstände 20/8 dp; Status ≠ `done` wie `done`; beim Öffnen Ende sichtbar; **Ende-Folgen:** steht der Nutzer am Ende (Offset ≥ max − 1 dp), springt die Liste nach jedem Layout an das neue Ende, sonst nicht; Semantik „Manny: …"/„Du: …" |
+| `ChatComposer` | `chat_composer.dart` | **nur deaktiviert**: Pill Radius 28, ≥ 56 dp, `surface-opaque`, Rand 1 dp `border-hair`, Platzhalter (`body` `text-2`), Senden-Kreis 40 dp (Hit-Area 48) mit `arrow_upward_rounded` `text-3` auf Weiß 10 %; kein `TextField` (öffnet keine Tastatur), `ExcludeFocus`, Semantik „Nachricht an Manny, noch nicht verfügbar" / „Senden, noch nicht verfügbar" (bzw. Beispiel-Chat-Varianten); Hinweiszeile darüber (Info-Icon 18 dp + `secondary` `text-1`), optional Disclaimer darunter (`caption` `text-3`, mittig) |
+| `ChatFooterLayout` | in `chat_screen_scaffold.dart` | Fuß (Hinweis, Leiste, Disclaimer) höchstens 40 % der Höhe; ab Textskalierung 1,5 wandern Hinweiszeile und Disclaimer ans Ende der Liste (scrollen mit), die Leiste bleibt fest; in den Nachrichten wandert ab 1,5 die `ExampleNotice` als erstes Element in die Liste |
+| `ContactRow` | `../messages/contact_row.dart` | ≥ 72 dp, ganze Zeile antippbar, `focus-ring`, Pressed Weiß 10 %; Avatar 48 dp (Initialen, `surface-opaque`, Ring 2 dp: Physio `cat-physio`, Ärzte `cat-arzt`, sonst Weiß 30 %), Name `bodyStrong`, letzte Nachricht `secondary` `text-2` (umbrechend), Zeit `caption` `text-3`; Semantik nach Ergänzung 2, 3.5 |
+| `ChatBubble` (Mensch) | `../messages/chat_bubble.dart` | eigene rechts `surface-opaque` + `border-hair`, Gegenüber links `GlassCard`-Füllung ohne Blur; Radius 20, Ecke zur Absenderseite 6 dp, ≤ 80 %, 12/16, `body` `text-1`; optionale Tagesüberschrift `CuraLabel` mittig |
 
 **Eigene Übung (B-4):** `CuraDialog`-Rahmen mit drei `CuraTextField`s: Name (Pflicht, getrimmt), Wiederholungen vorbefüllt „3 × 10", Dauer in Minuten vorbefüllt „5" (ganze Zahl 1–120); ein geleertes Feld fällt beim Hinzufügen auf die Vorgabe zurück, damit jede Karte Name, Wiederholungen und Dauer zeigt (UI-27). Buttons gestapelt: „Hinzufügen" (Primär, disabled bei leerem Namen) und „Abbrechen" (Umriss).
 
-**Icons** (abgerundete Material-Icons, A-25 nach ui-designer): Nav `route_rounded` / `event_available_rounded`; Physio `accessibility_new_rounded`, Arzt `medical_services_rounded`, Übung `fitness_center_rounded`; Streak `local_fire_department_rounded`, Freeze `ac_unit_rounded`; Units `flag_rounded` / `check_rounded` / `lock_rounded` / `star_rounded`; Tauschen `swap_horiz_rounded`, Entfernen `close_rounded`, Schließen `close_rounded`; Zurück `arrow_back_rounded`; Auswahl-Haken `check_circle_rounded`; „Anderes" `edit_rounded`; `DateCard` `calendar_today_rounded`; „Training starten" `play_arrow_rounded`, „Heute erledigt" `check_rounded`; Modi Manuell `edit_note_rounded`, Passiv `sensors_rounded`, Aktiv `play_circle_rounded`; Mikro `mic_none_rounded`; Daten `person_outline_rounded`; Löschen `delete_outline_rounded`; Fehler `error_outline_rounded`; Info `info_outline_rounded`.
+**Icons** (abgerundete Material-Icons, A-25 nach ui-designer): Nav `route_rounded` / `event_available_rounded`; Physio `accessibility_new_rounded`, Arzt `medical_services_rounded`, Übung `fitness_center_rounded`; Streak `local_fire_department_rounded`, Freeze `ac_unit_rounded`; Units `flag_rounded` / `check_rounded` / `lock_rounded` / `star_rounded`; Tauschen `swap_horiz_rounded`, Entfernen `close_rounded`, Schließen `close_rounded`; Zurück `arrow_back_rounded`; Auswahl-Haken `check_circle_rounded`; „Anderes" `edit_rounded`; `DateCard` `calendar_today_rounded`; „Training starten" `play_arrow_rounded`, „Heute erledigt" `check_rounded`; Modi Manuell `edit_note_rounded`, Passiv `sensors_rounded`, Aktiv `play_circle_rounded`; Mikro `mic_none_rounded`; Daten `person_outline_rounded`; Löschen `delete_outline_rounded`; Fehler `error_outline_rounded`; Info `info_outline_rounded`; Nachrichten `chat_bubble_outline_rounded`; Senden (deaktiviert) `arrow_upward_rounded`; Chat-Zurück `arrow_back_rounded`.
 
 **Texte:** alle in `lib/l10n/strings_de.dart` (A-26), inkl. Semantics-Labels, Tooltips, `hintText`.
 
@@ -525,7 +583,7 @@ Die Tags `golden` und `matrix` sind in `dart_test.yaml` deklariert (unbekannte T
 |---|---|---|
 | **U** | Unit-Test reine Logik | `test/logic`, `test/theme` |
 | **W** | Widget-Test | `FakeClock`, Fake-Stores, `tester.view.physicalSize`, `MediaQueryData`-Overrides (inkl. `viewInsets`, `padding`), `accessibilityFeaturesTestValue`, `handlePopRoute()`, `handleAppLifecycleStateChanged`, `sendKeyEvent`, `takeAnnouncements()`, `meetsGuideline(...)` |
-| **M** | gestufte Matrix (n7) | **M-Layout** (alle Zustände aus 12.4 × 320×568, 390×844, 430×932 × Skalierung 1,0/2,0, normal): keine Layout-Exceptions, Tap-Ziele ≥ 48 dp, Abstand ≥ 8 dp zwischen Tap-Ziel-Rechtecken (paarweise, ohne verschachtelte), Schriftgröße ≥ 13 sp/Gewicht ≥ 400 aller `RenderParagraph`s, Primärbutton sichtbar und antippbar, freie Zonen (Pfad), letzter Eintrag erreichbar (Heute), `BackdropFilter` ≤ 2, Glow-Alpha-Regel 8.2. **M-Modus** (alle Zustände × 390×844 × 1,0 × {HC, RM}): HC-Flächen/kein Blur/kein Glow, RM ohne laufende Animation nach 121 ms. **M-Kontrast** (alle Zustände × 390×844 × 1,0 × {normal, HC}): `textContrastGuideline`, `labeledTapTargetGuideline`. Zusätzlich 768×1024 für `ob1-name`, `path-active`, `today-standard` (ContentFrame, B-3). Etwa 290 + 100 + 100 Fälle statt ~790 |
+| **M** | gestufte Matrix (n7) | **M-Layout** (alle Zustände aus 12.4 × 320×568, 390×844, 430×932 × Skalierung 1,0/2,0, normal): keine Layout-Exceptions, Tap-Ziele ≥ 48 dp, Abstand ≥ 8 dp zwischen Tap-Ziel-Rechtecken (paarweise, ohne verschachtelte), Schriftgröße ≥ 13 sp/Gewicht ≥ 400 aller `RenderParagraph`s, Primärbutton sichtbar und antippbar, Zone unten links frei und unten rechts nur Button-Gruppe (Pfad, UI-24 neu), letzter Eintrag erreichbar und nicht unter Primärbutton-Reihe, Nachrichten-Button oder Nav (Heute, UI-31 neu), Button-Gruppe vollständig sichtbar und nicht über der Nav, Blase/`NodeHint` überdecken die Gruppe nicht, `BackdropFilter` ≤ 2 (Pfad/Heute) bzw. 0 (Chat/Nachrichten), Chat-Fuß ≤ 40 % der Höhe, Glow-Alpha-Regel 8.2. **M-Modus** (alle Zustände × 390×844 × 1,0 × {HC, RM}): HC-Flächen/kein Blur/kein Glow, RM ohne laufende Animation nach 121 ms. **M-Kontrast** (alle Zustände × 390×844 × 1,0 × {normal, HC}): `textContrastGuideline`, `labeledTapTargetGuideline`. Zusätzlich 768×1024 für `ob1-name`, `path-active`, `today-standard`, `chat-manny`, `messages` (ContentFrame, B-3). Mit den Szenarien aus Ergänzung 2 etwa 350 + 120 + 120 Fälle |
 | **G** | Golden | alle Zustände bei 390×844 normal; Auswahl bei 320×568, 200 %, HC, Notch-Padding, Tastatur-Szenarien, Typo-Tafel |
 | **C** | Code-Suche als Test | `test/static/code_rules_test.dart` (12.3) |
 | **S** | Web-Screenshot | `tool/screens/shoot.mjs` (12.5): Sichtprüfung `ui-designer`/`reviewer`, Pixel-Pipette, Pixel-Kontrast |
@@ -544,21 +602,27 @@ Die Tags `golden` und `matrix` sind in `dart_test.yaml` deklariert (unbekannte T
 9. Kein `Ticker`/`AnimationController` in `glow_background.dart` und `manny.dart`.
 10. Ton (UI-36/69) auf `strings_de.dart`: Wortliste Sie-Form (`Ihr`, `Ihre`, `Ihren`, `Ihrem`, `Ihnen`; `Sie` großgeschrieben mitten im Satz ist immer ein Treffer; `Sie` am Satzanfang ist mehrdeutig und muss in einer Allowlist begründet stehen) und Wortliste klinischer Begriffe (z. B. „Patient", „Indikation", „Therapieplan", „Compliance", „Proband"; Liste vom `ui-designer` zu bestätigen).
 11. Kein Abschneiden (B-9): kein `TextOverflow.ellipsis`/`TextOverflow.clip`/`TextOverflow.fade`, kein `FittedBox` um Text, `maxLines` nur in einer Allowlist mit Tooltip-Alternative (derzeit leer).
+12. Ergänzung 2 (UI-72, UI-78, UI-85): In `manny_chat_button.dart`, `messages_button.dart`, `action_cluster.dart`, `lib/ui/chat/**`, `lib/ui/messages/**`, `chat_*.dart`, `example_notice.dart` kein `accent` (auch nicht `accentHi` außer über `MannyPlaceholder`), kein `CuraBlur`/`BackdropFilter`, kein `GlowBackground` außer im `ChatScreenScaffold`, kein `statusError`/`catFrist`/`tri*`; im Manny-Chat kein `Icons.mic*`, kein Text „Neuer Chat", kein Menü-Icon.
+13. Jede Datei unter `lib/ui/messages/` beginnt mit dem Kommentar „Unverbindlicher Platzhalter, keine Spec" (UI-84).
+14. `lib/ui/messages/**` importiert weder `chat_model.dart` noch `manny_chat_source.dart` (UI-83, KS-10).
+15. `lib/ui/chat/**`, `lib/ui/messages/**` und `lib/data/manny_chat_source.dart` referenzieren weder `StateStore`/`SharedPreferences*` noch mutierende `AppController`-Methoden (UI-82).
+16. `ChatComposer` enthält kein `TextField`/`EditableText` und keinen Parameter für eine aktive Variante (Nutzerentscheidung Ergänzung 2 Abschnitt 8).
 
 ### 12.4 Zustandsliste (für M, G, S; benannte Szenarien in `lib/dev/scenarios.dart`)
 Onboarding: `ob1-empty`, `ob1-name`, `ob1-keyboard`, `ob2`, `ob3-none`, `ob3-acl`, `ob3-other`, `ob3-other-keyboard`, `ob4-empty`, `ob4-date`, `ob1-deleted-snackbar`, `ob1-corrupt-snackbar`, `ob-mic-hint`.
 Pfad: `path-loading`, `path-error`, `path-active` (Woche 5, Streak 12, Freezes 2), `path-frozen`, `path-reset`, `path-bubble-greeting`, `path-bubble-danger`, `path-bubble-restart`, `path-celebration`, `path-hint-locked`, `path-hint-done`, `path-week1`, `path-end`, `path-header-wrap` (Skalierung 1,2).
 Heute: `today-loading`, `today-error`, `today-standard` (Mi, Physio-Beispiel), `today-friday` (Arzt + Physio), `today-weekend` (keine Termine), `today-10`, `today-30`, `today-empty`, `today-done`, `today-empty-done`, `today-snackbar-removed`, `today-snackbar-logged`, `today-mode-sheet`, `today-custom-dialog`, `today-custom-dialog-keyboard`, `today-newday-snackbar`.
 Deine Daten: `data-sheet`, `data-sheet-other`, `data-sheet-dirty`, `data-discard-dialog`, `data-delete-dialog`, `data-delete-busy`, `data-delete-error`, `data-sheet-keyboard`.
+Ergänzung 2 (neu): `path-cluster-bubble` (Blase nahe der Gruppe, Wechsel über Manny), `path-cluster-hint` (`NodeHint` an einer Unit nahe der Gruppe), `path-scrolled-bottom` (unterste Unit über die Gruppe geschoben), `path-sheet-open` (Gruppe unter Scrim), `today-cluster` (= `today-standard` mit Reihe und Nachrichten-Button, bis Listenende gescrollt), `today-done-cluster`, `today-snackbar-cluster` (Snackbar über der Gruppe), `chat-manny`, `chat-manny-scale15` (Fuß-Regel ab 1,5), `messages`, `messages-scale15`, `example-chat-physio`, `example-chat-family`, `example-chat-doctor`. Die Pfad-/Heute-Szenarien aus v1.1 zeigen ab U3 automatisch die Button-Gruppe.
 Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Primärbutton bzw. „Speichern"/„Hinzufügen" sichtbar, fokussiertes Feld sichtbar.
 
 ### 12.5 Web-Screenshot-Pipeline (S)
 - `main_preview.dart` liest URL-Parameter: `scenario` (seedet `InMemoryStore`; `live` = echter Store für Reload-Prüfungen), `now` (ISO-Ortszeit für `FakeClock`), `scale`, `hc=1`, `rm=1`, `a11y=1` (`SemanticsBinding.instance.ensureSemantics()`), `dumpText=1` (gibt nach dem ersten Frame per `print` eine JSON-Liste aller `RenderParagraph`-Rechtecke mit Textfarbe und Untergrundklasse aus). Wird nur mit `-t` gebaut.
-- `shoot.mjs`: Playwright, `timezoneId: 'Europe/Berlin'`, `locale: 'de-DE'`, `deviceScaleFactor: 2`. Je Szenario: Viewports 320×568, 390×844, 430×932 (Querformat 568×320/844×390 als Stichprobe; 768×1024 für `ob1-name`, `path-active`, `today-standard`), Varianten `normal`, `scale2`, `hc`, `rm`. CDP-Simulation bei 390×844: `achromatopsia` für alle Szenarien (UI-18); `protanopia`, `deuteranopia`, `tritanopia` für `today-standard`, `today-friday`, `path-active`, `path-frozen`, `ob3-acl` (UI-19). Interaktionen per Koordinaten bzw. ARIA bei `a11y=1`. Browser-Zurück per `page.goBack()` (4.3).
+- `shoot.mjs`: Playwright, `timezoneId: 'Europe/Berlin'`, `locale: 'de-DE'`, `deviceScaleFactor: 2`. Je Szenario: Viewports 320×568, 390×844, 430×932 (Querformat 568×320/844×390 als Stichprobe; 768×1024 für `ob1-name`, `path-active`, `today-standard`), Varianten `normal`, `scale2`, `hc`, `rm`. CDP-Simulation bei 390×844: `achromatopsia` für alle Szenarien (UI-18); `protanopia`, `deuteranopia`, `tritanopia` für `today-standard`, `today-friday`, `path-active`, `path-frozen`, `ob3-acl`, `messages` (Avatar-Ringe Physio/Ärzte, UI-19/UI-79). Vergleich mit den Orientierungsbildern `pfad-v4.png`, `heute-v4.png`, `manny-chat-v1.png`, `nachrichten-v1.png`, `nachrichten-chat-v1.png` durch den `ui-designer` (kein Pixelvergleich). Abläufe Ergänzung 2: Manny-Button → Chat → `page.goBack()`; Nachrichten-Button → Zeile → Beispiel-Chat → zurück → zurück (landet auf dem Ausgangs-Tab). Interaktionen per Koordinaten bzw. ARIA bei `a11y=1`. Browser-Zurück per `page.goBack()` (4.3).
 - **Pixel-Pipette (UI-2):** an einer glowfreien Stelle `#0E131A`, im Primärbutton `#D9622B`, in einem Titel `#F2F0EB`, jeweils Toleranz ±1 je Kanal (PIL).
 - **Pixel-Kontrast (UI-7, Brief-E-1):** Für jeden Text aus `dumpText` mit Glow-Alpha > 0 wird im Screenshot der Hintergrund als Median der Pixel im Text-Rechteck gemessen, die nicht der Textfarbe (±12) entsprechen; WCAG-Kontrast Textfarbe/Hintergrund wird gegen 4,5 geprüft und als Tabelle ausgegeben.
 - Ausgabe: `app/build/screens/<variant>/<viewport>/<scenario>.png`, `index.html` (Kontaktbogen), `contrast.csv`; nicht eingecheckt.
-- **Offen, in U2a zu klären:** (a) ob Flutter/CanvasKit mit `page.clock.install` weiter rendert – sonst nur `now`-Parameter plus Tabwechsel; (b) ob das Browser-HC-Signal (`forcedColors: 'active'`) ankommt – sonst nur `hc=1`; (c) Laufzeit des Screenshot-Laufs (Anzahl Bilder ca. 50 Szenarien × 3 × 4 + Simulationen).
+- **Offen, in U2a zu klären:** (a) ob Flutter/CanvasKit mit `page.clock.install` weiter rendert – sonst nur `now`-Parameter plus Tabwechsel; (b) ob das Browser-HC-Signal (`forcedColors: 'active'`) ankommt – sonst nur `hc=1`; (c) Laufzeit des Screenshot-Laufs (Anzahl Bilder ca. 65 Szenarien × 3 × 4 + Simulationen).
 
 ### 12.6 Plattformunterschiede Web vs. Mobile
 
@@ -579,7 +643,7 @@ Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Prim
 
 ---
 
-## 13. Zuordnung UI-1 … UI-69
+## 13. Zuordnung UI-1 … UI-89
 
 „Prüfung": Kürzel aus 12.2. **[D-offen]** = auf echtem Gerät zu prüfen, hier nicht prüfbar.
 
@@ -608,24 +672,24 @@ Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Prim
 | UI-21 | `PathScreen`, Polster 7.3 | W (alle 3 Viewports, inkl. `path-week1` und `path-end`: Mittelpunkt der aktuellen Unit bei **40–65 %** der Viewport-Höhe; Manny sitzt auf der Unit) |
 | UI-22 | `PathHeader`, `StatPill` | W (Texte, Freeze 0/1/2, „eingefroren"; Pills ohne Tap-Ziel) |
 | UI-23 | `MannyBubble`, `manny_occasions.dart` | W (X ≥ 48; Tipp irgendwo; Unit/Nav bedienbar; einmal pro Tag); U (≤ 2 Sätze mit Abkürzungs-Allowlist) |
-| UI-24 | `PathScreen`, `HomeShell` | M-Layout (freie Zonen ohne Overlay-Elemente) |
+| UI-24 (neu, Erg. 2) | `PathScreen`, `HomeShell`, `ActionCluster` | M-Layout (unten links über der Nav keine Overlay-/Fest-Elemente; unten rechts ausschließlich `MannyChatButton` + `MessagesButton`: Hit-Test aller nicht scrollenden Render-Objekte in der Zone) |
 | UI-25 | `PathHeader`, Generator | W („Beispielpfad" für alle 4 Typen inkl. ACL); U |
 | UI-26 | `TimeSegment`, `day_program.dart` | W (20 beim Erststart; Wechsel ändert Liste und Überschrift); U |
 | UI-27 | `CategoryCard`, Heute, `CustomExerciseDialog` | W (Name, Wdh., Dauer, Aktionen, auch für eigene Übungen mit geleerten Feldern; Entfernen → „Rückgängig"; Tauschen) |
 | UI-28 | `CategoryCard` | W (Farben `cat-*`, Titel, Uhrzeit, „· Beispiel"); G |
 | UI-29 | Heute Leerzustand | W (Leer-Karte, „Training starten" disabled; Überschrift „ÜBUNGEN"; Leer + Erledigt: Button „Heute erledigt") |
 | UI-30 | `TrainingModeSheet`, `logTraining` | W; U |
-| UI-31 | Heute | M-Layout (letzte Karte über Button und Nav, alle Viewports, 200 %) |
+| UI-31 (neu, Erg. 2) | Heute, Scroll-Reserve 4.6 | M-Layout (bis zum Ende scrollen: letzte Karte und alle Aktionen „Tauschen“/„Entfernen“/„Eigene Übung“ vollständig über Primärbutton-Reihe, Nachrichten-Button und Nav; Reserve = gemessene Reihenhöhe + Nav + 16 + 56 dp; alle Viewports inkl. 320×568, Skalierung 2,0, auch bei umgebrochenem „Training starten“) |
 | UI-32 | alle antippbaren Elemente | M-Layout (`androidTapTargetGuideline`, Abstände ≥ 8 dp automatisiert); [D-offen] Layout-Inspektor |
 | UI-33 | alle Screens, `FloatingNav` | M-Layout (2,0 ohne Overflow, Primärbutton erreichbar, Nav ≤ 1,3); C (Regel 11); S |
 | UI-34 | alle Screens, `MannyBubble` | M-Layout (320×568); W (Blase über Manny, im Bildschirm); S |
 | UI-35 | Semantics, `FocusRing` | W (Labels, Dekoratives ausgeblendet, Tab-Reihenfolge, Fokus sichtbar); M-Kontrast (`labeledTapTargetGuideline`); S (ARIA); **[D-offen]** TalkBack/VoiceOver |
 | UI-36 | `strings_de.dart` | C (Regeln 8, 10); U (≤ 2 Sätze); R (`ui-designer`) |
-| UI-37 | Heute, `CuraSnackbar` | W |
+| UI-37 (präzisiert, Erg. 2) | Heute, `CuraSnackbar` | W (Sheet zu, „Heute erledigt“, Snackbar „Eingetragen.“ + „Rückgängig“ **12 dp über der Oberkante des Nachrichten-Buttons**, Aktion ≥ 48 dp, kein Überlapp mit Reihe/Gruppe/Nav) |
 | UI-38 | `undo.dart`, Heute | W; U (S18) |
-| UI-39 | `CuraSnackbar` | W (`pump(7,9 s)`/`8 s`; `accessibleNavigation`; Fokus/Hover-Pause; Ende bei Tabwechsel/zweiter Snackbar) |
+| UI-39 (Zusatz Erg. 2) | `CuraSnackbar`, `HomeShell` | W (`pump(7,9 s)`/`8 s`; `accessibleNavigation`; Fokus/Hover-Pause; Ende bei Tabwechsel/zweiter Snackbar **und beim Öffnen von Manny-Chat oder Nachrichten**; danach kein „Rückgängig“, Eintrag bleibt) |
 | UI-40 | `manny_occasions.dart`, `PathScreen` | U; W |
-| UI-41 | `CuraSnackbar` | W (opak, kein Blur, kein Überlapp, Live-Region, Label; gleiche Komponente für „Entfernt."); G |
+| UI-41 (präzisiert, Erg. 2) | `CuraSnackbar` | W (opak, kein Blur, Position 12 dp über der Button-Gruppe, verdeckt weder Nav noch Reihe noch Gruppe, Live-Region, Label; gleiche Komponente für „Entfernt."); G |
 | UI-42 | `day_rollover.dart`, `HomeShell`, Controller | W (FakeClock +1 Tag, `resumed`; zusätzlich: mutierende Aktion am neuen Tag wendet zuerst den Wechsel an; Eintrag über Mitternacht zählt für den Vortag, N-11); U; [D-offen] Gerätedatum |
 | UI-43 | Store, `day_program.dart` | W (neu pumpen am selben Tag); S (Reload) |
 | UI-44 | `HomeShell`, Snackbar | W (Snackbar 5 s, Heute-Routen geschlossen inkl. Trainings-Sheet, Undo verfallen, „Deine Daten" bleibt offen, keine Animation, Ansage) |
@@ -643,11 +707,11 @@ Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Prim
 | UI-56 | `DataSheet` | W |
 | UI-57 | `DataSheet`, `DiscardDialog` | W (alle Schließwege inkl. Wischen auf dem Kopf) |
 | UI-58 | `DataSheet` | W/G (`data-sheet-keyboard`); **[D-offen]** echte Tastatur |
-| UI-59 | `PathNode`, `HomeShell` | W |
+| UI-59 (neu, Erg. 2) | `PathNode`, `MannyPlaceholder.hitPath`, `HomeShell` | W (Tipp auf die aktuelle Unit außerhalb der Manny-Fläche → Tab Heute aktiv; Tipp auf Manny → Manny-Chat geöffnet, Tab unverändert; sichtbare Blase schließt in beiden Fällen) |
 | UI-60 | `NodeHint`, Generator | W; U |
 | UI-61 | `NodeHint` | W |
 | UI-62 | `NodeHint` | W |
-| UI-63 | `PathNode` | M-Layout; W |
+| UI-63 (letzter Satz neu, Erg. 2) | `PathNode` | M-Layout (≥ 48 dp; unten links frei, unten rechts nur Button-Gruppe; keine Snackbar auf dem Pfad); W (Fokus, Enter/Leertaste, Labels) |
 | UI-64 | `CuraMotion`, Routen, Snackbar, Hinweis | W (RM, beide Wege); M-Modus |
 | UI-65 | `darkHighContrast` | W; M-Modus; G |
 | UI-66 | Sheet, Dialoge, Snackbar | M-Layout; W (Tastatur-Szenarien); S |
@@ -657,7 +721,32 @@ Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Prim
 
 **Prüfliste ergänzend zu den Kriterien (B-8, für `ui-designer`-Abnahme):** Primärbutton-Schein (HC: aus); Nav-Schatten und Ausblend-Verlauf; gepunktete Zukunftslinie Weiß 22 % 3 dp, erledigte Linie 3 dp rund, Schein der aktuellen Unit; Snackbar-Dauern 4/5/8 s; Onboarding-Seitenwechsel Schiebung 24 dp + Einblenden, Gegenrichtung bei Zurück; Pressed-Zustände (Neutral hell → Weiß, Umriss → Weiß 10 %); Freeze-/Streak-Pill ohne Tap-Ziel. Jeder Punkt hat einen W- oder G-Test in U2a/U3.
 
-Hier nicht (vollständig) prüfbar: UI-10 vollständig; Geräteteil von UI-8, UI-9, UI-32, UI-35, UI-42, UI-58, UI-68.
+**Ergänzung 2 (UI-70 … UI-89):**
+
+| ID | Umsetzungsort | Prüfung |
+|---|---|---|
+| UI-70 | `MannyChatButton`, `ActionCluster`, `PrimaryActionRow`, `HomeShell` | W (auf Pfad und Heute sichtbar, Kreis 56 dp, Füllung/Rand per Widget-Eigenschaften, Tooltip und Label „Manny, Chat öffnen“, Tipp öffnet `MannyChatRoute`; im Onboarding, Chat, Nachrichten, Beispiel-Chat nicht im Baum; bei offenem Sheet/Dialog weder Semantik-Knoten noch fokussierbar noch per Tap erreichbar); G |
+| UI-71 | `MessagesButton`, `ActionCluster` | W (8 dp über dem Manny-Button, rechtsbündig per Rechteckvergleich; 48 dp; Tooltip/Label „Nachrichten“; öffnet `MessagesRoute`; Sichtbarkeit wie UI-70) |
+| UI-72 | beide Buttons | M-Layout/W (Hit-Area ≥ 48, `focus-ring` bei Tastaturfokus, Enter/Leertaste, Pressed-Überlagerung); C (Regel 12: kein Blur/Glow/Akzent); W (HC: `border-control-hc`, Schatten bleibt) |
+| UI-73 | `PrimaryActionRow`, `CuraSnackbar` | W (Breite Primärbutton = Breite − 96 dp, bei 320 dp 224 dp; unten bündig; bei 2,0 wächst nur der Primärbutton; Zustände „Heute erledigt“/deaktiviert; Snackbar 12 dp über der Gruppe); M-Layout; G |
+| UI-74 | `MannyPlaceholder.hitPath`, `PathScreen` | W (Tipp in die Manny-Form und in den 8-dp-Rand → Chat, Tab unverändert; Tipp unterhalb der Standlinie bzw. außerhalb → Unit-Verhalten: aktuell → Heute, gesperrt/erledigt → `NodeHint`; Blase schließt und erscheint am selben Tag nicht erneut; Manny hat keinen Fokusstopp und keine Button-Semantik, Fokus-Traversal überspringt ihn) |
+| UI-75 | `MannyBubble`, `NodeHint`, `PathLayout`-Polster | W (`path-cluster-bubble`: Blase über Manny, kein Schnitt mit dem Gruppen-Rechteck; `path-cluster-hint`: Hinweis weicht aus, Pfeil an der Unit); M-Layout (`path-scrolled-bottom`: unterste Unit oberhalb der Gruppe positionierbar) |
+| UI-76 | `MannyChatScreen`, `ChatMessageList`, `ChatHeader`, `ExampleNotice`, `ExampleMannyChatSource` | W (Kopf, Karte „Beispielverlauf“/„So sieht dein Chat bald aus.“, drei Nachrichten mit Namen aus dem Onboarding; Manny ohne Blase mit Emblem je Block, Nutzer-Blase rechts ≤ 80 %; Rendern aus `ChatMessage`-Objekten; **Wachstums-Test:** Test-Widget ersetzt die Nachrichtenliste schrittweise durch eine mit wachsendem Text der letzten Nachricht: kein Overflow, letzte Zeile sichtbar, solange am Ende; nach Hochscrollen bleibt der Offset unverändert); G; U (KS-4) |
+| UI-77 (Nutzerentscheidung Erg. 2 §8) | `ChatComposer` (nur deaktiviert) | W (Hinweiszeile „Schreiben kann ich bald, heute noch nicht.“, Leiste „Schreib Manny“, Senden-Kreis deaktiviert, Disclaimer wörtlich; Tipp auf Leiste/Senden: kein `TextInput`-Kanal geöffnet (`tester.testTextInput.isVisible == false`), keine Zustandsänderung; Leiste nicht fokussierbar, aber Semantik-Label vorhanden; Hinweis und Disclaimer immer im Baum sichtbar). **Kein** Test „darf senden = ja“ (entfällt); C (Regel 16) |
+| UI-78 | `MannyChatScreen` | C (Regel 12: kein Mikro, kein „Neuer Chat“, kein Menü, keine Chips, kein `accent`); S (`chat-manny`) |
+| UI-79 | `MessagesScreen`, `ContactRow`, `example_contacts.dart` | W (Kopf, Karte „Beispiel-Ansicht. Echte Chats folgen.“, vier Abschnitte als Semantik-Überschriften mit den sechs Kontakten; Avatar-Ringfarben; Vorschau = letzte Nachricht, umbrechend; Zeile ≥ 72 dp, ganze Zeile antippbar, `focus-ring`; kein Badge/Suche/Neuer Chat); S (inkl. Farbsehschwächen) |
+| UI-80 | `ExampleChatScreen`, `ChatBubble` | W (je Kontakt: Kopf mit Avatar, Name, „[Rolle] · Beispiel“, Karte, Blasen rechts/links mit Semantik „Du: …“ bzw. „[Name]: …“, Hinweiszeile „Schreiben in Chats folgt bald.“, deaktivierte Leiste „Nachricht“, **kein** Disclaimer; Zurück → Übersicht → Ausgangs-Tab, für Start auf Pfad und auf Heute) |
+| UI-81 | `strings_de.dart` | C (Regeln 8, 10 auf neue Texte); W (Disclaimer wörtlich „Manny ersetzt keine medizinische Beratung.“); C (Regeln 1, 2) |
+| UI-82 | Chat/Nachrichten ohne Speicher, `DataEraser` | C (Regel 15); W (nach „Alles löschen“ und neuem Onboarding mit anderem Namen: Beispielverlauf mit neuem Namen, Store enthält nur Schlüssel aus `kAllStorageKeys`); U (KS-9: Löscher-Reihenfolge, Abbruch beim ersten Fehler, RAM unverändert) |
+| UI-83 | `example_contacts.dart`, `lib/ui/messages/` | C (Regel 14); R |
+| UI-84 | `lib/ui/messages/` | C (Regel 13); W („Beispiel“-Kennzeichnung in UI-79/80 sichtbar) |
+| UI-85 | `CuraBlur`-Verwendung | C (Regeln 3, 12); M-Layout (Chat/Nachrichten/Beispiel-Chat: 0; Pfad/Heute mit Gruppe, Blase, Sheet, Snackbar: ≤ 2) |
+| UI-86 | `CuraFullscreenRoute`, `HomeShell` | W (Fokus zurück auf Manny-Button/Nachrichten-Button/Kontaktzeile, mit `mounted`-Prüfung; Zurück via `handlePopRoute`, Escape via `sendKeyEvent`; RM: keine Schiebung, nach 121 ms keine laufende Animation; Undo-Fenster endet beim Öffnen); S (`page.goBack()`) |
+| UI-87 | `darkHighContrast`, neue Bausteine | W/M-Modus (Buttons, Karten, Leiste, Blasen, Avatare `#1B2129` + `border-control-hc`, 0 Blur, kein Glow); M-Layout (Glow-Alpha-Regel auf Chat-/Nachrichten-Screens, 8.2) |
+| UI-88 | `ChatFooterLayout`, `PrimaryActionRow`, Scroll-Reserven | M-Layout (320×568 und 2,0: keine Overflows, kein horizontales Scrollen, Leiste und Disclaimer erreichbar, Fuß ≤ 40 % der Höhe, ab 1,5 Hinweis/Disclaimer in der Liste; Pfad/Heute: beide Buttons vollständig sichtbar, Listenende frei); W (`chat-manny-scale15`, `messages-scale15`); S |
+| UI-89 | Semantik, Fokus aller neuen Elemente | W (Labels aus Ergänzung 2 3.5; Fokusreihenfolge Pfad/Heute/Chat/Nachrichten per Tab-Taste wie 4.6; Routennamen; Überschriften-Semantik); S (ARIA); **[D-offen]** TalkBack/VoiceOver |
+
+Hier nicht (vollständig) prüfbar: UI-10 vollständig; Geräteteil von UI-8, UI-9, UI-32, UI-35, UI-42, UI-58, UI-68, UI-89.
 
 ---
 
@@ -667,14 +756,16 @@ Sequenziell, ein Schreiber. Jedes Paket endet mit grünen Befehlen aus 12.1 (sow
 
 | Paket | Inhalt | Ergebnis / Abnahme | Abhängigkeit |
 |---|---|---|---|
-| **U1a Fundament** | `flutter create` unter `app/` (android, ios, web; Org-Platzhalter F-12), Pakete, Fonts + OFL + Lizenzregistrierung, Lints, `dart_test.yaml` (Tags), Test-Support (FakeClock, Stores inkl. `CorruptStore`, Font-Loader, `flutter_test_config.dart`), Tokens + `ThemeExtension`s + `glow.dart` + `contrast.dart` + Kontrast-/Glow-/Token-Tests, `code_rules_test` (Regeln 1–11, anfangs gegen leere UI) | `flutter analyze` 0; UI-2 (U), UI-3, UI-5 (U), UI-67 (U) | Freigabe dieses Plans |
-| **U1b Logik + State** | gesamte `lib/logic/` inkl. Migrationen/Fixtures, `AppState`-JSON, `StateStore`/`PrefsStateStore`, `AppController` (inkl. `_mutate` mit Tageswechsel zuerst, `deleteAll`-Ablauf) ohne UI; alle Unit-Tests aus Abschnitt 6.2 und 7 (S1–S25 usw.) | alle U grün; UI-25/26/30/38/40/45/54 (U-Teil) | U1a |
-| **U2a Komponenten + Prüf-Infrastruktur** | alle Bausteine aus Abschnitt 9 mit Widget-Tests und Goldens (inkl. Typo-Tafel, B-8-Details); `main_preview.dart`, `scenarios.dart` (Bausteine), Matrix-Harness (Stufen M-Layout/M-Modus/M-Kontrast), `shoot.mjs` inkl. Pipette und Pixel-Kontrast; Klärung der offenen Web-Punkte 12.5 (a–c) | UI-1, 4–9, 32, 35 für Bausteine; erster Screenshot-Lauf; gemessene Matrix-Laufzeit | U1b |
-| **U2b Routen + Onboarding + Shell** | `CuraSheetRoute`, `CuraDialogRoute`, `StartGate` (inkl. Neustart bei unlesbaren Daten), Onboarding komplett, `HomeShell` mit Nav, `TickerMode`, Zurück-Logik (inkl. `page.goBack()`), Lifecycle-Haken, `ContentFrame` | UI-11–17, 33, 34 für Onboarding; Matrix + Screenshots für `ob*` | U2a |
-| **U3 Pfad + Heute** | `PathScreen` (Header inkl. Umbruch/Icon, Layout mit Polster, Scroll, Manny, Anlässe, Feier/Puls, `NodeHint`, Unit-Tipps), `TodayScreen` (Segment, Termine, Übungen, Eigene Übung, Leer/Fehler/Laden/Erledigt, Trainings-Sheet, Snackbar/Rückgängig), Tageswechsel inkl. Eintrag über Mitternacht | UI-18–31, 37–45, 59–63; Matrix + Screenshots für `path*`, `today*` | U2b |
-| **U4 Deine Daten + Abschluss** | `DataSheet` (Profil ändern, Verwerfen, Löschen inkl. Sperre/Fehler/Laden), restliche Szenarien in Matrix/Goldens/Screenshots, Kriterienbericht UI-1…UI-69 mit K-1 und [D-offen]-Prüfliste für den Nutzer | UI-46–58, 64–69; vollständiger Bericht | U3 |
+| **U1a Fundament** | `flutter create` unter `app/` (android, ios, web; Org-Platzhalter F-12), Pakete, Fonts + OFL + Lizenzregistrierung, Lints, `dart_test.yaml` (Tags), Test-Support (FakeClock, Stores inkl. `CorruptStore`, Font-Loader, `flutter_test_config.dart`), Tokens (inkl. `CuraShadow.actionButton`) + `ThemeExtension`s + `glow.dart` + `contrast.dart` + Kontrast-/Glow-/Token-Tests, `code_rules_test` (Regeln 1–16, anfangs gegen leere UI) | `flutter analyze` 0; UI-2 (U), UI-3, UI-5 (U), UI-67 (U) | Freigabe dieses Plans |
+| **U1b Logik + State** | gesamte `lib/logic/` inkl. Migrationen/Fixtures, `AppState`-JSON, **KS-1 `MannyTextSource`, KS-2 `FactRef`, KS-3 `MannyContext`, KS-4 `chat_model.dart`**, `StateStore`/`PrefsStateStore`, **KS-9 `DataEraser`-Liste**, **KS-5 `MannyChatSource` (nur `messages`)**, `AppController` (inkl. `_mutate` mit Tageswechsel zuerst, `deleteAll`-Ablauf über Löscher) ohne UI; alle Unit-Tests aus Abschnitt 6.2 und 7 (S1–S25, 7.9, 7.10) | alle U grün; UI-25/26/30/38/40/45/54 (U-Teil), UI-82 (U-Teil Löscher) | U1a |
+| **U2a Komponenten + Prüf-Infrastruktur** | alle Bausteine aus Abschnitt 9 **außer** den Chat-/Nachrichten-Bausteinen, mit Widget-Tests und Goldens (inkl. Typo-Tafel, B-8-Details, `MannyPlaceholder` mit `crop`/`hitPath`, `MannyChatButton`, `MessagesButton`, `ActionCluster`); `main_preview.dart`, `scenarios.dart` (Bausteine), Matrix-Harness (Stufen M-Layout/M-Modus/M-Kontrast), `shoot.mjs` inkl. Pipette und Pixel-Kontrast; Klärung der offenen Web-Punkte 12.5 (a–c) | UI-1, 4–9, 32, 35, 72 für Bausteine; erster Screenshot-Lauf; gemessene Matrix-Laufzeit | U1b |
+| **U2b Routen + Onboarding + Shell** | `CuraSheetRoute`, `CuraDialogRoute`, `StartGate` (inkl. Neustart bei unlesbaren Daten), Onboarding komplett, `HomeShell` mit Nav, `TickerMode`, Zurück-Logik (inkl. `page.goBack()`), Lifecycle-Haken, `ContentFrame`; Tabs mit einfachen Platzhalter-Inhalten, bis U3a/U3b sie ersetzen | UI-11–17, 33, 34 für Onboarding; UI-70/71 (nicht im Onboarding); Matrix + Screenshots für `ob*` | U2a |
+| **U2c Chat + Nachrichten (neu)** | `CuraFullscreenRoute`, `ChatScreenScaffold`, `ChatHeader`, `ExampleNotice`, `ChatMessageList` (inkl. Ende-Folgen), `ChatComposer` (nur deaktiviert), `ChatFooterLayout`, `ContactRow`, `ChatBubble`; `MannyChatScreen`, `MessagesScreen`, `ExampleChatScreen`, `example_contacts.dart`; `ChatSourceScope`; Anbindung im `HomeShell`: `ActionCluster` (Modus `path`) über dem Pfad-Tab, Öffnen/Schließen der Routen inkl. Undo-Ende, Fokusrückgabe, Sichtbarkeit unter Sheets; Texte in `strings_de.dart`; Szenarien `chat-*`, `messages*`, `example-chat-*` | UI-70, 71, 76–89 (soweit ohne fertige Pfad-/Heute-Screens prüfbar); Matrix + Screenshots für die neuen Szenarien | U2b |
+| **U3a Pfad** | `PathScreen` (Header inkl. Umbruch/Icon, Layout mit Zentrier-Polster und Gruppen-Reserve, Scroll, Manny inkl. **Manny-Tipp**, Anlässe über `MannyTextSource`, Feier/Puls, `NodeHint` inkl. Ausweichen, Unit-Tipps, Blasen-Wechsel über Manny nahe der Gruppe) | UI-18–25, 59–63, 74, 75; UI-24 neu; Matrix + Screenshots für `path*` | U2c |
+| **U3b Heute** | `TodayScreen` (Segment, Termine, Übungen, Eigene Übung, Leer/Fehler/Laden/Erledigt, Trainings-Sheet, Snackbar/Rückgängig), **`PrimaryActionRow` mit Manny-Button**, Nachrichten-Button (`ActionCluster` Modus `today`), Snackbar 12 dp über der Gruppe, Scroll-Reserve (UI-31 neu), Tageswechsel inkl. Eintrag über Mitternacht und „keine Snackbar bei offenem Chat“ | UI-26–31, 37–45, 73; Matrix + Screenshots für `today*` | U3a |
+| **U4 Deine Daten + Abschluss** | `DataSheet` (Profil ändern, Verwerfen, Löschen inkl. Sperre/Fehler/Laden, Gruppe unter dem Scrim), restliche Szenarien in Matrix/Goldens/Screenshots, Kriterienbericht UI-1…UI-89 mit K-1, K-2 und [D-offen]-Prüfliste für den Nutzer | UI-46–58, 64–69, 82 (W-Teil), Rest von 70–89; vollständiger Bericht | U3b |
 
-Begründung der Schnitte (M5): U1a/U1b trennen Infrastruktur von Logik, sodass die Streak-/Pfad-Logik isoliert reviewt werden kann. U2a liefert Bausteine **und** die Prüf-Infrastruktur, damit jedes folgende Paket seine Szenarien sofort in Matrix und Screenshot-Lauf prüft (kein Prüfstau in U4). U2b bündelt Navigation und Onboarding, U3 Pfad und Heute (gekoppelt durch Eintragen/Rückgängig/Feier), U4 nur den Rest und den Bericht. Reviews: nach U1b (Logik), nach U2a (Tokens/Blur/Semantik), nach U4 (gesamt).
+Begründung der Schnitte (M5, v1.2): U1a/U1b trennen Infrastruktur von Logik; die KS-Teile sind klein, rein Dart und gehören zur Logik (U1b). U2a liefert Bausteine **und** die Prüf-Infrastruktur, damit jedes folgende Paket seine Szenarien sofort prüft. Die Chat-/Nachrichten-Bausteine und -Screens bilden ein **eigenes Paket U2c**, weil sie ein eigener Schreibbereich mit eigenen Szenarien sind und U2a/U2b sonst zu groß würden. **U3 wird geteilt** (U3a Pfad, U3b Heute): Mit Manny-Tipp, Button-Gruppe, Reserven und Kollisionsregeln wäre ein gemeinsames Paket für ein sonnet-Paket zu groß. Die Kopplung über Eintragen/Rückgängig/Feier liegt in der Logik (U1b) und ist in U3a über Szenario-Zustände prüfbar; U3b prüft den Ablauf Heute → Pfad am Ende. U4 enthält nur den Rest und den Bericht. Reviews: nach U1b (Logik inkl. KS), nach U2a (Tokens/Blur/Semantik), nach U2c (Chat-Bausteine, Fokus, Speicherfreiheit), nach U4 (gesamt).
 
 ---
 
@@ -728,6 +819,11 @@ Später, jeweils einzeln zur Freigabe: Backend-Projekt (Abschnitt 11), echte Pak
 | A-35 | (neu) Für die Glow-Regel gelten E2-Flächen (Nav, Blase, Sheet) streng als „Glas" | UI-7-Test |
 | A-36 | (neu) Wischgeste des Sheets nur auf dem fixen Kopf; Schwelle 30 % Höhe oder 700 dp/s | Sheet |
 | A-37 | (neu) Klinische Wortliste für Regel 10 als Startliste, vom ui-designer zu ergänzen | Tonprüfung |
+| A-38 | (v1.2) Wurde der Manny-Chat über Manny auf dem Pfad geöffnet (keine Fokusstation), geht der Fokus beim Schließen an den Manny-Button | Fokus, UI-86 |
+| A-39 | (v1.2) Tageswechsel bei offenem Chat/Nachrichten: weder Snackbar noch Ansage „Neuer Tag …“; Heute zeigt beim Zurückkehren das neue Datum | Ergänzung 2 3.1 |
+| A-40 | (v1.2) Wo Ergänzung 2 Größen nennt, die kein Token sind (Avatar-Initialen „`heading`-Größe 17“, Chat-Untertitel „`secondary` 13 sp“), werden die Tokens `heading` (18/24) bzw. `secondary` (14/20) verwendet (Konvention 1, „keine neuen Tokens“) | Typo, F-20 |
+| A-41 | (v1.2) Chat-Emblem und Manny-Kopf im Button sind der Kopf-Ausschnitt von `MannyPlaceholder` (Pose `neutral`) | Optik |
+| A-42 | (v1.2) Die Escape-Taste schließt Vollbild-Routen über eigene `Shortcuts` im `ChatScreenScaffold` | Tastatur |
 
 Entfallen: A-7 (jetzt N-10), A-18 (jetzt N-15), A-28 (jetzt N-16).
 
@@ -743,9 +839,9 @@ Entfallen: A-7 (jetzt N-10), A-18 (jetzt N-15), A-28 (jetzt N-16).
 - **F-12** Paket-ID/Organisation. — *Annahme:* `com.example.curaone`, Dart-Paket `curaone`, App-Name „CuraOne"; vor Store-Einreichung ersetzen.
 - **F-17** Begrüßung einmalig oder täglich? — *Annahme:* einmalig (A-21).
 - **F-18 (neu, an ui-designer)** Ort-Platzhalter für den Freitags-Arzttermin und Bestätigung der klinischen Wortliste (A-16, A-37).
-- **F-19 (Hinweis zu Brief-E-1)** Die Errata-Regel 4 nennt ≤ 12 % für `accent-hi` und farbigen Text auf Glas, die Errata-Tabelle zeigt aber bei 12 % `accent-hi` 4,34 und `cat-frist` 4,19 (unter 4,5). Der Plan prüft deshalb zusätzlich den berechneten Kontrast (8.2), was die Schwelle für `accent-hi`-Text auf Glas faktisch auf ≤ 9 % senkt. Im Ausschnitt ist kein solcher Text vorgesehen; nur Bestätigung erbeten, dass die Zusatzbedingung gewollt ist.
+- **F-20 (v1.2, an ui-designer)** Ergänzung 2 nennt Avatar-Initialen in „`heading`-Größe 17“ und den Chat-Untertitel als „`secondary` 13 sp“; die Tokens sind `heading` 18/24 und `secondary` 14/20, neue Tokens sind ausgeschlossen. — *Annahme:* A-40 (Tokens wie definiert).
 
-Geschlossen: F-1 (N-10), F-2 (Brief-E-1), F-3 (A-17), F-4 (A-13), F-5 (A-22), F-6 (N-15), F-9 (B-8), F-10 (N-14), F-11 (N-16), F-13 (A-19 bleibt), F-15 (K-1 akzeptiert), F-16 (kein Konflikt).
+Geschlossen: F-19 (N-19, Zusatzbedingung bestätigt), F-1 (N-10), F-2 (Brief-E-1), F-3 (A-17), F-4 (A-13), F-5 (A-22), F-6 (N-15), F-9 (B-8), F-10 (N-14), F-11 (N-16), F-13 (A-19 bleibt), F-15 (K-1 akzeptiert), F-16 (kein Konflikt).
 
 ---
 
@@ -779,6 +875,11 @@ Geschlossen: F-1 (N-10), F-2 (Brief-E-1), F-3 (A-17), F-4 (A-13), F-5 (A-22), F-
 | N-14 | Beispieltermine: Physio Mo–Fr 17:00, Arzt zusätzlich Fr 09:30, Sa/So leer | 7.4 |
 | N-15 | „ca. N Min" = Summe der angezeigten Übungen (B-6) | 7.5 |
 | N-16 | Eigene Übung: Wdh. „3 × 10" und Dauer „5" vorbefüllt, Rückfall auf Vorgabe, Buttons „Hinzufügen"/„Abbrechen" (B-4) | 9 |
+| Erg. 2 | Manny-Chat und Nachrichten nur sichtbar; Manny auf dem Pfad antippbar (1A); Button-Gruppe (V2, Nachrichten-Button B); keine Buttons im Onboarding (bewusste Abweichung von Spec 7); Glow im Chat bleibt; nur deaktivierte Eingabeleiste; Emblem je Manny-Block; Snackbar über der Gruppe; Hinweiszeile ab 1,5 mitscrollend; Undo-Ende beim Öffnen von Chat/Nachrichten; Direktnachrichten unverbindlicher Platzhalter | 4.1, 4.6, 7.10, 9, 13 |
+| N-17 | KS-Schnittstellen schlank: KS-1 synchron, KS-4 minimal ohne JSON/Speicherung, KS-5 nur `messages` (kein `canSend`), KS-6 nur, was der Brief verlangt, KS-7 entfällt, KS-9 Löscher-Liste; keine KI, kein Netzwerk, keine Red-Flag-Vorprüfung | 7.9, 7.10, 6.3 |
+| N-18 | `ChatComposer` nur deaktiviert, keine aktive Variante, kein Variantentest, kein `canSend` (Präzisierung zu P1-K2) | 7.10, 9, 12.3 Regel 16, UI-77 |
+| N-19 | F-19: zusätzlich berechneter Kontrast ≥ 4,5:1 für farbigen Text/`accent-hi` auf Glas | 8.2, UI-7 |
+| KONV | `KONVENTIONEN.md` Regeln 1–5 verbindlich | 3, 8, 12.1, 12.3 |
 
 ---
 
@@ -794,8 +895,11 @@ Geschlossen: F-1 (N-10), F-2 (Brief-E-1), F-3 (A-17), F-4 (A-13), F-5 (A-22), F-
 | R-6 | Web-Fake-Uhr und Browser-HC-Signal ungeklärt; Laufzeit von Matrix und Screenshot-Lauf | in U2a klären und messen (12.5) |
 | R-8 | Zeitzonenwechsel nach Osten kann einen Tag überspringen → zählt als verpasst | benannt, keine Sonderlogik |
 | K-1 | Pfad kann der Datumswoche vorauslaufen (Kopfzeile/„Kommt in Woche N") | akzeptiert, im U4-Bericht nennen |
+| K-2 | Manny-Chat und Nachrichten sind reine Ansicht; Nachrichten ohne Spec (Ergänzung 2 K10) | im Code-Kommentar und im U4-Bericht nennen |
+| R-9 | KS-9: bei künftig mehreren Löschern Teil-Löschstand möglich, wenn ein späterer Löscher fehlschlägt | im ersten Ausschnitt nur ein Löscher; im KI-Ausschnitt neu bewerten |
+| R-10 | `ChatMessageList` „Ende folgen“ ist im ersten Ausschnitt nur per Test-Widget geprüft (keine echten wachsenden Nachrichten) | im KI-Ausschnitt mit echtem Streaming erneut prüfen |
 
-Review-Schwerpunkte: nach U1b Streak/Pfad/Tageswechsel/Migration (Tabellen 6.2, 7.1, 7.5); nach U2a Token-Disziplin, Blur-Budget, Glow-Prüfung, Fokus/Semantik; nach U4 Löschen (Vollständigkeit, Sperren, Stapel), Rückgängig/Feier, Matrix- und Screenshot-Ergebnisse gegen UI-1 … UI-69.
+Review-Schwerpunkte: nach U1b Streak/Pfad/Tageswechsel/Migration (Tabellen 6.2, 7.1, 7.5); nach U2a Token-Disziplin, Blur-Budget, Glow-Prüfung, Fokus/Semantik; nach U4 Löschen (Vollständigkeit, Sperren, Stapel), Rückgängig/Feier, Matrix- und Screenshot-Ergebnisse gegen UI-1 … UI-89; nach U2c Chat-Bausteine (Ende-Folgen, deaktivierte Leiste), Fokusrückgabe, Sichtbarkeit der Button-Gruppe, Speicherfreiheit (UI-82/83).
 
 ---
 
@@ -834,3 +938,23 @@ Review-Schwerpunkte: nach U1b Streak/Pfad/Tageswechsel/Migration (Tabellen 6.2, 
 | F-7 | `initialDate` ≥ `firstDate` sichergestellt (A-27, UI-15) |
 | NITPICK ui-designer | Segment nicht gewählt 400; opsz = Schriftgröße (geklemmt) mit Golden; FakeClock-Fixture Mittwoch; „Beispielpfad" auch für ACL als bewusste Abweichung; F-16 geschlossen |
 | Konvention | Nutzerentscheidungen heißen jetzt N-n (statt E-n), um Verwechslung mit Brief-Errata E-1/E-2 zu vermeiden |
+
+---
+
+## 21. Änderungsprotokoll v1.1 → v1.2
+
+| Anlass | Änderung |
+|---|---|
+| Brief-Ergänzung 2 (freigegeben) | Als Vorgabe aufgenommen (Kopf); neue Fassungen UI-24, UI-31, UI-59, Präzisierungen UI-37/39/41/63 in Abschnitt 13 übernommen; UI-70 … UI-89 zugeordnet |
+| Erg. 2 Navigation | Vollbild-Routen `MannyChatRoute`, `MessagesRoute`, `ExampleChatRoute` über `CuraFullscreenRoute`; Zurück-Tabelle, Escape über `ChatScreenScaffold`, Anfangsfokus Zurück-Pfeil, Fokusrückgabe (A-38), Undo-Ende/Hinweis- und Blasen-Schließen vor dem Öffnen (4.1, 4.3, 4.4) |
+| Erg. 2 Button-Gruppe | Neuer Abschnitt 4.6: Sichtbarkeit (nicht Onboarding/Chat/Nachrichten/unter Sheets), Ebene, Positionen, Fokusreihenfolge, Kollision mit Blase/`NodeHint`, Tageswechsel bei offenem Chat (A-39) |
+| Erg. 2 Pfad | Manny antippbar mit eigenem Hit-Pfad bis zur Standlinie, ohne Fokusstation; Gruppen-Reserve im Pfad-Polster (4.6, 9) |
+| Erg. 2 Heute | `PrimaryActionRow` mit Manny-Button, Nachrichten-Button darüber, Snackbar 12 dp über der Gruppe, Scroll-Reserve aus gemessenen Höhen (4.5, 4.6, 9) |
+| Erg. 2 Bausteine | `MannyChatButton`, `MessagesButton`, `ActionCluster`, `PrimaryActionRow`, `ChatScreenScaffold`, `ChatHeader`, `ExampleNotice`, `ChatMessageList`, `ChatComposer` (nur deaktiviert), `ChatFooterLayout`, `ContactRow`, `ChatBubble`; `MannyPlaceholder` mit `crop`/`hitPath`; Icons ergänzt (9); Schatten der Buttons bleibt bei HC (8.4, 8.5); 0 Blur in Chat/Nachrichten (8.3) |
+| KI-Plan Abschnitt 11, schlank (N-17) | KS-1/2/3 als 7.9, KS-4/5/10 als 7.10, KS-9 Löscher-Liste in 6.3, KS-7 entfällt (kein Chat-Schlüssel), Struktur in Abschnitt 3 ergänzt; `strings_de.dart` ohne Flutter-Import |
+| Präzisierung Orchestrator (N-18) | `ChatComposer` nur deaktiviert, kein `canSend`, keine aktive Variante, kein Variantentest (7.10, 9, Regel 16, UI-77) |
+| `KONVENTIONEN.md` | Als verbindlich aufgenommen; Abschnitt 12.1 bleibt stabil, weil die Konventionen ihn zitieren |
+| F-19 bestätigt (N-19) | Offene Frage geschlossen; Zusatzbedingung in 8.2 bleibt |
+| Verifikation | Statische Regeln 12–16; neue Szenarien in 12.4; Matrix-Prüfungen für Gruppe, Reserven, Chat-Fuß; Screenshot-Abläufe und Farbsehschwächen für Nachrichten (12.2–12.5) |
+| Pakete | Neues Paket U2c (Chat + Nachrichten); U3 geteilt in U3a (Pfad) und U3b (Heute), weil U3 mit den Ergänzungen zu groß würde; KS-Logik in U1b; Bericht umfasst UI-1 … UI-89 (14) |
+| Annahmen, Fragen, Risiken | A-38 … A-42; F-20 (Typo-Werte ohne Token); K-2, R-9, R-10 (16, 17, 19) |
