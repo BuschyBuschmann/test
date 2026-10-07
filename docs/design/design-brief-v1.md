@@ -83,7 +83,7 @@ Hinweis: Kategorie- und Triage-Farben sind in Spec 2 und Spec 4 als Beispiele ("
 | `text-1` / `text-2` / `accent-hi` auf `surface-opaque` | 14,23 / 7,42 / 5,60 | | 4,5 |
 
 Folgerungen (verbindlich):
-- Akzent als **Text** nur auf `bg` oder `surface-opaque` (5,09 bzw. 5,60+). Auf Glas als Text immer `accent-hi` (5,20) oder `text-1`.
+- Akzent als **Text** nur auf `bg` oder `surface-opaque` (5,09 bzw. 5,60+). Auf Glas als Text immer `accent-hi` (5,20) oder `text-1`. (siehe Erratum E-2: für `surface-opaque` korrigiert, dort gilt `accent-hi`)
 - Beschriftungen in `accent-soft`-Flächen sind immer `text-1`. Der Akzent erscheint dort nur als Icon (4,35 ≥ 3) und als Rand.
 - Der Körper von Manny (`#34425F`) hat auf `bg` nur 1,86:1. Er ist deshalb nie ohne Rand (Weiß 35 %, 1 dp) und weißen Bauch zu zeichnen.
 
@@ -92,7 +92,7 @@ Folgerungen (verbindlich):
 - Zwei weiche Radialverläufe in `glow-ember` hinter dem gesamten Inhalt: oben links (Mitte -30, 40 dp, Radius 260 dp, Spitze 24 % Deckkraft, bei 70 % des Radius null) und unten rechts (Mitte 50 dp rechts neben und 24 dp über dem unteren Bildschirmrand, Radius 300 dp, Spitze 14 %).
 - Rein dekorativ: `ExcludeSemantics`, nie interaktiv, nie als Statusfarbe.
 - Statisch im ersten Ausschnitt (keine Atmung/Animation). Einmal als gecachte Ebene (`RepaintBoundary`) pro Screen, nicht pro Karte.
-- Maximal 16 % effektive Deckkraft dort, wo Text liegt. Das ist erfüllt, wenn Text mindestens 70 dp vom Mittelpunkt entfernt steht (Deckkraft dort ≤ 0,15). Gemessen: `text-2` über Glas über 16 % Glow hat noch 5,35:1.
+- (siehe Erratum E-1: Glow-Regel nach Untergrund, ersetzt die Abstandsregel) Maximal 16 % effektive Deckkraft dort, wo Text liegt. Das ist erfüllt, wenn Text mindestens 70 dp vom Mittelpunkt entfernt steht (Deckkraft dort ≤ 0,15). Gemessen: `text-2` über Glas über 16 % Glow hat noch 5,35:1.
 - Farbiger Text (Kategorie-Label, `text-3`) nur dort, wo der Glow höchstens 12 % beträgt (Abstand zum Mittelpunkt ≥ 91 dp). Das ist die Regel, damit z. B. Physio-Blau auf Glas über Glow nicht unter 4,5:1 fällt (bei 16 % wären es 4,29).
 - Der Glow wird auf Screens mit Triage-Ergebnis oder Fristen-Detail **ausgeschaltet** (siehe Abschnitt 4).
 
@@ -341,12 +341,12 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 - UI-1: Alle Farben, Abstände, Radien und Schriftstile kommen aus Tokens. Im Code gibt es außer in der Token-Definition kein `Color(0x…)` und keine festen Schriftgrößen (Stichprobe per Code-Suche).
 - UI-2: Bildschirmgrund ist `#0E131A`, Haupttext `#F2F0EB`, Akzent `#D9622B` (Stichprobe per Screenshot-Pipette bzw. Token-Dump).
 - UI-3: Die berechneten Kontraste der Tabelle 3.1 stimmen für die verwendeten Paare (Text ≥ 4,5:1, Symbole und Ränder bedienbarer Elemente ≥ 3:1). Ein Test (Unit-Test oder Skript) berechnet sie aus den Tokens und schlägt fehl, wenn ein Paar darunter fällt.
-- UI-4: Akzent als Textfarbe wird nur auf `bg`/`surface-opaque` verwendet, auf Glas nur `accent-hi` oder `text-1` (Code-Review).
+- UI-4: Akzent als Textfarbe wird nur auf `bg`/`surface-opaque` verwendet, auf Glas nur `accent-hi` oder `text-1` (Code-Review). (siehe Erratum E-2: präzisierte Fassung)
 - UI-5: Kein Text mit Größe unter 13 sp oder Gewicht unter 400.
 
 **Glas, Glow, Motion**
 - UI-6: Pro Screen sind höchstens 2 `BackdropFilter` im Widget-Baum gleichzeitig sichtbar (Nav und Sprechblase/Sheet). Karten, Chips und Listenelemente enthalten keinen (Code-Suche).
-- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Text liegt mindestens 70 dp vom Glow-Mittelpunkt entfernt (Screenshot-Prüfung der Screens aus 6).
+- UI-7 (siehe Erratum E-1: neue Fassung gilt): Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Text liegt mindestens 70 dp vom Glow-Mittelpunkt entfernt (Screenshot-Prüfung der Screens aus 6).
 - UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen.
 - UI-9: Bei "Hoher Kontrast" haben Karten, Nav, Blase und Sheets opake Füllungen (`#1B2129`), kein Blur, keinen Glow, und Ränder erreichen ≥ 4,3:1 (gemessen 4,37).
 - UI-10: Die Scroll-Performance des Pfads liegt auf einem Mittelklasse-Testgerät nach Augenschein ohne sichtbares Ruckeln (Flutter-Profile: keine dauerhaften Frames über 16 ms durch Blur; Messung durch den Entwickler dokumentieren).
@@ -417,3 +417,54 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 ## 13. Nicht enthalten
 
 Kalender-Ansicht, Vor-/Nachbereitung, Tap-Abfrage, Modi Passiv/Aktiv, Push-Benachrichtigungen, Symptom-Check und Triage-Ansicht (Spec 4; nur Tokens und Regeln), Fortschritts-Ansicht (Spec 5), Return-to-Sport-Phase (Spec 6) bis auf die Boss-Unit als gesperrtes Element, Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8), Dokument-Upload, Team/Google Places, heller Modus, Manny-Illustration und -Animationen, Physio-Framework, echte KI-Texte.
+
+---
+
+## 14. Errata (freigegeben 2026-10-07)
+
+Diese Errata sind vom Nutzer freigegeben und haben Vorrang vor den Stellen, auf die sie verweisen. Der ursprüngliche Text bleibt zur Nachvollziehbarkeit stehen.
+
+### E-1: Glow-Regel nach Untergrund (ersetzt die Abstandsregel in 3.2 und UI-7)
+
+**Anlass.** Text am Seitenrand (x = 16 dp) liegt höchstens 46 dp vom Glow-Mittelpunkt (−30, 40) entfernt (Alpha bis 17,9 %). Die Regel "mindestens 70 dp" ist daher nicht überall erfüllbar. Der Kontrast ist dennoch gesichert, weil er vom Untergrund abhängt (nachgerechnet, WCAG 2.x, Glow als linearer Alpha-Abfall `Alpha = Spitze × (1 − d / (0,7 × Radius))`).
+
+**Regel (ersetzt Abstände 70 dp / 91 dp):**
+1. Spitze weiter höchstens 24 %. Der Glow bleibt statisch, `ExcludeSemantics`, in einer `RepaintBoundary`.
+2. Text direkt auf `bg` (`text-1`, `text-2`, `text-3`): Glow-Alpha bis 24 % zulässig (Kontrast mindestens 5,10).
+3. `text-1`, `text-2`, `text-3` auf Glas: Glow-Alpha ≤ 16 % (Kontrast mindestens 4,55).
+4. Farbiger Text (Kategorie-Label) und `accent-hi` als Text auf Glas: Glow-Alpha ≤ 12 %.
+5. **Prüfung** per Alpha am dem Glow-Mittelpunkt nächstgelegenen Punkt des Text-Rechtecks (Alpha-Funktion aus 3.2) gegen die Schwellen 24 / 16 / 12 %, nicht per Abstand. Der Untergrund ergibt sich daraus, ob der Text in einer Glas-Karte liegt.
+
+**UI-7 (neue Fassung, ersetzt die alte im Wortlaut):**
+- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Am nächstgelegenen Punkt jedes Text-Rechtecks beträgt der Glow-Alpha höchstens 24 % bei Text direkt auf `bg`, höchstens 16 % bei `text-1`/`text-2`/`text-3` auf Glas und höchstens 12 % bei farbigem Text und `accent-hi` auf Glas (Prüfung per Test der Alpha-Funktion und Screenshot-Prüfung der Screens aus 6).
+
+**Ergänzung zu 3.1: Kontraste über Glow (Verhältnis).**
+
+| Glow-Alpha | Untergrund | text-1 | text-2 | text-3 | accent-hi | cat-physio | cat-arzt | cat-frist |
+|---|---|---|---|---|---|---|---|---|
+| 0 % | bg | 16,37 | 8,54 | 7,24 | 6,45 | 6,84 | 6,94 | 6,23 |
+| 0 % | Glas | 13,18 | 6,88 | 5,83 | 5,19 | 5,51 | 5,59 | 5,01 |
+| 12 % | bg | 14,17 | 7,39 | 6,27 | 5,58 | 5,93 | 6,01 | 5,39 |
+| 12 % | Glas | 11,00 | 5,74 | 4,87 | 4,34 | 4,60 | 4,67 | 4,19 |
+| 15,3 % | bg | 13,46 | 7,02 | 5,96 | 5,30 | 5,63 | 5,71 | 5,12 |
+| 15,3 % | Glas | 10,41 | 5,43 | 4,61 | 4,10 | 4,35 | 4,42 | 3,96 |
+| 16 % | bg | 13,30 | 6,94 | 5,89 | 5,24 | 5,56 | 5,64 | 5,06 |
+| 16 % | Glas | 10,28 | 5,37 | 4,55 | 4,05 | 4,30 | 4,36 | 3,91 |
+| 17,9 % | bg | 12,88 | 6,72 | 5,70 | 5,08 | 5,39 | 5,47 | 4,90 |
+| 17,9 % | Glas | 9,95 | 5,19 | 4,40 | 3,92 | 4,16 | 4,22 | 3,78 |
+| 24 % | bg | 11,53 | 6,02 | 5,10 | 4,54 | 4,82 | 4,89 | 4,39 |
+| 24 % | Glas | 8,91 | 4,65 | 3,94 | 3,51 | 3,73 | 3,78 | 3,39 |
+
+Folgen: Farbiger Text und `accent-hi` auf Glas nur bei Alpha ≤ 12 % (`cat-physio` 4,60, `cat-arzt` 4,67; `accent-hi` 4,34 und `cat-frist` 4,19 liegen darunter, daher dort nur `text-1` oder opake Fläche). `text-3` bleibt auf Glas bis 16 % bei mindestens 4,55. Der Test UI-3 nimmt diese Paare auf.
+
+### E-2: Akzent als Text nur auf `bg` (korrigiert die Folgerung in 3.1 und UI-4)
+
+**Anlass.** `accent` `#D9622B` auf `surface-opaque` `#1B2129` hat nur **4,42:1** (nachgerechnet). Die Angabe "5,09 bzw. 5,60+" in 3.1 galt für `accent` auf `bg` bzw. für `accent-hi` auf `surface-opaque`.
+
+**Korrektur:**
+- `accent` als **Text** nur auf `bg` (5,09).
+- Auf `surface-opaque`, Glas, in `CuraDialog`, `CuraSnackbar`, `NodeHint` und in den Textbuttons des Datumsauswahl-Dialogs gilt `accent-hi` (5,60 auf `surface-opaque`) oder `text-1`. Füllungen und Flächen (gewählter Tag, Primärbutton) bleiben `accent`.
+- Das Paar `accent` auf `surface-opaque` (4,42) ist in den Test UI-3 aufzunehmen und darf für Text nicht verwendet werden.
+
+**UI-4 (präzisierte Fassung):**
+- UI-4: Akzent (`accent`) als Textfarbe wird nur auf `bg` verwendet. Auf `surface-opaque`, Glas, in Dialogen, Snackbars, Hinweisen und in Datumsauswahl-Textbuttons nur `accent-hi` oder `text-1` (Code-Review und Kontrasttest).
