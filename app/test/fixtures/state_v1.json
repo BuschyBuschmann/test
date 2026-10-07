@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "onboarding": {
+    "completed": true,
+    "step": 3,
+    "name": "Jakob ",
+    "injuryType": "other",
+    "injuryOther": "Schulter",
+    "injuryDate": "2026-09-07"
+  },
+  "consent": {
+    "acceptedAt": "2026-09-08T08:12:30.123Z",
+    "version": "prototype-0"
+  },
+  "streak": {
+    "count": 12,
+    "freezes": 1,
+    "lastTrainingDay": "2026-10-05",
+    "evaluatedThrough": "2026-10-06",
+    "coveredInGap": 1,
+    "uncoveredInGap": 0,
+    "resetNoticePending": false
+  },
+  "path": {
+    "completedUnitIds": ["w5-d1", "w5-d2"],
+    "pulsePending": "w5-d2"
+  },
+  "day": {
+    "dayKey": "2026-10-07",
+    "removed": ["ex-wade"],
+    "swaps": {"ex-kniebeuge": 2},
+    "custom": [
+      {"id": "custom-1", "name": "Plank", "reps": "3 × 10", "minutes": 5}
+    ],
+    "done": true
+  },
+  "prefs": {"timeChoice": 30},
+  "manny": {
+    "lastShown": {"greeting": "2026-10-06", "fact": "2026-10-07"},
+    "greetingPending": false
+  },
+  "celebration": {"day": "2026-10-07", "streak": 13, "unitId": "w5-d2"}
+}

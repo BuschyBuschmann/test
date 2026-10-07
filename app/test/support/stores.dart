@@ -6,9 +6,10 @@ const String kTestStateKey = 'curaone.state.v1';
 /// Roh-Speicher für **ein** Dokument als Text.
 ///
 /// Die Fakes liegen bewusst auf dieser Ebene, weil `StateStore`/`AppState`
-/// erst mit U1b entstehen (Plan 14). U1b hängt eine dünne Adapter-Klasse
-/// davor, die den Rohtext parst (und bei unlesbarem Inhalt den
-/// Neustart-Pfad auslöst, N-12).
+/// erst mit U1b entstehen (Plan 14). Davor hängt `raw_state_store.dart`
+/// (`RawBackedStateStore`) einen dünnen Adapter, der den Rohtext parst und bei
+/// unlesbarem Inhalt `UnreadableDataException` wirft (löst im `AppController`
+/// den Neustart-Pfad aus, N-12).
 abstract class RawDocumentStore {
   Future<String?> read();
   Future<void> write(String raw);
