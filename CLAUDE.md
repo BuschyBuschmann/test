@@ -204,12 +204,24 @@ benenne die Lücke und kläre eine Alternative.
 2. Review-Angebot.
 
 **C. Neue Oberfläche oder größeres Redesign**
-1. Konzeptpaket an `ui-designer`; er liefert einen Design-Brief.
-2. Design-Brief vollständig dem Nutzer zur Freigabe vorlegen.
-3. Umsetzungspaket an `software-engineer` mit dem freigegebenen Brief im Wortlaut.
-4. Abnahme parallel, da beide read-only: Design-Abnahme an `ui-designer`,
+1. Konzeptpaket an `ui-designer`. Er liefert zuerst ein kurzes Grunddesign
+   (Status `GRUNDDESIGN ZUR FREIGABE`).
+2. Grunddesign vollständig zeigen und per AskUserQuestion fragen:
+   "Sagt dir das Grunddesign so zu?"
+   - "Ja, passt so"
+   - "Nein, ich schicke Inspiration (Bilder oder Links)"
+   - "Nein, ich beschreibe die Änderung"
+   Bei Inspiration: Bilder und Links vom Nutzer erbitten und an den `ui-designer`
+   weitergeben, Bilder als Dateipfade, Links als URLs. Liegt ein Bild nur im Chat
+   und nicht als Datei vor, beschreibe es konkret (Farben, Typografie, Layout,
+   Dichte, Stimmung) oder bitte den Nutzer, es als Datei bereitzustellen.
+   Den `ui-designer` mit der Antwort fortsetzen; wiederholen, bis der Nutzer zustimmt.
+3. Danach liefert der `ui-designer` den Design-Brief (Status `BRIEF ZUR FREIGABE`).
+   Brief vollständig dem Nutzer zur Freigabe vorlegen.
+4. Umsetzungspaket an `software-engineer` mit dem freigegebenen Brief im Wortlaut.
+5. Abnahme parallel, da beide read-only: Design-Abnahme an `ui-designer`,
    Code-Review an `reviewer` (wenn Review gewünscht).
-5. Befunde aus beiden zusammenführen und als Korrekturpaket an `software-engineer`.
+6. Befunde aus beiden zusammenführen und als Korrekturpaket an `software-engineer`.
 
 **D. Analyse bestehenden Codes**
 1. Analysepaket an `software-engineer` (read-only).
@@ -244,8 +256,8 @@ Einschränkungen aber nie zur Tokenersparnis weg. Subagenten sind zustandslos.
 ## Rückmeldung (von jedem Agenten)
 
 Jeder Agent endet mit einem Block `## Rückmeldung an den Orchestrator`:
-**Status** (`ERLEDIGT` | `PLAN ZUR FREIGABE` | `BRIEF ZUR FREIGABE` | `RÜCKFRAGEN` |
-`BLOCKIERT`), betroffene Dateien, Verifikation, Annahmen, Rückfragen
+**Status** (`ERLEDIGT` | `PLAN ZUR FREIGABE` | `GRUNDDESIGN ZUR FREIGABE` |
+`BRIEF ZUR FREIGABE` | `RÜCKFRAGEN` | `BLOCKIERT`), betroffene Dateien, Verifikation, Annahmen, Rückfragen
 (blockierend / nicht blockierend), Empfehlung für den nächsten Schritt.
 
 Verarbeitung:
@@ -253,6 +265,7 @@ Verarbeitung:
   Antworten an denselben Agenten zurück (Fortsetzung per `SendMessage`).
 - `PLAN ZUR FREIGABE` / `BRIEF ZUR FREIGABE`: vollständig vorlegen, Freigabe einholen,
   dann das nächste Paket.
+- `GRUNDDESIGN ZUR FREIGABE`: wie in Ablauf C, Schritt 2.
 - `BLOCKIERT`: Ursache prüfen, Eskalation (Abschnitt 7) oder Nutzer entscheiden lassen.
 - Vorschläge für `KONVENTIONEN.md`: den Nutzer fragen, ob sie dauerhaft gelten sollen.
   Die Datei nicht ungefragt anlegen oder ändern.
