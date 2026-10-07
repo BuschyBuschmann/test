@@ -174,4 +174,26 @@ abstract final class S {
   static const String chatExampleManny2 =
       'Dann machen wir die 10-Minuten-Variante. Das schaffst du. '
       'Sag mir kurz Bescheid, wenn du durch bist.';
+
+  // -------------------------------------------------------------------------
+  // Bausteine (U2a): feste Beschriftungen, Tooltips, Screenreader-Labels
+  // -------------------------------------------------------------------------
+  static const String mannyImageLabel = 'Manny, dein Begleiter';
+  static const String mannyChatOpen = 'Manny, Chat öffnen';
+  static const String messagesButton = 'Nachrichten';
+  static const String micUnavailable = 'Spracheingabe, noch nicht verfügbar';
+  static const String bubbleClose = 'Nachricht schließen';
+  static const String datePlaceholder = 'Datum wählen';
+
+  /// „Schritt 3 von 4“ (Brief 5.8, Screenreader liest nur den Text).
+  static String stepOf(int step, int total) => 'Schritt $step von $total';
+
+  /// „Kreuzbandriss (ACL), Auswahl, ausgewählt“ (Brief 8).
+  static String choiceLabel(String title, bool selected) =>
+      '$title, Auswahl, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}';
+
+  /// Snackbar mit Aktion: „Eingetragen. Rückgängig, Schaltfläche“
+  /// (Ergänzung 1, 3.3).
+  static String snackbarWithAction(String text, String action) =>
+      '$text $action, Schaltfläche';
 }
