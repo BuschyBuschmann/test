@@ -1,0 +1,7 @@
+# Test-Tags (Plan 12.1). Deklariert, damit unbekannte Tags keine Warnung erzeugen.
+tags:
+  # Golden-Tests: plattformabhängig, Referenz nur in der Linux-Umgebung des Projekts.
+  golden:
+  # Gestufte Matrix (M-Layout, M-Modus, M-Kontrast): lang laufend.
+  matrix:
+    timeout: 10x

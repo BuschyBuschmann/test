@@ -1,0 +1,37 @@
+name: curaone
+description: "CuraOne: Reha-Begleiter (erster Ausschnitt, Prototyp ohne Backend)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  shared_preferences: ^2.5.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Fonts liegen als Assets im Projekt (SIL OFL 1.1, Lizenztexte daneben);
+  # es wird nichts zur Laufzeit geladen. Gewicht und optische Größe setzen die
+  # Textstile per fontWeight und FontVariation (siehe lib/theme/).
+  fonts:
+    - family: BricolageGrotesque
+      fonts:
+        - asset: "assets/fonts/BricolageGrotesque[opsz,wdth,wght].ttf"
+    - family: DMSans
+      fonts:
+        - asset: "assets/fonts/DMSans[opsz,wght].ttf"
+
+  assets:
+    - assets/fonts/OFL-BricolageGrotesque.txt
+    - assets/fonts/OFL-DMSans.txt
