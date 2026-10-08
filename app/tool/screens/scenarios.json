@@ -1,0 +1,58 @@
+{
+  "_hinweis": "Szenarien, Viewports und Varianten der Web-Screenshots (Plan 12.5). Jede Kennung muss in lib/dev/scenarios.dart stehen (Test test/dev/scenarios_json_test.dart). Pakete ab U2b tragen ihre Szenarien hier ein.",
+  "now": "2026-10-07T12:00:00+02:00",
+  "viewports": [
+    { "name": "320x568", "w": 320, "h": 568 },
+    { "name": "390x844", "w": 390, "h": 844 },
+    { "name": "430x932", "w": 430, "h": 932 }
+  ],
+  "variants": {
+    "normal": {},
+    "scale2": { "scale": 2 },
+    "hc": { "hc": 1 },
+    "rm": { "rm": 1 }
+  },
+  "scenarios": [
+    "cmp-typo",
+    "cmp-buttons",
+    "cmp-busy",
+    "cmp-forms",
+    "cmp-controls",
+    "cmp-surfaces",
+    "cmp-manny",
+    "cmp-nav-cluster",
+    "cmp-snackbar",
+    "cmp-pipette"
+  ],
+  "tablet": {
+    "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
+    "scenarios": ["cmp-forms", "cmp-surfaces", "cmp-nav-cluster"]
+  },
+  "landscape": {
+    "viewports": [
+      { "name": "568x320", "w": 568, "h": 320 },
+      { "name": "844x390", "w": 844, "h": 390 }
+    ],
+    "scenarios": ["cmp-forms", "cmp-nav-cluster"]
+  },
+  "simulations": {
+    "viewport": { "name": "390x844", "w": 390, "h": 844 },
+    "all": ["achromatopsia"],
+    "colorBlind": {
+      "types": ["protanopia", "deuteranopia", "tritanopia"],
+      "scenarios": ["cmp-forms", "cmp-nav-cluster", "cmp-surfaces"]
+    }
+  },
+  "pipette": {
+    "scenario": "cmp-pipette",
+    "background": "#0E131A",
+    "primary": "#D9622B",
+    "title": "#F2F0EB",
+    "tolerance": 1
+  },
+  "contrast": {
+    "minRatio": 4.5,
+    "minRatioIcon": 3,
+    "textTolerance": 12
+  }
+}
