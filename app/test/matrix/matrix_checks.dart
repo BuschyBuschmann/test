@@ -119,6 +119,70 @@ List<TapTarget> tapTargets(WidgetTester tester) {
   }
 
   walk(root, false);
+  return _refineToInnerTargets(tester, out);
+}
+
+/// Rechtecke aller Render-Objekte mit Tap-Semantik (`Semantics(onTap:)`,
+/// `GestureDetector`), in dp.
+List<Rect> _renderTapRects(WidgetTester tester) {
+  final List<Rect> out = <Rect>[];
+  final double dpr = tester.view.devicePixelRatio;
+  void walk(RenderObject r) {
+    bool tap = false;
+    if (r is RenderSemanticsAnnotations) tap = r.properties.onTap != null;
+    if (r is RenderSemanticsGestureHandler) tap = r.onTap != null;
+    // Nur Ziele in Scrollbereichen: Index-Zellen gibt es nur dort, und feste
+    // Overlays dürfen nicht in die Zelle darunter hineingerechnet werden.
+    if (tap &&
+        r is RenderBox &&
+        r.attached &&
+        r.hasSize &&
+        RenderAbstractViewport.maybeOf(r) != null) {
+      final Rect g = r.localToGlobal(Offset.zero) & r.size;
+      out.add(
+        Rect.fromLTRB(g.left / dpr, g.top / dpr, g.right / dpr, g.bottom / dpr),
+      );
+    }
+    r.visitChildren(walk);
+  }
+
+  walk(tester.binding.renderViews.first);
+  return out;
+}
+
+/// Standard-Listen (`addSemanticIndexes`, in Produktivlisten Pflicht für die
+/// Listenposition) hüllen jede Zelle in einen Index-Knoten, der Label und Tap
+/// des Inhalts übernimmt; sein Rechteck ist die ganze Zelle samt Abstand
+/// (R-U2-RR N3). Enthält ein Knoten kleinere Tap-Render-Objekte, werden deren
+/// Rechtecke statt der Zelle gemeldet.
+List<TapTarget> _refineToInnerTargets(
+  WidgetTester tester,
+  List<TapTarget> nodes,
+) {
+  final List<Rect> renders = _renderTapRects(tester);
+  final List<TapTarget> out = <TapTarget>[];
+  for (final TapTarget t in nodes) {
+    if (!t.inScroll) {
+      out.add(t);
+      continue;
+    }
+    final double area = t.rect.width * t.rect.height;
+    final List<Rect> inner = renders
+        .where(
+          (Rect r) =>
+              _contains(t.rect, r) &&
+              r.width * r.height < area - 1 &&
+              r.width * r.height > 0,
+        )
+        .toList();
+    if (inner.isEmpty) {
+      out.add(t);
+    } else {
+      for (final Rect r in inner) {
+        out.add(TapTarget(t.label, r, t.isTextField, t.hidden, t.inScroll));
+      }
+    }
+  }
   return out;
 }
 
@@ -171,98 +235,174 @@ Map<String, Rect> overlayRects() {
 
 Rect? headerRect() => probeKeyedRects(prefix: 'header')['header'];
 
-/// Ergebnis von [scanScroll]: Tap-Ziele des Scrollbereichs in
+/// Ergebnis von [scanAll] für **einen** Scrollbereich: Tap-Ziele in
 /// **Inhaltskoordinaten** (Scrollstand 0), über den ganzen Scrollweg
 /// eingesammelt, damit auch lazy gebaute Listen (`ListView.builder`,
 /// Slivers) vollständig geprüft werden (R-U2 MAJOR-1).
 class ScrollScan {
-  const ScrollScan(this.position, this.targets, this.complete);
+  const ScrollScan(
+    this.position,
+    this.renderObject,
+    this.viewport,
+    this.targets,
+    this.complete,
+    this.oversize,
+  );
 
   final ScrollPosition position;
+  final RenderObject? renderObject;
+
+  /// Sichtfenster des Bereichs in globalen Koordinaten.
+  final Rect viewport;
   final List<TapTarget> targets;
 
   /// `false`, wenn der Scrollweg nicht vollständig durchlaufen werden konnte
   /// (zu viele Schritte, z. B. endlose Liste).
   final bool complete;
 
+  /// Ziele, die nie ganz ins Sichtfenster passen (höher als der Bereich).
+  final List<String> oversize;
+
   Offset shiftFor(double pixels) =>
       position.axis == Axis.vertical ? Offset(0, pixels) : Offset(pixels, 0);
 }
 
-ScrollPosition? _scrollPosition(WidgetTester tester) {
-  final Finder scroll = find.byKey(PreviewKeys.scroll);
-  if (scroll.evaluate().isEmpty) return null;
-  final Finder inner = find.descendant(
-    of: scroll,
-    matching: find.byType(Scrollable),
-  );
-  final Finder scrollable = inner.evaluate().isNotEmpty
-      ? inner
-      : find.ancestor(of: scroll, matching: find.byType(Scrollable));
-  if (scrollable.evaluate().isEmpty) return null;
-  return tester.state<ScrollableState>(scrollable.first).position;
+/// Alle Scrollbereiche, die Tap-Ziele tragen können: der markierte
+/// ([PreviewKeys.scroll]) und jeder weitere vertikale `Scrollable` mit
+/// Scrollweg (Sheet über Liste, Chat-Nachrichtenliste, R-U2-RR N1). Ein
+/// zweiter, nicht markierter Bereich fällt so nicht still heraus.
+List<ScrollableState> _scrollables(WidgetTester tester) {
+  final Finder keyed = find.byKey(PreviewKeys.scroll);
+  final Set<ScrollableState> out = <ScrollableState>{};
+  if (keyed.evaluate().isNotEmpty) {
+    final Finder inner = find.descendant(
+      of: keyed,
+      matching: find.byType(Scrollable),
+    );
+    final Finder f = inner.evaluate().isNotEmpty
+        ? inner
+        : find.ancestor(of: keyed, matching: find.byType(Scrollable));
+    if (f.evaluate().isNotEmpty) {
+      out.add(tester.state<ScrollableState>(f.first));
+    }
+  }
+  for (final Element e in find.byType(Scrollable).evaluate()) {
+    final ScrollableState st = (e as StatefulElement).state as ScrollableState;
+    if (st.position.axis == Axis.vertical &&
+        st.position.maxScrollExtent > 0.5) {
+      out.add(st);
+    }
+  }
+  return out.toList();
 }
 
-/// Durchläuft den Scrollweg in halben Viewport-Schritten und sammelt alle
-/// Tap-Ziele des Scrollbereichs. Stellt den Scrollstand wieder her.
-Future<ScrollScan?> scanScroll(WidgetTester tester) async {
-  final ScrollPosition? position = _scrollPosition(tester);
-  if (position == null) return null;
-  final double start = position.pixels;
-  final Rect viewport = tester.getRect(
-    find.byKey(PreviewKeys.scroll).evaluate().isNotEmpty
-        ? find.byKey(PreviewKeys.scroll)
-        : find.byType(Scrollable).first,
-  );
-  final Map<String, TapTarget> seen = <String, TapTarget>{};
-  bool complete = true;
-  position.jumpTo(0);
-  await tester.pump();
-  for (int guard = 0; ; guard++) {
-    final Offset shift = position.axis == Axis.vertical
-        ? Offset(0, position.pixels)
-        : Offset(position.pixels, 0);
-    // Nur vollständig sichtbare Knoten: Am Rand schneidet der Scrollbereich
-    // das Rechteck ab, und Teilstücke würden als Nachbarn erscheinen. Am
-    // Anfang/Ende des Scrollwegs darf ein Ziel den Rand berühren.
-    final bool atStart = position.pixels <= 0.5;
-    final bool atEnd = position.pixels >= position.maxScrollExtent - 0.5;
-    final Rect inner = Rect.fromLTRB(
-      viewport.left - 0.5,
-      viewport.top + (atStart ? -0.5 : 0.5),
-      viewport.right + 0.5,
-      viewport.bottom + (atEnd ? 0.5 : -0.5),
-    );
-    for (final TapTarget t in tapTargets(tester).where(
-      (TapTarget t) =>
-          t.inScroll &&
-          t.rect.left >= inner.left &&
-          t.rect.right <= inner.right &&
-          t.rect.top >= inner.top &&
-          t.rect.bottom <= inner.bottom,
-    )) {
-      final Rect c = t.rect.shift(shift);
-      final String key =
-          '${t.label}|${c.left.round()}|${c.top.round()}|${c.width.round()}|${c.height.round()}';
-      seen.putIfAbsent(
-        key,
-        () => TapTarget(t.label, c, t.isTextField, false, true),
-      );
-    }
-    final double max = position.maxScrollExtent;
-    if (position.pixels >= max - 0.5) break;
-    if (guard > 400) {
-      complete = false;
-      break;
-    }
-    final double step = (position.viewportDimension * 0.25).clamp(1, 1e9);
-    position.jumpTo((position.pixels + step).clamp(0, max));
+/// Durchläuft für jeden Scrollbereich den Scrollweg in Viertel-Viewport-
+/// Schritten und sammelt alle Tap-Ziele. Stellt die Scrollstände wieder her.
+/// Ziele, die höher sind als der Bereich, werden als `oversize` gemeldet
+/// (R-U2-RR N2).
+Future<List<ScrollScan>> scanAll(WidgetTester tester) async {
+  final List<ScrollScan> scans = <ScrollScan>[];
+  for (final ScrollableState st in _scrollables(tester)) {
+    final ScrollPosition position = st.position;
+    final RenderObject? ro = st.context.findRenderObject();
+    final Rect viewport = ro is RenderBox
+        ? ro.localToGlobal(Offset.zero) & ro.size
+        : Offset.zero & viewSize(tester);
+    final double start = position.pixels;
+    final Map<String, TapTarget> seen = <String, TapTarget>{};
+    final Set<String> oversize = <String>{};
+    bool complete = true;
+    position.jumpTo(0);
     await tester.pump();
+    for (int guard = 0; ; guard++) {
+      final Offset shift = position.axis == Axis.vertical
+          ? Offset(0, position.pixels)
+          : Offset(position.pixels, 0);
+      // Nur vollständig sichtbare Knoten: Am Rand schneidet der Scrollbereich
+      // das Rechteck ab, und Teilstücke würden als Nachbarn erscheinen. Am
+      // Anfang/Ende des Scrollwegs darf ein Ziel den Rand berühren.
+      final bool atStart = position.pixels <= 0.5;
+      final bool atEnd = position.pixels >= position.maxScrollExtent - 0.5;
+      final Rect inner = Rect.fromLTRB(
+        viewport.left - 0.5,
+        viewport.top + (atStart ? -0.5 : 0.5),
+        viewport.right + 0.5,
+        viewport.bottom + (atEnd ? 0.5 : -0.5),
+      );
+      for (final TapTarget t in tapTargets(
+        tester,
+      ).where((TapTarget t) => t.inScroll)) {
+        final bool inside =
+            t.rect.left >= inner.left &&
+            t.rect.right <= inner.right &&
+            t.rect.top >= inner.top &&
+            t.rect.bottom <= inner.bottom;
+        if (inside) {
+          final Rect c = t.rect.shift(shift);
+          final String key =
+              '${t.label}|${c.left.round()}|${c.top.round()}|${c.width.round()}|${c.height.round()}';
+          seen.putIfAbsent(
+            key,
+            () => TapTarget(t.label, c, t.isTextField, false, true),
+          );
+        } else if (t.rect.overlaps(viewport) &&
+            t.rect.top <= viewport.top + 0.5 &&
+            t.rect.bottom >= viewport.bottom - 0.5) {
+          // Angeschnitten und überdeckt den ganzen Bereich: höher als er.
+          oversize.add(t.label);
+        }
+      }
+      final double max = position.maxScrollExtent;
+      if (position.pixels >= max - 0.5) break;
+      if (guard > 400) {
+        complete = false;
+        break;
+      }
+      final double step = (position.viewportDimension * 0.25).clamp(1, 1e9);
+      position.jumpTo((position.pixels + step).clamp(0, max));
+      await tester.pump();
+    }
+    position.jumpTo(start);
+    await tester.pump();
+    scans.add(
+      ScrollScan(
+        position,
+        ro,
+        viewport,
+        seen.values.toList(),
+        complete,
+        oversize.toList(),
+      ),
+    );
   }
-  position.jumpTo(start);
-  await tester.pump();
-  return ScrollScan(position, seen.values.toList(), complete);
+  return scans;
 }
+
+/// Gehört das Ziel zu einem gescannten Bereich? Im Sichtfenster ja; ein
+/// vorgebautes Ziel außerhalb davon (Cache-Bereich) über die Spalte des
+/// Bereichs.
+bool _inAnyViewport(TapTarget t, Iterable<ScrollScan> scans) => scans.any(
+  (ScrollScan s) =>
+      s.viewport.inflate(0.5).overlaps(t.rect) ||
+      (t.rect.left < s.viewport.right + 0.5 &&
+          t.rect.right > s.viewport.left - 0.5 &&
+          (t.rect.top >= s.viewport.bottom || t.rect.bottom <= s.viewport.top)),
+);
+
+List<Finding> _scanProblems(Iterable<ScrollScan> scans) => <Finding>[
+  for (final ScrollScan s in scans) ...<Finding>[
+    if (!s.complete)
+      const Finding(
+        'Scrollweg vollständig',
+        'Scrollbereich nicht vollständig durchlaufen (Endlosliste?)',
+      ),
+    for (final String l in s.oversize)
+      Finding(
+        'Ziel nicht vollständig sichtbar',
+        '"$l" ist höher als sein Scrollbereich und passt nie ganz ins Sichtfenster',
+      ),
+  ],
+];
 
 /// Ein Tap-Ziel gehört zu einem Overlay, wenn es (fast) ganz darin liegt.
 bool _isOverlay(TapTarget t, Iterable<Rect> overlays) {
@@ -325,16 +465,8 @@ Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
 Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) async {
   final List<TapTarget> rest = tapTargets(tester);
   final Iterable<Rect> overlays = overlayRects().values;
-  final ScrollScan? scan = await scanScroll(tester);
-  final List<Finding> out = <Finding>[];
-  if (scan != null && !scan.complete) {
-    out.add(
-      const Finding(
-        'Scrollweg vollständig',
-        'Scrollbereich nicht vollständig durchlaufen',
-      ),
-    );
-  }
+  final List<ScrollScan> scans = await scanAll(tester);
+  final List<Finding> out = <Finding>[..._scanProblems(scans)];
   void pair(TapTarget a, TapTarget b) {
     if (_contains(a.rect, b.rect) || _contains(b.rect, a.rect)) return;
     final double gap = _rectDistance(a.rect, b.rect);
@@ -371,10 +503,17 @@ Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) async {
       pair(f, c);
     }
   }
-  final List<TapTarget> content = scan?.targets ?? scrollRest;
-  for (int i = 0; i < content.length; i++) {
-    for (int j = i + 1; j < content.length; j++) {
-      pair(content[i], content[j]);
+  // Jeder Scrollbereich über seinen ganzen Weg; scrollende Ziele außerhalb
+  // aller Scan-Fenster (kein Scrollweg) in der Ruhelage.
+  final List<List<TapTarget>> groups = <List<TapTarget>>[
+    for (final ScrollScan sc in scans) sc.targets,
+    scrollRest.where((TapTarget t) => !_inAnyViewport(t, scans)).toList(),
+  ];
+  for (final List<TapTarget> content in groups) {
+    for (int i = 0; i < content.length; i++) {
+      for (int j = i + 1; j < content.length; j++) {
+        pair(content[i], content[j]);
+      }
     }
   }
   return out;
@@ -565,96 +704,87 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
     }
   }
 
-  final ScrollScan? scan = await scanScroll(tester);
-  if (scan == null) {
-    for (final TapTarget t in rest.where((TapTarget t) => t.inScroll)) {
-      if (!free(t.rect)) {
-        out.add(
-          Finding(
-            'Inhalt erreichbar',
-            '$t ist in der Ruhelage verdeckt oder außerhalb',
-          ),
-        );
-      }
-    }
-    return out;
-  }
-  if (!scan.complete) {
-    out.add(
-      const Finding(
-        'Scrollweg vollständig',
-        'Scrollbereich nicht vollständig durchlaufen (Endlosliste?)',
-      ),
-    );
-  }
-  final ScrollPosition position = scan.position;
-  final double start = position.pixels;
-  final double max = position.maxScrollExtent;
-  final RenderObject? sr = find
-      .byKey(PreviewKeys.scroll)
-      .evaluate()
-      .first
-      .renderObject;
-
-  for (final TapTarget t in scan.targets) {
-    double? hit;
-    for (double offset = 0; offset <= max + 0.001; offset += 2) {
-      if (free(t.rect.shift(-scan.shiftFor(offset)))) {
-        hit = offset;
-        break;
-      }
-    }
-    if (hit == null && max > 0 && free(t.rect.shift(-scan.shiftFor(max)))) {
-      hit = max;
-    }
-    if (hit == null) {
+  final List<ScrollScan> scans = await scanAll(tester);
+  out.addAll(_scanProblems(scans));
+  // Scrollende Ziele ohne eigenes Scan-Fenster (kein Scrollweg): Ruhelage.
+  for (final TapTarget t in rest.where(
+    (TapTarget t) => t.inScroll && !_inAnyViewport(t, scans),
+  )) {
+    if (!free(t.rect)) {
       out.add(
         Finding(
           'Inhalt erreichbar',
-          '$t lässt sich nicht frei von Kopf/Overlays scrollen (Scrollweg 0 … ${max.toStringAsFixed(0)} dp)',
+          '$t ist in der Ruhelage verdeckt oder außerhalb',
         ),
       );
-      continue;
     }
-    // Gegenprobe mit echtem Hit-Test an der gefundenen Lage.
-    position.jumpTo(hit);
-    await tester.pump();
-    final Offset center = t.rect.center - scan.shiftFor(position.pixels);
-    final HitTestResult result = tester.hitTestOnBinding(center);
-    bool onContent = false;
-    if (sr == null) {
-      out.add(
-        const Finding(
-          'Inhalt erreichbar',
-          'Hit-Test-Gegenprobe nicht möglich: Scrollbereich ohne RenderObject',
-        ),
-      );
-    } else {
-      for (final HitTestEntry e in result.path) {
-        RenderObject? p = e.target is RenderObject
-            ? e.target as RenderObject
-            : null;
-        while (p != null) {
-          if (p == sr) {
-            onContent = true;
-            break;
-          }
-          p = p.parent;
+  }
+
+  for (final ScrollScan scan in scans) {
+    final ScrollPosition position = scan.position;
+    final double start = position.pixels;
+    final double max = position.maxScrollExtent;
+    final RenderObject? sr = scan.renderObject;
+    for (final TapTarget t in scan.targets) {
+      double? hit;
+      for (double offset = 0; offset <= max + 0.001; offset += 2) {
+        if (free(t.rect.shift(-scan.shiftFor(offset)))) {
+          hit = offset;
+          break;
         }
-        if (onContent) break;
       }
-      if (!onContent) {
+      if (hit == null && max > 0 && free(t.rect.shift(-scan.shiftFor(max)))) {
+        hit = max;
+      }
+      if (hit == null) {
         out.add(
           Finding(
             'Inhalt erreichbar',
-            '$t: Hit-Test in Lage ${hit.toStringAsFixed(0)} trifft den Inhalt nicht',
+            '$t lässt sich nicht frei von Kopf/Overlays scrollen (Scrollweg 0 … ${max.toStringAsFixed(0)} dp)',
           ),
         );
+        continue;
+      }
+      // Gegenprobe mit echtem Hit-Test an der gefundenen Lage.
+      position.jumpTo(hit);
+      await tester.pump();
+      final Offset center = t.rect.center - scan.shiftFor(position.pixels);
+      final HitTestResult result = tester.hitTestOnBinding(center);
+      bool onContent = false;
+      if (sr == null) {
+        out.add(
+          const Finding(
+            'Inhalt erreichbar',
+            'Hit-Test-Gegenprobe nicht möglich: Scrollbereich ohne RenderObject',
+          ),
+        );
+      } else {
+        for (final HitTestEntry e in result.path) {
+          RenderObject? p = e.target is RenderObject
+              ? e.target as RenderObject
+              : null;
+          while (p != null) {
+            if (p == sr) {
+              onContent = true;
+              break;
+            }
+            p = p.parent;
+          }
+          if (onContent) break;
+        }
+        if (!onContent) {
+          out.add(
+            Finding(
+              'Inhalt erreichbar',
+              '$t: Hit-Test in Lage ${hit.toStringAsFixed(0)} trifft den Inhalt nicht',
+            ),
+          );
+        }
       }
     }
+    position.jumpTo(start);
+    await tester.pump();
   }
-  position.jumpTo(start);
-  await tester.pump();
   return out;
 }
 

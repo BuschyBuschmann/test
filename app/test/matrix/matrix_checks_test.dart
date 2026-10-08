@@ -714,7 +714,6 @@ void main() {
           padding: EdgeInsets.only(bottom: endPad),
           itemCount: 40,
           itemExtent: 56,
-          addSemanticIndexes: false,
           itemBuilder: (BuildContext c, int i) => Center(child: _tap(300, 48)),
         ),
         navOverlay(),
@@ -740,7 +739,6 @@ void main() {
         key: PreviewKeys.scroll,
         itemCount: 40,
         itemExtent: 56,
-        addSemanticIndexes: false,
         itemBuilder: (BuildContext c, int i) =>
             Center(child: _tap(300, i == tight ? 54 : 48)),
       );
@@ -967,6 +965,131 @@ void main() {
           isFalse,
           reason: 'unter dem Scrim',
         );
+      },
+    );
+  });
+  group('Gegenproben aus Re-Review R-U2-RR (N1 bis N3)', () {
+    Widget navOverlay() => Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 100,
+      child: KeyedSubtree(
+        key: PreviewKeys.nav,
+        child: const AbsorbPointer(child: ColoredBox(color: Colors.black)),
+      ),
+    );
+
+    testWidgets(
+      'N1/E2b: zweiter, nicht markierter Scrollbereich wird geprüft',
+      (WidgetTester tester) async {
+        Widget board(double endPad) => Stack(
+          children: <Widget>[
+            Column(
+              children: <Widget>[
+                SizedBox(
+                  height: 300,
+                  child: SingleChildScrollView(
+                    key: PreviewKeys.scroll,
+                    child: Column(
+                      children: <Widget>[
+                        for (int i = 0; i < 3; i++) ...<Widget>[
+                          _tap(300, 48),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(bottom: endPad),
+                    itemCount: 40,
+                    itemBuilder: (BuildContext c, int i) => Padding(
+                      padding: EdgeInsets.only(bottom: endPad > 0 ? 8 : 2),
+                      child: Center(child: _tap(300, 48)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            navOverlay(),
+          ],
+        );
+        await pump(tester, board(0));
+        expect(
+          await checkReachability(tester),
+          isNotEmpty,
+          reason: 'Ende unter der Nav',
+        );
+        expect(
+          await checkTapTargetGaps(tester),
+          isNotEmpty,
+          reason: '2 dp Abstand',
+        );
+        await pump(tester, board(100));
+        expect(await checkReachability(tester), isEmpty);
+        expect(await checkTapTargetGaps(tester), isEmpty);
+      },
+    );
+
+    testWidgets('N2/E2c: Ziel höher als der Scrollbereich wird gemeldet', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        ListView(
+          key: PreviewKeys.scroll,
+          children: <Widget>[
+            _tap(300, 1000),
+            const SizedBox(height: 8),
+            _tap(300, 48),
+          ],
+        ),
+      );
+      final List<Finding> reach = await checkReachability(tester);
+      expect(
+        reach.map((Finding f) => f.check),
+        contains('Ziel nicht vollständig sichtbar'),
+      );
+      // Gegenprobe: ein Ziel, das ganz hineinpasst, ist kein Befund.
+      await pump(
+        tester,
+        ListView(
+          key: PreviewKeys.scroll,
+          children: <Widget>[
+            _tap(300, 700),
+            const SizedBox(height: 8),
+            _tap(300, 48),
+          ],
+        ),
+      );
+      expect(await checkReachability(tester), isEmpty);
+    });
+
+    Widget stdList(int tight) => ListView.builder(
+      key: PreviewKeys.scroll,
+      itemCount: 40,
+      itemBuilder: (BuildContext c, int i) => Padding(
+        padding: EdgeInsets.only(bottom: i == tight ? 2 : 8),
+        child: Center(child: _tap(300, 48)),
+      ),
+    );
+
+    testWidgets(
+      'N3/E2a: Standard-Semantik-Indizes: kein Fehlalarm, echter 2-dp-Verstoß erkannt',
+      (WidgetTester tester) async {
+        await pump(tester, stdList(-1));
+        expect(
+          await checkTapTargetGaps(tester),
+          isEmpty,
+          reason: 'Zellen berühren sich, Ziele 8 dp',
+        );
+        expect(await checkReachability(tester), isEmpty);
+        await pump(tester, stdList(30));
+        final List<Finding> f = await checkTapTargetGaps(tester);
+        expect(f, isNotEmpty);
+        expect(f.first.message, contains('2.0 dp'));
       },
     );
   });

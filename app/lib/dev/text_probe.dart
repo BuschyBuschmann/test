@@ -278,6 +278,10 @@ bool _isIcon(String text) {
 /// Der Text liegt in einer Route, über der eine weitere Route liegt
 /// (`ModalRoute.isCurrent == false`, z. B. unter Dialog oder Sheet mit
 /// Scrim). Ohne Route (kein Navigator) gilt er als sichtbar.
+// `ModalRoute.of` legt je Text eine Abhängigkeit an (nur ein Neubau des Textes
+// bei Routenwechsel). Das ist hier bewusst hingenommen: Die Sonde läuft nur
+// in Tests und der Preview, und der Scope-Typ ist privat (`_ModalScopeStatus`),
+// ein Weg ohne Abhängigkeit existiert nicht öffentlich.
 bool _isBuriedRoute(Element e) {
   try {
     final ModalRoute<dynamic>? route = ModalRoute.of(e);
