@@ -270,7 +270,7 @@ Wie Freezes verdient werden ("Belohnung für Meilensteine"), ist im Ausschnitt n
 
 **Manny-Auftritte (Spec 3):** Im Ausschnitt nur zwei Anlässe, mit **festen Beispieltexten**: (1) nach dem Onboarding / erste Session: "Moin [Name], los geht's. Dein Weg beginnt hier." (2) Streak-Gefahr (abends, wenn heute noch nichts eingetragen): "Dein Streak von [N] Tagen wartet auf dich. Heute noch eine Runde?" Dazu optional ein Beispielfakt im Sprechblasenformat, z. B. "Dein Gewebe baut sich gerade aktiv um. Heute zählt." (Beispiel aus Spec 3, Platzhalter bis zum Physio-Pool). Anlass (3) Feier nach Eintragen eines Trainings (Pose `feiernd`, "Stark, [Name]. Das war Tag [N]."). Alle sofort wegtippbar (X oder Tap irgendwo), erscheinen höchstens einmal pro Anlass und Tag. Die Texte sind Platzhalter bis zur KI-Anbindung.
 
-**Zustände Pfad:** Standard, Laden (statische Glas-Kreise als Platzhalter, kein Shimmer, höchstens 300 ms sichtbar), Fehler ("Dein Pfad konnte nicht geladen werden." plus Button "Nochmal versuchen", `status-error`-Icon), Streak-Zustände (oben), Manny-Blase sichtbar/ausgeblendet. Leerer Zustand entfällt (der Pfad hat immer Inhalt). Beim Öffnen: aktuelle Unit auf ca. 55 % der Höhe zentriert.
+**Zustände Pfad:** Standard, Laden (statische Glas-Kreise als Platzhalter, kein Shimmer, höchstens 300 ms sichtbar), Fehler ("Dein Pfad konnte nicht geladen werden." plus Button "Nochmal versuchen", `status-error`-Icon; Fehlertext beim Start siehe Erratum E-4), Streak-Zustände (oben), Manny-Blase sichtbar/ausgeblendet. Leerer Zustand entfällt (der Pfad hat immer Inhalt). Beim Öffnen: aktuelle Unit auf ca. 55 % der Höhe zentriert.
 
 ### 6.3 Heute (Tab "Heute"), minimal nach Spec 2
 
@@ -484,3 +484,12 @@ Folgen: Farbiger Text und `accent-hi` auf Glas nur bei Alpha ≤ 12 % (`cat-phys
 
 **UI-8 (neue Fassung, ersetzt die alte im Wortlaut):**
 - UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen. Ausgenommen sind Fortschrittskreise laufender Vorgänge unter den Bedingungen von E-3 (reine Drehung, nur während des Vorgangs und erst nach 300 ms sichtbar, kein Ein-/Ausblenden über 120 ms, keine Dauerschleife außerhalb eines Vorgangs, Statusansage für Screenreader).
+
+### E-4: Fehlertext beim Start (freigegeben 2026-10-08, Anlass Abnahme A-U3, Nitpick N1)
+
+**Anlass.** Der StartGate zeigt die Fehleransicht, solange unklar ist, ob das Onboarding abgeschlossen war. Dort existiert noch kein Pfad, der Text "Dein Pfad konnte nicht geladen werden." (6.2) passt dann nicht.
+
+**Regel.**
+- Fehler beim Start (StartGate, Daten nicht lesbar oder Plattformfehler beim Laden, bevor ein Pfad angezeigt wird): Text **"Deine Daten konnten nicht geladen werden."**, Button "Nochmal versuchen" und `status-error`-Icon unverändert.
+- Fehler im Pfad-Tab (6.2, Pfad lässt sich bei bekanntem, abgeschlossenem Onboarding nicht aufbauen): behält den **alten Text** "Dein Pfad konnte nicht geladen werden." Begründung: Dort sind die Daten des Nutzers vorhanden, und es ist tatsächlich der Pfad, der fehlt; die Meldung soll genau den Teil benennen, der nicht lädt. Eine einheitliche Formulierung würde dort ungenauer.
+- Gestaltung, Verhalten und Barrierefreiheit (Live-Region, Fokus auf den Button) ändern sich nicht. Der alte Text in 6.2 bleibt stehen und gilt für den Pfad-Tab. Die Ablage in `strings_de.dart` erhält zwei getrennte Texte.
