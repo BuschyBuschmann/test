@@ -33,9 +33,26 @@ Future<void> _tapEveryTarget(
   for (final TapTarget t in targets) {
     if (!view.contains(t.rect.center)) continue;
     await tester.tapAt(t.rect.center);
-    await tester.pump(const Duration(milliseconds: 121));
+    await _pastReducedLimit(tester);
     out.addAll(checkReducedMotion(tester, allowProgress: allowProgress));
   }
+}
+
+/// Wartet so, dass jede erlaubte Animation (höchstens `dur-fast` = 120 ms)
+/// beendet ist, bevor gezählt wird:
+/// 1. ein kurzer erster Frame: baut die Folgen der Aktion (Tipp) und startet
+///    neue Animationen. Ohne ihn fiele der Start einer Animation erst in den
+///    121-ms-Frame, und sie liefe am Ende noch.
+/// 2. 121 ms (länger als jede erlaubte Animation),
+/// 3. ein weiterer Frame: Ein `LayoutBuilder` (jeder `ContentFrame`) legt einen
+///    einzelnen „aufgeschobenen“ Frame-Callback an, wenn unter ihm nach dem
+///    Frame etwas neu gebaut wird (z. B. Fokus-Folgen eines Tab-Wechsels). Er
+///    läuft im nächsten Frame ab und ist keine Animation; eine echte Animation
+///    über 120 ms läuft nach dem Zusatzframe weiter und wird erkannt.
+Future<void> _pastReducedLimit(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 1));
+  await tester.pump(const Duration(milliseconds: 121));
+  await tester.pump(const Duration(milliseconds: 1));
 }
 
 void main() {
@@ -49,7 +66,13 @@ void main() {
       ];
       for (final Size size in sizes) {
         final bool tabletOnly = size == Viewports.tablet;
-        for (final double scale in tabletOnly ? <double>[1] : <double>[1, 2]) {
+        // Tastatur-Szenarien (Plan 12.4, B-10) und Szenarien mit zeitlich
+        // begrenztem Overlay: bei 568 dp Höhe bleibt mit Tastatur bzw.
+        // Snackbar und 200 % kein sinnvoller Scrollbereich; dort nur 1,0.
+        final bool keyboardSmall =
+            (s.keyboard || s.transientOverlay) && size.height < 600;
+        for (final double scale
+            in tabletOnly || keyboardSmall ? <double>[1] : <double>[1, 2]) {
           final String name = _name(s, size, '×${scale.toStringAsFixed(1)}');
           testWidgets(name, (WidgetTester tester) async {
             final SemanticsHandle semantics = tester.ensureSemantics();
@@ -97,7 +120,7 @@ void main() {
         await pumpScenario(tester, s, rm: true);
         final List<Finding> f = <Finding>[...takeLayoutExceptions(tester)];
         // Einblenden/Schieben seit dem Aufbau: nach 121 ms nichts mehr.
-        await tester.pump(const Duration(milliseconds: 121));
+        await _pastReducedLimit(tester);
         f.addAll(checkReducedMotion(tester, allowProgress: s.loops));
         // Jeden Übergang auslösen, den die Tap-Ziele anbieten.
         await _tapEveryTarget(tester, f, s.loops);

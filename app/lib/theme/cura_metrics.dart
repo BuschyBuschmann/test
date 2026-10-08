@@ -84,6 +84,8 @@ abstract final class CuraSize {
   static const double mannyPathHeight = 80;
   static const double mannyOnboardingMinHeight = 56;
   static const double mannyOnboardingMaxHeight = 64;
+  // Onboarding Schritt 1: Manny groß (Brief 6.1, „ca. 120 dp“).
+  static const double mannyOnboardingStep1Height = 120;
 
   // Button-Gruppe (Ergänzung 2, 2 und 3.1).
   static const double mannyChatButton = 56;
@@ -128,6 +130,10 @@ abstract final class CuraSize {
   static const double nodeHintMaxWidth = 240;
   static const double nodeHintArrow = 8;
   static const double sheetMaxHeightFraction = 0.90;
+  // Wischgeste des Sheets (A-36): Schließen ab 30 % der Höhe oder bei einem
+  // Fling über 700 dp/s nach unten.
+  static const double sheetCloseFraction = 0.30;
+  static const double sheetFlingVelocity = 700;
   static const double choiceCardMinHeight = 64;
 
   // Linien und Ränder (dp).

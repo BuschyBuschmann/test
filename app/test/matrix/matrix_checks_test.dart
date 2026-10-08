@@ -5,11 +5,13 @@ import 'package:curaone/dev/scenarios.dart';
 import 'package:curaone/dev/text_probe.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
+import 'package:curaone/ui/components/content_frame.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glow_background.dart';
 import 'package:curaone/ui/components/messages_button.dart';
+import 'package:curaone/ui/routes/cura_sheet_route.dart';
 
 import 'dart:ui' show ImageFilter;
 
@@ -417,6 +419,34 @@ void main() {
       expect(await checkReachability(tester), isEmpty);
     });
 
+    testWidgets('feste Bedienelemente im Kopf gelten als erreichbar', (
+      WidgetTester tester,
+    ) async {
+      Widget board({required bool inHeader}) => Stack(
+        children: <Widget>[
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 100,
+            child: KeyedSubtree(
+              key: PreviewKeys.header,
+              child: inHeader
+                  ? Align(alignment: Alignment.topLeft, child: _tap(48, 48))
+                  : const SizedBox.expand(),
+            ),
+          ),
+          if (!inHeader) Positioned(left: 0, top: 80, child: _tap(48, 48)),
+        ],
+      );
+      // Im Kopf: erlaubt. Ein festes Ziel, das nur teilweise im Kopf liegt
+      // oder darüber, bleibt ein Befund.
+      await pump(tester, board(inHeader: true));
+      expect(await checkReachability(tester), isEmpty);
+      await pump(tester, board(inHeader: false));
+      expect(await checkReachability(tester), isNotEmpty);
+    });
+
     testWidgets('BackdropFilter-Grenze', (WidgetTester tester) async {
       Widget blur() => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
@@ -638,6 +668,42 @@ void main() {
         contains('RM ohne laufende Animation'),
       );
     });
+
+    testWidgets(
+      'Bewegung reduzieren: aufgeschobener LayoutBuilder-Frame ist keine Animation',
+      (WidgetTester tester) async {
+        final ValueNotifier<int> tab = ValueNotifier<int>(0);
+        addTearDown(tab.dispose);
+        await pumpApp(
+          tester,
+          ValueListenableBuilder<int>(
+            valueListenable: tab,
+            builder: (BuildContext context, int i, Widget? child) {
+              return ContentFrame(
+                child: Stack(
+                  children: <Widget>[
+                    for (int k = 0; k < 2; k++)
+                      ExcludeFocus(excluding: k != i, child: const Text('Tab')),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+        tab.value = 1;
+        // Wie in der Matrix: 121 ms und ein weiterer Frame.
+        await tester.pump(const Duration(milliseconds: 121));
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(
+          checkReducedMotion(
+            tester,
+            allowProgress: false,
+          ).map((Finding f) => f.check),
+          isNot(contains('RM ohne laufende Animation')),
+        );
+      },
+    );
 
     testWidgets('Fortschrittsanzeige ist erlaubt', (WidgetTester tester) async {
       await pumpApp(tester, const CircularProgressIndicator());
@@ -900,6 +966,65 @@ void main() {
   });
 
   group('Text-Sonde: Untergrund und Verdeckung (R-U2 Punkt 12)', () {
+    testWidgets(
+      'Sheet (CuraSheetFrame) gilt als Glas, auch ohne Typnamen (Release-fest)',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          const Stack(
+            children: <Widget>[
+              Positioned.fill(child: GlowBackground()),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: CuraSheetFrame(
+                  header: Text('Kopf'),
+                  body: Text('Inhalt'),
+                ),
+              ),
+            ],
+          ),
+        );
+        final TextProbe p = probe(tester);
+        final Iterable<ProbedText> texts = p.texts.where(
+          (ProbedText t) => t.text == 'Kopf' || t.text == 'Inhalt',
+        );
+        expect(texts, hasLength(2));
+        for (final ProbedText t in texts) {
+          expect(t.ground, TextGround.glass);
+        }
+      },
+    );
+
+    testWidgets(
+      'Text außerhalb des Scroll-Sichtfensters ist nicht sichtbar, angeschnittener nur mit dem sichtbaren Teil',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          SizedBox(
+            height: 100,
+            child: SingleChildScrollView(
+              child: Column(
+                children: <Widget>[
+                  const SizedBox(height: 80, child: Text('Oben')),
+                  const SizedBox(height: 40, child: Text('Angeschnitten')),
+                  const SizedBox(height: 300),
+                  const Text('Weit unten'),
+                ],
+              ),
+            ),
+          ),
+        );
+        final TextProbe p = probe(tester);
+        ProbedText byText(String t) =>
+            p.texts.firstWhere((ProbedText x) => x.text == t);
+        expect(byText('Oben').onScreen, isTrue);
+        final ProbedText cut = byText('Angeschnitten');
+        expect(cut.onScreen, isTrue);
+        expect(cut.rect.bottom, lessThanOrEqualTo(100.5));
+        expect(byText('Weit unten').onScreen, isFalse);
+      },
+    );
+
     testWidgets('ActionCircle ist eine deckende Fläche', (
       WidgetTester tester,
     ) async {

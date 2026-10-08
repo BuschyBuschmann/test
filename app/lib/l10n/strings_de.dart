@@ -208,4 +208,72 @@ abstract final class S {
 
   /// „Ja, alles löschen, Wird gelöscht“ (Label plus Status, Live-Region).
   static String busyLabel(String label, String status) => '$label, $status';
+
+  // -------------------------------------------------------------------------
+  // Navigation, Start, Fehlerzustand (U2b)
+  // -------------------------------------------------------------------------
+  /// Name der App (Fenstertitel im Web).
+  static const String appTitle = 'CuraOne';
+  static const String navPath = 'Pfad';
+  static const String navToday = 'Heute';
+  static const String back = 'Zurück';
+  static const String close = 'Schließen';
+
+  /// Ladeansicht des Starts (Screenreader, Live-Region).
+  static const String loading = 'Wird geladen';
+
+  /// Fehlerzustand beim Start (Brief 6.2, Plattformfehler beim Lesen).
+  static const String pathLoadError = 'Dein Pfad konnte nicht geladen werden.';
+  static const String retry = 'Nochmal versuchen';
+
+  /// Hinweise nach dem Neustart des Onboardings (Snackbar, 4 s, A-34).
+  static const String dataDeleted = 'Alle Daten sind gelöscht.';
+  static const String dataUnreadable =
+      'Deine gespeicherten Daten waren nicht lesbar. Du startest neu.';
+
+  /// Tageswechsel auf Heute (Ergänzung 1, 3.4): Snackbar und Ansage.
+  static const String newDaySnackbar = 'Neuer Tag, neues Programm.';
+  static const String newDayAnnouncement =
+      'Neuer Tag. Dein Programm für heute ist neu.';
+
+  // Platzhalter der Tabs, bis Pfad (U3a) und Heute (U3b) sie ersetzen.
+  static const String pathTabTitle = 'Dein Pfad';
+  static const String pathTabPlaceholder = 'Hier entsteht dein Pfad.';
+  static String todayTitle(String name) => 'Heute, $name';
+  static const String todayTabPlaceholder = 'Hier entsteht dein Tag.';
+
+  // -------------------------------------------------------------------------
+  // Onboarding (Brief 6.1)
+  // -------------------------------------------------------------------------
+  static const String moreToAdd = 'Noch etwas hinzufügen?';
+  static const String next = 'Weiter';
+  static const String consentAccept = 'Verstanden, weiter';
+  static const String nameLabel = 'Dein Name';
+
+  /// Datenschutz, Schritt 2 (Platzhalter, vor Echtbetrieb juristisch
+  /// zu ersetzen, Brief 6.0).
+  static const String consentStoredLabel = 'Was gespeichert wird';
+  static const String consentStoredText =
+      'Dein Name, deine Verletzung, das Datum und dein Fortschritt. '
+      'Alles bleibt auf diesem Gerät.';
+  static const String consentDurationLabel = 'Wie lange';
+  static const String consentDurationText =
+      'Bis du es löschst oder die App entfernst.';
+  static const String consentRightLabel = 'Dein Recht auf Löschung';
+  static const String consentRightText =
+      'Du kannst alles jederzeit löschen. Dann nimmst du auch deine '
+      'Einwilligung zurück.';
+  static const String consentPlaceholderNote =
+      'Platzhaltertext. Er wird vor dem echten Einsatz ersetzt.';
+  static const String privacyLink = 'Datenschutzerklärung lesen';
+  static const String privacyTitle = 'Datenschutzerklärung';
+  static const String privacyPlaceholderBody =
+      'Platzhalter. Hier steht später die Datenschutzerklärung.';
+
+  // Verletzungstyp, Schritt 3.
+  static const String injuryAcl = 'Kreuzbandriss (ACL)';
+  static const String injuryAnkle = 'Bänderriss Sprunggelenk';
+  static const String injuryMuscle = 'Muskelfaserriss';
+  static const String injuryOther = 'Anderes / selbst eingeben';
+  static const String injuryOtherLabel = 'Was ist passiert?';
 }

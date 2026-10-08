@@ -690,11 +690,19 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
     return !o.values.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
   }
 
+  /// Feste Bedienelemente **im** Kopf (Zurück-Pfeil, „Deine Daten“) gehören
+  /// zum Kopf selbst und liegen nicht „unter“ ihm: sie müssen auf dem
+  /// Bildschirm liegen und dürfen von keinem Overlay überdeckt sein.
+  bool freeInHeader(Rect r) =>
+      _contains(screen, r) &&
+      !o.values.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
+
   final List<TapTarget> rest = tapTargets(tester);
   for (final TapTarget t in rest.where(
     (TapTarget t) => !t.inScroll && !_isOverlay(t, o.values),
   )) {
-    if (!free(t.rect)) {
+    final bool inHeader = header != null && _contains(header, t.rect);
+    if (!(inHeader ? freeInHeader(t.rect) : free(t.rect))) {
       out.add(
         Finding(
           'Inhalt erreichbar',

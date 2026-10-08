@@ -18,6 +18,7 @@ import '../ui/components/manny_bubble.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
+import '../ui/routes/cura_sheet_route.dart';
 
 /// Untergrund eines Textes (Errata E-1, Plan 8.2).
 enum TextGround {
@@ -32,15 +33,6 @@ enum TextGround {
   /// glowfrei.
   opaque,
 }
-
-/// Namen von Widget-Typen, die später entstehen (U2b ff.) und deren Fläche
-/// schon jetzt feststeht. Typnamen statt Import, damit die Sonde nicht auf
-/// noch fehlende Dateien wartet.
-// Hinweis: Typnamen funktionieren nur in Debug/Test (Release-Builds
-// minifizieren `runtimeType`); Pakete ab U2b ersetzen sie durch `is`-Prüfungen,
-// sobald die Klassen existieren.
-const Set<String> _glassTypeNames = <String>{'CuraSheet', 'CuraSheetRoute'};
-const Set<String> _opaqueTypeNames = <String>{'NodeHint', 'ExampleNotice'};
 
 class ProbedText {
   const ProbedText({
@@ -159,11 +151,13 @@ TextProbe probeTexts({Element? root, required Size view}) {
       g = (w.variant == PillButtonVariant.outline || w.onPressed == null)
           ? TextGround.bg
           : TextGround.opaque;
-    } else {
-      final String name = w.runtimeType.toString();
-      if (_glassTypeNames.contains(name)) g = TextGround.glass;
-      if (_opaqueTypeNames.contains(name)) g = TextGround.opaque;
+    } else if (w is CuraSheetFrame) {
+      // Sheet: E2 (`surface-float` mit Blur), streng wie Glas (A-35).
+      g = TextGround.glass;
     }
+    // Weitere Flächentypen ordnen die Pakete, die sie einführen, mit einer
+    // `is`-Prüfung ein (nie über `runtimeType`: Release-Builds minifizieren
+    // die Typnamen): `NodeHint` und `ExampleNotice` sind deckend.
     // Texte unter einer anderen Route (Dialog, Sheet mit Scrim) oder in einer
     // verdeckten Route zählen nicht als sichtbar (R-U2 Punkt 12).
     bool c = covered;
@@ -203,7 +197,27 @@ ProbedText? _probe(
     }
   }
   final Offset origin = r.localToGlobal(Offset.zero);
-  final Rect rect = local.shift(origin);
+  Rect rect = local.shift(origin);
+  // Ein scrollender Bereich schneidet seinen Inhalt ab: Text außerhalb des
+  // Sichtfensters ist unsichtbar, teilweise sichtbarer Text zählt mit seinem
+  // sichtbaren Teil (Glow- und Pixel-Messung sonst über fremden Pixeln, etwa
+  // unter der Mikrofon-Zeile).
+  bool clipped = false;
+  for (RenderObject? node = r.parent; node != null; node = node.parent) {
+    if (node is! RenderAbstractViewport) continue;
+    final RenderObject viewport = node;
+    if (viewport is! RenderBox || !viewport.attached || !viewport.hasSize) {
+      continue;
+    }
+    final Rect visible = rect.intersect(
+      viewport.localToGlobal(Offset.zero) & viewport.size,
+    );
+    if (visible.width <= 0 || visible.height <= 0) {
+      clipped = true;
+      break;
+    }
+    rect = visible;
+  }
 
   Color? color;
   double fontSize = double.infinity;
@@ -242,7 +256,7 @@ ProbedText? _probe(
     weight: weight,
     ground: ground,
     glowAlpha: alpha,
-    onScreen: !covered && rect.overlaps(screen),
+    onScreen: !covered && !clipped && rect.overlaps(screen),
     isIcon: _isIcon(plain),
   );
 }

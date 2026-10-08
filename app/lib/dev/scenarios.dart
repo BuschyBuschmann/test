@@ -11,6 +11,9 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/strings_de.dart';
+import '../logic/app_state.dart';
+import '../logic/clock.dart';
+import '../logic/injury_type.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
 import '../theme/cura_typography.dart';
@@ -32,30 +35,26 @@ import '../ui/components/manny_chat_button.dart';
 import '../ui/components/messages_button.dart';
 import '../ui/components/mic_button.dart';
 import '../ui/components/pill_button.dart';
+import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
 /// (schwebt über dem Inhalt), `probe:` als Messpunkt für die Pipette.
 abstract final class PreviewKeys {
-  static const ValueKey<String> nav = ValueKey<String>('overlay:nav');
-  static const ValueKey<String> cluster = ValueKey<String>('overlay:cluster');
-  static const ValueKey<String> primaryRow = ValueKey<String>(
-    'overlay:primary-row',
-  );
-  static const ValueKey<String> bubble = ValueKey<String>('overlay:bubble');
-  static const ValueKey<String> hint = ValueKey<String>('overlay:hint');
-  static const ValueKey<String> chatFooter = ValueKey<String>(
-    'overlay:chat-footer',
-  );
-  static const ValueKey<String> header = ValueKey<String>('header');
-  static const ValueKey<String> scroll = ValueKey<String>('scroll');
-  static const ValueKey<String> primary = ValueKey<String>('primary');
-  static const ValueKey<String> probeBackground = ValueKey<String>('probe:bg');
-  static const ValueKey<String> probePrimary = ValueKey<String>(
-    'probe:primary',
-  );
-  static const ValueKey<String> probeTitle = ValueKey<String>('probe:title');
+  static const ValueKey<String> nav = ProbeKeys.nav;
+  static const ValueKey<String> cluster = ProbeKeys.cluster;
+  static const ValueKey<String> primaryRow = ProbeKeys.primaryRow;
+  static const ValueKey<String> bubble = ProbeKeys.bubble;
+  static const ValueKey<String> hint = ProbeKeys.hint;
+  static const ValueKey<String> keyboard = ProbeKeys.keyboard;
+  static const ValueKey<String> chatFooter = ProbeKeys.chatFooter;
+  static const ValueKey<String> header = ProbeKeys.header;
+  static const ValueKey<String> scroll = ProbeKeys.scroll;
+  static const ValueKey<String> primary = ProbeKeys.primary;
+  static const ValueKey<String> probeBackground = ProbeKeys.probeBackground;
+  static const ValueKey<String> probePrimary = ProbeKeys.probePrimary;
+  static const ValueKey<String> probeTitle = ProbeKeys.probeTitle;
 }
 
 /// Umgebung, die `main_preview` bzw. die Matrix dem Szenario mitgibt.
@@ -74,10 +73,39 @@ typedef ScenarioBuilder = Widget Function(
   ScenarioEnv env,
 );
 
+/// Zustand einer **App-Szenarios** (Plan 12.4: `ob*`, `shell-*`): die echte
+/// App (`CuraApp` mit StartGate, Routen und Speicher) startet mit diesem
+/// Speicher. So laufen Matrix und Screenshots durch denselben Code wie die
+/// Produktion.
+class AppSeed {
+  const AppSeed({
+    this.state,
+    this.unreadable = false,
+    this.deleteFirst = false,
+    this.taps = const <String>[],
+  });
+
+  /// Gespeicherter Zustand; `null` = Erststart (nichts gespeichert).
+  final AppState? state;
+
+  /// Der Speicher liefert unlesbaren Inhalt (N-12): Neustart mit Hinweis.
+  final bool unreadable;
+
+  /// Nach dem Laden läuft „Alles löschen“ (echter Löschweg): Onboarding
+  /// Schritt 1 mit dem Hinweis „Alle Daten sind gelöscht.“.
+  final bool deleteFirst;
+
+  /// Screenreader-Labels von Bausteinen, die nach dem Start „getippt“ werden.
+  final List<String> taps;
+}
+
+typedef AppSeedBuilder = AppSeed Function(ScenarioEnv env);
+
 class Scenario {
   const Scenario({
     required this.id,
-    required this.builder,
+    this.builder,
+    this.app,
     this.maxBackdrops = 2,
     this.expectsPrimary = false,
     this.expectsNav = false,
@@ -85,12 +113,22 @@ class Scenario {
     this.expectsHeader = false,
     this.expectsChatFooter = false,
     this.tablet = false,
+    this.keyboard = false,
+    this.transientOverlay = false,
     this.loops = false,
-  });
+  }) : assert(
+         (builder == null) != (app == null),
+         'Genau eines von builder und app',
+       );
 
   /// Kennung für URL (`?scenario=`), Tests und Screenshot-Dateien.
   final String id;
-  final ScenarioBuilder builder;
+
+  /// Baustein-Szenario: ein Widget im Gerüst der Prüfumgebung.
+  final ScenarioBuilder? builder;
+
+  /// App-Szenario: die echte App mit diesem Speicher (siehe [AppSeed]).
+  final AppSeedBuilder? app;
 
   /// Obergrenze `BackdropFilter` (Pfad/Heute 2, Chat/Nachrichten 0, UI-6).
   final int maxBackdrops;
@@ -115,6 +153,19 @@ class Scenario {
 
   /// Zusätzlich bei 768 × 1024 prüfen (ContentFrame, Plan 12.2).
   final bool tablet;
+
+  /// Tastatur-Szenario (Plan 12.4, B-10): die Prüfumgebung blendet eine
+  /// Tastatur von 300 dp ein (`viewInsets.bottom` plus Platzhalterfläche mit
+  /// dem Marker `overlay:keyboard`). Die Matrix prüft es bei 320 × 568 nur
+  /// mit Skalierung 1,0: bei 200 % bleibt über der Tastatur kein Scrollbereich.
+  final bool keyboard;
+
+  /// Zeigt ein zeitlich begrenztes Overlay (Snackbar von 4 s), das bei 320 × 568
+  /// und 200 % fast die ganze Fläche zwischen Kopf und Mikrofon-Zeile deckt
+  /// (Richtwert-Befund „Sichtfläche“). Die Matrix prüft diese Szenarien bei
+  /// 568 dp Höhe nur mit Skalierung 1,0; nach Ablauf bzw. Wegwischen ist der
+  /// Inhalt frei.
+  final bool transientOverlay;
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +597,137 @@ Widget _pipette(BuildContext context, ScenarioEnv env) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// App-Szenarien (U2b): Onboarding und Home-Gerüst
+// ---------------------------------------------------------------------------
+
+LocalDay _today(ScenarioEnv env) => LocalDay.from(env.now);
+
+/// Verletzungsdatum der Beispiel-Szenarien: 3. September 2026.
+const LocalDay _exampleInjuryDay = LocalDay(2026, 9, 3);
+
+AppState _onboardingState(
+  ScenarioEnv env, {
+  int step = 0,
+  String name = '',
+  InjuryType? type,
+  String other = '',
+  LocalDay? date,
+  bool consent = false,
+  bool completed = false,
+}) {
+  return AppState.initial(_today(env)).copyWith(
+    onboarding: OnboardingState(
+      completed: completed,
+      step: step,
+      name: name,
+      injuryType: type,
+      injuryOther: other,
+      injuryDate: date,
+    ),
+    consent: consent
+        ? ConsentState(
+            acceptedAt: env.now.toUtc(),
+            version: ConsentState.kVersion,
+          )
+        : null,
+  );
+}
+
+AppState _completedState(ScenarioEnv env) => _onboardingState(
+  env,
+  step: 3,
+  name: PreviewTexts.nameValue,
+  type: InjuryType.acl,
+  date: _today(env).addDays(-30),
+  consent: true,
+  completed: true,
+);
+
+AppSeed _obEmpty(ScenarioEnv env) => const AppSeed();
+
+AppSeed _obName(ScenarioEnv env) =>
+    AppSeed(state: _onboardingState(env, name: PreviewTexts.nameValue));
+
+AppSeed _obNameKeyboard(ScenarioEnv env) =>
+    AppSeed(state: _onboardingState(env, name: PreviewTexts.nameValue));
+
+AppSeed _obConsent(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(env, step: 1, name: PreviewTexts.nameValue),
+);
+
+AppSeed _obInjuryNone(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    step: 2,
+    name: PreviewTexts.nameValue,
+    consent: true,
+  ),
+);
+
+AppSeed _obInjuryAcl(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    step: 2,
+    name: PreviewTexts.nameValue,
+    type: InjuryType.acl,
+    consent: true,
+  ),
+);
+
+AppState _otherInjury(ScenarioEnv env) => _onboardingState(
+  env,
+  step: 2,
+  name: PreviewTexts.nameValue,
+  type: InjuryType.other,
+  other: PreviewTexts.injuryOtherValue,
+  consent: true,
+);
+
+AppSeed _obInjuryOther(ScenarioEnv env) => AppSeed(state: _otherInjury(env));
+
+AppSeed _obInjuryOtherKeyboard(ScenarioEnv env) =>
+    AppSeed(state: _otherInjury(env));
+
+AppSeed _obDateEmpty(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    step: 3,
+    name: PreviewTexts.nameValue,
+    type: InjuryType.acl,
+    consent: true,
+  ),
+);
+
+AppSeed _obDate(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    step: 3,
+    name: PreviewTexts.nameValue,
+    type: InjuryType.acl,
+    date: _exampleInjuryDay,
+    consent: true,
+  ),
+);
+
+/// Echter Löschweg: gespeicherter Zustand, dann `deleteAll()`.
+AppSeed _obDeleted(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), deleteFirst: true);
+
+/// Echter Neustart-Weg: der Speicher liefert unlesbaren Inhalt.
+AppSeed _obCorrupt(ScenarioEnv env) => const AppSeed(unreadable: true);
+
+/// Mikrofon-Hinweis: Tipp auf den Mikrofon-Button.
+AppSeed _obMicHint(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(env, name: PreviewTexts.nameValue),
+  taps: const <String>[S.micUnavailable],
+);
+
+AppSeed _shellPath(ScenarioEnv env) => AppSeed(state: _completedState(env));
+
+AppSeed _shellToday(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), taps: const <String>[S.navToday]);
+
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
 const List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
@@ -570,6 +752,91 @@ const List<Scenario> kScenarios = <Scenario>[
     expectsNav: true,
   ),
   Scenario(id: 'cmp-pipette', builder: _pipette),
+  Scenario(
+    id: 'ob1-empty',
+    app: _obEmpty,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob1-name',
+    app: _obName,
+    expectsPrimary: true,
+    expectsHeader: true,
+    tablet: true,
+  ),
+  Scenario(
+    id: 'ob1-keyboard',
+    app: _obNameKeyboard,
+    keyboard: true,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob2',
+    app: _obConsent,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob3-none',
+    app: _obInjuryNone,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob3-acl',
+    app: _obInjuryAcl,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob3-other',
+    app: _obInjuryOther,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob3-other-keyboard',
+    app: _obInjuryOtherKeyboard,
+    keyboard: true,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob4-empty',
+    app: _obDateEmpty,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob4-date',
+    app: _obDate,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob1-deleted-snackbar',
+    app: _obDeleted,
+    transientOverlay: true,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob1-corrupt-snackbar',
+    app: _obCorrupt,
+    transientOverlay: true,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob-mic-hint',
+    app: _obMicHint,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(id: 'shell-tab-path', app: _shellPath, expectsNav: true),
+  Scenario(id: 'shell-tab-today', app: _shellToday, expectsNav: true),
 ];
 
 Scenario? scenarioById(String id) {

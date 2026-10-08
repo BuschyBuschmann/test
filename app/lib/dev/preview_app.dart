@@ -11,11 +11,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../app.dart';
+import '../data/data_eraser.dart';
+import '../data/prefs_state_store.dart';
+import '../data/state_store.dart';
+import '../logic/clock.dart';
+import '../logic/manny_text_source.dart';
+import '../state/app_controller.dart';
+import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
 import '../theme/cura_motion.dart';
 import '../theme/cura_theme.dart';
+import '../ui/components/probe_keys.dart';
+import 'preview_script.dart';
+import 'preview_stores.dart';
 import 'preview_texts.dart';
 import 'scenarios.dart';
+
+/// Höhe der eingeblendeten Tastatur in Tastatur-Szenarien (Plan 12.4, B-10).
+const double kPreviewKeyboardHeight = 300;
 
 /// Einstellungen der Preview, aus den URL-Parametern (12.5) oder direkt aus
 /// dem Test.
@@ -29,6 +43,7 @@ class PreviewConfig {
     this.reduceMotion = false,
     this.semantics = false,
     this.dumpText = false,
+    this.live = false,
   });
 
   /// Liest die URL-Parameter `scenario`, `now`, `scale`, `hc`, `rm`, `a11y`,
@@ -43,6 +58,7 @@ class PreviewConfig {
       reduceMotion: flag('rm'),
       semantics: flag('a11y'),
       dumpText: flag('dumpText'),
+      live: flag('live'),
     );
   }
 
@@ -53,6 +69,11 @@ class PreviewConfig {
   final bool reduceMotion;
   final bool semantics;
   final bool dumpText;
+
+  /// Echter Speicher (`shared_preferences`) und Systemuhr statt eines
+  /// Szenario-Seeds: für Reload-Prüfungen und Zeitsprünge im Browser
+  /// (`page.clock`). Das Szenario liefert dann nur noch die Kennung.
+  final bool live;
 
   PreviewConfig copyWith({
     String? scenarioId,
@@ -68,6 +89,7 @@ class PreviewConfig {
       reduceMotion: reduceMotion ?? this.reduceMotion,
       semantics: semantics,
       dumpText: dumpText,
+      live: live,
     );
   }
 }
@@ -79,10 +101,14 @@ class PreviewOverrides extends StatelessWidget {
     super.key,
     required this.config,
     required this.child,
+    this.viewInsetsBottom = 0,
   });
 
   final PreviewConfig config;
   final Widget child;
+
+  /// Eingeblendete Tastatur (Tastatur-Szenarien): `viewInsets.bottom` in dp.
+  final double viewInsetsBottom;
 
   @override
   Widget build(BuildContext context) {
@@ -92,9 +118,31 @@ class PreviewOverrides extends StatelessWidget {
         textScaler: TextScaler.linear(config.textScale),
         highContrast: config.highContrast || base.highContrast,
         disableAnimations: config.reduceMotion || base.disableAnimations,
+        viewInsets: viewInsetsBottom > 0
+            ? EdgeInsets.only(bottom: viewInsetsBottom)
+            : base.viewInsets,
       ),
       child: child,
     );
+    if (viewInsetsBottom > 0) {
+      // Platzhalterfläche für die Tastatur: sichtbar im Screenshot und als
+      // Overlay-Marker für die Matrix (Inhalt muss darüber erreichbar sein).
+      content = Stack(
+        children: <Widget>[
+          Positioned.fill(child: content),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: viewInsetsBottom,
+            child: KeyedSubtree(
+              key: ProbeKeys.keyboard,
+              child: ColoredBox(color: CuraColors.of(context).surfaceOpaque),
+            ),
+          ),
+        ],
+      );
+    }
     if (config.reduceMotion) {
       content = PreviewMotionOverride(reduceMotion: true, child: content);
     }
@@ -119,19 +167,139 @@ class PreviewThemeSelector extends StatelessWidget {
   }
 }
 
-class PreviewApp extends StatelessWidget {
+/// Laufzeit eines App-Szenarios: Controller, Speicher und Startfunktion.
+class _AppRuntime {
+  _AppRuntime._(this.controller, this.seed, this.startup);
+
+  factory _AppRuntime.create(
+    PreviewConfig config,
+    ScenarioEnv env,
+    AppSeed? seed,
+  ) {
+    if (config.live || seed == null) {
+      final Clock clock = DateTime.now;
+      final PrefsStateStore store = PrefsStateStore(clock: clock);
+      return _AppRuntime._(
+        _controller(clock, store, store),
+        seed ?? const AppSeed(),
+        null,
+      );
+    }
+    final DateTime now = env.now;
+    final MemoryStateStore store = seed.unreadable
+        ? UnreadableStateStore()
+        : MemoryStateStore(seed.state);
+    return _AppRuntime._(
+      _controller(() => now, store, store),
+      seed,
+      seed.deleteFirst
+          ? (AppController c) async {
+              await c.load();
+              await c.deleteAll();
+            }
+          : null,
+    );
+  }
+
+  static AppController _controller(
+    Clock clock,
+    StateStore store,
+    DataEraser eraser,
+  ) => AppController(
+    clock: clock,
+    store: store,
+    mannyText: const PlaceholderMannyTextSource(),
+    erasers: <DataEraser>[eraser],
+  );
+
+  final AppController controller;
+  final AppSeed seed;
+  final Future<void> Function(AppController)? startup;
+
+  void dispose() => controller.dispose();
+}
+
+class PreviewApp extends StatefulWidget {
   const PreviewApp({super.key, required this.config});
 
   final PreviewConfig config;
 
   @override
-  Widget build(BuildContext context) {
-    final Scenario? scenario = config.scenarioId == null
-        ? null
-        : scenarioById(config.scenarioId!);
-    final ScenarioEnv env = ScenarioEnv(
-      now: config.now ?? ScenarioEnv.defaultNow,
+  State<PreviewApp> createState() => _PreviewAppState();
+}
+
+class _PreviewAppState extends State<PreviewApp> {
+  _AppRuntime? _runtime;
+
+  Scenario? get _scenario => widget.config.scenarioId == null
+      ? null
+      : scenarioById(widget.config.scenarioId!);
+
+  ScenarioEnv get _env =>
+      ScenarioEnv(now: widget.config.now ?? ScenarioEnv.defaultNow);
+
+  bool _needsApp(PreviewConfig c) =>
+      c.live || (scenarioById(c.scenarioId ?? '')?.app != null);
+
+  @override
+  void initState() {
+    super.initState();
+    _createRuntime();
+  }
+
+  void _createRuntime() {
+    if (!_needsApp(widget.config)) return;
+    _runtime = _AppRuntime.create(
+      widget.config,
+      _env,
+      _scenario?.app?.call(_env),
     );
+  }
+
+  @override
+  void didUpdateWidget(PreviewApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final PreviewConfig a = oldWidget.config;
+    final PreviewConfig b = widget.config;
+    // Overrides (HC, RM, Skalierung) tauschen nur den Wrapper; ein anderes
+    // Szenario, `live` oder `now` bauen die App neu auf.
+    if (a.scenarioId != b.scenarioId || a.live != b.live || a.now != b.now) {
+      _runtime?.dispose();
+      _runtime = null;
+      _createRuntime();
+    }
+  }
+
+  @override
+  void dispose() {
+    _runtime?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final PreviewConfig config = widget.config;
+    final _AppRuntime? runtime = _runtime;
+    if (runtime != null) {
+      return CuraApp(
+        controller: runtime.controller,
+        startup: runtime.startup,
+        previewWrapper: (BuildContext context, Widget child) {
+          return PreviewScript(
+            taps: runtime.seed.taps,
+            child: PreviewOverrides(
+              config: config,
+              viewInsetsBottom: _scenario?.keyboard ?? false
+                  ? kPreviewKeyboardHeight
+                  : 0,
+              child: child,
+            ),
+          );
+        },
+      );
+    }
+    final Scenario? scenario = _scenario;
+    final ScenarioEnv env = _env;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: CuraTheme.build(),
@@ -145,11 +313,11 @@ class PreviewApp extends StatelessWidget {
         );
       },
       home: Scaffold(
-        body: scenario == null
+        body: scenario?.builder == null
             ? const _ScenarioIndex()
             : Builder(
                 builder: (BuildContext context) =>
-                    scenario.builder(context, env),
+                    scenario!.builder!(context, env),
               ),
       ),
     );

@@ -20,6 +20,7 @@ abstract final class PreviewTexts {
   static const String nameValue = 'Jakob';
   static const String dateValue = '3. September 2026';
   static const String yourData = 'Deine Daten';
+  static const String injuryOtherValue = 'Schulter ausgekugelt';
 
   static const String glassCardText =
       'Glas-Karte: kein Blur, innere Lichtkante.';

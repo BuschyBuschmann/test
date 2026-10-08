@@ -1,0 +1,249 @@
+#!/usr/bin/env node
+// Browser-Prüfungen der Navigation (U2b, Plan 4.3, 12.5): Browser-Zurück =
+// Android-Zurück (`page.goBack()`), Reload im Onboarding, Tabwechsel, Zeitsprung
+// über Mitternacht mit der Fake-Uhr (`page.clock.install` + `runFor`).
+//
+//   export PATH=/opt/flutter/bin:$PATH
+//   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
+//   (cd build/web && python3 -m http.server 8765 --bind 127.0.0.1) &
+//   CHROME_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
+//     node tool/screens/nav_checks.mjs [--base=http://127.0.0.1:8765] [--out=DIR]
+//
+// Die App läuft mit `live=1` (echter Speicher = localStorage, Systemuhr, die
+// `page.clock` steuert) und `a11y=1` (Semantik-Baum als ARIA, darüber bedient
+// das Skript die App). Exit-Code 1 bei einem fehlgeschlagenen Punkt.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { launch, openScenario } from './lib.mjs';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const appRoot = path.resolve(here, '..', '..');
+const arg = (name, fallback) => {
+  const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
+  return hit ? hit.slice(name.length + 3) : fallback;
+};
+const base = arg('base', process.env.BASE_URL || 'http://127.0.0.1:8765');
+const outDir = path.resolve(arg('out', path.join(appRoot, 'build', 'screens', 'nav')));
+fs.mkdirSync(outDir, { recursive: true });
+
+const results = [];
+function check(name, ok, detail) {
+  results.push({ name, ok, detail });
+  console.log(`${ok ? 'ok     ' : 'FEHLER '} ${name}${detail ? ' – ' + detail : ''}`);
+}
+
+const ctxOptions = {
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 1,
+  timezoneId: 'Europe/Berlin',
+  locale: 'de-DE',
+};
+const FIXTURE = fs.readFileSync(path.join(appRoot, 'test', 'fixtures', 'state_v1.json'), 'utf8');
+
+/** Flutter-Web setzt Beschriftungen als Textinhalt der `flt-semantics`-Knoten. */
+const textNode = (page, text) => page.getByText(text, { exact: false }).first();
+/** Wartet, bis im Semantik-Baum ein Knoten mit diesem (Teil-)Text steht. */
+async function seen(page, text, timeout = 8000) {
+  try {
+    await textNode(page, text).waitFor({ state: 'attached', timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function gone(page, text, timeout = 4000) {
+  try {
+    await textNode(page, text).waitFor({ state: 'detached', timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const button = (page, name) => page.locator('flt-semantics[role="button"]', { hasText: name }).first();
+async function click(page, name) {
+  const b = button(page, name);
+  await b.waitFor({ state: 'attached', timeout: 8000 });
+  await b.click({ force: true });
+  await page.waitForTimeout(450);
+}
+async function shot(page, name) {
+  await page.screenshot({ path: path.join(outDir, `${name}.png`) });
+}
+/** Zählt die History-Einträge, die `goBack` noch erreicht. */
+const historyLength = (page) => page.evaluate(() => history.length);
+
+const browser = await launch();
+
+// 1. Onboarding live: Weiter, Weiter, Zurück per Browser, Reload -------------
+{
+  const ctx = await browser.newContext(ctxOptions);
+  const s = await openScenario(
+    ctx,
+    base,
+    { scenario: 'ob1-empty', live: 1, a11y: 1 },
+    { clock: 'none' },
+  );
+  const page = s.page;
+  check('Start (live): Onboarding Schritt 1', await seen(page, 'Schritt 1 von 4'));
+  const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
+  const hasInput = (await field.count()) > 0;
+  check('Namensfeld im Semantik-Baum vorhanden', hasInput);
+  if (hasInput) {
+    await field.click({ force: true });
+    await page.keyboard.type('Jakob');
+    await page.waitForTimeout(300);
+  }
+  await click(page, 'Weiter');
+  check('Weiter → Schritt 2 von 4', await seen(page, 'Schritt 2 von 4'));
+  await click(page, 'Verstanden, weiter');
+  check('Verstanden, weiter → Schritt 3 von 4', await seen(page, 'Schritt 3 von 4'));
+  await shot(page, 'ob-schritt3');
+
+  // Reload (live = localStorage): Fortsetzen am gespeicherten Schritt (UI-16).
+  await page.reload();
+  check('Reload: Onboarding setzt bei Schritt 3 fort (UI-16)', await seen(page, 'Schritt 3 von 4', 15000));
+  check('Reload: Manny-Text mit dem Namen', await seen(page, 'Jakob'));
+  await shot(page, 'ob-reload-schritt3');
+
+  // Browser-Zurück wie Android-Zurück: je Schritt einen Schritt (Plan 4.3, n6).
+  const before = await historyLength(page);
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check(
+    'Browser-Zurück auf Schritt 3 → Schritt 2 (wie Android-Zurück)',
+    await seen(page, 'Schritt 2 von 4'),
+    `history.length ${before}`,
+  );
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück auf Schritt 2 → Schritt 1', await seen(page, 'Schritt 1 von 4'));
+  // Die Semantik-Eingabe spiegelt den Text erst, wenn das Feld Fokus hat.
+  await page.locator('input[data-semantics-role="text-field"]:not([disabled])').first().click({ force: true });
+  await page.waitForTimeout(400);
+  const typed = await page.evaluate(() => document.activeElement?.value ?? null);
+  check('Name blieb erhalten (Zurück behält Eingaben)', typed === 'Jakob', JSON.stringify(typed));
+
+  // Auf Schritt 1: Android-Zurück schließt die App (`SystemNavigator.pop`). Im Web
+  // ist das `history.back()`: die Seite wird verlassen (Plan 4.3 nahm „bleibt
+  // stehen“ an; hier gemessen, siehe Bericht).
+  const urlBefore = page.url();
+  await page.goBack();
+  await page.waitForTimeout(800);
+  const stayed = page.url() === urlBefore && (await seen(page, 'Schritt 1 von 4', 1500));
+  console.log(
+    `info    Browser-Zurück auf Schritt 1: ${stayed ? 'Seite bleibt stehen' : 'Seite wird verlassen'} (URL ${urlBefore} → ${page.url()})`,
+  );
+  results.push({ name: 'Browser-Zurück auf Schritt 1', ok: null, detail: stayed ? 'bleibt stehen' : `verlässt die Seite (${page.url()})` });
+  await ctx.close();
+}
+
+// 2. Home: Tabs, Browser-Zurück Heute → Pfad ---------------------------------
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
+  const page = s.page;
+  check('Home startet auf Tab Pfad (A-1)', await seen(page, 'Dein Pfad'));
+  check('Home: Nav mit Pfad und Heute', (await button(page, 'Heute').count()) > 0 && (await button(page, 'Pfad').count()) > 0);
+  await click(page, 'Heute');
+  check('Tab Heute zeigt „Heute, Jakob“', await seen(page, 'Heute, Jakob'));
+  await shot(page, 'home-heute');
+  await page.goBack();
+  await page.waitForTimeout(600);
+  check('Browser-Zurück auf Heute → Tab Pfad', await seen(page, 'Dein Pfad'));
+  const homeUrl = page.url();
+  await page.goBack();
+  await page.waitForTimeout(800);
+  const homeStayed = page.url() === homeUrl && (await seen(page, 'Dein Pfad', 1500));
+  console.log(`info    Browser-Zurück auf Pfad: ${homeStayed ? 'Seite bleibt stehen' : 'Seite wird verlassen'} (URL ${homeUrl} → ${page.url()})`);
+  results.push({ name: 'Browser-Zurück auf Pfad', ok: null, detail: homeStayed ? 'bleibt stehen' : `verlässt die Seite (${page.url()})` });
+  await ctx.close();
+}
+
+// 3. Tageswechsel mit der Fake-Uhr (page.clock) -------------------------------
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
+  const page = s.page;
+  check('Zeitsprung: Home geladen', await seen(page, 'Dein Pfad'));
+  await page.clock.runFor(30000); // 30 s: über Mitternacht
+  await page.waitForTimeout(300);
+  const date = await page.evaluate(() => new Date().toString());
+  check('page.clock: Datum ist der 8. Oktober', date.includes('Oct 08'), date.slice(0, 24));
+  await click(page, 'Heute');
+  check(
+    'Tabwechsel auf Heute nach Mitternacht: Snackbar „Neuer Tag, neues Programm.“ (A-31, UI-44)',
+    await seen(page, 'Neuer Tag, neues Programm.', 10000),
+  );
+  await shot(page, 'tageswechsel-snackbar');
+  // Mit aktivem Semantik-Baum (a11y=1) gilt `accessibleNavigation`: die Snackbar
+  // schließt nicht von selbst (Ergänzung 1, 3.3). Das Verhalten steht hier fest.
+  await page.clock.runFor(8000);
+  check(
+    'a11y aktiv: Snackbar bleibt stehen (kein Timer bei accessibleNavigation)',
+    await seen(page, 'Neuer Tag, neues Programm.', 1500),
+  );
+  await ctx.close();
+}
+
+// 3b. Dieselbe Snackbar ohne Semantik-Baum: endet nach 5 s (Pixelvergleich) ------
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
+  const page = s.page;
+  await page.clock.runFor(30000);
+  await page.mouse.click(284, 790); // Nav-Eintrag „Heute“
+  await page.waitForTimeout(600);
+  const withSnackbar = await page.screenshot();
+  await page.clock.runFor(6000);
+  await page.waitForTimeout(500);
+  const afterTimeout = await page.screenshot();
+  await page.waitForTimeout(1200);
+  const stable = await page.screenshot();
+  fs.writeFileSync(path.join(outDir, 'tageswechsel-snackbar-ohne-a11y.png'), withSnackbar);
+  check(
+    'ohne a11y: Snackbar endet nach 5 s (Bild ändert sich, danach stabil)',
+    Buffer.compare(withSnackbar, afterTimeout) !== 0 && Buffer.compare(afterTimeout, stable) === 0,
+  );
+  await ctx.close();
+}
+
+// 4. Tageswechsel beim Fortsetzen (visibilitychange) ----------------------------
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
+  const page = s.page;
+  await seen(page, 'Dein Pfad');
+  await click(page, 'Heute');
+  await seen(page, 'Heute, Jakob');
+  // Seite „im Hintergrund“, Uhr über Mitternacht, dann zurück.
+  await page.evaluate(() => {
+    let state = 'hidden';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => state === 'hidden' });
+    window.__setVisibility = (v) => {
+      state = v;
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    window.__setVisibility('hidden');
+  });
+  await page.clock.runFor(30000);
+  await page.evaluate(() => window.__setVisibility('visible'));
+  const resumed = await seen(page, 'Neuer Tag, neues Programm.', 10000);
+  console.log(
+    `${resumed ? 'ok     ' : 'info   '} Fortsetzen (visibilitychange hidden → visible) über Mitternacht auf Heute: Snackbar ${resumed ? 'erscheint' : 'erscheint nicht (Web-Lebenszyklus nicht auslösbar; Resume per Widget-Test)'}`,
+  );
+  results.push({ name: 'Fortsetzen über visibilitychange', ok: null, detail: resumed ? 'Snackbar' : 'nicht ausgelöst' });
+  await ctx.close();
+}
+
+await browser.close();
+const bad = results.filter((r) => r.ok === false);
+console.log(`\n${results.filter((r) => r.ok !== null).length - bad.length}/${results.filter((r) => r.ok !== null).length} ohne Fehler`);
+fs.writeFileSync(path.join(outDir, 'nav_checks.json'), JSON.stringify(results, null, 2));
+process.exit(bad.length ? 1 : 0);

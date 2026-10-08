@@ -22,11 +22,26 @@
     "cmp-manny",
     "cmp-nav-cluster",
     "cmp-snackbar",
-    "cmp-pipette"
+    "cmp-pipette",
+    "ob1-empty",
+    "ob1-name",
+    "ob1-keyboard",
+    "ob2",
+    "ob3-none",
+    "ob3-acl",
+    "ob3-other",
+    "ob3-other-keyboard",
+    "ob4-empty",
+    "ob4-date",
+    "ob1-deleted-snackbar",
+    "ob1-corrupt-snackbar",
+    "ob-mic-hint",
+    "shell-tab-path",
+    "shell-tab-today"
   ],
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
-    "scenarios": ["cmp-forms", "cmp-surfaces", "cmp-nav-cluster"]
+    "scenarios": ["cmp-forms", "cmp-surfaces", "cmp-nav-cluster", "ob1-name"]
   },
   "landscape": {
     "viewports": [
@@ -40,7 +55,7 @@
     "all": ["achromatopsia"],
     "colorBlind": {
       "types": ["protanopia", "deuteranopia", "tritanopia"],
-      "scenarios": ["cmp-forms", "cmp-nav-cluster", "cmp-surfaces"]
+      "scenarios": ["cmp-forms", "cmp-nav-cluster", "cmp-surfaces", "ob3-acl"]
     }
   },
   "pipette": {
