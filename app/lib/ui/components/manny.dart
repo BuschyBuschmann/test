@@ -57,8 +57,10 @@ abstract final class MannyGeometry {
   static const double height = 120;
   static const double baseline = 118;
 
-  /// Zuschnitt „Kopf“: Quadrat um Kopf und Schnabel.
-  static const Rect headRect = Rect.fromLTWH(16, 14, 68, 68);
+  /// Zuschnitt „Kopf“: Quadrat um Kopf und Schnabel; die Zeichnung wird auf
+  /// den einbeschriebenen Kreis begrenzt (Körper läuft bis zum Rand, keine
+  /// harte Waagerechte), Flügel entfallen. Oberkante 10: Kopf optisch mittig.
+  static const Rect headRect = Rect.fromLTWH(16, 10, 68, 68);
   static const Rect fullRect = Rect.fromLTWH(0, 0, width, height);
 
   static const Rect body = Rect.fromLTRB(16, 22, 84, 114);
@@ -114,6 +116,19 @@ class MannyPlaceholder extends StatefulWidget {
   /// Bild-Label ausblenden (Manny-Button und Emblem tragen ihr eigenes Label).
   final bool excludeSemantics;
 
+  /// Zusätzlicher Platz um die Zeichnung, wenn Manny tippbar ist: links, rechts
+  /// und oben der Trefferrand bzw. so viel, dass das Mindestquadrat Platz hat;
+  /// unten nichts (Standlinie). Der Besitzer rechnet damit beim Platzieren.
+  static EdgeInsets tapInsets(
+    Size size, {
+    double margin = CuraSize.mannyHitMargin,
+    double minSide = CuraSize.touchTarget,
+  }) {
+    final double x = math.max(margin, (minSide - size.width) / 2);
+    final double top = math.max(margin, minSide - size.height);
+    return EdgeInsets.fromLTRB(x, top, x, 0);
+  }
+
   /// Größe in dp für eine Höhe.
   static Size sizeFor(MannyCrop crop, double height) {
     final Rect r = MannyGeometry.cropRect(crop);
@@ -165,7 +180,9 @@ class MannyPlaceholder extends StatefulWidget {
       height: minSide,
     );
     local = Path.combine(PathOperation.union, local, Path()..addRect(minRect));
-    final Path clip = Path()..addRect(Rect.fromLTRB(0, 0, size.width, baseY));
+    // Nur unten an der Standlinie schneiden; links, rechts und oben darf die
+    // Fläche über die Zeichnung hinausreichen (Rand, Mindestquadrat).
+    final Path clip = Path()..addRect(Rect.fromLTRB(-1e5, -1e5, 1e5, baseY));
     return Path.combine(PathOperation.intersect, local, clip);
   }
 
@@ -185,13 +202,20 @@ class _MannyPlaceholderState extends State<MannyPlaceholder> {
     final CuraColors colors = CuraColors.of(context);
     final Size size = MannyPlaceholder.sizeFor(widget.crop, widget.height);
     final bool tappable = widget.onTap != null;
+    // Tippbar: Die Zeichenfläche wird um [tapInsets] größer, damit der 8-dp-
+    // Rand und das 48-dp-Mindestquadrat auch außerhalb der Form (und der
+    // Widget-Grenze) Treffer liefern (Flutter trifft nur innerhalb der Box).
+    final EdgeInsets insets = tappable
+        ? MannyPlaceholder.tapInsets(size)
+        : EdgeInsets.zero;
     Widget art = CustomPaint(
-      size: size,
+      size: Size(size.width + insets.horizontal, size.height + insets.vertical),
       painter: _MannyPainter(
         colors: colors,
         pose: widget.pose,
         crop: widget.crop,
         size: size,
+        inset: Offset(insets.left, insets.top),
         pressed: _pressed && tappable,
         hit: tappable,
       ),
@@ -222,6 +246,7 @@ class _MannyPainter extends CustomPainter {
     required this.pose,
     required this.crop,
     required this.size,
+    required this.inset,
     required this.pressed,
     required this.hit,
   });
@@ -229,7 +254,10 @@ class _MannyPainter extends CustomPainter {
   final CuraColors colors;
   final MannyPose pose;
   final MannyCrop crop;
+
+  /// Größe der Zeichnung (ohne Trefferrand) und ihr Versatz in der Fläche.
   final Size size;
+  final Offset inset;
   final bool pressed;
   final bool hit;
 
@@ -239,14 +267,20 @@ class _MannyPainter extends CustomPainter {
       _hitPath ??= MannyPlaceholder.hitPath(size: size, pose: pose, crop: crop);
 
   @override
-  bool? hitTest(Offset position) => hit ? _path.contains(position) : false;
+  bool? hitTest(Offset position) =>
+      hit ? _path.contains(position - inset) : false;
 
   @override
   void paint(Canvas canvas, Size size) {
     final Rect view = MannyGeometry.cropRect(crop);
-    final double s = size.height / view.height;
+    final double s = this.size.height / view.height;
     canvas.save();
-    canvas.clipRect(Offset.zero & size);
+    canvas.translate(inset.dx, inset.dy);
+    if (crop == MannyCrop.head) {
+      canvas.clipPath(Path()..addOval(Offset.zero & this.size));
+    } else {
+      canvas.clipRect(Offset.zero & this.size);
+    }
     canvas.scale(s);
     canvas.translate(-view.left, -view.top);
 
@@ -270,7 +304,9 @@ class _MannyPainter extends CustomPainter {
     }
 
     // Flügel und Körper.
-    final List<MannyWing> wings = MannyGeometry.wings(pose);
+    final List<MannyWing> wings = crop == MannyCrop.head
+        ? const <MannyWing>[]
+        : MannyGeometry.wings(pose);
     for (final MannyWing w in wings) {
       canvas.drawPath(w.path(), fill..color = colors.mannyBody);
       canvas.drawPath(w.path(), line);
@@ -335,6 +371,7 @@ class _MannyPainter extends CustomPainter {
       old.pose != pose ||
       old.crop != crop ||
       old.size != size ||
+      old.inset != inset ||
       old.pressed != pressed ||
       old.hit != hit;
 }

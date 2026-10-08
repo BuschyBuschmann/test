@@ -1,8 +1,10 @@
 // Abgeleitete Farbrollen und Maße der geteilten Bausteine (U2a). Ablage der
 // Brief-Werte aus Brief 3.1/3.5/5 und Ergänzung 1/2 (Plan 14, MINOR-6): keine
-// neuen Design-Tokens, nur Namen für Werte, die `tokens.dart` und
-// `cura_metrics.dart` schon als Rohwerte führen. Außerhalb von `lib/theme/`
-// gilt KONVENTIONEN Regel 1.
+// neuen Design-Tokens, sondern Namen für Brief-Werte. Teils stehen sie schon
+// in `tokens.dart`/`cura_metrics.dart`; einige Maße (z. B. 280, 140, 2,5,
+// 100 ms) sind hier erstmals als Literale abgelegt und stammen aus den Briefs
+// (Sprechblase 5.6, Fortschrittskreis, Snackbar-Takt). Außerhalb von
+// `lib/theme/` gilt KONVENTIONEN Regel 1.
 import 'package:flutter/painting.dart';
 
 import 'cura_colors.dart';

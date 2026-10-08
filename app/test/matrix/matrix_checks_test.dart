@@ -7,7 +7,9 @@ import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/glass_card.dart';
+import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/messages_button.dart';
 
 import 'dart:ui' show ImageFilter;
 
@@ -28,15 +30,26 @@ Widget _tap(double w, double h, {Key? key}) => Semantics(
   onTap: () {},
   child: GestureDetector(
     behavior: HitTestBehavior.opaque,
+    excludeFromSemantics: true,
     onTap: () {},
     child: SizedBox(width: w, height: h),
   ),
 );
 
-Scenario _scenario({bool primary = false}) => Scenario(
+Scenario _scenario({
+  bool primary = false,
+  bool nav = false,
+  bool cluster = false,
+  bool header = false,
+  bool chatFooter = false,
+}) => Scenario(
   id: 'synthetisch',
   builder: (BuildContext c, ScenarioEnv e) => const SizedBox(),
   expectsPrimary: primary,
+  expectsNav: nav,
+  expectsCluster: cluster,
+  expectsHeader: header,
+  expectsChatFooter: chatFooter,
 );
 
 ProbedText _text(
@@ -110,7 +123,7 @@ void main() {
           ],
         ),
       );
-      expect(checkTapTargetGaps(tester), isNotEmpty);
+      expect(await checkTapTargetGaps(tester), isNotEmpty);
       await pump(
         tester,
         Column(
@@ -121,7 +134,7 @@ void main() {
           ],
         ),
       );
-      expect(checkTapTargetGaps(tester), isEmpty);
+      expect(await checkTapTargetGaps(tester), isEmpty);
     });
 
     testWidgets('verschachtelte Tap-Ziele zählen nicht', (
@@ -140,7 +153,7 @@ void main() {
           ),
         ),
       );
-      expect(checkTapTargetGaps(tester), isEmpty);
+      expect(await checkTapTargetGaps(tester), isEmpty);
     });
 
     testWidgets('Schriftgröße und Gewicht', (WidgetTester tester) async {
@@ -246,7 +259,7 @@ void main() {
         ],
       );
       await pump(tester, board());
-      expect(checkZones(tester), isEmpty);
+      expect(checkZones(tester, _scenario()), isEmpty);
 
       await pump(
         tester,
@@ -262,7 +275,7 @@ void main() {
         ),
       );
       expect(
-        checkZones(tester).map((Finding f) => f.check),
+        checkZones(tester, _scenario()).map((Finding f) => f.check),
         contains('Zone unten links frei'),
       );
 
@@ -273,14 +286,14 @@ void main() {
             right: 80,
             bottom: 200,
             child: KeyedSubtree(
-              key: PreviewKeys.snackbar,
+              key: const ValueKey<String>('overlay:snackbar'),
               child: const SizedBox(width: 120, height: 40),
             ),
           ),
         ),
       );
       expect(
-        checkZones(tester).map((Finding f) => f.check),
+        checkZones(tester, _scenario()).map((Finding f) => f.check),
         contains('Zone unten rechts nur Gruppe'),
       );
 
@@ -300,7 +313,7 @@ void main() {
         ),
       );
       expect(
-        checkZones(tester).map((Finding f) => f.check),
+        checkZones(tester, _scenario()).map((Finding f) => f.check),
         contains('Button-Gruppe sichtbar'),
       );
     });
@@ -330,7 +343,7 @@ void main() {
         ),
       );
       expect(
-        checkZones(tester).map((Finding f) => f.check),
+        checkZones(tester, _scenario()).map((Finding f) => f.check),
         contains('Blase/Hinweis überdeckt Gruppe nicht'),
       );
     });
@@ -363,7 +376,7 @@ void main() {
           ],
         ),
       );
-      final List<Finding> f = checkVisibleArea(tester);
+      final List<Finding> f = checkVisibleArea(tester, _scenario());
       expect(f, hasLength(1));
       expect(f.single.advisory, isTrue);
     });
@@ -424,9 +437,9 @@ void main() {
         ),
       );
       await pump(tester, footer(500));
-      expect(checkChatFooter(tester), isNotEmpty);
+      expect(checkChatFooter(tester, _scenario()), isNotEmpty);
       await pump(tester, footer(300));
-      expect(checkChatFooter(tester), isEmpty);
+      expect(checkChatFooter(tester, _scenario()), isEmpty);
     });
   });
 
@@ -679,6 +692,281 @@ void main() {
         expect(raw.reason, contains('2.2'));
         // ... die Matrix-Prüfung lässt sie nur dort zu.
         expect(await checkTextContrast(tester), isEmpty);
+      },
+    );
+  });
+  group('Gegenproben aus Review R-U2 (E1 bis E4)', () {
+    Widget navOverlay() => Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 100,
+      child: KeyedSubtree(
+        key: PreviewKeys.nav,
+        child: const AbsorbPointer(child: ColoredBox(color: Colors.black)),
+      ),
+    );
+
+    Widget lazyList(double endPad) => Stack(
+      children: <Widget>[
+        ListView.builder(
+          key: PreviewKeys.scroll,
+          padding: EdgeInsets.only(bottom: endPad),
+          itemCount: 40,
+          itemExtent: 56,
+          addSemanticIndexes: false,
+          itemBuilder: (BuildContext c, int i) => Center(child: _tap(300, 48)),
+        ),
+        navOverlay(),
+      ],
+    );
+
+    testWidgets(
+      'E2/MAJOR-1: lazy ListView.builder ohne Endabstand wird erkannt',
+      (WidgetTester tester) async {
+        await pump(tester, lazyList(0));
+        // Nur ein Teil der 40 Einträge ist gebaut: der Scan muss den ganzen Weg gehen.
+        final List<Finding> f = await checkReachability(tester);
+        expect(f, isNotEmpty, reason: 'letzte Einträge liegen unter der Nav');
+        await pump(tester, lazyList(100));
+        expect(await checkReachability(tester), isEmpty);
+      },
+    );
+
+    testWidgets('MAJOR-1: Abstandsprüfung sieht auch nicht gebaute Einträge', (
+      WidgetTester tester,
+    ) async {
+      Widget list(int tight) => ListView.builder(
+        key: PreviewKeys.scroll,
+        itemCount: 40,
+        itemExtent: 56,
+        addSemanticIndexes: false,
+        itemBuilder: (BuildContext c, int i) =>
+            Center(child: _tap(300, i == tight ? 54 : 48)),
+      );
+      await pump(tester, list(30));
+      expect(
+        await checkTapTargetGaps(tester),
+        isNotEmpty,
+        reason: 'Eintrag 30: 2 dp',
+      );
+      await pump(tester, list(-1));
+      expect(await checkTapTargetGaps(tester), isEmpty);
+    });
+
+    testWidgets(
+      'Punkt 5: fester Kopf-Button gegen Listeneintrag in der Ruhelage',
+      (WidgetTester tester) async {
+        Widget board(double top) => Stack(
+          children: <Widget>[
+            SingleChildScrollView(
+              key: PreviewKeys.scroll,
+              padding: EdgeInsets.only(top: top),
+              child: Column(children: <Widget>[_tap(300, 48)]),
+            ),
+            Positioned(left: 0, top: 0, child: _tap(48, 48)),
+          ],
+        );
+        await pump(tester, board(50));
+        expect(await checkTapTargetGaps(tester), isNotEmpty);
+        await pump(tester, board(56));
+        expect(await checkTapTargetGaps(tester), isEmpty);
+      },
+    );
+
+    Widget navDemo() => Align(
+      alignment: Alignment.bottomCenter,
+      child: KeyedSubtree(
+        key: PreviewKeys.nav,
+        child: FloatingNav(
+          currentIndex: 0,
+          onSelected: (_) {},
+          items: const <NavItem>[
+            NavItem(icon: Icons.route_rounded, label: 'Pfad'),
+            NavItem(icon: Icons.event_available_rounded, label: 'Heute'),
+          ],
+        ),
+      ),
+    );
+
+    Widget grey(String t, double top) => Positioned(
+      left: 20,
+      top: top,
+      child: ColoredBox(
+        color: const Color(0xFF222222),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            t,
+            style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 16),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets(
+      'E3/MAJOR-2: gleichnamiger Inhaltstext mit 2,6:1 bleibt ein Befund',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          Stack(
+            children: <Widget>[
+              grey('Heute', 100),
+              grey('Woche', 200),
+              navDemo(),
+            ],
+          ),
+        );
+        final List<Finding> f = await checkTextContrast(tester);
+        final String all = f.map((Finding x) => x.message).join('\n');
+        expect(
+          all,
+          contains('"Heute"'),
+          reason: 'Inhaltstext "Heute" darf nicht durch die Nav-Ausnahme verschwinden',
+        );
+        expect(all, contains('"Woche"'));
+      },
+    );
+
+    testWidgets(
+      'MAJOR-2: echter 2,x-Verstoß in der Nav-Zeile außerhalb der Nav bleibt',
+      (WidgetTester tester) async {
+        // Gleicher Name wie der aktive Eintrag („Pfad“), aber außerhalb der Nav.
+        await pump(
+          tester,
+          Stack(children: <Widget>[grey('Pfad', 100), navDemo()]),
+        );
+        final List<Finding> f = await checkTextContrast(tester);
+        expect(f.map((Finding x) => x.message).join(), contains('"Pfad"'));
+      },
+    );
+
+    testWidgets(
+      'E4/MAJOR-3: Marker fehlt bei gesetztem Flag, Bubble in Zone ohne Gruppe',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          Stack(
+            children: <Widget>[
+              navOverlay(),
+              Positioned(
+                left: 16,
+                bottom: 110,
+                child: KeyedSubtree(
+                  key: PreviewKeys.bubble,
+                  child: const SizedBox(width: 100, height: 40),
+                ),
+              ),
+            ],
+          ),
+        );
+        final Set<String> withFlag = checkZones(
+          tester,
+          _scenario(nav: true, cluster: true),
+        ).map((Finding f) => f.check).toSet();
+        expect(withFlag, contains('Marker fehlt'));
+        // Nav-Marker fehlt bei gesetztem Flag.
+        await pump(tester, const SizedBox());
+        expect(
+          checkZones(tester, _scenario(nav: true)).map((Finding f) => f.check),
+          contains('Marker fehlt'),
+        );
+        expect(
+          checkVisibleArea(
+            tester,
+            _scenario(header: true),
+          ).map((Finding f) => f.check),
+          contains('Marker fehlt'),
+        );
+        expect(
+          checkChatFooter(
+            tester,
+            _scenario(chatFooter: true),
+          ).map((Finding f) => f.check),
+          contains('Marker fehlt'),
+        );
+        expect(checkZones(tester, _scenario()), isEmpty);
+      },
+    );
+
+    testWidgets('Snackbar-Leiste zählt als Overlay, nicht der Vollbild-Host', (
+      WidgetTester tester,
+    ) async {
+      final Scenario snack = scenarioById('cmp-snackbar')!;
+      await pumpScenario(tester, snack);
+      final Rect? r = overlayRects()['snackbar'];
+      expect(r, isNotNull);
+      expect(r!.height, lessThan(120));
+      expect(r.width, lessThan(viewSize(tester).width));
+    });
+  });
+
+  group('Text-Sonde: Untergrund und Verdeckung (R-U2 Punkt 12)', () {
+    testWidgets('ActionCircle ist eine deckende Fläche', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        Stack(
+          children: <Widget>[
+            const Positioned.fill(child: GlowBackground()),
+            Positioned(
+              left: 8,
+              top: 8,
+              child: MessagesButton(onPressed: () {}),
+            ),
+          ],
+        ),
+      );
+      final TextProbe p = probe(tester);
+      final Iterable<ProbedText> icons = p.texts.where(
+        (ProbedText t) => t.isIcon,
+      );
+      expect(icons, isNotEmpty);
+      for (final ProbedText t in icons) {
+        expect(t.ground, TextGround.opaque);
+        expect(t.glowAlpha, 0);
+      }
+    });
+
+    testWidgets(
+      'Text unter einer anderen Route (Scrim) zählt nicht als sichtbar',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          Builder(
+            builder: (BuildContext context) => Column(
+              children: <Widget>[
+                const Text('Unten'),
+                TextButton(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const Dialog(child: Text('Oben')),
+                  ),
+                  child: const Text('Öffnen'),
+                ),
+              ],
+            ),
+          ),
+        );
+        expect(
+          probe(tester).texts
+              .firstWhere((ProbedText t) => t.text == 'Unten')
+              .onScreen,
+          isTrue,
+        );
+        await tester.tap(find.text('Öffnen'));
+        await tester.pumpAndSettle();
+        final TextProbe p = probe(tester);
+        expect(
+          p.texts.firstWhere((ProbedText t) => t.text == 'Oben').onScreen,
+          isTrue,
+        );
+        expect(
+          p.texts.firstWhere((ProbedText t) => t.text == 'Unten').onScreen,
+          isFalse,
+          reason: 'unter dem Scrim',
+        );
       },
     );
   });

@@ -28,7 +28,6 @@ Future<void> _tapEveryTarget(
 ) async {
   final List<TapTarget> targets = tapTargets(tester)
       .where((TapTarget t) => !t.isTextField && !t.hidden)
-      .take(12)
       .toList();
   final Rect view = Offset.zero & viewSize(tester);
   for (final TapTarget t in targets) {
@@ -58,14 +57,14 @@ void main() {
             final List<Finding> f = <Finding>[
               ...takeLayoutExceptions(tester),
               ...await checkTapTargetSize(tester),
-              ...checkTapTargetGaps(tester),
+              ...await checkTapTargetGaps(tester),
               ...checkTextStyles(probe(tester)),
               ...checkPrimary(tester, s),
-              ...checkZones(tester),
-              ...checkVisibleArea(tester),
+              ...checkZones(tester, s),
+              ...checkVisibleArea(tester, s),
               ...await checkReachability(tester),
               ...checkBackdrops(tester, s.maxBackdrops),
-              ...checkChatFooter(tester),
+              ...checkChatFooter(tester, s),
               ...checkGlowRule(probe(tester), colorsFor(hc: false), size),
               ...takeLayoutExceptions(tester),
             ];

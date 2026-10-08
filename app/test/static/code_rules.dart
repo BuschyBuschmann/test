@@ -25,6 +25,10 @@ const Set<String> kAccentTextAllowlist = <String>{};
 
 /// Regel 10: `Sie` am Satzanfang ist mehrdeutig; erlaubte Texte mit Begründung
 /// (derzeit leer).
+/// Texte, die einen Begriff der Beobachtungsliste (Regel 10, Stufe 2) enthalten
+/// dürfen, mit Begründung. Derzeit leer.
+const Map<String, String> kToneWatchAllowlist = <String, String>{};
+
 const Map<String, String> kSieAllowlist = <String, String>{};
 
 /// Regel 11: Dateien, in denen `maxLines` erlaubt ist (mit Tooltip-Alternative;
@@ -624,8 +628,18 @@ final RegExp _r10Ihr = RegExp(
   r'\b(?:Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres|Ihnen)\b',
 );
 final RegExp _r10Sie = RegExp(r'\bSie\b');
+// Stufe 1: verboten (Nutzerentscheidung 2026-10-08; „therapie“ allein bewusst
+// nicht, wegen „Physiotherapie“).
 final RegExp _r10Clinical = RegExp(
-  r'\b(?:patient|indikation|therapieplan|compliance|proband)',
+  r'\b(?:patient|indikation|therapieplan|compliance|proband|adh[äa]e?renz|'
+  r'kontraindikation|behandlungsplan|klient|rehabilitand|pathologi|anamnes)',
+  caseSensitive: false,
+);
+
+// Stufe 2: Beobachtungsliste. Treffer sind nur mit begründetem Eintrag in
+// [kToneWatchAllowlist] erlaubt (Schlüssel: kompletter Text), sonst Fehler.
+final RegExp _r10Watch = RegExp(
+  r'\b(?:diagnos|symptom|befund|medikation|dosierung|läsion|ruptur)',
   caseSensitive: false,
 );
 
@@ -674,6 +688,19 @@ List<Violation> checkRule10(Map<String, String> files) {
           'klinischer Begriff „${m.group(0)}“ in „$text“',
         ),
       );
+    }
+    if (!kToneWatchAllowlist.containsKey(text)) {
+      for (final RegExpMatch m in _r10Watch.allMatches(text)) {
+        out.add(
+          Violation(
+            10,
+            kStringsFile,
+            line,
+            'Beobachtungsbegriff „${m.group(0)}“ in „$text“ (nur mit '
+            'begründetem Allowlist-Eintrag erlaubt)',
+          ),
+        );
+      }
     }
   }
   return out;

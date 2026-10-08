@@ -123,6 +123,9 @@ async function runShot(worker, job) {
   const s = await openScenario(ctx, base, { ...job.params, dumpText: 1 }, { clock, now: config.now });
   try {
     if (!s.ready) problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht bereit (Timeout)`);
+    if (s.ready && s.settled === false && !s.env?.loops) {
+      problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht zur Ruhe gekommen (Animation läuft weiter, Szenario nicht als loops markiert)`);
+    }
     if (s.error) problems.push(`${job.variant}/${job.vp.name}/${job.id}: ${s.error.slice(0, 200)}`);
     const png = await s.page.screenshot();
     const rel = save(path.join(job.variant, job.vp.name, `${job.id}.png`), png);
@@ -172,6 +175,11 @@ async function measureContrast(png, dump, job) {
       status: ratio === null ? 'n/a' : ratio >= (t.isIcon ? config.contrast.minRatioIcon : config.contrast.minRatio) ? 'ok' : 'FEHLER',
     };
     rows.push(row);
+    if (row.status === 'n/a') {
+      problems.push(
+        `Kontrast ${job.variant}/${job.vp.name}/${job.id} ${row.kind === 'icon' ? 'Symbol' : `„${row.text}“`}: nicht messbar (${m.n} Messpunkte < 20)`,
+      );
+    }
     if (row.status === 'FEHLER') {
       problems.push(
         `Kontrast ${job.variant}/${job.vp.name}/${job.id} ${row.kind === 'icon' ? 'Symbol' : `„${row.text}“`}: ${ratio.toFixed(2)} < ${row.limit}`,

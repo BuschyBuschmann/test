@@ -40,11 +40,11 @@ import 'preview_texts.dart';
 abstract final class PreviewKeys {
   static const ValueKey<String> nav = ValueKey<String>('overlay:nav');
   static const ValueKey<String> cluster = ValueKey<String>('overlay:cluster');
-  static const ValueKey<String> snackbar = ValueKey<String>('overlay:snackbar');
   static const ValueKey<String> primaryRow = ValueKey<String>(
     'overlay:primary-row',
   );
   static const ValueKey<String> bubble = ValueKey<String>('overlay:bubble');
+  static const ValueKey<String> hint = ValueKey<String>('overlay:hint');
   static const ValueKey<String> chatFooter = ValueKey<String>(
     'overlay:chat-footer',
   );
@@ -80,6 +80,10 @@ class Scenario {
     required this.builder,
     this.maxBackdrops = 2,
     this.expectsPrimary = false,
+    this.expectsNav = false,
+    this.expectsCluster = false,
+    this.expectsHeader = false,
+    this.expectsChatFooter = false,
     this.tablet = false,
     this.loops = false,
   });
@@ -99,6 +103,15 @@ class Scenario {
   /// kein `pumpAndSettle`, und bei „Bewegung reduzieren“ sind genau diese
   /// Fortschrittsanzeigen als laufende Animation erlaubt.
   final bool loops;
+
+  /// Das Szenario enthält Nav, Button-Gruppe, Kopf bzw. Chat-Fuß mit dem
+  /// jeweiligen Marker (`overlay:nav`, `overlay:cluster`, `header`,
+  /// `overlay:chat-footer`). Fehlt der Marker, ist das ein harter Befund der
+  /// Matrix; ohne Flag würde die jeweilige Prüfung still entfallen.
+  final bool expectsNav;
+  final bool expectsCluster;
+  final bool expectsHeader;
+  final bool expectsChatFooter;
 
   /// Zusätzlich bei 768 × 1024 prüfen (ContentFrame, Plan 12.2).
   final bool tablet;
@@ -478,13 +491,12 @@ class _SnackbarDemoState extends State<_SnackbarDemo> {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: KeyedSubtree(
-        key: PreviewKeys.snackbar,
-        child: SnackbarHost(
-          controller: _controller,
-          bottomOffset:
-              FloatingNav.occupiedHeight(context) + CuraSpace.snackbarGap,
-        ),
+      // Kein Marker: der Host füllt den Bildschirm; die Matrix erkennt die
+      // sichtbare Leiste (`CuraSnackbar`) selbst.
+      child: SnackbarHost(
+        controller: _controller,
+        bottomOffset:
+            FloatingNav.occupiedHeight(context) + CuraSpace.snackbarGap,
       ),
     );
   }
@@ -547,9 +559,16 @@ const List<Scenario> kScenarios = <Scenario>[
     id: 'cmp-nav-cluster',
     builder: _navCluster,
     maxBackdrops: 1,
+    expectsNav: true,
+    expectsCluster: true,
     tablet: true,
   ),
-  Scenario(id: 'cmp-snackbar', builder: _snackbar, maxBackdrops: 1),
+  Scenario(
+    id: 'cmp-snackbar',
+    builder: _snackbar,
+    maxBackdrops: 1,
+    expectsNav: true,
+  ),
   Scenario(id: 'cmp-pipette', builder: _pipette),
 ];
 

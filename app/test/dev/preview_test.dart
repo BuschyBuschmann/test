@@ -231,7 +231,7 @@ void main() {
       if (path.startsWith('lib/dev/') || path == 'lib/main_preview.dart') {
         continue;
       }
-      if (RegExp(r'''import\s+['"][^'"]*(dev/|main_preview)''')
+      if (RegExp(r'''(?:import|export|part)\s+['"][^'"]*(dev/|main_preview)''')
           .hasMatch(e.readAsStringSync())) {
         offenders.add(path);
       }

@@ -12,7 +12,9 @@
 //   live      reserviert: echter Speicher, folgt mit dem StartGate (U2b)
 //
 // Konsole (Playwright liest sie): `CURA_ENV {json}` direkt nach dem Start,
-// `CURA_READY` sobald keine Animation und kein Frame mehr läuft,
+// `CURA_READY {"settled":bool}` sobald keine Animation und kein Frame mehr
+// läuft (`settled:false` = Zeitlimit erreicht, nur bei Szenarien mit
+// Dauer-Animation erwartet),
 // `CURA_DUMP {json}` bei `dumpText=1`.
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -51,6 +53,7 @@ Map<String, Object?> _environment(PreviewConfig config) {
   final ui.AccessibilityFeatures f = d.accessibilityFeatures;
   return <String, Object?>{
     'scenario': config.scenarioId,
+    'loops': scenarioById(config.scenarioId ?? '')?.loops ?? false,
     'now': (config.now ?? ScenarioEnv.defaultNow).toIso8601String(),
     'dartNow': DateTime.now().toIso8601String(),
     'override': <String, Object?>{
@@ -90,7 +93,10 @@ Future<void> _afterSettle(PreviewConfig config) async {
   } catch (e, st) {
     _announce('CURA_ERROR', '$e $st');
   }
-  _announce('CURA_READY', '');
+  _announce(
+    'CURA_READY',
+    jsonEncode(<String, Object?>{'settled': idle >= _idlePolls}),
+  );
 }
 
 void _dump(PreviewConfig config) {

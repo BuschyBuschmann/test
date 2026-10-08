@@ -156,7 +156,7 @@ abstract final class S {
   // Beispieltermine (N-14, Platzhalter; Ort des Arzttermins offen, F-18).
   static const String apptPhysioTitle = 'Physiotherapie, Praxis Müller';
   static const String apptPhysioMeta = 'Köln-Ehrenfeld · Beispiel';
-  static const String apptDoctorTitle = 'Kontrolle Orthopädie';
+  static const String apptDoctorTitle = 'Kontrolltermin Orthopädie';
   static const String apptDoctorMeta = 'Köln-Nippes · Beispiel';
   static const String categoryPhysio = 'Physio';
   static const String categoryDoctor = 'Arzt';
@@ -196,4 +196,16 @@ abstract final class S {
   /// (Ergänzung 1, 3.3).
   static String snackbarWithAction(String text, String action) =>
       '$text $action, Schaltfläche';
+
+  // -------------------------------------------------------------------------
+  // Statusansage laufender Vorgänge (Erratum E-3, `PillButton(busy)`)
+  // -------------------------------------------------------------------------
+  /// Standard, wenn der Besitzer keinen eigenen Status nennt.
+  static const String busyStatusDefault = 'Wird ausgeführt';
+
+  /// Löschen-Dialog (Ergänzung 1, 3.2).
+  static const String busyStatusDeleting = 'Wird gelöscht';
+
+  /// „Ja, alles löschen, Wird gelöscht“ (Label plus Status, Live-Region).
+  static String busyLabel(String label, String status) => '$label, $status';
 }

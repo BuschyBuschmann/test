@@ -517,6 +517,48 @@ void main() {
         checkRule10(f("static const a = 'Compliance zählt.';")),
         hasLength(1),
       );
+      // Stufe 1 (erweitert): verboten
+      for (final String w in <String>[
+        'Adhärenz',
+        'Adhaerenz',
+        'Kontraindikation',
+        'Behandlungsplan',
+        'Klient',
+        'Rehabilitand',
+        'Pathologie',
+        'Anamnese',
+      ]) {
+        expect(
+          checkRule10(f("static const a = 'Das $w zählt.';")),
+          hasLength(1),
+          reason: w,
+        );
+      }
+      // Stufe 2: Beobachtungsliste, ohne Allowlist-Eintrag Fehler
+      for (final String w in <String>[
+        'Diagnose',
+        'Symptom',
+        'Befund',
+        'Medikation',
+        'Dosierung',
+        'Läsion',
+        'Ruptur',
+      ]) {
+        expect(
+          checkRule10(f("static const a = 'Die $w zählt.';")),
+          hasLength(1),
+          reason: w,
+        );
+      }
+      // „Therapie“ allein und Physiotherapie bleiben erlaubt
+      expect(
+        checkRule10(f("static const a = 'Physiotherapie, Praxis Müller';")),
+        isEmpty,
+      );
+      expect(
+        checkRule10(f("static const a = 'Die Therapie läuft.';")),
+        isEmpty,
+      );
       expect(
         checkRule10(f("static const a = 'Indikation und Proband.';")),
         hasLength(2),

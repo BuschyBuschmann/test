@@ -151,9 +151,15 @@ void main() {
       _framed(key, const MannyPlaceholder(height: 136, crop: MannyCrop.head)),
     );
     final _Pixels p = await _capture(tester, key);
-    // Zuschnitt 16..84 × 14..82 → 2 px je Einheit; Auge (36,40) → (40,52).
-    expect(_near(p.at(40, 52), c.mannyBelly), isTrue);
-    expect(_near(p.at(68, 78), c.accentHi), isTrue, reason: 'Schnabel (50,53)');
+    // Zuschnitt 16..84 × 10..78 → 2 px je Einheit; Auge (36,40) → (40,60).
+    expect(_near(p.at(40, 60), c.mannyBelly), isTrue);
+    expect(_near(p.at(68, 86), c.accentHi), isTrue, reason: 'Schnabel (50,53)');
+    // A-U2 MINOR-1: Ausschnitt ist ein Kreis. Ecke leer (Hintergrund), Körper
+    // läuft bis zum Kreisrand (kein harter Waagerechtschnitt), keine
+    // Flügelreste links neben dem Körper.
+    expect(p.at(3, 3).a, 0, reason: 'Ecke außerhalb des Kreises');
+    expect(_near(p.at(22, 112), c.mannyBody), isTrue, reason: 'Körper am Rand');
+    expect(p.at(3, 70).a, 0, reason: 'kein Flügel im Kopf-Crop');
   });
 
   group('Hit-Fläche (Plan 4.6, UI-74)', () {
@@ -230,17 +236,63 @@ void main() {
           ),
         ),
       );
-      final Rect r = tester.getRect(find.byType(MannyPlaceholder));
+      // Widget = Zeichnung + Trefferrand (tapInsets); `art` ist die Zeichnung.
+      final Rect w = tester.getRect(find.byType(MannyPlaceholder));
+      final EdgeInsets ins = MannyPlaceholder.tapInsets(
+        const Size(66.6667, 80),
+      );
+      final Rect r = Rect.fromLTWH(
+        w.left + ins.left,
+        w.top + ins.top,
+        w.width - ins.horizontal,
+        w.height - ins.vertical,
+      );
       await tester.tapAt(r.center);
       expect(taps, 1);
+      // Beleg E5 (R-U2): 2 dp links der Zeichnung auf Höhe des linken
+      // Flügels liegt im 8-dp-Rand der Form und muss treffen. Vorher
+      // schnitt die Widget-Grenze den Rand ab.
+      await tester.tapAt(Offset(r.left - 2, r.top + 48));
+      expect(taps, 2);
+      // 4 dp links: noch im Rand
+      await tester.tapAt(Offset(r.left - 4, r.top + 48));
+      expect(taps, 3);
       // 4 dp links vom Körperrand (im 8-dp-Rand).
       await tester.tapAt(Offset(r.left + 10.67 - 4, r.top + 45));
-      expect(taps, 2);
-      // Weit außerhalb (Ecke der Fläche, oben links) bzw. unter der Standlinie.
-      await tester.tapAt(r.topLeft + const Offset(1, 1));
-      expect(taps, 2);
+      expect(taps, 4);
+      // Weit außerhalb (12 dp links der Zeichnung) bzw. unter der Standlinie.
+      await tester.tapAt(Offset(r.left - 12, r.top + 48));
+      expect(taps, 4);
       await tester.tapAt(Offset(r.center.dx, r.bottom - 0.2 + 4));
-      expect(taps, 2);
+      expect(taps, 4);
+    });
+
+    testWidgets('Mindestquadrat 48 × 48 trifft auch bei kleinem Manny '
+        'außerhalb der Zeichnung', (WidgetTester tester) async {
+      int taps = 0;
+      await pumpApp(
+        tester,
+        Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(100),
+            child: MannyPlaceholder(height: 24, onTap: () => taps++),
+          ),
+        ),
+      );
+      final Rect w = tester.getRect(find.byType(MannyPlaceholder));
+      final EdgeInsets ins = MannyPlaceholder.tapInsets(
+        MannyPlaceholder.sizeFor(MannyCrop.full, 24),
+      );
+      final Rect art = Rect.fromLTWH(
+        w.left + ins.left,
+        w.top + ins.top,
+        w.width - ins.horizontal,
+        w.height - ins.vertical,
+      );
+      // 20 dp über der Standlinie, 18 dp neben der Zeichnung: im Quadrat.
+      await tester.tapAt(Offset(art.left - 12, art.bottom - 6));
+      expect(taps, 1);
     });
 
     testWidgets('Ohne onTap: nicht antippbar (IgnorePointer), keine '

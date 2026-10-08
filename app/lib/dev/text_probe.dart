@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../theme/glow.dart';
+import '../ui/components/action_circle.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
 import '../ui/components/glow_background.dart';
@@ -35,6 +36,9 @@ enum TextGround {
 /// Namen von Widget-Typen, die später entstehen (U2b ff.) und deren Fläche
 /// schon jetzt feststeht. Typnamen statt Import, damit die Sonde nicht auf
 /// noch fehlende Dateien wartet.
+// Hinweis: Typnamen funktionieren nur in Debug/Test (Release-Builds
+// minifizieren `runtimeType`); Pakete ab U2b ersetzen sie durch `is`-Prüfungen,
+// sobald die Klassen existieren.
 const Set<String> _glassTypeNames = <String>{'CuraSheet', 'CuraSheetRoute'};
 const Set<String> _opaqueTypeNames = <String>{'NodeHint', 'ExampleNotice'};
 
@@ -143,13 +147,13 @@ TextProbe probeTexts({Element? root, required Size view}) {
   final List<ProbedText> out = <ProbedText>[];
   final Rect screen = Offset.zero & view;
 
-  void walk(Element e, TextGround ground) {
+  void walk(Element e, TextGround ground, bool covered) {
     final Widget w = e.widget;
     if (w is Offstage && w.offstage) return;
     TextGround g = ground;
     if (w is GlassCard || w is FloatingNav || w is MannyBubble) {
       g = TextGround.glass;
-    } else if (w is CuraSnackbar || w is CuraDialog) {
+    } else if (w is CuraSnackbar || w is CuraDialog || w is ActionCircle) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
       g = (w.variant == PillButtonVariant.outline || w.onPressed == null)
@@ -160,17 +164,21 @@ TextProbe probeTexts({Element? root, required Size view}) {
       if (_glassTypeNames.contains(name)) g = TextGround.glass;
       if (_opaqueTypeNames.contains(name)) g = TextGround.opaque;
     }
+    // Texte unter einer anderen Route (Dialog, Sheet mit Scrim) oder in einer
+    // verdeckten Route zählen nicht als sichtbar (R-U2 Punkt 12).
+    bool c = covered;
     if (w is RichText) {
+      if (!c && _isBuriedRoute(e)) c = true;
       final RenderObject? r = e.renderObject;
       if (r is RenderParagraph && r.attached && r.hasSize) {
-        final ProbedText? p = _probe(r, g, glow, glowOrigin, screen);
+        final ProbedText? p = _probe(r, g, glow, glowOrigin, screen, c);
         if (p != null) out.add(p);
       }
     }
-    e.visitChildren((Element c) => walk(c, g));
+    e.visitChildren((Element child) => walk(child, g, c));
   }
 
-  walk(start, TextGround.bg);
+  walk(start, TextGround.bg, false);
   return TextProbe(texts: out, hasGlow: glow != null, view: view);
 }
 
@@ -180,6 +188,7 @@ ProbedText? _probe(
   GlowGeometry? glow,
   Offset glowOrigin,
   Rect screen,
+  bool covered,
 ) {
   final String plain = r.text.toPlainText(includePlaceholders: false);
   if (plain.trim().isEmpty) return null;
@@ -233,7 +242,7 @@ ProbedText? _probe(
     weight: weight,
     ground: ground,
     glowAlpha: alpha,
-    onScreen: rect.overlaps(screen),
+    onScreen: !covered && rect.overlaps(screen),
     isIcon: _isIcon(plain),
   );
 }
@@ -264,4 +273,16 @@ bool _isIcon(String text) {
   final String t = text.trim();
   return t.isNotEmpty &&
       t.runes.every((int r) => r >= 0xE000 && r <= 0xF8FF || r >= 0xF0000);
+}
+
+/// Der Text liegt in einer Route, über der eine weitere Route liegt
+/// (`ModalRoute.isCurrent == false`, z. B. unter Dialog oder Sheet mit
+/// Scrim). Ohne Route (kein Navigator) gilt er als sichtbar.
+bool _isBuriedRoute(Element e) {
+  try {
+    final ModalRoute<dynamic>? route = ModalRoute.of(e);
+    return route != null && !route.isCurrent;
+  } catch (_) {
+    return false;
+  }
 }

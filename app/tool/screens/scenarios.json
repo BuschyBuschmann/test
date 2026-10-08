@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Szenarien, Viewports und Varianten der Web-Screenshots (Plan 12.5). Jede Kennung muss in lib/dev/scenarios.dart stehen (Test test/dev/scenarios_json_test.dart). Pakete ab U2b tragen ihre Szenarien hier ein.",
+  "_hinweis": "Szenarien, Viewports und Varianten der Web-Screenshots (Plan 12.5). Jede Kennung muss in lib/dev/scenarios.dart stehen (Test test/dev/preview_test.dart). Pakete ab U2b tragen ihre Szenarien hier ein.",
   "now": "2026-10-07T12:00:00+02:00",
   "viewports": [
     { "name": "320x568", "w": 320, "h": 568 },

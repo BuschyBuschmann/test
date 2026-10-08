@@ -1,11 +1,13 @@
 // PillButton (Brief 5.3, Ergänzung 1; UI-1, UI-32, UI-35, UI-67): Varianten,
 // Pressed (Plan 8.4), Disabled, Fortschrittskreis, Hit-Area, Fokus, Tastatur.
+import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_roles.dart';
 import 'package:curaone/ui/components/focus_ring.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -215,6 +217,33 @@ void main() {
       expect(taps, 0);
       // Höhe unverändert (Kreis ersetzt das Icon, keine Höhenänderung).
       expect(tester.getSize(find.byType(PillButton)).height, 56);
+    });
+
+    testWidgets('busy: Statusansage als Live-Region (Erratum E-3)', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle h = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        _button(
+          PillButtonVariant.outline,
+          onPressed: () {},
+          busy: true,
+          label: 'Ja, alles löschen',
+        ),
+      );
+      SemanticsNode n = tester.getSemantics(find.byType(PillButton));
+      expect(n.label, 'Ja, alles löschen, ${S.busyStatusDefault}');
+      expect(n.flagsCollection.isLiveRegion, isTrue);
+      // Ohne busy: Label unverändert, keine Live-Region.
+      await pumpApp(
+        tester,
+        _button(PillButtonVariant.outline, onPressed: () {}, label: 'Ja'),
+      );
+      n = tester.getSemantics(find.byType(PillButton));
+      expect(n.label, 'Ja');
+      expect(n.flagsCollection.isLiveRegion, isFalse);
+      h.dispose();
     });
   });
 
