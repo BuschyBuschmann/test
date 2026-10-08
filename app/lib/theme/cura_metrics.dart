@@ -96,6 +96,8 @@ abstract final class CuraSize {
   static const double sendCircleHitArea = 48;
 
   // Eingabeleiste und Blasen.
+  static const double noticeIcon = 20; // Info-Icon der Hinweiskarte
+  static const double hintIcon = 18; // Info-Icon der Hinweiszeile
   static const double composerMinHeight = 56;
   static const double noticePaddingVertical = 10;
   static const double noticePaddingHorizontal = 14;
@@ -112,6 +114,11 @@ abstract final class CuraSize {
   // Zeilen und Längen.
   static const double lineLengthMax = 560; // Zeilenlänge und ContentFrame
   static const double contactRowMin = 72;
+
+  /// Cache-Bereich kleiner, fester Listen (Chat-Verläufe, Kontakte): so groß,
+  /// dass alle Einträge gebaut werden (exakte Höhen, jedes Ziel vorhanden).
+  /// Bewusst endlich: `double.infinity` bricht die Semantik-Geometrie.
+  static const double smallListCacheExtent = 10000;
 
   // Schwellen.
   static const double bubbleWidthFactor = 0.80;

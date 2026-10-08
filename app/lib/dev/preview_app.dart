@@ -278,7 +278,12 @@ class _PreviewAppState extends State<PreviewApp> {
 
   @override
   Widget build(BuildContext context) {
-    final PreviewConfig config = widget.config;
+    // Szenarien mit festem Wert (`chat-manny-scale15`) überstimmen die
+    // Skalierung der URL.
+    final double? fixedScale = _scenario?.fixedTextScale;
+    final PreviewConfig config = fixedScale == null
+        ? widget.config
+        : widget.config.copyWith(textScale: fixedScale);
     final _AppRuntime? runtime = _runtime;
     if (runtime != null) {
       return CuraApp(

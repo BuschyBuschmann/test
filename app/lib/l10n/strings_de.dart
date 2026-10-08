@@ -176,6 +176,110 @@ abstract final class S {
       'Sag mir kurz Bescheid, wenn du durch bist.';
 
   // -------------------------------------------------------------------------
+  // Manny-Chat: Kopf, Hinweise, Eingabeleiste (Ergänzung 2, 3.2, 3.5)
+  // -------------------------------------------------------------------------
+  static const String chatRouteName = 'Manny, Chat';
+  static const String chatTitle = 'Manny';
+  static const String chatSubtitle = 'Dein Reha-Begleiter';
+  static const String chatNoticeLabel = 'Beispielverlauf';
+  static const String chatNoticeText = 'So sieht dein Chat bald aus.';
+  static const String chatHint = 'Schreiben kann ich bald, heute noch nicht.';
+  static const String chatComposerPlaceholder = 'Schreib Manny';
+
+  /// Disclaimer, wörtlich Spec 7.
+  static const String chatDisclaimer =
+      'Manny ersetzt keine medizinische Beratung.';
+  static const String chatComposerSemantics =
+      'Nachricht an Manny, noch nicht verfügbar';
+  static const String chatSendSemantics = 'Senden, noch nicht verfügbar';
+
+  /// Screenreader-Präfixe der Nachrichten („Manny: …“, „Du: …“).
+  static String chatFromManny(String text) => 'Manny: $text';
+  static String chatFromYou(String text) => 'Du: $text';
+  static String chatFromPerson(String name, String text) => '$name: $text';
+
+  // -------------------------------------------------------------------------
+  // Nachrichten und Beispiel-Chats (Ergänzung 2, 3.3, 3.4; unverbindlicher
+  // Platzhalter ohne Spec, K10)
+  // -------------------------------------------------------------------------
+  static const String messagesTitle = 'Nachrichten';
+  static const String messagesNotice = 'Beispiel-Ansicht. Echte Chats folgen.';
+  static const String sectionPhysio = 'Physio';
+  static const String sectionFamily = 'Familie';
+  static const String sectionFriends = 'Freunde';
+  static const String sectionDoctors = 'Ärzte';
+  static const String exampleChatNotice = 'Beispiel-Chat. Nur zum Ansehen.';
+  static const String exampleChatHint = 'Schreiben in Chats folgt bald.';
+  static const String exampleChatPlaceholder = 'Nachricht';
+
+  /// Rollen im Kopf des Beispiel-Chats.
+  static const String rolePhysio = 'Physio';
+  static const String roleFamily = 'Familie';
+  static const String roleFriends = 'Freunde';
+  static const String roleDoctor = 'Arzt';
+  static String roleExample(String role) => '$role · Beispiel';
+
+  static String exampleChatRouteName(String name) => 'Beispiel-Chat $name';
+  static String exampleChatComposerSemantics(String name) =>
+      'Nachricht an $name, noch nicht verfügbar';
+
+  /// „Beispielkontakt Praxis Müller, Physio. Letzte Nachricht: …, Montag.
+  /// Öffnet Beispiel-Chat.“
+  static String contactRowLabel(
+    String name,
+    String section,
+    String lastMessage,
+    String day,
+  ) =>
+      'Beispielkontakt $name, $section. Letzte Nachricht: $lastMessage, $day. '
+      'Öffnet Beispiel-Chat.';
+
+  /// Wochentage kurz (0 = Montag), für die Zeitangabe in der Übersicht.
+  static const List<String> weekdaysShort = <String>[
+    'Mo',
+    'Di',
+    'Mi',
+    'Do',
+    'Fr',
+    'Sa',
+    'So',
+  ];
+
+  // Beispielkontakte und -chats (erfundene Platzhalter, rein organisatorisch).
+  static const String contactPhysioName = 'Praxis Müller';
+  static const String contactPhysioInitials = 'PM';
+  static String examplePhysioLine1(String vorname) =>
+      'Moin $vorname, dein Termin ist am Donnerstag um 17:00 Uhr.';
+  static const String examplePhysioLine2 = 'Perfekt, ich bin pünktlich da.';
+  static const String examplePhysioLine3 = 'Bring bitte Sportschuhe mit.';
+
+  static const String contactMamaName = 'Mama';
+  static const String contactMamaInitials = 'M';
+  static const String exampleMamaLine1 = 'Heute Training geschafft.';
+  static const String exampleMamaLine2 = 'Schön, dass du dranbleibst!';
+
+  static const String contactTimName = 'Tim (Bruder)';
+  static const String contactTimInitials = 'T';
+  static const String exampleTimLine1 = 'Samstag habe ich noch nichts vor.';
+  static const String exampleTimLine2 = 'Soll ich dich am Samstag abholen?';
+
+  static const String contactLenaName = 'Lena';
+  static const String contactLenaInitials = 'L';
+  static const String exampleLenaLine1 = 'Bin zu Hause.';
+  static const String exampleLenaLine2 = 'Wie lief dein Tag?';
+
+  static const String contactBastiName = 'Basti';
+  static const String contactBastiInitials = 'B';
+  static const String exampleBastiLine1 = 'Bin bald wieder fit.';
+  static const String exampleBastiLine2 = 'Kaffee, wenn du wieder darfst?';
+
+  static const String contactWeberName = 'Dr. Weber, Orthopädie';
+  static const String contactWeberInitials = 'DW';
+  static const String exampleWeberLine1 =
+      'Ich möchte den Termin gern bestätigen.';
+  static const String exampleWeberLine2 = 'Termin am 14. um 9:30 bestätigt.';
+
+  // -------------------------------------------------------------------------
   // Bausteine (U2a): feste Beschriftungen, Tooltips, Screenreader-Labels
   // -------------------------------------------------------------------------
   static const String mannyImageLabel = 'Manny, dein Begleiter';

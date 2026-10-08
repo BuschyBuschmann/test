@@ -1,4 +1,5 @@
 import 'package:curaone/app.dart';
+import 'package:curaone/data/manny_chat_source.dart';
 import 'package:curaone/state/app_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ Future<void> pumpCura(
   GlobalKey<NavigatorState>? navigatorKey,
   Future<void> Function(AppController)? startup,
   double keyboard = 0,
+  MannyChatSource? chatSource,
 }) async {
   setViewport(tester, size);
   if (keyboard > 0) {
@@ -28,6 +30,7 @@ Future<void> pumpCura(
       controller: controller,
       navigatorKey: navigatorKey,
       startup: startup,
+      chatSource: chatSource ?? const ExampleMannyChatSource(),
     ),
   );
   if (settle) await tester.pumpAndSettle();

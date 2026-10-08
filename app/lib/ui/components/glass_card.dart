@@ -16,6 +16,7 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(CuraSize.cardPadding),
     this.radius = CuraRadius.card,
+    this.borderRadius,
     this.borderColor,
     this.borderWidth = CuraSize.hairline,
     this.overlay,
@@ -28,6 +29,10 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double radius;
 
+  /// Einzelne Eckenradien (z. B. Chat-Blase mit 6-dp-Ecke zur Absenderseite);
+  /// ersetzt [radius] für die Form.
+  final BorderRadius? borderRadius;
+
   /// Rand; Standard `border-hair` (HC: `border-control-hc`).
   final Color? borderColor;
   final double borderWidth;
@@ -39,7 +44,7 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
-    final BorderRadius shape = BorderRadius.circular(radius);
+    final BorderRadius shape = borderRadius ?? BorderRadius.circular(radius);
     final bool edge = lightEdge && !colors.highContrast;
     return DecoratedBox(
       decoration: BoxDecoration(gradient: colors.cardFill, borderRadius: shape),

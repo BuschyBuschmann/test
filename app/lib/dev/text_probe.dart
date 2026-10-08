@@ -15,6 +15,7 @@ import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
 import '../ui/components/glow_background.dart';
 import '../ui/components/manny_bubble.dart';
+import '../ui/components/opaque_surface.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
@@ -145,7 +146,10 @@ TextProbe probeTexts({Element? root, required Size view}) {
     TextGround g = ground;
     if (w is GlassCard || w is FloatingNav || w is MannyBubble) {
       g = TextGround.glass;
-    } else if (w is CuraSnackbar || w is CuraDialog || w is ActionCircle) {
+    } else if (w is CuraSnackbar ||
+        w is CuraDialog ||
+        w is ActionCircle ||
+        w is OpaqueSurface) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
       g = (w.variant == PillButtonVariant.outline || w.onPressed == null)
@@ -157,7 +161,9 @@ TextProbe probeTexts({Element? root, required Size view}) {
     }
     // Weitere Flächentypen ordnen die Pakete, die sie einführen, mit einer
     // `is`-Prüfung ein (nie über `runtimeType`: Release-Builds minifizieren
-    // die Typnamen): `NodeHint` und `ExampleNotice` sind deckend.
+    // die Typnamen): `NodeHint` ist deckend; `ExampleNotice` und die Blase
+    // des Gegenübers sind `GlassCard`s (Glas, schon erkannt), Eingabeleiste und
+    // eigene Blasen `OpaqueSurface`s (deckend, oben).
     // Texte unter einer anderen Route (Dialog, Sheet mit Scrim) oder in einer
     // verdeckten Route zählen nicht als sichtbar (R-U2 Punkt 12).
     bool c = covered;
@@ -275,7 +281,10 @@ Map<String, Rect> probeKeyedRects({Element? root, required String prefix}) {
         out[key.value] = r.localToGlobal(Offset.zero) & r.size;
       }
     }
-    e.visitChildren(walk);
+    // Nur sichtbare Teilbäume: Routen unter einer opaken Route (Home unter
+    // dem Chat) und inaktive Tabs (`Offstage`) behalten ihre alten Rechtecke,
+    // zählen aber nicht (sonst stünde die Nav des verdeckten Home im Chat).
+    e.debugVisitOnstageChildren(walk);
   }
 
   walk(start);

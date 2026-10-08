@@ -37,6 +37,7 @@ import '../ui/components/mic_button.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
+import '../ui/messages/example_contacts.dart';
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
@@ -116,6 +117,7 @@ class Scenario {
     this.keyboard = false,
     this.transientOverlay = false,
     this.loops = false,
+    this.fixedTextScale,
   }) : assert(
          (builder == null) != (app == null),
          'Genau eines von builder und app',
@@ -150,6 +152,11 @@ class Scenario {
   final bool expectsCluster;
   final bool expectsHeader;
   final bool expectsChatFooter;
+
+  /// Fester Wert der Textskalierung (1,5 für `chat-manny-scale15` und
+  /// `messages-scale15`, Fuß-Regel ab 1,5): überstimmt `scale` aus der URL.
+  /// Die Matrix prüft solche Szenarien nur mit diesem Wert.
+  final double? fixedTextScale;
 
   /// Zusätzlich bei 768 × 1024 prüfen (ContentFrame, Plan 12.2).
   final bool tablet;
@@ -728,6 +735,42 @@ AppSeed _shellPath(ScenarioEnv env) => AppSeed(state: _completedState(env));
 AppSeed _shellToday(ScenarioEnv env) =>
     AppSeed(state: _completedState(env), taps: const <String>[S.navToday]);
 
+// ---------------------------------------------------------------------------
+// App-Szenarien (U2c): Manny-Chat, Nachrichten, Beispiel-Chats
+// ---------------------------------------------------------------------------
+// Sie öffnen den Chat über die echten Wege (Manny-Button bzw. Nachrichten-
+// Button und Kontaktzeile auf dem Pfad), nicht über eine Abkürzung.
+
+AppSeed _chatManny(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), taps: const <String>[S.mannyChatOpen]);
+
+AppSeed _messages(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: const <String>[S.messagesButton],
+);
+
+AppSeed _exampleChat(ScenarioEnv env, String contactId) {
+  final ExampleContact contact = kExampleContacts.firstWhere(
+    (ExampleContact c) => c.id == contactId,
+  );
+  return AppSeed(
+    state: _completedState(env),
+    taps: <String>[
+      S.messagesButton,
+      exampleContactLabel(contact, PreviewTexts.nameValue),
+    ],
+  );
+}
+
+AppSeed _exampleChatPhysio(ScenarioEnv env) =>
+    _exampleChat(env, 'physio-mueller');
+
+AppSeed _exampleChatFamily(ScenarioEnv env) =>
+    _exampleChat(env, 'familie-mama');
+
+AppSeed _exampleChatDoctor(ScenarioEnv env) =>
+    _exampleChat(env, 'aerzte-weber');
+
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
 const List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
@@ -835,8 +878,64 @@ const List<Scenario> kScenarios = <Scenario>[
     expectsPrimary: true,
     expectsHeader: true,
   ),
-  Scenario(id: 'shell-tab-path', app: _shellPath, expectsNav: true),
+  Scenario(
+    id: 'shell-tab-path',
+    app: _shellPath,
+    expectsNav: true,
+    expectsCluster: true,
+  ),
   Scenario(id: 'shell-tab-today', app: _shellToday, expectsNav: true),
+  Scenario(
+    id: 'chat-manny',
+    app: _chatManny,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    expectsChatFooter: true,
+    tablet: true,
+  ),
+  Scenario(
+    id: 'chat-manny-scale15',
+    app: _chatManny,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    expectsChatFooter: true,
+    fixedTextScale: 1.5,
+  ),
+  Scenario(
+    id: 'messages',
+    app: _messages,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    tablet: true,
+  ),
+  Scenario(
+    id: 'messages-scale15',
+    app: _messages,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    fixedTextScale: 1.5,
+  ),
+  Scenario(
+    id: 'example-chat-physio',
+    app: _exampleChatPhysio,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    expectsChatFooter: true,
+  ),
+  Scenario(
+    id: 'example-chat-family',
+    app: _exampleChatFamily,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    expectsChatFooter: true,
+  ),
+  Scenario(
+    id: 'example-chat-doctor',
+    app: _exampleChatDoctor,
+    maxBackdrops: 0,
+    expectsHeader: true,
+    expectsChatFooter: true,
+  ),
 ];
 
 Scenario? scenarioById(String id) {

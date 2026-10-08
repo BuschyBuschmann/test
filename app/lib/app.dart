@@ -12,9 +12,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/manny_chat_source.dart';
 import 'l10n/strings_de.dart';
 import 'state/app_controller.dart';
 import 'state/app_scope.dart';
+import 'state/chat_source_scope.dart';
 import 'theme/cura_theme.dart';
 import 'ui/start/start_gate.dart';
 
@@ -44,9 +46,14 @@ class CuraApp extends StatelessWidget {
     this.startup,
     this.previewWrapper,
     this.navigatorKey,
+    this.chatSource = const ExampleMannyChatSource(),
   });
 
   final AppController controller;
+
+  /// Quelle des Manny-Chat-Verlaufs (KS-5, nur lesend). Standard: fester
+  /// Beispielverlauf.
+  final MannyChatSource chatSource;
 
   /// Start vor der ersten Route. Standard: `controller.load()`. Die
   /// Prüfumgebung und Tests ersetzen ihn (z. B. um vorher zu löschen).
@@ -59,20 +66,23 @@ class CuraApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScope(
       controller: controller,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        navigatorKey: navigatorKey,
-        title: S.appTitle,
-        theme: CuraTheme.build(),
-        locale: const Locale('de'),
-        supportedLocales: const <Locale>[Locale('de')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        builder: (BuildContext context, Widget? app) {
-          final Widget themed = CuraThemeSelector(child: app!);
-          final PreviewWrapper? wrap = previewWrapper;
-          return wrap == null ? themed : wrap(context, themed);
-        },
-        home: StartGate(startup: startup),
+      child: ChatSourceScope(
+        source: chatSource,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          navigatorKey: navigatorKey,
+          title: S.appTitle,
+          theme: CuraTheme.build(),
+          locale: const Locale('de'),
+          supportedLocales: const <Locale>[Locale('de')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          builder: (BuildContext context, Widget? app) {
+            final Widget themed = CuraThemeSelector(child: app!);
+            final PreviewWrapper? wrap = previewWrapper;
+            return wrap == null ? themed : wrap(context, themed);
+          },
+          home: StartGate(startup: startup),
+        ),
       ),
     );
   }

@@ -5,7 +5,11 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../state/app_controller.dart' show StartNotice;
+import '../chat/manny_chat_screen.dart';
 import '../home/home_shell.dart';
+import '../messages/example_chat_screen.dart';
+import '../messages/example_contacts.dart';
+import '../messages/messages_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/privacy_placeholder_page.dart';
 import 'cura_page_route.dart';
@@ -31,6 +35,22 @@ abstract final class AppRoutes {
     context,
     (BuildContext context) => const PrivacyPlaceholderPage(),
   );
+
+  /// Vollbild-Route Manny-Chat (Ergänzung 2, 3.2): Beispielverlauf, ohne
+  /// Nav und ohne Button-Gruppe.
+  static Route<void> mannyChat(BuildContext context) =>
+      MannyChatScreen.route(context);
+
+  /// Vollbild-Route Nachrichten (Ergänzung 2, 3.3): Beispielkontakte.
+  static Route<void> messages(BuildContext context) =>
+      MessagesScreen.route(context);
+
+  /// Vollbild-Route Beispiel-Chat eines Kontakts (Ergänzung 2, 3.4); wird
+  /// über die Nachrichten gelegt.
+  static Route<void> exampleChat(
+    BuildContext context,
+    ExampleContact contact,
+  ) => ExampleChatScreen.route(context, contact);
 
   /// Löschen bestätigt (Ergänzung 1, 3.2; U4): ersetzt den gesamten
   /// Navigationsstapel durch das Onboarding bei Schritt 1. Ablauf des

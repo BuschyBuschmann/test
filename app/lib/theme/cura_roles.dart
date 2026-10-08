@@ -31,6 +31,9 @@ extension CuraColorRoles on CuraColors {
   /// Offene Segmente der Fortschrittsanzeige: Weiß 18 % (Brief 5.8).
   Color get progressOff => _white(Palette.progressOffAlpha);
 
+  /// Neutraler Avatar-Ring (Familie, Freunde): Weiß 30 % (Ergänzung 2, 3.3).
+  Color get avatarRingNeutral => _white(Palette.avatarRingNeutralAlpha);
+
   /// Rand der aktiven Nav-Pill: `accent` 60 % (Brief 5.4).
   Color get navActiveBorder =>
       accent.withValues(alpha: Palette.navActiveBorderAlpha);

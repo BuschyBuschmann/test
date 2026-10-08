@@ -60,9 +60,13 @@ const scenarios = config.scenarios.filter((s) => !only.length || only.includes(s
 // --- Aufträge -----------------------------------------------------------------
 const jobs = [];
 const pick = (list, filter, key = (x) => x) => list.filter((x) => !filter.length || filter.includes(key(x)));
+// Szenarien mit festem Skalierungswert (z. B. chat-manny-scale15) ignorieren den
+// Parameter `scale`: die Variante scale2 entfällt für sie.
+const fixedScale = new Set(config.fixedScale ?? []);
 for (const variant of pick(Object.keys(config.variants), onlyVariants)) {
   for (const vp of pick(config.viewports, onlyViewports, (v) => v.name)) {
     for (const id of scenarios) {
+      if (variant === 'scale2' && fixedScale.has(id)) continue;
       jobs.push({ kind: 'shot', variant, vp, id, params: { scenario: id, ...config.variants[variant] } });
     }
   }

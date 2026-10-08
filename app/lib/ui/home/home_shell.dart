@@ -13,6 +13,17 @@
 //   Entfernung abwarten, dann prüfen, ob Heute aktiv **und** die Home-Route
 //   oberste Route ist; nur dann Snackbar „Neuer Tag, neues Programm.“ und Ansage.
 // - Tabwechsel beendet das Rückgängig-Fenster, den `NodeHint` und die Snackbar.
+// - Button-Gruppe (Ergänzung 2, Plan 4.6): `ActionCluster` im Modus `path`
+//   über dem Pfad-Tab (rechts 16 dp, Manny-Button 16 dp über der Nav,
+//   Nachrichten-Button rechtsbündig 8 dp darüber). Auf Heute übernimmt U3b die
+//   Gruppe; [openChat] und [openMessages] gelten für beide Tabs. Die Gruppe
+//   liegt im Stack der Home-Route: Vollbild-Routen, Sheets und Dialoge liegen
+//   als Routen darüber (Scrim, Semantik und Fokus der Gruppe sind dort blockiert).
+// - Öffnen von Manny-Chat und Nachrichten: vorher das Rückgängig-Fenster
+//   beenden, `NodeHint` und Blase schließen (zählt als gezeigt) und die
+//   Snackbar schließen; nach dem Schließen der Route kehrt der Fokus an den
+//   auslösenden Button zurück (A-38: auch bei Öffnen über Manny auf dem Pfad,
+//   der keine eigene Fokusstation hat).
 // - Ob Pfad und Heute in U2b noch Platzhalter sind, ändert nichts an diesem
 //   Gerüst: U3a/U3b ersetzen nur den Inhalt der Tabs.
 import 'package:flutter/material.dart';
@@ -24,10 +35,13 @@ import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/tokens.dart';
+import '../components/action_cluster.dart';
 import '../components/cura_snackbar.dart';
 import '../components/floating_nav.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
+import '../routes/app_routes.dart';
+import '../routes/route_focus.dart';
 import 'tab_placeholders.dart';
 import 'today_route_registry.dart';
 
@@ -78,6 +92,15 @@ class HomeShellState extends State<HomeShell> {
   late final AppLifecycleListener _lifecycle;
   int _tab = HomeTab.path;
 
+  /// Rechteck der Button-Gruppe für Blase und Hinweis (Plan 4.6).
+  final GlobalKey clusterKey = GlobalKey();
+
+  /// Fokusrückgabe nach Chat bzw. Nachrichten (A-38).
+  final FocusNode chatButtonFocus = FocusNode(debugLabel: 'Manny-Button');
+  final FocusNode messagesButtonFocus = FocusNode(
+    debugLabel: 'Nachrichten-Button',
+  );
+
   /// Aktiver Tab (`HomeTab.path` oder `HomeTab.today`).
   int get activeTab => _tab;
 
@@ -91,6 +114,8 @@ class HomeShellState extends State<HomeShell> {
   void dispose() {
     _lifecycle.dispose();
     snackbar.dispose();
+    chatButtonFocus.dispose();
+    messagesButtonFocus.dispose();
     super.dispose();
   }
 
@@ -149,19 +174,51 @@ class HomeShellState extends State<HomeShell> {
     if (change.changed) dayChanged();
   }
 
+  /// Schließt eine sichtbare Manny-Blase; weggetippt zählt als gezeigt.
+  /// `true`, wenn eine Blase geschlossen wurde.
+  bool _closeBubble(AppController c) {
+    final BubbleDecision? bubble = c.transient.visibleBubble;
+    if (bubble == null) return false;
+    c.markBubbleShown(bubble.occasion);
+    c.transient.dismissBubble();
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Manny-Chat und Nachrichten (Ergänzung 2, Plan 4.1, 4.4)
+  // -------------------------------------------------------------------------
+
+  /// Öffnet den Manny-Chat (Manny-Button, später auch Manny auf dem Pfad);
+  /// der Tab bleibt unverändert. Endet mit dem Schließen der Route.
+  Future<void> openChat() =>
+      _openFullscreen(AppRoutes.mannyChat(context), chatButtonFocus);
+
+  /// Öffnet die Nachrichten-Übersicht (Nachrichten-Button).
+  Future<void> openMessages() =>
+      _openFullscreen(AppRoutes.messages(context), messagesButtonFocus);
+
+  Future<void> _openFullscreen(Route<void> route, FocusNode trigger) {
+    final AppController c = _controller;
+    // Das Rückgängig-Fenster endet (UI-39), Hinweis und Blase schließen, die
+    // Snackbar verschwindet: unter der neuen Route wäre sie nicht erreichbar.
+    c.transient.endUndoWindow();
+    c.transient.dismissHint();
+    _closeBubble(c);
+    snackbar.close();
+    return pushReturningFocus<void>(
+      Navigator.of(context),
+      route,
+      trigger: trigger,
+    );
+  }
+
   void _onBack() {
     if (_tab == HomeTab.today) {
       selectTab(HomeTab.path);
       return;
     }
     final AppController c = _controller;
-    final BubbleDecision? bubble = c.transient.visibleBubble;
-    if (bubble != null) {
-      // Weggetippt zählt als gezeigt.
-      c.markBubbleShown(bubble.occasion);
-      c.transient.dismissBubble();
-      return;
-    }
+    if (_closeBubble(c)) return;
     if (c.transient.hintUnitId != null) {
       c.transient.dismissHint();
       return;
@@ -196,6 +253,23 @@ class HomeShellState extends State<HomeShell> {
                     FloatingNav.occupiedHeight(context) + CuraSpace.snackbarGap,
               ),
             ),
+            if (_tab == HomeTab.path)
+              Positioned(
+                right: CuraSpace.pageMargin,
+                bottom:
+                    FloatingNav.occupiedHeight(context) + CuraSpace.pageMargin,
+                child: KeyedSubtree(
+                  key: ProbeKeys.cluster,
+                  child: ActionCluster(
+                    mode: ActionClusterMode.path,
+                    rectKey: clusterKey,
+                    onOpenChat: openChat,
+                    onOpenMessages: openMessages,
+                    chatFocusNode: chatButtonFocus,
+                    messagesFocusNode: messagesButtonFocus,
+                  ),
+                ),
+              ),
             Align(
               alignment: Alignment.bottomCenter,
               child: KeyedSubtree(

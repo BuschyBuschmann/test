@@ -71,8 +71,15 @@ void main() {
         // Snackbar und 200 % kein sinnvoller Scrollbereich; dort nur 1,0.
         final bool keyboardSmall =
             (s.keyboard || s.transientOverlay) && size.height < 600;
+        // Szenarien mit festem Wert (z. B. 1,5 für die Fuß-Regel des Chats)
+        // laufen nur mit diesem Wert.
+        final double? fixed = s.fixedTextScale;
         for (final double scale
-            in tabletOnly || keyboardSmall ? <double>[1] : <double>[1, 2]) {
+            in fixed != null
+                ? <double>[fixed]
+                : (tabletOnly || keyboardSmall
+                      ? <double>[1]
+                      : <double>[1, 2])) {
           final String name = _name(s, size, '×${scale.toStringAsFixed(1)}');
           testWidgets(name, (WidgetTester tester) async {
             final SemanticsHandle semantics = tester.ensureSemantics();

@@ -210,6 +210,14 @@ void main() {
       );
     });
 
+    test('Szenarien mit festem Skalierungswert stehen in fixedScale', () {
+      final Set<String> fromRegistry = <String>{
+        for (final Scenario s in kScenarios)
+          if (s.fixedTextScale != null) s.id,
+      };
+      expect(ids(json['fixedScale']), fromRegistry);
+    });
+
     test('Tablet-Szenarien entsprechen dem Flag der Registry', () {
       final Set<String> fromRegistry = <String>{
         for (final Scenario s in kScenarios)

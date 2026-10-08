@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Szenarien, Viewports und Varianten der Web-Screenshots (Plan 12.5). Jede Kennung muss in lib/dev/scenarios.dart stehen (Test test/dev/preview_test.dart). Pakete ab U2b tragen ihre Szenarien hier ein.",
+  "_hinweis": "Szenarien, Viewports und Varianten der Web-Screenshots (Plan 12.5). Jede Kennung muss in lib/dev/scenarios.dart stehen (Test test/dev/preview_test.dart). Pakete ab U2b tragen ihre Szenarien hier ein. fixedScale: Szenarien mit festem Skalierungswert (Scenario.fixedTextScale), für die die Variante scale2 entfällt.",
   "now": "2026-10-07T12:00:00+02:00",
   "viewports": [
     { "name": "320x568", "w": 320, "h": 568 },
@@ -37,25 +37,46 @@
     "ob1-corrupt-snackbar",
     "ob-mic-hint",
     "shell-tab-path",
-    "shell-tab-today"
+    "shell-tab-today",
+    "chat-manny",
+    "chat-manny-scale15",
+    "messages",
+    "messages-scale15",
+    "example-chat-physio",
+    "example-chat-family",
+    "example-chat-doctor"
   ],
+  "fixedScale": ["chat-manny-scale15", "messages-scale15"],
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
-    "scenarios": ["cmp-forms", "cmp-surfaces", "cmp-nav-cluster", "ob1-name"]
+    "scenarios": [
+      "cmp-forms",
+      "cmp-surfaces",
+      "cmp-nav-cluster",
+      "ob1-name",
+      "chat-manny",
+      "messages"
+    ]
   },
   "landscape": {
     "viewports": [
       { "name": "568x320", "w": 568, "h": 320 },
       { "name": "844x390", "w": 844, "h": 390 }
     ],
-    "scenarios": ["cmp-forms", "cmp-nav-cluster"]
+    "scenarios": ["cmp-forms", "cmp-nav-cluster", "chat-manny", "messages"]
   },
   "simulations": {
     "viewport": { "name": "390x844", "w": 390, "h": 844 },
     "all": ["achromatopsia"],
     "colorBlind": {
       "types": ["protanopia", "deuteranopia", "tritanopia"],
-      "scenarios": ["cmp-forms", "cmp-nav-cluster", "cmp-surfaces", "ob3-acl"]
+      "scenarios": [
+        "cmp-forms",
+        "cmp-nav-cluster",
+        "cmp-surfaces",
+        "ob3-acl",
+        "messages"
+      ]
     }
   },
   "pipette": {

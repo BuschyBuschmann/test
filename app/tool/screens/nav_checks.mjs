@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Browser-Prüfungen der Navigation (U2b, Plan 4.3, 12.5): Browser-Zurück =
+// Browser-Prüfungen der Navigation (U2b, U2c, Plan 4.3, 12.5): Browser-Zurück =
 // Android-Zurück (`page.goBack()`), Reload im Onboarding, Tabwechsel, Zeitsprung
-// über Mitternacht mit der Fake-Uhr (`page.clock.install` + `runFor`).
+// über Mitternacht mit der Fake-Uhr (`page.clock.install` + `runFor`), Manny-
+// Chat und Nachrichten über die Button-Gruppe (Abschnitt 5).
 //
 //   export PATH=/opt/flutter/bin:$PATH
 //   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
@@ -239,6 +240,44 @@ const browser = await launch();
     `${resumed ? 'ok     ' : 'info   '} Fortsetzen (visibilitychange hidden → visible) über Mitternacht auf Heute: Snackbar ${resumed ? 'erscheint' : 'erscheint nicht (Web-Lebenszyklus nicht auslösbar; Resume per Widget-Test)'}`,
   );
   results.push({ name: 'Fortsetzen über visibilitychange', ok: null, detail: resumed ? 'Snackbar' : 'nicht ausgelöst' });
+  await ctx.close();
+}
+
+// 5. Manny-Chat und Nachrichten (U2c, Ergänzung 2, UI-86) -----------------------
+// Öffnen über die Button-Gruppe auf dem Pfad, Browser-Zurück = Android-Zurück:
+// Chat → Pfad; Nachrichten → Beispiel-Chat → Nachrichten → Pfad.
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
+  const page = s.page;
+  check('Chat-Ablauf: Home auf Pfad, Button-Gruppe vorhanden', (await seen(page, 'Dein Pfad')) && (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0);
+  await shot(page, 'pfad-gruppe');
+
+  await click(page, 'Manny, Chat öffnen');
+  check('Manny-Button öffnet den Manny-Chat (Kopf „Dein Reha-Begleiter“)', await seen(page, 'Dein Reha-Begleiter'));
+  check('Manny-Chat: Beispielverlauf mit Namen aus dem Onboarding', await seen(page, 'Moin Jakob. Wie läuft dein Tag?'));
+  check('Manny-Chat: Hinweiszeile, Leiste und Disclaimer sichtbar', (await seen(page, 'Schreiben kann ich bald, heute noch nicht.', 2000)) && (await seen(page, 'Manny ersetzt keine medizinische Beratung.', 2000)));
+  check('Manny-Chat: keine Button-Gruppe, keine Nav', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Pfad').count()) === 0);
+  await shot(page, 'chat-manny');
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück im Manny-Chat → Pfad (Tab bleibt)', (await seen(page, 'Dein Pfad')) && (await gone(page, 'Dein Reha-Begleiter')));
+
+  await click(page, 'Nachrichten');
+  check('Nachrichten-Button öffnet die Nachrichten (Beispiel-Hinweis)', await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.'));
+  check('Nachrichten: sechs Beispielkontakte', (await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()) === 6, String(await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()));
+  await shot(page, 'nachrichten');
+  await click(page, 'Beispielkontakt Praxis Müller');
+  check('Zeile öffnet den Beispiel-Chat („Physio · Beispiel“)', await seen(page, 'Physio · Beispiel'));
+  check('Beispiel-Chat: Hinweis „Nur zum Ansehen.“, kein Disclaimer', (await seen(page, 'Beispiel-Chat. Nur zum Ansehen.', 2000)) && (await page.getByText('Manny ersetzt keine medizinische Beratung.').count()) === 0);
+  await shot(page, 'beispiel-chat');
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück im Beispiel-Chat → Nachrichten', (await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.')) && (await gone(page, 'Physio · Beispiel')));
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück in den Nachrichten → Pfad (Ausgangs-Tab)', (await seen(page, 'Dein Pfad')) && (await gone(page, 'Beispiel-Ansicht. Echte Chats folgen.')));
   await ctx.close();
 }
 
