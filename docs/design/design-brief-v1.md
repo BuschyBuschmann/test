@@ -436,7 +436,9 @@ Diese Errata sind vom Nutzer freigegeben und haben Vorrang vor den Stellen, auf 
 5. **Prüfung** per Alpha am dem Glow-Mittelpunkt nächstgelegenen Punkt des Text-Rechtecks (Alpha-Funktion aus 3.2) gegen die Schwellen 24 / 16 / 12 %, nicht per Abstand. Der Untergrund ergibt sich daraus, ob der Text in einer Glas-Karte liegt.
 
 **UI-7 (neue Fassung, ersetzt die alte im Wortlaut):**
-- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Am nächstgelegenen Punkt jedes Text-Rechtecks beträgt der Glow-Alpha höchstens 24 % bei Text direkt auf `bg`, höchstens 16 % bei `text-1`/`text-2`/`text-3` auf Glas und höchstens 12 % bei farbigem Text und `accent-hi` auf Glas (Prüfung per Test der Alpha-Funktion und Screenshot-Prüfung der Screens aus 6).
+- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Am nächstgelegenen Punkt jedes Text-Rechtecks beträgt der Glow-Alpha höchstens 24 % bei Text direkt auf `bg`, höchstens 16 % bei `text-1`/`text-2`/`text-3` auf Glas und höchstens 12 % bei farbigem Text und `accent-hi` auf Glas (Prüfung per Test der Alpha-Funktion und Screenshot-Prüfung der Screens aus 6). Die Schwellen gelten für die Ruhelage der Screens (siehe Präzisierung 2026-10-08).
+
+**Präzisierung 2026-10-08.** Die Glow-Regel nach Untergrund (Text auf `bg` bis 24 %, Glas bis 16 %, farbiger Text und `accent-hi` auf Glas bis 12 %) gilt für die Ruhelage der Screens, also die Startposition bzw. die Position nach programmatischem Scrollen (z. B. aktuelle Unit zentriert). Inhalt, den der Nutzer kurzzeitig unter den Lichtfleck scrollt, ist ausgenommen.
 
 **Ergänzung zu 3.1: Kontraste über Glow (Verhältnis).**
 
