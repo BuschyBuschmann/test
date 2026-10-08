@@ -146,7 +146,7 @@ Regeln: Nichts unter 13 sp. Kein Schriftgewicht unter 400. Systemseitige Schrift
 
 Verwendete Animationen im ersten Ausschnitt: Seitenwechsel im Onboarding (Schiebung 24 dp und Einblenden, `dur-base`), Sprechblase (Einblenden plus 8 dp Schiebung, `dur-base`), Unit-Abschluss (einmaliger Ring-Puls, `dur-slow`), Auswahlkarte (Randwechsel, `dur-fast`). Keine Dauerschleifen, keine Bounce-Kurven. Die Manny-Animationen (Spec 3) sind eine externe Abhängigkeit und im Platzhalter nicht enthalten.
 
-**Reduzierte Bewegung** (`MediaQuery.disableAnimations`): alle Schiebungen und Pulse entfallen, Zustandswechsel sind Sofortwechsel oder ein Überblenden von höchstens `dur-fast`. Der Pfad scrollt weiterhin normal. Manny zeigt statische Posen.
+**Reduzierte Bewegung** (`MediaQuery.disableAnimations`): alle Schiebungen und Pulse entfallen, Zustandswechsel sind Sofortwechsel oder ein Überblenden von höchstens `dur-fast`. Der Pfad scrollt weiterhin normal. Manny zeigt statische Posen. (siehe Erratum E-3)
 
 ---
 
@@ -347,7 +347,7 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 **Glas, Glow, Motion**
 - UI-6: Pro Screen sind höchstens 2 `BackdropFilter` im Widget-Baum gleichzeitig sichtbar (Nav und Sprechblase/Sheet). Karten, Chips und Listenelemente enthalten keinen (Code-Suche).
 - UI-7 (siehe Erratum E-1: neue Fassung gilt): Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Text liegt mindestens 70 dp vom Glow-Mittelpunkt entfernt (Screenshot-Prüfung der Screens aus 6).
-- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen.
+- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen. (siehe Erratum E-3)
 - UI-9: Bei "Hoher Kontrast" haben Karten, Nav, Blase und Sheets opake Füllungen (`#1B2129`), kein Blur, keinen Glow, und Ränder erreichen ≥ 4,3:1 (gemessen 4,37).
 - UI-10: Die Scroll-Performance des Pfads liegt auf einem Mittelklasse-Testgerät nach Augenschein ohne sichtbares Ruckeln (Flutter-Profile: keine dauerhaften Frames über 16 ms durch Blur; Messung durch den Entwickler dokumentieren).
 
@@ -468,3 +468,17 @@ Folgen: Farbiger Text und `accent-hi` auf Glas nur bei Alpha ≤ 12 % (`cat-phys
 
 **UI-4 (präzisierte Fassung):**
 - UI-4: Akzent (`accent`) als Textfarbe wird nur auf `bg` verwendet. Auf `surface-opaque`, Glas, in Dialogen, Snackbars, Hinweisen und in Datumsauswahl-Textbuttons nur `accent-hi` oder `text-1` (Code-Review und Kontrasttest).
+
+### E-3: Fortschrittskreis bei reduzierter Bewegung (Ausnahme von UI-8, freigegeben 2026-10-08)
+
+**Anlass.** Der Fortschrittskreis laufender Vorgänge (z. B. `PillButton` mit `busy`, Löschen-Dialog) ist ein Zustandsanzeiger, kein Schiebe-, Puls- oder Fade-Effekt. Ein statischer Kreis würde "hängt" signalisieren.
+
+**Regel.** Fortschrittskreise laufender Vorgänge dürfen bei "Bewegung reduzieren" weiterdrehen, unter diesen Bedingungen:
+- reine Drehung, keine Schiebung, kein Puls, kein Skalieren;
+- nur während des Vorgangs, sichtbar erst nach mehr als 300 ms;
+- kein Ein- oder Ausblenden länger als 120 ms;
+- keine Dauerschleife außerhalb eines Vorgangs;
+- Screenreader erhalten eine Statusansage (z. B. "Wird gelöscht").
+
+**UI-8 (neue Fassung, ersetzt die alte im Wortlaut):**
+- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen. Ausgenommen sind Fortschrittskreise laufender Vorgänge unter den Bedingungen von E-3 (reine Drehung, nur während des Vorgangs und erst nach 300 ms sichtbar, kein Ein-/Ausblenden über 120 ms, keine Dauerschleife außerhalb eines Vorgangs, Statusansage für Screenreader).
