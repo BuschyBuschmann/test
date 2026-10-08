@@ -3,6 +3,7 @@
 // sammeln sie je Fall und schlagen mit einer lesbaren Liste fehl. Befunde mit
 // `advisory` sind Richtwerte (Plan 12.2): sie werden gemeldet, lassen den Test
 // aber nicht scheitern („Befund an den ui-designer, nicht still umgestalten“).
+import 'dart:async' show FutureOr;
 import 'dart:ui' as ui;
 
 import 'package:curaone/dev/scenarios.dart';
@@ -13,6 +14,7 @@ import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_motion.dart';
 import 'package:curaone/theme/glow.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
+import 'package:curaone/ui/components/cura_text_field.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/glow_background.dart';
@@ -48,8 +50,10 @@ class TapTarget {
     this.rect,
     this.isTextField,
     this.hidden,
-    this.inScroll,
-  );
+    this.inScroll, {
+    this.inOverlay = false,
+    this.inHeader = false,
+  });
 
   final String label;
   final Rect rect;
@@ -60,6 +64,14 @@ class TapTarget {
 
   /// Liegt in einem scrollenden Bereich (darf unter Overlays durchlaufen).
   final bool inScroll;
+
+  /// Gehört im **Element-Baum** zu einem markierten Overlay (Marker
+  /// `overlay:*` oder die Leiste eines `SnackbarHost`), nicht nur geometrisch
+  /// (R-U3 MAJOR-2): ein Ziel unter einem Overlay ist kein Teil davon.
+  final bool inOverlay;
+
+  /// Gehört im Element-Baum zum festen Kopf (Marker `header`).
+  final bool inHeader;
 
   @override
   String toString() => '"$label" $rect';
@@ -81,6 +93,83 @@ Rect _globalRect(SemanticsNode node, double dpr) {
   );
 }
 
+/// Semantik-Knoten, der die Semantik von [r] trägt: das Render-Objekt selbst
+/// oder der nächste Vorfahr mit eigenem, nicht in den Vater verschmolzenen
+/// Knoten (wie `WidgetTester.getSemantics`).
+SemanticsNode? _semanticsOf(RenderObject? r) {
+  RenderObject? cur = r;
+  SemanticsNode? n = cur?.debugSemantics;
+  while (cur != null && (n == null || n.isMergedIntoParent)) {
+    cur = cur.parent;
+    n = cur?.debugSemantics;
+  }
+  return n;
+}
+
+bool _hasTap(RenderObject r) {
+  if (r is RenderSemanticsAnnotations) return r.properties.onTap != null;
+  if (r is RenderSemanticsGestureHandler) return r.onTap != null;
+  return false;
+}
+
+/// Ids der Semantik-Knoten aller Tap-Elemente **unterhalb** der markierten
+/// Elemente im Element-Baum (nur sichtbare Teilbäume wie bei
+/// [probeKeyedRects]). [isMarker] wählt die Elemente aus. So hängt die
+/// Zugehörigkeit zu Overlay bzw. Kopf an der Baumstruktur und nicht an der
+/// Lage auf dem Bildschirm (R-U3 MAJOR-2).
+Set<int> tapNodeIdsUnder(bool Function(Element e) isMarker) {
+  final Set<int> ids = <int>{};
+  void collect(RenderObject r) {
+    if (_hasTap(r)) {
+      final SemanticsNode? n = _semanticsOf(r);
+      if (n != null) ids.add(n.id);
+    }
+    r.visitChildren(collect);
+  }
+
+  void walk(Element e) {
+    if (isMarker(e)) {
+      final RenderObject? r = e.renderObject;
+      if (r != null && r.attached) collect(r);
+    }
+    e.debugVisitOnstageChildren(walk);
+  }
+
+  final Element? root = WidgetsBinding.instance.rootElement;
+  if (root != null) walk(root);
+  return ids;
+}
+
+bool _isKeyedWith(Element e, bool Function(String key) test) {
+  final Key? key = e.widget.key;
+  return key is ValueKey<String> && test(key.value);
+}
+
+/// Tap-Ziele im markierten Overlay-Teilbaum (`overlay:*`) und in der Leiste
+/// eines `SnackbarHost`.
+Set<int> overlayTapNodeIds() => tapNodeIdsUnder(
+  (Element e) =>
+      _isKeyedWith(e, (String k) => k.startsWith('overlay:')) ||
+      (e.widget is CuraSnackbar && _insideSnackbarHost(e)),
+);
+
+bool _insideSnackbarHost(Element e) {
+  bool inside = false;
+  e.visitAncestorElements((Element a) {
+    if (a.widget is SnackbarHost) {
+      inside = true;
+      return false;
+    }
+    return true;
+  });
+  return inside;
+}
+
+/// Tap-Ziele im festen Kopf (Marker `header`).
+Set<int> headerTapNodeIds() => tapNodeIdsUnder(
+  (Element e) => _isKeyedWith(e, (String k) => k == 'header'),
+);
+
 /// Alle Knoten mit Tap-Aktion (nur gebaute; bei Scrollbereichen mit lazy
 /// Listen ergänzt [scanScroll] den Rest). Zusammengeführte Knoten zählen nicht.
 List<TapTarget> tapTargets(WidgetTester tester) {
@@ -89,6 +178,8 @@ List<TapTarget> tapTargets(WidgetTester tester) {
   final List<TapTarget> out = <TapTarget>[];
   if (root == null) return out;
   final double dpr = tester.view.devicePixelRatio;
+  final Set<int> overlayIds = overlayTapNodeIds();
+  final Set<int> headerIds = headerTapNodeIds();
   void walk(SemanticsNode n, bool scrolling) {
     final SemanticsData d = n.getSemanticsData();
     final bool childScrolling =
@@ -108,6 +199,8 @@ List<TapTarget> tapTargets(WidgetTester tester) {
             d.flagsCollection.isTextField,
             d.flagsCollection.isHidden,
             scrolling,
+            inOverlay: overlayIds.contains(n.id),
+            inHeader: headerIds.contains(n.id),
           ),
         );
       }
@@ -247,6 +340,7 @@ class ScrollScan {
     this.targets,
     this.complete,
     this.oversize,
+    this.reachedMax,
   );
 
   final ScrollPosition position;
@@ -262,6 +356,11 @@ class ScrollScan {
 
   /// Ziele, die nie ganz ins Sichtfenster passen (höher als der Bereich).
   final List<String> oversize;
+
+  /// Das beim Scan **tatsächlich erreichte** Scroll-Maximum. Bei lazy gebauten
+  /// Listen ist `maxScrollExtent` in der Ruhelage nur geschätzt und erst am
+  /// Ende des Weges exakt (R-U3 MINOR-1); Erreichbarkeit rechnet damit.
+  final double reachedMax;
 
   Offset shiftFor(double pixels) =>
       position.axis == Axis.vertical ? Offset(0, pixels) : Offset(pixels, 0);
@@ -362,6 +461,7 @@ Future<List<ScrollScan>> scanAll(WidgetTester tester) async {
       position.jumpTo((position.pixels + step).clamp(0, max));
       await tester.pump();
     }
+    final double reachedMax = position.pixels;
     position.jumpTo(start);
     await tester.pump();
     scans.add(
@@ -372,6 +472,7 @@ Future<List<ScrollScan>> scanAll(WidgetTester tester) async {
         seen.values.toList(),
         complete,
         oversize.toList(),
+        reachedMax,
       ),
     );
   }
@@ -403,16 +504,6 @@ List<Finding> _scanProblems(Iterable<ScrollScan> scans) => <Finding>[
       ),
   ],
 ];
-
-/// Ein Tap-Ziel gehört zu einem Overlay, wenn es (fast) ganz darin liegt.
-bool _isOverlay(TapTarget t, Iterable<Rect> overlays) {
-  final double area = t.rect.width * t.rect.height;
-  if (area <= 0) return false;
-  return overlays.any((Rect o) {
-    final Rect i = o.intersect(t.rect);
-    return i.width > 0 && i.height > 0 && i.width * i.height / area >= 0.95;
-  });
-}
 
 bool _contains(Rect a, Rect b) =>
     a.inflate(0.5).contains(b.topLeft) &&
@@ -448,9 +539,45 @@ List<Finding> takeLayoutExceptions(WidgetTester tester) {
   return out;
 }
 
-/// Tap-Ziele ≥ 48 × 48 dp (Flutter-Leitlinie `androidTapTargetGuideline`).
+/// Führt [body] mit allen vertikalen Scrollbereichen am Anfang (Scrollstand 0)
+/// aus und stellt die Scrollstände danach wieder her. Ruhelage-Prüfungen
+/// (Zielgröße, Abstand zu festen Elementen) gelten für den Anfangszustand: ein
+/// Szenario mit fokussiertem Feld steht gescrollt, und Inhalt, der dabei unter
+/// dem Kopf angeschnitten wird, ist kein Verstoß.
+Future<T> atScrollStart<T>(
+  WidgetTester tester,
+  FutureOr<T> Function() body,
+) async {
+  final List<(ScrollPosition, double)> saved = <(ScrollPosition, double)>[
+    for (final ScrollableState st in _scrollables(tester))
+      (st.position, st.position.pixels),
+  ];
+  final bool moved = saved.any(((ScrollPosition, double) e) => e.$2 > 0.5);
+  if (moved) {
+    for (final (ScrollPosition p, double _) in saved) {
+      p.jumpTo(0);
+    }
+    await tester.pump();
+  }
+  try {
+    return await body();
+  } finally {
+    if (moved) {
+      for (final (ScrollPosition p, double pixels) in saved) {
+        p.jumpTo(pixels);
+      }
+      await tester.pump();
+    }
+  }
+}
+
+/// Tap-Ziele ≥ 48 × 48 dp (Flutter-Leitlinie `androidTapTargetGuideline`),
+/// im Anfangszustand der Scrollbereiche ([atScrollStart]).
 Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
-  final Evaluation e = await androidTapTargetGuideline.evaluate(tester);
+  final Evaluation e = await atScrollStart(
+    tester,
+    () => androidTapTargetGuideline.evaluate(tester),
+  );
   return e.passed
       ? const <Finding>[]
       : <Finding>[Finding('Tap-Ziel ≥ 48 dp', e.reason ?? '')];
@@ -460,11 +587,14 @@ Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
 /// (UI-32). Kategorien: scrollender Inhalt, Overlay, fester Rest. Nur das
 /// Paar „scrollender Inhalt gegen Overlay“ entfällt (Inhalt darf darunter
 /// laufen, das prüft [checkReachability]); feste Nicht-Overlay-Elemente
-/// (Kopf-Buttons) werden gegen den Inhalt in der Ruhelage geprüft.
+/// (Kopf-Buttons) werden gegen den Inhalt in der Ruhelage geprüft (Anfang der
+/// Scrollbereiche, [atScrollStart]).
 /// Scrollender Inhalt gegeneinander: über den ganzen Scrollweg.
-Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) async {
+Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) =>
+    atScrollStart(tester, () => _checkTapTargetGaps(tester));
+
+Future<List<Finding>> _checkTapTargetGaps(WidgetTester tester) async {
   final List<TapTarget> rest = tapTargets(tester);
-  final Iterable<Rect> overlays = overlayRects().values;
   final List<ScrollScan> scans = await scanAll(tester);
   final List<Finding> out = <Finding>[..._scanProblems(scans)];
   void pair(TapTarget a, TapTarget b) {
@@ -486,7 +616,7 @@ Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) async {
   for (final TapTarget t in rest) {
     if (t.inScroll) {
       scrollRest.add(t);
-    } else if (_isOverlay(t, overlays)) {
+    } else if (t.inOverlay) {
       overlay.add(t);
     } else {
       fixed.add(t);
@@ -648,7 +778,11 @@ List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
 /// Fehlt der Kopf-Marker bei `expectsHeader`, ist das ein harter Befund.
 List<Finding> checkVisibleArea(WidgetTester tester, Scenario scenario) {
   final Rect? header = headerRect();
-  if (header == null) {
+  // Kopf in der Scrollfläche (Onboarding bei großer Schrift oder geringer
+  // Höhe, Marker `scroll-header`): erfüllt die Erwartung; die Sichtfläche
+  // beginnt dann am oberen Rand.
+  final bool scrollsAlong = probeKeyedRects(prefix: 'scroll-header').isNotEmpty;
+  if (header == null && !scrollsAlong) {
     return scenario.expectsHeader
         ? const <Finding>[
             Finding('Marker fehlt', 'header (Szenario erwartet den Kopf)'),
@@ -660,7 +794,7 @@ List<Finding> checkVisibleArea(WidgetTester tester, Scenario scenario) {
   for (final Rect r in overlayRects().values) {
     if (r.width >= view.width * 0.6 && r.top < top) top = r.top;
   }
-  final double free = top - header.bottom;
+  final double free = top - (header?.bottom ?? 0);
   return free >= 120
       ? const <Finding>[]
       : <Finding>[
@@ -672,37 +806,110 @@ List<Finding> checkVisibleArea(WidgetTester tester, Scenario scenario) {
         ];
 }
 
-/// Inhalt nach Scrollen erreichbar (UI-31 neu, UI-88): jedes Tap-Ziel des
-/// Inhalts lässt sich in eine Lage scrollen, in der es vollständig sichtbar,
-/// unter dem Kopf und von keinem Overlay verdeckt ist. Der Scrollweg wird
-/// ganz durchlaufen ([scanScroll]), damit auch lazy gebaute Listen zählen.
-/// Feste Ziele außerhalb von Overlays müssen in der Ruhelage frei liegen.
-Future<List<Finding>> checkReachability(WidgetTester tester) async {
-  final Size view = viewSize(tester);
-  final Rect screen = Offset.zero & view;
-  final Map<String, Rect> o = overlayRects();
-  final Rect? header = headerRect();
-  final List<Finding> out = <Finding>[];
+/// Das fokussierte Textfeld ist sichtbar (A-U3 B1): ganz auf dem Bildschirm,
+/// unter dem festen Kopf, von keinem Overlay (Tastatur, Weiter-Leiste,
+/// Snackbar) verdeckt. Ein Tastatur-Szenario ([Scenario.keyboard]) muss ein
+/// fokussiertes Feld haben; sonst fiele die Prüfung still weg.
+List<Finding> checkFocusedField(WidgetTester tester, Scenario scenario) {
+  final BuildContext? focus = FocusManager.instance.primaryFocus?.context;
+  Element? field;
+  if (focus is Element) {
+    if (focus.widget is EditableText) field = focus;
+    focus.visitAncestorElements((Element a) {
+      if (field == null && a.widget is EditableText) field = a;
+      return field == null;
+    });
+  }
+  final Element? editable = field;
+  if (editable == null) {
+    return scenario.keyboard
+        ? const <Finding>[
+            Finding(
+              'Fokusfeld',
+              'Tastatur-Szenario ohne fokussiertes Textfeld (Skript prüfen)',
+            ),
+          ]
+        : const <Finding>[];
+  }
+  // Ganzes Feld (Rahmen) statt nur der Textzeile, soweit es ein `CuraTextField`
+  // gibt.
+  Element target = editable;
+  editable.visitAncestorElements((Element a) {
+    if (a.widget is CuraTextField) {
+      target = a;
+      return false;
+    }
+    return true;
+  });
+  final RenderObject? ro = target.renderObject;
+  if (ro is! RenderBox || !ro.attached || !ro.hasSize) {
+    return const <Finding>[
+      Finding('Fokusfeld', 'Das fokussierte Feld hat keine Größe'),
+    ];
+  }
+  final Rect r = ro.localToGlobal(Offset.zero) & ro.size;
+  return FreeZone(tester).free(r)
+      ? const <Finding>[]
+      : <Finding>[
+          Finding(
+            'Fokusfeld sichtbar',
+            'fokussiertes Feld $r ist verdeckt, abgeschnitten oder außerhalb '
+                '(Kopf/Overlays/Tastatur)',
+          ),
+        ];
+}
+
+/// Freie Fläche des Bildschirms: ganz auf dem Bildschirm, unter dem festen
+/// Kopf und von keinem Overlay verdeckt. Overlays werden in der Ruhelage
+/// gelesen; ein Overlay-Marker **innerhalb** eines Scrollbereichs (läuft mit
+/// dem Inhalt) wird je Scanposition nicht neu gelesen. Das ist eine bekannte
+/// Grenze (R-U3 MINOR-2): sie betrifft Overlays in lazy Listen außerhalb des
+/// Sichtfensters (z. B. künftige Knotenhinweise, U3a); dort braucht ein
+/// Szenario sein Overlay als festes Overlay über der Liste.
+class FreeZone {
+  FreeZone(WidgetTester tester)
+    : screen = Offset.zero & viewSize(tester),
+      header = headerRect(),
+      overlays = overlayRects().values.toList();
+
+  final Rect screen;
+  final Rect? header;
+  final List<Rect> overlays;
+
+  bool _clearOfOverlays(Rect r) =>
+      !overlays.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
 
   bool free(Rect r) {
     if (!_contains(screen, r)) return false;
-    if (header != null && r.top < header.bottom - 0.5) return false;
-    return !o.values.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
+    final Rect? h = header;
+    if (h != null && r.top < h.bottom - 0.5) return false;
+    return _clearOfOverlays(r);
   }
 
   /// Feste Bedienelemente **im** Kopf (Zurück-Pfeil, „Deine Daten“) gehören
   /// zum Kopf selbst und liegen nicht „unter“ ihm: sie müssen auf dem
   /// Bildschirm liegen und dürfen von keinem Overlay überdeckt sein.
-  bool freeInHeader(Rect r) =>
-      _contains(screen, r) &&
-      !o.values.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
+  bool freeInHeader(Rect r) => _contains(screen, r) && _clearOfOverlays(r);
+}
+
+/// Inhalt nach Scrollen erreichbar (UI-31 neu, UI-88): jedes Tap-Ziel des
+/// Inhalts lässt sich in eine Lage scrollen, in der es vollständig sichtbar,
+/// unter dem Kopf und von keinem Overlay verdeckt ist. Der Scrollweg wird
+/// ganz durchlaufen ([scanAll]), damit auch lazy gebaute Listen zählen, und
+/// mit dem dabei **erreichten** Maximum gerechnet. Feste Ziele außerhalb von
+/// Overlays müssen in der Ruhelage frei liegen. Zugehörigkeit zu Overlay und
+/// Kopf folgt dem Element-Baum ([TapTarget.inOverlay], [TapTarget.inHeader]):
+/// ein Ziel, das nur geometrisch unter einem Overlay liegt, ist ein Befund.
+Future<List<Finding>> checkReachability(WidgetTester tester) async {
+  final FreeZone zone = FreeZone(tester);
+  final bool Function(Rect) free = zone.free;
+  final List<Finding> out = <Finding>[];
 
   final List<TapTarget> rest = tapTargets(tester);
   for (final TapTarget t in rest.where(
-    (TapTarget t) => !t.inScroll && !_isOverlay(t, o.values),
+    (TapTarget t) => !t.inScroll && !t.inOverlay,
   )) {
-    final bool inHeader = header != null && _contains(header, t.rect);
-    if (!(inHeader ? freeInHeader(t.rect) : free(t.rect))) {
+    if (!(t.inHeader ? zone.freeInHeader(t.rect) : free(t.rect))) {
       out.add(
         Finding(
           'Inhalt erreichbar',
@@ -731,7 +938,7 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
   for (final ScrollScan scan in scans) {
     final ScrollPosition position = scan.position;
     final double start = position.pixels;
-    final double max = position.maxScrollExtent;
+    final double max = scan.reachedMax;
     final RenderObject? sr = scan.renderObject;
     for (final TapTarget t in scan.targets) {
       double? hit;

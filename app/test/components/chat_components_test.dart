@@ -27,6 +27,7 @@ import 'package:curaone/ui/messages/contact_row.dart';
 import 'package:curaone/ui/messages/example_contacts.dart';
 import 'package:curaone/ui/routes/cura_fullscreen_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -499,13 +500,12 @@ void main() {
   });
 
   group('ChatFooterLayout (UI-88)', () {
-    Widget scaffold({bool noticeScrollsAlong = false}) => ChatScreenScaffold(
+    Widget scaffold() => ChatScreenScaffold(
       header: const ChatHeader(title: S.chatTitle, subtitle: S.chatSubtitle),
       notice: const ExampleNotice(
         label: S.chatNoticeLabel,
         text: S.chatNoticeText,
       ),
-      noticeScrollsAlong: noticeScrollsAlong,
       hint: const ChatHintLine(text: S.chatHint),
       composer: const ChatComposer(
         placeholder: S.chatComposerPlaceholder,
@@ -581,32 +581,110 @@ void main() {
       }
     });
 
-    testWidgets('Nachrichten: Hinweiskarte ab 1,5 als erstes Listenelement', (
+    testWidgets('K6: Hinweiskarte ab 1,5 oder bei Höhe unter 400 dp als '
+        'erstes Listenelement (Manny-Chat, Nachrichten, Beispiel-Chat)', (
       WidgetTester tester,
     ) async {
-      for (final double scale in <double>[1, 1.5]) {
-        await pumpApp(
-          tester,
-          ChatScreenScaffold(
-            header: const ChatHeader(title: S.messagesTitle, largeTitle: true),
-            notice: const ExampleNotice(text: S.messagesNotice),
-            noticeScrollsAlong: true,
-            bodyBuilder: (BuildContext context, ChatScaffoldExtras extras) =>
-                ListView(children: <Widget>[?extras.leading, const Text('X')]),
-          ),
-          textScale: scale,
-        );
-        await tester.pumpAndSettle();
-        final bool inScroll = find
-            .descendant(
-              of: find.byType(ListView),
-              matching: find.byType(ExampleNotice),
-            )
-            .evaluate()
-            .isNotEmpty;
-        expect(inScroll, scale >= 1.5, reason: '×$scale');
-        expect(find.byType(ExampleNotice), findsOneWidget);
+      Widget screen(String kind) => ChatScreenScaffold(
+        header: const ChatHeader(title: S.messagesTitle, largeTitle: true),
+        notice: ExampleNotice(text: kind),
+        hint: const ChatHintLine(text: S.chatHint),
+        composer: const ChatComposer(
+          placeholder: S.chatComposerPlaceholder,
+          semanticsLabel: S.chatComposerSemantics,
+          sendSemanticsLabel: S.chatSendSemantics,
+        ),
+        bodyBuilder: (BuildContext context, ChatScaffoldExtras extras) =>
+            ListView(children: <Widget>[?extras.leading, const Text('X')]),
+      );
+      // (Größe, Skalierung, Karte in der Liste?)
+      final List<(Size, double, bool)> cases = <(Size, double, bool)>[
+        (Viewports.phone, 1, false),
+        (Viewports.small, 1, false), // 568 dp: fest
+        (Viewports.phone, 1.49, false),
+        (Viewports.phone, 1.5, true),
+        (Viewports.small, 2, true),
+        (const Size(390, 400), 1, false), // genau 400 dp: fest
+        (const Size(390, 399), 1, true),
+        (const Size(568, 320), 1, true), // Querformat
+      ];
+      for (final (Size size, double scale, bool inList) in cases) {
+        for (final String kind in <String>[
+          S.chatNoticeText,
+          S.messagesNotice,
+          S.exampleChatNotice,
+        ]) {
+          await pumpApp(tester, screen(kind), size: size, textScale: scale);
+          await tester.pumpAndSettle();
+          final bool inScroll = find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(ExampleNotice),
+              )
+              .evaluate()
+              .isNotEmpty;
+          expect(inScroll, inList, reason: '$size ×$scale');
+          expect(find.byType(ExampleNotice), findsOneWidget);
+        }
       }
+    });
+
+    testWidgets('K6: Hinweiszeile und Disclaimer wandern auch bei Höhe unter '
+        '400 dp ans Listenende, die Leiste bleibt fest', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(tester, scaffold(), size: const Size(568, 320));
+      await tester.pumpAndSettle();
+      expect(inList(find.text(S.chatHint)), isTrue);
+      expect(inList(find.text(S.chatDisclaimer)), isTrue);
+      expect(inFooter(tester, find.byType(ChatComposer)), isTrue);
+      // 400 dp und mehr: fest im Fuß.
+      await pumpApp(tester, scaffold(), size: const Size(390, 400));
+      await tester.pumpAndSettle();
+      expect(inFooter(tester, find.text(S.chatHint)), isTrue);
+      expect(inFooter(tester, find.text(S.chatDisclaimer)), isTrue);
+    });
+
+    testWidgets('K6: die Höhe zählt ohne Systemleisten und ohne Tastatur', (
+      WidgetTester tester,
+    ) async {
+      // 440 dp Fenster, 48 dp Statusleiste: 392 dp verfügbar → mitscrollen.
+      late bool along;
+      Future<void> probeWith({
+        required EdgeInsets padding,
+        required EdgeInsets insets,
+      }) async {
+        setViewport(tester, const Size(390, 440));
+        await tester.pumpWidget(
+          MediaQuery(
+            data: MediaQueryData(
+              size: const Size(390, 440),
+              padding: padding,
+              viewInsets: insets,
+            ),
+            child: Builder(
+              builder: (BuildContext context) {
+                along = ChatFooterLayout.scrollsAlong(context);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        );
+      }
+
+      await probeWith(padding: EdgeInsets.zero, insets: EdgeInsets.zero);
+      expect(along, isFalse, reason: '440 dp');
+      await probeWith(
+        padding: const EdgeInsets.only(top: 48),
+        insets: EdgeInsets.zero,
+      );
+      expect(along, isTrue, reason: '392 dp nach Abzug der Statusleiste');
+      // Die Tastatur verändert die verfügbare Höhe nicht.
+      await probeWith(
+        padding: EdgeInsets.zero,
+        insets: const EdgeInsets.only(bottom: 300),
+      );
+      expect(along, isFalse, reason: 'Tastatur zählt nicht');
     });
   });
 
@@ -725,6 +803,143 @@ void main() {
         tester.widget<Text>(find.text(S.messagesTitle)).style!.fontSize,
         24,
       );
+    });
+  });
+
+  group('ChatHeader: große Schrift (A-U3, B3)', () {
+    testWidgets('„Nachrichten“ bricht bei 200 % auf 320 dp nicht mitten im '
+        'Wort: eine Zeile, Titel skaliert bis 1,5', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(
+        tester,
+        const ChatHeader(title: S.messagesTitle, largeTitle: true),
+        size: Viewports.small,
+        textScale: 2,
+      );
+      expect(tester.takeException(), isNull);
+      final Finder title = find.text(S.messagesTitle);
+      final RenderParagraph paragraph = tester.renderObject<RenderParagraph>(
+        title,
+      );
+      final double lineHeight = paragraph.text.style!.height!.toDouble() * 36;
+      // Ein Umbruch im Wort ergäbe mindestens zwei Zeilen.
+      expect(
+        paragraph.size.height,
+        lessThan(lineHeight * 1.5),
+        reason: 'eine Zeile',
+      );
+      expect(
+        MediaQuery.textScalerOf(tester.element(title)).scale(24),
+        36,
+        reason: 'Titel ist auf 1,5 begrenzt',
+      );
+      // Nichts abgeschnitten: das Wort passt in die Breite neben dem Pfeil.
+      expect(paragraph.size.width, lessThanOrEqualTo(320 - 8 - 48 - 8 - 16));
+    });
+
+    testWidgets('Namen im Kopf (heading) behalten die volle Skalierung', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(
+        tester,
+        const ChatHeader(title: 'Praxis Müller', subtitle: 'Physio · Beispiel'),
+        size: Viewports.small,
+        textScale: 2,
+      );
+      expect(
+        MediaQuery.textScalerOf(tester.element(find.text('Praxis Müller')))
+            .scale(18),
+        36,
+      );
+    });
+  });
+
+  group('ChatAvatar: Initialen berühren den Ring nicht (A-U3, B4)', () {
+    Future<void> pumpAvatar(
+      WidgetTester tester, {
+      required double size,
+      required String initials,
+      double scale = 1,
+    }) => pumpApp(
+      tester,
+      Center(
+        child: ChatAvatar(
+          initials: initials,
+          ringColor: Colors.white,
+          size: size,
+        ),
+      ),
+      textScale: scale,
+    );
+
+    /// Die Großbuchstaben (Breite der Textbox, Höhe = Kapitälchenhöhe, ca.
+    /// 72 % der wirksamen Schriftgröße) liegen im Innenkreis (Ring 2 dp), mit
+    /// mindestens 1 dp Luft. Die volle Zeilenbox wäre zu streng: sie enthält
+    /// Ober- und Unterlänge, die Großbuchstaben nicht brauchen.
+    void expectInsideRing(
+      WidgetTester tester,
+      double size,
+      String initials,
+      String reason,
+    ) {
+      final Rect avatar = tester.getRect(find.byType(ChatAvatar));
+      final Finder textFinder = find.text(initials);
+      final Rect text = tester.getRect(textFinder);
+      final double effective = MediaQuery.textScalerOf(
+        tester.element(textFinder),
+      ).scale(tester.widget<Text>(textFinder).style!.fontSize!);
+      final double halfW = text.width / 2;
+      final double halfH = effective * 0.72 / 2;
+      final double inner = size / 2 - CuraSize.selectedBorder - 1;
+      expect(
+        Offset(halfW, halfH).distance,
+        lessThanOrEqualTo(inner),
+        reason: '$reason: ${text.size} (Kappe ${halfH * 2}) im Kreis $inner',
+      );
+      expect((text.center - avatar.center).distance, lessThan(1));
+    }
+
+    testWidgets('Kopf 36 dp: alle Beispielkontakte, 100 % und 200 %', (
+      WidgetTester tester,
+    ) async {
+      for (final ExampleContact c in kExampleContacts) {
+        for (final double scale in <double>[1, 2]) {
+          await pumpAvatar(
+            tester,
+            size: CuraSize.avatarHeader,
+            initials: c.initials,
+            scale: scale,
+          );
+          final Text t = tester.widget(find.text(c.initials));
+          expect(t.style!.fontSize, greaterThanOrEqualTo(13));
+          expect(t.style!.fontSize, lessThanOrEqualTo(14));
+          expectInsideRing(tester, 36, c.initials, '${c.initials} ×$scale');
+        }
+      }
+    });
+
+    testWidgets('Liste 48 dp bleibt bei heading', (WidgetTester tester) async {
+      await pumpAvatar(tester, size: CuraSize.avatar, initials: 'PM');
+      expect(tester.widget<Text>(find.text('PM')).style!.fontSize, 18);
+      expectInsideRing(tester, 48, 'PM', 'PM');
+    });
+
+    testWidgets('Initialen skalieren begrenzt: Kopf bis 1,15, Liste bis 1,3 '
+        '(eigene Konstanten, nicht die der Nav)', (WidgetTester tester) async {
+      for (final (double size, double max) in <(double, double)>[
+        (CuraSize.avatarHeader, CuraSize.avatarCompactInitialsMaxTextScale),
+        (CuraSize.avatar, CuraSize.avatarInitialsMaxTextScale),
+      ]) {
+        await pumpAvatar(tester, size: size, initials: 'PM', scale: 3);
+        expect(
+          MediaQuery.textScalerOf(tester.element(find.text('PM'))).scale(10),
+          closeTo(10 * max, 0.001),
+          reason: '$size dp',
+        );
+      }
+      expect(CuraSize.avatarInitialsMaxTextScale, 1.3);
+      expect(CuraSize.avatarCompactInitialsMaxTextScale, 1.15);
     });
   });
 

@@ -1218,6 +1218,181 @@ void main() {
       },
     );
   });
+
+  group('Gegenproben aus Review R-U3 (MAJOR-2, MINOR-1, MINOR-2)', () {
+    Widget overlayBox(Key key, double w, double h) => KeyedSubtree(
+      key: key,
+      child: SizedBox(width: w, height: h),
+    );
+
+    testWidgets('MAJOR-2: Kopf-Ziel vollständig unter einem Overlay ist ein '
+        'Befund', (WidgetTester tester) async {
+      Widget board({required bool covered}) => Stack(
+        children: <Widget>[
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 100,
+            child: KeyedSubtree(
+              key: PreviewKeys.header,
+              child: Align(alignment: Alignment.topLeft, child: _tap(48, 48)),
+            ),
+          ),
+          Positioned(
+            left: covered ? 0 : 100,
+            top: covered ? 0 : 200,
+            child: overlayBox(PreviewKeys.bubble, 200, 60),
+          ),
+        ],
+      );
+      await pump(tester, board(covered: true));
+      expect(await checkReachability(tester), isNotEmpty);
+      await pump(tester, board(covered: false));
+      expect(await checkReachability(tester), isEmpty);
+    });
+
+    testWidgets('MAJOR-2: festes Inhaltsziel unter einem Overlay ist ein '
+        'Befund, teilweise wie vollständig', (WidgetTester tester) async {
+      for (final double w in <double>[30, 200]) {
+        await pump(
+          tester,
+          Stack(
+            children: <Widget>[
+              Positioned(left: 0, top: 300, child: _tap(48, 48)),
+              Positioned(
+                left: 0,
+                top: 300,
+                child: overlayBox(PreviewKeys.bubble, w, 48),
+              ),
+            ],
+          ),
+        );
+        expect(
+          await checkReachability(tester),
+          isNotEmpty,
+          reason: 'Overlay $w dp breit',
+        );
+      }
+    });
+
+    testWidgets('MAJOR-2: Ziel im Overlay-Teilbaum zählt zum Overlay, kein '
+        'Befund', (WidgetTester tester) async {
+      await pump(
+        tester,
+        Stack(
+          children: <Widget>[
+            Positioned(
+              left: 0,
+              top: 300,
+              child: KeyedSubtree(key: PreviewKeys.bubble, child: _tap(48, 48)),
+            ),
+          ],
+        ),
+      );
+      final List<TapTarget> t = tapTargets(tester);
+      expect(t.single.inOverlay, isTrue);
+      expect(await checkReachability(tester), isEmpty);
+    });
+
+    testWidgets('MINOR-1: lazy Liste mit ungleichen Höhen: das erreichte '
+        'Maximum zählt, kein Fehlalarm', (WidgetTester tester) async {
+      await pump(
+        tester,
+        ListView(
+          key: PreviewKeys.scroll,
+          children: <Widget>[
+            for (int i = 0; i < 40; i++)
+              SizedBox(
+                height: i < 10 ? 56 : 300,
+                child: Center(child: _tap(300, 48)),
+              ),
+          ],
+        ),
+      );
+      final ScrollPosition p = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position;
+      final double estimate = p.maxScrollExtent;
+      final List<ScrollScan> scans = await scanAll(tester);
+      expect(
+        scans.single.reachedMax,
+        greaterThan(estimate),
+        reason: 'der Ruhe-Schätzwert liegt unter dem echten Ende',
+      );
+      expect(await checkReachability(tester), isEmpty);
+    });
+  });
+
+  group('probeKeyedRects: nur sichtbare Teilbäume (R-U3 MINOR-2)', () {
+    const ValueKey<String> mark = ValueKey<String>('overlay:probe-test');
+
+    Widget home() => Center(
+      child: KeyedSubtree(
+        key: mark,
+        child: const SizedBox(width: 40, height: 40),
+      ),
+    );
+
+    testWidgets('Marker unter einer durchscheinenden Route (Dialog) zählt', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, home());
+      final BuildContext ctx = tester.element(find.byKey(mark));
+      showDialog<void>(
+        context: ctx,
+        builder: (BuildContext c) => const SizedBox(width: 10, height: 10),
+      );
+      await tester.pumpAndSettle();
+      expect(probeKeyedRects(prefix: 'overlay:'), contains(mark.value));
+    });
+
+    testWidgets('Marker unter einer opaken Route zählt nicht', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, home());
+      final BuildContext ctx = tester.element(find.byKey(mark));
+      Navigator.of(ctx).push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext c) => const Scaffold(body: SizedBox()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(probeKeyedRects(prefix: 'overlay:'), isNot(contains(mark.value)));
+    });
+
+    testWidgets('Marker in einer lazy Liste im Sichtfenster zählt', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        ListView.builder(
+          itemCount: 100,
+          itemExtent: 56,
+          itemBuilder: (BuildContext c, int i) => i == 1
+              ? KeyedSubtree(key: mark, child: const SizedBox(height: 56))
+              : const SizedBox(height: 56),
+        ),
+      );
+      expect(probeKeyedRects(prefix: 'overlay:'), contains(mark.value));
+    });
+
+    testWidgets('Marker in einem inaktiven Tab ist ausgeschlossen', (
+      WidgetTester tester,
+    ) async {
+      Widget tabs(int index) => IndexedStack(
+        index: index,
+        children: <Widget>[
+          KeyedSubtree(key: mark, child: const SizedBox(width: 40, height: 40)),
+          const SizedBox(width: 40, height: 40),
+        ],
+      );
+      await pump(tester, tabs(0));
+      expect(probeKeyedRects(prefix: 'overlay:'), contains(mark.value));
+      await pump(tester, tabs(1));
+      expect(probeKeyedRects(prefix: 'overlay:'), isNot(contains(mark.value)));
+    });
+  });
 }
 
 class _Spinner extends StatefulWidget {

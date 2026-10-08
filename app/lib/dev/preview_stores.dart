@@ -47,3 +47,12 @@ class UnreadableStateStore extends MemoryStateStore {
     await super.deleteAll();
   }
 }
+
+/// Der Speicher wirft beim Lesen einen Plattformfehler (kein unlesbarer
+/// Inhalt): der StartGate zeigt den Fehlerzustand mit „Nochmal versuchen“.
+class FailingReadStateStore extends MemoryStateStore {
+  @override
+  Future<AppState?> load() async {
+    throw StateError('Szenario: Plattformfehler beim Lesen');
+  }
+}

@@ -2,14 +2,13 @@
 //
 // `MessagesScreen` (Ergänzung 2, 3.3): Vollbild-Route „Nachrichten“ mit der
 // festen Karte „Beispiel-Ansicht. Echte Chats folgen.“ (ab Textskalierung 1,5
-// als erstes Element der Liste) und vier Abschnitten (Physio, Familie,
+// oder bei verfügbarer Höhe unter 400 dp als erstes Element der Liste, K6) und vier Abschnitten (Physio, Familie,
 // Freunde, Ärzte; Überschriften für den Screenreader) mit den sechs
 // Beispielkontakten. Weder Badge noch Suche noch „Neuer Chat“. Tipp auf eine
 // Zeile öffnet den Beispiel-Chat über dieser Route; Zurück führt hierher, der
 // Fokus kehrt auf die Zeile zurück (Plan 4.4). Alles nur zum Ansehen: nichts
 // wird gesendet oder gespeichert.
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import '../../l10n/strings_de.dart';
 import '../../state/app_scope.dart';
@@ -66,16 +65,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return ChatScreenScaffold(
       header: const ChatHeader(title: S.messagesTitle, largeTitle: true),
       notice: const ExampleNotice(text: S.messagesNotice),
-      noticeScrollsAlong: true,
       bodyBuilder: (BuildContext context, ChatScaffoldExtras extras) {
         final Widget? head = extras.leading;
         return ListView(
           key: ProbeKeys.scroll,
-          // Sechs feste Kontakte: vollständig bauen (exakte Höhen, jede Zeile
-          // vorhanden und erreichbar).
-          scrollCacheExtent: const ScrollCacheExtent.pixels(
-            CuraSize.smallListCacheExtent,
-          ),
           padding: const EdgeInsets.fromLTRB(
             CuraSpace.pageMargin,
             CuraSpace.s3,

@@ -61,7 +61,11 @@ class MannyChatScreen extends StatelessWidget {
       ),
       disclaimer: const ChatDisclaimer(text: S.chatDisclaimer),
       bodyBuilder: (BuildContext context, ChatScaffoldExtras extras) {
-        return ChatMessageList(messages: messages, trailing: extras.trailing);
+        return ChatMessageList(
+          messages: messages,
+          leading: extras.leading,
+          trailing: extras.trailing,
+        );
       },
     );
   }

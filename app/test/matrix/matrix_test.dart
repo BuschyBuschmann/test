@@ -66,20 +66,13 @@ void main() {
       ];
       for (final Size size in sizes) {
         final bool tabletOnly = size == Viewports.tablet;
-        // Tastatur-Szenarien (Plan 12.4, B-10) und Szenarien mit zeitlich
-        // begrenztem Overlay: bei 568 dp Höhe bleibt mit Tastatur bzw.
-        // Snackbar und 200 % kein sinnvoller Scrollbereich; dort nur 1,0.
-        final bool keyboardSmall =
-            (s.keyboard || s.transientOverlay) && size.height < 600;
         // Szenarien mit festem Wert (z. B. 1,5 für die Fuß-Regel des Chats)
         // laufen nur mit diesem Wert.
         final double? fixed = s.fixedTextScale;
         for (final double scale
             in fixed != null
                 ? <double>[fixed]
-                : (tabletOnly || keyboardSmall
-                      ? <double>[1]
-                      : <double>[1, 2])) {
+                : (tabletOnly ? <double>[1] : <double>[1, 2])) {
           final String name = _name(s, size, '×${scale.toStringAsFixed(1)}');
           testWidgets(name, (WidgetTester tester) async {
             final SemanticsHandle semantics = tester.ensureSemantics();
@@ -93,6 +86,7 @@ void main() {
               ...checkZones(tester, s),
               ...checkVisibleArea(tester, s),
               ...await checkReachability(tester),
+              ...checkFocusedField(tester, s),
               ...checkBackdrops(tester, s.maxBackdrops),
               ...checkChatFooter(tester, s),
               ...checkGlowRule(probe(tester), colorsFor(hc: false), size),

@@ -1,4 +1,5 @@
-// Manny mit Sprechblase im Onboarding (Brief 6.1, 5.6): Manny links, die Blase
+// Manny mit Sprechblase im Onboarding (Brief 6.1, 5.6): immer linksbündig zur
+// Inhaltsspalte (auch auf breiten Displays, A-U3 B5); Manny links, die Blase
 // rechts daneben mit Pfeil nach links; bleiben rechts weniger als 140 dp, steht
 // die Blase oberhalb (Pfeil nach unten). Manny ist hier nicht antippbar
 // (Ergänzung 2: kein Chat-Einstieg im Onboarding).
@@ -15,7 +16,6 @@ class OnboardingManny extends StatelessWidget {
     required this.text,
     required this.bubbleVisible,
     required this.onCloseBubble,
-    this.centered = false,
   });
 
   /// Höhe von Manny (Schritt 1: 120 dp, sonst 64 dp).
@@ -24,18 +24,12 @@ class OnboardingManny extends StatelessWidget {
   final bool bubbleVisible;
   final VoidCallback onCloseBubble;
 
-  /// Schritt 1: Manny mit Blase mittig.
-  final bool centered;
-
   @override
   Widget build(BuildContext context) {
     final Size manny = MannyPlaceholder.sizeFor(MannyCrop.full, height);
     final Widget figure = MannyPlaceholder(height: height);
     if (!bubbleVisible) {
-      return Align(
-        alignment: centered ? Alignment.topCenter : Alignment.topLeft,
-        child: figure,
-      );
+      return Align(alignment: Alignment.topLeft, child: figure);
     }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints box) {
@@ -53,10 +47,7 @@ class OnboardingManny extends StatelessWidget {
               ),
             ],
           );
-          return Align(
-            alignment: centered ? Alignment.topCenter : Alignment.topLeft,
-            child: row,
-          );
+          return Align(alignment: Alignment.topLeft, child: row);
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

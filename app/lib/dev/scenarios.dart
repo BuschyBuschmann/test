@@ -83,6 +83,8 @@ class AppSeed {
     this.state,
     this.unreadable = false,
     this.deleteFirst = false,
+    this.loadError = false,
+    this.focusField = false,
     this.taps = const <String>[],
   });
 
@@ -95,6 +97,14 @@ class AppSeed {
   /// Nach dem Laden läuft „Alles löschen“ (echter Löschweg): Onboarding
   /// Schritt 1 mit dem Hinweis „Alle Daten sind gelöscht.“.
   final bool deleteFirst;
+
+  /// Der Speicher wirft beim Lesen einen Plattformfehler: StartGate-Fehler.
+  final bool loadError;
+
+  /// Nach den Tipps wird das erste Textfeld fokussiert (Tastatur-Szenarien):
+  /// das Feld hat den Fokus und ist, wie in der echten App, in den Blick
+  /// gescrollt.
+  final bool focusField;
 
   /// Screenreader-Labels von Bausteinen, die nach dem Start „getippt“ werden.
   final List<String> taps;
@@ -115,7 +125,6 @@ class Scenario {
     this.expectsChatFooter = false,
     this.tablet = false,
     this.keyboard = false,
-    this.transientOverlay = false,
     this.loops = false,
     this.fixedTextScale,
   }) : assert(
@@ -163,16 +172,10 @@ class Scenario {
 
   /// Tastatur-Szenario (Plan 12.4, B-10): die Prüfumgebung blendet eine
   /// Tastatur von 300 dp ein (`viewInsets.bottom` plus Platzhalterfläche mit
-  /// dem Marker `overlay:keyboard`). Die Matrix prüft es bei 320 × 568 nur
-  /// mit Skalierung 1,0: bei 200 % bleibt über der Tastatur kein Scrollbereich.
+  /// dem Marker `overlay:keyboard`) und das Szenario fokussiert sein Textfeld.
+  /// Die Matrix prüft es bei **allen** Viewports und Skalierungen ohne
+  /// Ausnahme: das fokussierte Feld muss sichtbar, der Inhalt erreichbar sein.
   final bool keyboard;
-
-  /// Zeigt ein zeitlich begrenztes Overlay (Snackbar von 4 s), das bei 320 × 568
-  /// und 200 % fast die ganze Fläche zwischen Kopf und Mikrofon-Zeile deckt
-  /// (Richtwert-Befund „Sichtfläche“). Die Matrix prüft diese Szenarien bei
-  /// 568 dp Höhe nur mit Skalierung 1,0; nach Ablauf bzw. Wegwischen ist der
-  /// Inhalt frei.
-  final bool transientOverlay;
 }
 
 // ---------------------------------------------------------------------------
@@ -656,8 +659,10 @@ AppSeed _obEmpty(ScenarioEnv env) => const AppSeed();
 AppSeed _obName(ScenarioEnv env) =>
     AppSeed(state: _onboardingState(env, name: PreviewTexts.nameValue));
 
-AppSeed _obNameKeyboard(ScenarioEnv env) =>
-    AppSeed(state: _onboardingState(env, name: PreviewTexts.nameValue));
+AppSeed _obNameKeyboard(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(env, name: PreviewTexts.nameValue),
+  focusField: true,
+);
 
 AppSeed _obConsent(ScenarioEnv env) => AppSeed(
   state: _onboardingState(env, step: 1, name: PreviewTexts.nameValue),
@@ -694,7 +699,7 @@ AppState _otherInjury(ScenarioEnv env) => _onboardingState(
 AppSeed _obInjuryOther(ScenarioEnv env) => AppSeed(state: _otherInjury(env));
 
 AppSeed _obInjuryOtherKeyboard(ScenarioEnv env) =>
-    AppSeed(state: _otherInjury(env));
+    AppSeed(state: _otherInjury(env), focusField: true);
 
 AppSeed _obDateEmpty(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
@@ -723,6 +728,15 @@ AppSeed _obDeleted(ScenarioEnv env) =>
 
 /// Echter Neustart-Weg: der Speicher liefert unlesbaren Inhalt.
 AppSeed _obCorrupt(ScenarioEnv env) => const AppSeed(unreadable: true);
+
+/// Datenschutz-Platzhalterseite: Tipp auf den Link in Schritt 2.
+AppSeed _obPrivacy(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(env, step: 1, name: PreviewTexts.nameValue),
+  taps: const <String>[S.privacyLink],
+);
+
+/// StartGate-Fehler: der Speicher wirft beim Lesen einen Plattformfehler.
+AppSeed _startError(ScenarioEnv env) => const AppSeed(loadError: true);
 
 /// Mikrofon-Hinweis: Tipp auf den Mikrofon-Button.
 AppSeed _obMicHint(ScenarioEnv env) => AppSeed(
@@ -861,14 +875,12 @@ const List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'ob1-deleted-snackbar',
     app: _obDeleted,
-    transientOverlay: true,
     expectsPrimary: true,
     expectsHeader: true,
   ),
   Scenario(
     id: 'ob1-corrupt-snackbar',
     app: _obCorrupt,
-    transientOverlay: true,
     expectsPrimary: true,
     expectsHeader: true,
   ),
@@ -878,6 +890,8 @@ const List<Scenario> kScenarios = <Scenario>[
     expectsPrimary: true,
     expectsHeader: true,
   ),
+  Scenario(id: 'ob2-privacy', app: _obPrivacy, expectsHeader: true),
+  Scenario(id: 'start-error', app: _startError, expectsPrimary: true),
   Scenario(
     id: 'shell-tab-path',
     app: _shellPath,

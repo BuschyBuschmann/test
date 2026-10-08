@@ -51,11 +51,10 @@ class ChatMessageList extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<Widget> items = <Widget>[];
     final Widget? head = leading;
-    if (head != null) items.add(head);
     ChatMessage? previous;
     for (final ChatMessage m in messages) {
       final bool sameBlock = _continuesBlock(previous, m);
-      final bool first = previous == null && head == null;
+      final bool first = previous == null;
       final double gap = first
           ? 0
           : (sameBlock ? CuraSpace.blockGap : CuraSpace.messageGap);
@@ -76,7 +75,7 @@ class ChatMessageList extends StatelessWidget {
         ),
       );
     }
-    return ChatListView(controller: controller, children: items);
+    return ChatListView(controller: controller, leading: head, children: items);
   }
 
   /// Aufeinanderfolgende Manny-Texte bilden einen Block.

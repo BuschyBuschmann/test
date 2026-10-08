@@ -1,6 +1,8 @@
 // Skript für Szenarien, die einen Tipp brauchen (z. B. `ob-mic-hint`): wartet
 // Frame für Frame, bis ein tippbarer Baustein mit dem gesuchten Screenreader-
-// Label im Baum steht, und löst dessen Aktion aus. Nur Prüfumgebung.
+// Label im Baum steht, und löst dessen Aktion aus. Danach kann es das erste
+// Textfeld fokussieren (Tastatur-Szenarien: das Feld ist fokussiert und, wie in
+// der echten App, in den Blick gescrollt). Nur Prüfumgebung.
 import 'package:flutter/material.dart';
 
 import '../ui/components/cura_pressable.dart';
@@ -9,10 +11,18 @@ import '../ui/components/cura_pressable.dart';
 const int _maxFrames = 600;
 
 class PreviewScript extends StatefulWidget {
-  const PreviewScript({super.key, required this.taps, required this.child});
+  const PreviewScript({
+    super.key,
+    required this.taps,
+    required this.child,
+    this.focusField = false,
+  });
 
   /// Screenreader-Labels der Bausteine, die der Reihe nach „getippt“ werden.
   final List<String> taps;
+
+  /// Nach den Tipps das erste sichtbare Textfeld fokussieren.
+  final bool focusField;
   final Widget child;
 
   @override
@@ -22,6 +32,7 @@ class PreviewScript extends StatefulWidget {
 class _PreviewScriptState extends State<PreviewScript> {
   late final List<String> _pending = List<String>.of(widget.taps);
   int _frames = 0;
+  late bool _focusPending = widget.focusField;
 
   @override
   void initState() {
@@ -30,7 +41,7 @@ class _PreviewScriptState extends State<PreviewScript> {
   }
 
   void _schedule() {
-    if (_pending.isEmpty || _frames >= _maxFrames) return;
+    if ((_pending.isEmpty && !_focusPending) || _frames >= _maxFrames) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _step());
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -38,10 +49,20 @@ class _PreviewScriptState extends State<PreviewScript> {
   void _step() {
     if (!mounted) return;
     _frames++;
-    final VoidCallback? action = _find(_pending.first);
-    if (action != null) {
-      _pending.removeAt(0);
-      action();
+    if (_pending.isNotEmpty) {
+      final VoidCallback? action = _find(_pending.first);
+      if (action != null) {
+        _pending.removeAt(0);
+        action();
+      } else {
+        _scrollForward();
+      }
+    } else if (_focusPending) {
+      final EditableText? field = _findField();
+      if (field != null) {
+        _focusPending = false;
+        field.focusNode.requestFocus();
+      }
     }
     _schedule();
   }
@@ -55,6 +76,51 @@ class _PreviewScriptState extends State<PreviewScript> {
       if (w is Offstage && w.offstage) return;
       if (w is CuraPressable && w.semanticLabel == label) {
         found = w.onPressed;
+        return;
+      }
+      e.visitChildren(walk);
+    }
+
+    context.visitChildElements(walk);
+    return found;
+  }
+
+  /// Der gesuchte Baustein steht nicht im Baum (lazy Liste, noch nicht
+  /// gebaut): die sichtbare vertikale Liste ein halbes Fenster weiter
+  /// scrollen, wie es der Nutzer täte.
+  void _scrollForward() {
+    ScrollableState? found;
+    void walk(Element e) {
+      if (found != null) return;
+      final Widget w = e.widget;
+      if (w is Offstage && w.offstage) return;
+      if (e is StatefulElement && e.state is ScrollableState) {
+        final ScrollableState st = e.state as ScrollableState;
+        if (st.position.axis == Axis.vertical &&
+            st.position.pixels < st.position.maxScrollExtent - 0.5) {
+          found = st;
+          return;
+        }
+      }
+      e.visitChildren(walk);
+    }
+
+    context.visitChildElements(walk);
+    final ScrollableState? st = found;
+    if (st == null) return;
+    final ScrollPosition p = st.position;
+    p.jumpTo((p.pixels + p.viewportDimension / 2).clamp(0, p.maxScrollExtent));
+  }
+
+  /// Erstes sichtbares, bearbeitbares Textfeld.
+  EditableText? _findField() {
+    EditableText? found;
+    void walk(Element e) {
+      if (found != null) return;
+      final Widget w = e.widget;
+      if (w is Offstage && w.offstage) return;
+      if (w is EditableText && !w.readOnly) {
+        found = w;
         return;
       }
       e.visitChildren(walk);

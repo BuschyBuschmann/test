@@ -10,9 +10,11 @@
 // Modal-Routen, darum ein eigenes `Shortcuts`/`Actions`-Paar).
 //
 // `ChatFooterLayout`: Der Fuß belegt höchstens 40 % der Höhe. Ab Textskalierung
-// 1,5 wandern Hinweiszeile und Disclaimer ans Ende der Liste (scrollen mit);
-// die Leiste bleibt fest. In den Nachrichten wandert ab 1,5 auch die
-// Hinweiskarte als erstes Element in die Liste.
+// 1,5 **oder** bei verfügbarer Höhe unter 400 dp (K6; Route ohne Systemleisten
+// und ohne Tastatur) wandern Hinweiszeile und Disclaimer ans Ende der Liste
+// (scrollen mit); die Leiste bleibt fest. Unter denselben Bedingungen wandert
+// die Hinweiskarte (Manny-Chat, Nachrichten und Beispiel-Chat) als erstes
+// Element in die Liste; der Inhalt muss `extras.leading` darum immer zeigen.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -43,6 +45,7 @@ class ChatFooterLayout extends StatelessWidget {
   const ChatFooterLayout({
     super.key,
     required this.composer,
+    required this.along,
     this.hint,
     this.disclaimer,
   });
@@ -51,14 +54,27 @@ class ChatFooterLayout extends StatelessWidget {
   final Widget? hint;
   final Widget? disclaimer;
 
-  /// Ab dieser Textskalierung scrollen Hinweiszeile und Disclaimer mit.
+  /// Hinweiszeile und Disclaimer stehen am Listenende statt im Fuß
+  /// ([scrollsAlong], vom Gerüst außerhalb von `SafeArea` ermittelt).
+  final bool along;
+
+  /// Verfügbare Höhe der Route: ohne Systemleisten (Status-/Navigationsleiste)
+  /// und ohne Tastatur (`size` enthält die View-Insets nie). Außerhalb von
+  /// `SafeArea` aufrufen, sonst fehlen die Ränder.
+  static double availableHeight(BuildContext context) {
+    final MediaQueryData m = MediaQuery.of(context);
+    return m.size.height - m.padding.vertical;
+  }
+
+  /// K6: ab Textskalierung 1,5 oder bei verfügbarer Höhe unter 400 dp
+  /// scrollen Hinweiskarte, Hinweiszeile und Disclaimer mit.
   static bool scrollsAlong(BuildContext context) =>
       MediaQuery.textScalerOf(context).scale(1) >=
-      CuraSize.textScaleScrollAlong;
+          CuraSize.textScaleScrollAlong ||
+      availableHeight(context) < CuraSize.chatScrollAlongMaxHeight;
 
   @override
   Widget build(BuildContext context) {
-    final bool along = scrollsAlong(context);
     final Widget? top = along ? null : hint;
     final Widget? bottom = along ? null : disclaimer;
     return KeyedSubtree(
@@ -96,7 +112,6 @@ class ChatScreenScaffold extends StatelessWidget {
     required this.header,
     required this.bodyBuilder,
     this.notice,
-    this.noticeScrollsAlong = false,
     this.hint,
     this.composer,
     this.disclaimer,
@@ -105,12 +120,9 @@ class ChatScreenScaffold extends StatelessWidget {
   /// `ChatHeader`.
   final Widget header;
 
-  /// Hinweiskarte („Beispielverlauf“ usw.), fest unter dem Kopf.
+  /// Hinweiskarte („Beispielverlauf“ usw.), fest unter dem Kopf; unter den
+  /// Bedingungen von [ChatFooterLayout.scrollsAlong] (K6) erstes Listenelement.
   final Widget? notice;
-
-  /// Die Hinweiskarte wandert ab Textskalierung 1,5 als erstes Element in
-  /// die Liste (Nachrichten).
-  final bool noticeScrollsAlong;
 
   final Widget? hint;
   final Widget? composer;
@@ -124,7 +136,7 @@ class ChatScreenScaffold extends StatelessWidget {
     final CuraColors colors = CuraColors.of(context);
     final bool along = ChatFooterLayout.scrollsAlong(context);
     final Widget? card = notice;
-    final bool noticeInList = noticeScrollsAlong && along;
+    final bool noticeInList = along;
     final Widget? hintLine = hint;
     final Widget? disclaimerLine = disclaimer;
     final Widget? input = composer;
@@ -197,6 +209,7 @@ class ChatScreenScaffold extends StatelessWidget {
                 Expanded(child: bodyBuilder(context, extras)),
                 if (input != null)
                   ChatFooterLayout(
+                    along: along,
                     composer: input,
                     hint: hintLine,
                     disclaimer: disclaimerLine,

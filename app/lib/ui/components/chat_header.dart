@@ -33,6 +33,16 @@ class ChatHeader extends StatelessWidget {
   final bool largeTitle;
   final FocusNode? backFocusNode;
 
+  /// Der große Titel skaliert nur bis `headerTitleMaxTextScale` (kein Umbruch
+  /// mitten im Wort bei 200 % auf 320 dp, A-U3 B3); Namen im Kopf behalten
+  /// die volle Skalierung.
+  Widget _titleText(Widget text) => largeTitle
+      ? MediaQuery.withClampedTextScaling(
+          maxScaleFactor: CuraSize.headerTitleMaxTextScale,
+          child: text,
+        )
+      : text;
+
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
@@ -76,10 +86,11 @@ class ChatHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      title,
-                      style: (largeTitle ? type.title : type.heading).copyWith(
-                        color: colors.text1,
+                    _titleText(
+                      Text(
+                        title,
+                        style: (largeTitle ? type.title : type.heading)
+                            .copyWith(color: colors.text1),
                       ),
                     ),
                     if (sub != null)

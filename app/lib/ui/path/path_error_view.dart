@@ -1,7 +1,8 @@
 // Fehleransicht im Pfad-Layout (Brief 6.2, Plan 6.2 „Fehler der Plattform beim
 // Lesen“): `status-error`-Icon, Text und „Nochmal versuchen“. Der StartGate
 // zeigt sie, solange unklar ist, ob das Onboarding abgeschlossen war (A-6);
-// der Pfad-Screen (U3a) verwendet sie für `path-error`. `status-error` ist hier
+// der Pfad-Screen (U3a) verwendet sie für `path-error` mit eigenem Text
+// (Erratum E-4: zwei getrennte Texte). `status-error` ist hier
 // Status, nie Handlungsfarbe: der Button ist ein gewöhnlicher Primärbutton.
 import 'package:flutter/material.dart';
 
@@ -14,9 +15,17 @@ import '../components/pill_button.dart';
 import '../components/probe_keys.dart';
 
 class PathErrorView extends StatelessWidget {
-  const PathErrorView({super.key, required this.onRetry});
+  const PathErrorView({
+    super.key,
+    required this.onRetry,
+    required this.message,
+  });
 
   final VoidCallback onRetry;
+
+  /// Text je Ort: `S.startLoadError` im StartGate, `S.pathLoadError` im
+  /// Pfad-Tab (Erratum E-4).
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +53,7 @@ class PathErrorView extends StatelessWidget {
               Semantics(
                 liveRegion: true,
                 child: Text(
-                  S.pathLoadError,
+                  message,
                   textAlign: TextAlign.center,
                   style: type.body.copyWith(color: colors.text1),
                 ),

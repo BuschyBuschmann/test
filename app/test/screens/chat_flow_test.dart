@@ -378,6 +378,126 @@ void main() {
     });
   });
 
+  group('beim Öffnen ist die erste Nachricht sichtbar (K6, UI-76, UI-88)', () {
+    /// Erste Nachricht im Sichtfenster der Liste: ganz, oder (höher als das
+    /// Fenster) mit ihrem Anfang.
+    void expectVisibleInList(WidgetTester tester, Finder message, String why) {
+      expect(message, findsOneWidget, reason: why);
+      final Rect list = tester.getRect(find.byType(ListView).first);
+      final Rect r = tester.getRect(message);
+      expect(r.top, greaterThanOrEqualTo(list.top - 0.5), reason: why);
+      expect(r.top, lessThan(list.bottom), reason: why);
+      if (r.height <= list.height) {
+        expect(r.bottom, lessThanOrEqualTo(list.bottom + 0.5), reason: why);
+      }
+    }
+
+    final List<(Size, double)> cases = <(Size, double)>[
+      (Viewports.small, 2),
+      (const Size(568, 320), 1),
+      (const Size(568, 320), 2),
+    ];
+
+    for (final (Size size, double scale) in cases) {
+      testWidgets('Manny-Chat ${size.width.toInt()}x${size.height.toInt()} '
+          '×$scale: Karte steht in der Liste, erste Nachricht sichtbar', (
+        WidgetTester tester,
+      ) async {
+        final Harness h = await Harness.onboarded();
+        addTearDown(h.dispose);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpCura(tester, h.controller, size: size);
+        await _openChat(tester);
+        expect(tester.takeException(), isNull);
+        final String first = const ExampleMannyChatSource()
+            .messages('Jakob')
+            .first
+            .text;
+        expectVisibleInList(
+          tester,
+          find.text(first, findRichText: true),
+          'erste Manny-Nachricht',
+        );
+        // Weiter oben: die Karte ist durch Hochscrollen erreichbar.
+        final ScrollPosition p = tester
+            .state<ScrollableState>(find.byType(Scrollable).first)
+            .position;
+        p.jumpTo(0);
+        await tester.pump();
+        expect(
+          find.descendant(
+            of: find.byType(ListView),
+            matching: find.text(S.chatNoticeText),
+          ),
+          findsOneWidget,
+          reason: 'Karte ist erstes Listenelement',
+        );
+        await disposeApp(tester);
+      });
+
+      testWidgets('Beispiel-Chat ${size.width.toInt()}x${size.height.toInt()} '
+          '×$scale: erste Nachricht sichtbar', (WidgetTester tester) async {
+        final Harness h = await Harness.onboarded();
+        addTearDown(h.dispose);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpCura(tester, h.controller, size: size);
+        await _openMessages(tester);
+        final ExampleContact c = _contact('physio-mueller');
+        await tester.scrollUntilVisible(
+          _row(c),
+          100,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(_row(c));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final String first = c.lines('Jakob').first.text;
+        expectVisibleInList(
+          tester,
+          find.ancestor(
+            of: find.text(first, findRichText: true),
+            matching: find.byType(ChatBubble),
+          ),
+          'erste Nachricht des Beispiel-Chats',
+        );
+        tester
+            .state<ScrollableState>(find.byType(Scrollable).first)
+            .position
+            .jumpTo(0);
+        await tester.pump();
+        expect(
+          find.descendant(
+            of: find.byType(ListView),
+            matching: find.text(S.exampleChatNotice),
+          ),
+          findsOneWidget,
+          reason: 'Karte ist erstes Listenelement',
+        );
+        await disposeApp(tester);
+      });
+    }
+
+    testWidgets('390 × 844 ×1,0: Karte bleibt fest, das Ende steht sichtbar', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await Harness.onboarded();
+      addTearDown(h.dispose);
+      await pumpCura(tester, h.controller);
+      await _openChat(tester);
+      expect(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text(S.chatNoticeText),
+        ),
+        findsNothing,
+      );
+      expect(find.text(S.chatNoticeText), findsOneWidget);
+      await disposeApp(tester);
+    });
+  });
+
   group('Nachrichten und Beispiel-Chats (UI-79, UI-80)', () {
     testWidgets('Kopf, Karte, vier Abschnitte als Überschriften, sechs '
         'Kontakte, kein Badge, keine Suche', (WidgetTester tester) async {

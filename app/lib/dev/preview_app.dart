@@ -188,6 +188,8 @@ class _AppRuntime {
     final DateTime now = env.now;
     final MemoryStateStore store = seed.unreadable
         ? UnreadableStateStore()
+        : seed.loadError
+        ? FailingReadStateStore()
         : MemoryStateStore(seed.state);
     return _AppRuntime._(
       _controller(() => now, store, store),
@@ -292,6 +294,7 @@ class _PreviewAppState extends State<PreviewApp> {
         previewWrapper: (BuildContext context, Widget child) {
           return PreviewScript(
             taps: runtime.seed.taps,
+            focusField: runtime.seed.focusField,
             child: PreviewOverrides(
               config: config,
               viewInsetsBottom: _scenario?.keyboard ?? false

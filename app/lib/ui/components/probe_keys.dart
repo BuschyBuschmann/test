@@ -22,6 +22,12 @@ abstract final class ProbeKeys {
   );
   static const ValueKey<String> keyboard = ValueKey<String>('overlay:keyboard');
   static const ValueKey<String> header = ValueKey<String>('header');
+
+  /// Kopf, der in der Scrollfläche mitläuft (Onboarding bei großer Schrift
+  /// oder geringer Höhe): kein fester Kopf, darum **nicht** `header`.
+  static const ValueKey<String> scrollHeader = ValueKey<String>(
+    'scroll-header',
+  );
   static const ValueKey<String> scroll = ValueKey<String>('scroll');
   static const ValueKey<String> primary = ValueKey<String>('primary');
   static const ValueKey<String> probeBackground = ValueKey<String>('probe:bg');

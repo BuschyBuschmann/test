@@ -73,6 +73,8 @@ class ExampleChatScreen extends StatelessWidget {
       bodyBuilder: (BuildContext context, ChatScaffoldExtras extras) {
         final Widget? tail = extras.trailing;
         return ChatListView(
+          leading: extras.leading,
+          firstMessageIndex: 1, // nach der Tagesüberschrift
           children: <Widget>[
             CuraLabel(contact.dayLong(), textAlign: TextAlign.center),
             for (int i = 0; i < lines.length; i++)

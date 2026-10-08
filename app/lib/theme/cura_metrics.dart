@@ -108,22 +108,40 @@ abstract final class CuraSize {
   static const double avatar = 48;
   static const double avatarHeader = 36; // Kopf: 32 bis 36
   static const double avatarHeaderMin = 32;
+
+  /// Initialen im Avatar skalieren bis 130 % mit (im festen Kreis, sonst
+  /// berühren sie den Ring). Eigene Konstante, nicht die der Nav-Beschriftung.
+  static const double avatarInitialsMaxTextScale = 1.3;
+
+  /// Im Kopf-Avatar (36 dp, Innenkreis 32 dp) bis 115 %: breite Paare wie
+  /// „DW“ berühren sonst bei 130 % den Ring (A-U3, B4). Die Initialen sind
+  /// dekorativ, der Name steht daneben in voller Skalierung.
+  static const double avatarCompactInitialsMaxTextScale = 1.15;
   static const double emblemMessage = 26;
   static const double emblemHeader = 34;
+
+  /// Der große Titel im Kopf (`title`, „Nachrichten“) skaliert bis 150 % mit:
+  /// bei 200 % auf 320 dp bräche er mitten im Wort (A-U3, B3). Umbrüche nur an
+  /// Wortgrenzen, nichts wird abgeschnitten.
+  static const double headerTitleMaxTextScale = 1.5;
 
   // Zeilen und Längen.
   static const double lineLengthMax = 560; // Zeilenlänge und ContentFrame
   static const double contactRowMin = 72;
 
-  /// Cache-Bereich kleiner, fester Listen (Chat-Verläufe, Kontakte): so groß,
-  /// dass alle Einträge gebaut werden (exakte Höhen, jedes Ziel vorhanden).
-  /// Bewusst endlich: `double.infinity` bricht die Semantik-Geometrie.
-  static const double smallListCacheExtent = 10000;
-
   // Schwellen.
   static const double bubbleWidthFactor = 0.80;
   static const double chatFooterMaxFraction = 0.40;
   static const double textScaleScrollAlong = 1.5;
+
+  /// K6: unter dieser verfügbaren Höhe (Route ohne Systemleisten und ohne
+  /// Tastatur) scrollen Hinweiskarte, Hinweiszeile und Disclaimer mit.
+  static const double chatScrollAlongMaxHeight = 400;
+
+  /// Onboarding (A-U3 B1): ab Textskalierung 1,5 oder bei einer Resthöhe
+  /// (Route ohne Systemleisten und ohne Tastatur) unter 400 dp wandert der
+  /// Kopf (Zurück, Fortschritt) als erstes Element in die Scrollfläche.
+  static const double onboardingHeaderScrollMaxHeight = 400;
 
   /// Routen-Schiebung (Vollbild-Routen, Onboarding-Seitenwechsel).
   static const double routeSlide = MotionTokens.routeSlide;

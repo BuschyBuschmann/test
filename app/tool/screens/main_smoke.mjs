@@ -58,6 +58,34 @@ await open();
 check('Reload: Fortsetzen bei Schritt 2 (echter Speicher)', await seen('Schritt 2 von 4'));
 check('Reload: Name im Manny-Text', await seen('Jakob'));
 await page.screenshot({ path: path.join(outDir, 'main-nach-reload.png') });
+
+// Kaputtes Dokument im Speicher (R-U3 MINOR-3): Hinweis beim Start, danach vom
+// Löscher entfernt, nach Reload kein Hinweis mehr. Prüft die Verdrahtung von
+// `lib/main.dart` (Speicher in der Löscher-Liste).
+const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'Europe/Berlin', locale: 'de-DE' });
+await ctx2.addInitScript(() => {
+  if (!sessionStorage.getItem('smoke-seeded')) {
+    // `shared_preferences` (web) legt Strings JSON-kodiert ab.
+    localStorage.setItem('curaone.state.v1', JSON.stringify('{das ist kein Dokument'));
+    sessionStorage.setItem('smoke-seeded', '1');
+  }
+});
+const page2 = await ctx2.newPage();
+page2.on('pageerror', (e) => errors.push(String(e)));
+await page2.goto(base + '/');
+const placeholder2 = page2.locator('flt-semantics-placeholder');
+await placeholder2.waitFor({ state: 'attached', timeout: 30000 });
+await placeholder2.dispatchEvent('click');
+const seen2 = (text, timeout = 15000) =>
+  page2.getByText(text, { exact: false }).first().waitFor({ state: 'attached', timeout }).then(() => true, () => false);
+check('kaputtes Dokument: Onboarding Schritt 1', await seen2('Schritt 1 von 4'));
+check('kaputtes Dokument: Hinweis „nicht lesbar“', await seen2('nicht lesbar'));
+check('kaputtes Dokument: aus dem Speicher entfernt', (await page2.evaluate(() => localStorage.getItem('curaone.state.v1'))) === null);
+await page2.reload();
+await placeholder2.waitFor({ state: 'attached', timeout: 30000 });
+await placeholder2.dispatchEvent('click');
+check('Reload: Schritt 1 wieder da', await seen2('Schritt 1 von 4'));
+check('Reload: kein Hinweis mehr', !(await seen2('nicht lesbar', 4000)));
 check('keine Seiten- oder Konsolenfehler', errors.length === 0, errors.slice(0, 3).join(' | '));
 await browser.close();
 process.exit(failed ? 1 : 0);

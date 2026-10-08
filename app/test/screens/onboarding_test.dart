@@ -12,12 +12,14 @@ import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/choice_card.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/date_card.dart';
+import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
+import 'package:curaone/ui/path/path_error_view.dart';
 import 'package:curaone/ui/onboarding/step4_date.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
 import 'package:flutter/material.dart';
@@ -625,7 +627,8 @@ void main() {
         final Harness h = await _boot(raw: raw);
         await pumpCura(tester, h.controller);
 
-        expect(find.text(S.pathLoadError), findsOneWidget);
+        expect(find.text(S.startLoadError), findsOneWidget);
+        expect(find.text(S.pathLoadError), findsNothing, reason: 'E-4');
         expect(find.text(S.retry), findsOneWidget);
         expect(find.text('Schritt 1 von 4'), findsNothing);
         expect(raw.deletes, 0, reason: 'bei Lesefehlern nichts löschen');
@@ -646,11 +649,25 @@ void main() {
       (WidgetTester tester) async {
         final Harness h = await _boot(raw: FailingStore());
         await pumpCura(tester, h.controller);
-        expect(find.text(S.pathLoadError), findsOneWidget);
+        expect(find.text(S.startLoadError), findsOneWidget);
         expect(h.controller.loadStatus, LoadStatus.error);
         await disposeApp(tester);
       },
     );
+
+    testWidgets('E-4: StartGate und Pfad-Tab haben getrennte Fehlertexte', (
+      WidgetTester tester,
+    ) async {
+      expect(S.startLoadError, 'Deine Daten konnten nicht geladen werden.');
+      expect(S.pathLoadError, 'Dein Pfad konnte nicht geladen werden.');
+      await pumpApp(
+        tester,
+        PathErrorView(onRetry: () {}, message: S.pathLoadError),
+      );
+      expect(find.text(S.pathLoadError), findsOneWidget);
+      expect(find.text(S.startLoadError), findsNothing);
+      expect(find.text(S.retry), findsOneWidget);
+    });
 
     testWidgets('abgeschlossenes Onboarding startet auf Home, Tab Pfad (A-1)', (
       WidgetTester tester,
@@ -710,6 +727,99 @@ void main() {
         lessThanOrEqualTo(keyboardTop),
       );
       expect(tester.takeException(), isNull);
+      await disposeApp(tester);
+    });
+  });
+
+  group('Große Schrift und Tastatur auf 320 × 568 (A-U3 B1)', () {
+    Future<void> openKeyboard(WidgetTester tester) async {
+      // Bei 200 % liegt das Feld zunächst außerhalb: wie der Nutzer scrollen.
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('200 % mit Tastatur: Kopf läuft in der Scrollfläche mit, das '
+        'fokussierte Feld ist sichtbar, Weiter-Leiste kompakt', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _boot();
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpCura(tester, h.controller, size: Viewports.small);
+      await openKeyboard(tester);
+      const double keyboardTop = 568 - 300;
+      final Rect field = tester.getRect(find.byType(TextField));
+      expect(field.top, greaterThanOrEqualTo(0));
+      expect(field.bottom, lessThanOrEqualTo(keyboardTop));
+      final Rect button = tester.getRect(_next());
+      expect(field.bottom, lessThanOrEqualTo(button.top));
+      // Der Fortschrittstext steht in der Scrollfläche, nicht fest oben.
+      expect(
+        find.descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.text('Schritt 1 von 4'),
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await disposeApp(tester);
+    });
+
+    testWidgets('Tastatur auf/zu ändert den Zustand des Feldes nicht (Text, '
+        'Fokus bleiben, wenn der Kopf wechselt)', (WidgetTester tester) async {
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _enterName(tester, 'Jakob');
+      await tester.showKeyboard(find.byType(TextField));
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      // 568 - 300 = 268 dp < 400 dp: der Kopf ist in die Scrollfläche gewandert.
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Jakob',
+      );
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus ??
+            FocusManager.instance.primaryFocus != null,
+        isTrue,
+      );
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Jakob',
+      );
+      await disposeApp(tester);
+    });
+
+    testWidgets('Der Text „Noch etwas hinzufügen?“ bleibt erreichbar (am Ende '
+        'der Scrollfläche), wenn die Leiste kompakt ist', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _boot();
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpCura(tester, h.controller, size: Viewports.small);
+      expect(find.text(S.moreToAdd, skipOffstage: false), findsOneWidget);
+      await disposeApp(tester);
+    });
+  });
+
+  group('Manny im Onboarding (A-U3 B5)', () {
+    testWidgets('768 × 1024: Manny steht linksbündig zur Inhaltsspalte '
+        '(Kante des Namensfeldes)', (WidgetTester tester) async {
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller, size: Viewports.tablet);
+      final double manny = tester.getTopLeft(find.byType(MannyPlaceholder)).dx;
+      final double field = tester.getTopLeft(find.byType(TextField)).dx;
+      expect(manny, closeTo(field, 0.5));
       await disposeApp(tester);
     });
   });

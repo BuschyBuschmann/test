@@ -227,13 +227,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     };
   }
 
-  Widget _stepPage(int step, bool current, double reserve) {
+  Widget _stepPage(
+    int step,
+    bool current,
+    double reserve, {
+    required bool headerScrolls,
+    required bool compactFooter,
+  }) {
     final AppController c = _controller;
     final Widget prompt = OnboardingManny(
       height: step == 0
           ? CuraSize.mannyOnboardingStep1Height
           : CuraSize.mannyOnboardingMaxHeight,
-      centered: step == 0,
       text: current && _micHint ? S.micHint : _bubbleText(step, c),
       bubbleVisible: !current || _bubbleOpen,
       onCloseBubble: _closeBubble,
@@ -244,21 +249,80 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       2 => Step3Injury(prompt: prompt),
       _ => Step4Date(prompt: prompt),
     };
+    // Die Scroll-Reserve unten wächst mit der gemessenen Höhe der Snackbar
+    // (`reserve`); die Tastatur verkleinert den Scrollbereich selbst (das
+    // Gerüst weicht ihr aus), so bleibt jedes Ziel frei scrollbar.
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        CuraSpace.pageMargin,
-        CuraSpace.s2,
-        CuraSpace.pageMargin,
-        CuraSpace.pageMargin + (current ? reserve : 0),
+      padding: EdgeInsets.only(
+        bottom: CuraSpace.pageMargin + (current ? reserve : 0),
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      child: content,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // Immer ein Element an dieser Stelle: der Inhalt darunter behält
+          // seinen Zustand (Textfeld, Fokus, Tastatur), wenn der Kopf beim
+          // Öffnen der Tastatur in die Scrollfläche wechselt.
+          headerScrolls ? _header(step, fixed: false) : const SizedBox.shrink(),
+          Padding(
+            key: const ValueKey<String>('onboarding-step-content'),
+            padding: const EdgeInsets.fromLTRB(
+              CuraSpace.pageMargin,
+              CuraSpace.s2,
+              CuraSpace.pageMargin,
+              0,
+            ),
+            child: content,
+          ),
+          // Kompakte Weiter-Leiste: der Text „Noch etwas hinzufügen?“ steht am
+          // Ende der Scrollfläche, unmittelbar vor der Mikrofon-Taste (auch
+          // in der Lesereihenfolge). Immer drei Kinder, der Inhalt trägt einen Schlüssel:
+          // wechseln Kopf und Hinweis gleichzeitig, paart Flutter ungeschlüsselte
+          // Kinder nicht mehr, und der Inhalt verlöre Zustand und Fokus
+          // (Textfeld, Tastatur).
+          compactFooter && current ? _moreToAddText() : const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 
-  Widget _header() {
+  Widget _moreToAddText() {
+    final CuraColors colors = CuraColors.of(context);
+    final CuraTypography type = CuraTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        CuraSpace.pageMargin,
+        CuraSpace.s4,
+        CuraSpace.pageMargin,
+        0,
+      ),
+      child: Semantics(
+        container: true,
+        child: Text(
+          S.moreToAdd,
+          style: type.body.copyWith(color: colors.text2),
+        ),
+      ),
+    );
+  }
+
+  /// Kopf in der Scrollfläche statt fest oben (A-U3 B1, gewählte Variante):
+  /// ab Textskalierung 1,5 oder bei einer Resthöhe unter 400 dp (Route ohne
+  /// Systemleisten und ohne Tastatur). Nichts geht verloren (Fortschrittstext,
+  /// Zurück-Pfeil, Manny und Blase bleiben als Inhalt erreichbar), und die
+  /// Scrollfläche behält mindestens die Höhe, die Tastatur und Weiter-Leiste
+  /// übrig lassen.
+  bool _headerScrolls(BuildContext context) {
+    final MediaQueryData m = MediaQuery.of(context);
+    final double rest =
+        m.size.height - m.padding.vertical - m.viewInsets.bottom;
+    return m.textScaler.scale(1) >= CuraSize.textScaleScrollAlong ||
+        rest < CuraSize.onboardingHeaderScrollMaxHeight;
+  }
+
+  Widget _header(int step, {required bool fixed}) {
     return KeyedSubtree(
-      key: ProbeKeys.header,
+      key: fixed ? ProbeKeys.header : ProbeKeys.scrollHeader,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           CuraSpace.s1,
@@ -273,7 +337,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             // die Fortschrittsanzeige nicht springt.
             SizedBox.square(
               dimension: CuraSize.touchTarget,
-              child: _step == 0
+              child: step == 0
                   ? null
                   : HeaderIconButton(
                       icon: Icons.arrow_back_rounded,
@@ -287,7 +351,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             Expanded(
               child: Semantics(
                 container: true,
-                child: StepProgress(step: _step + 1),
+                child: StepProgress(step: step + 1),
               ),
             ),
           ],
@@ -296,7 +360,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  Widget _bottom(BuildContext context, AppController c, bool keyboard) {
+  Widget _bottom(BuildContext context, AppController c, bool compact) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
@@ -306,9 +370,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       onPressed: _canContinue(c) ? _next : null,
     );
     final Widget mic = MicButton(onPressed: _onMic);
-    // Mit Tastatur bleibt wenig Platz: Mikrofon und Button teilen sich eine
-    // Zeile, der Text der Mikrofon-Zeile entfällt (Annahme, siehe Bericht).
-    final Widget block = keyboard
+    // Mit Tastatur, bei großer Schrift oder geringer Höhe bleibt wenig Platz:
+    // Mikrofon und Button teilen sich eine Zeile, der Text der Mikrofon-Zeile
+    // wandert ans Ende der Scrollfläche ([_moreToAddText]).
+    final Widget block = compact
         ? Row(
             children: <Widget>[
               mic,
@@ -365,6 +430,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget build(BuildContext context) {
     final AppController c = AppScope.of(context);
     final bool keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final bool headerScrolls = _headerScrolls(context);
+    final bool compactFooter = keyboard || headerScrolls;
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSnackbar());
     return PopScope(
       canPop: false,
@@ -395,21 +462,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  _header(),
+                  headerScrolls
+                      ? const SizedBox.shrink()
+                      : _header(_step, fixed: true),
                   Expanded(
+                    key: const ValueKey<String>('onboarding-scroll-area'),
                     child: KeyedSubtree(
                       key: ProbeKeys.scroll,
                       child: _StepPager(
                         step: _step,
                         direction: _direction,
-                        builder: (int step, bool current) =>
-                            _stepPage(step, current, _snackbarReserve),
+                        builder: (int step, bool current) => _stepPage(
+                          step,
+                          current,
+                          _snackbarReserve,
+                          headerScrolls: headerScrolls,
+                          compactFooter: compactFooter,
+                        ),
                       ),
                     ),
                   ),
                   Builder(
                     builder: (BuildContext context) =>
-                        _bottom(context, c, keyboard),
+                        _bottom(context, c, compactFooter),
                   ),
                 ],
               ),

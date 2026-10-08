@@ -9,6 +9,7 @@
 // - Ladeansicht: statische Glas-Kreise, keine künstliche Verzögerung.
 import 'package:flutter/material.dart';
 
+import '../../l10n/strings_de.dart';
 import '../../logic/app_state.dart' show OnboardingState;
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
@@ -87,7 +88,9 @@ class _StartGateState extends State<StartGate> {
     final bool error =
         _failed || AppScope.of(context).loadStatus == LoadStatus.error;
     return ScreenFrame(
-      child: error ? PathErrorView(onRetry: _retry) : const StartLoadingView(),
+      child: error
+          ? PathErrorView(onRetry: _retry, message: S.startLoadError)
+          : const StartLoadingView(),
     );
   }
 }

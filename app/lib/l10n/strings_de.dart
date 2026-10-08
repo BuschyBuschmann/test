@@ -326,8 +326,13 @@ abstract final class S {
   /// Ladeansicht des Starts (Screenreader, Live-Region).
   static const String loading = 'Wird geladen';
 
-  /// Fehlerzustand beim Start (Brief 6.2, Plattformfehler beim Lesen).
+  /// Fehlerzustand des Pfad-Tabs (Brief 6.2).
   static const String pathLoadError = 'Dein Pfad konnte nicht geladen werden.';
+
+  /// Fehlerzustand beim Start, solange unklar ist, ob das Onboarding
+  /// abgeschlossen war (Erratum E-4, Brief v1 Abschnitt 14).
+  static const String startLoadError =
+      'Deine Daten konnten nicht geladen werden.';
   static const String retry = 'Nochmal versuchen';
 
   /// Hinweise nach dem Neustart des Onboardings (Snackbar, 4 s, A-34).
