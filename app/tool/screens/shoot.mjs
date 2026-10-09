@@ -51,6 +51,9 @@ const outDir = path.resolve(arg('out', path.join(appRoot, 'build', 'screens')));
 const only = arg('only', '')?.split(',').filter(Boolean);
 const onlyVariants = arg('variants', '')?.split(',').filter(Boolean);
 const onlyViewports = arg('viewports', '')?.split(',').filter(Boolean);
+// Dauer-Animationen (cmp-busy) rendern in Software sehr langsam (ca. 12 s je
+// Bild allein, mehr bei 4 Workern): großzügige Frist bis CURA_READY.
+const READY_TIMEOUT_MS = 120000;
 const workers = Number(arg('workers', '4'));
 const clock = arg('clock', 'fixed');
 const DPR = 2;
@@ -124,11 +127,11 @@ function save(rel, buffer) {
 
 async function runShot(worker, job) {
   const ctx = await contextFor(worker, job.vp);
-  const s = await openScenario(ctx, base, { ...job.params, dumpText: 1 }, { clock, now: config.now });
+  const s = await openScenario(ctx, base, { ...job.params, dumpText: 1 }, { clock, now: config.now, timeoutMs: READY_TIMEOUT_MS });
   try {
     if (!s.ready) problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht bereit (Timeout)`);
     if (s.ready && s.settled === false && !s.env?.loops) {
-      problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht zur Ruhe gekommen (Animation läuft weiter, Szenario nicht als loops markiert)`);
+      problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht zur Ruhe gekommen (Animation läuft weiter, Szenario nicht als loops markiert; ${JSON.stringify(s.readyInfo)})`);
     }
     if (s.error) problems.push(`${job.variant}/${job.vp.name}/${job.id}: ${s.error.slice(0, 200)}`);
     const png = await s.page.screenshot();
@@ -225,7 +228,7 @@ async function measurePipette(png, dump, job) {
 
 async function runSim(worker, job) {
   const ctx = await contextFor(worker, job.vp);
-  const s = await openScenario(ctx, base, { scenario: job.id }, { clock, now: config.now });
+  const s = await openScenario(ctx, base, { scenario: job.id }, { clock, now: config.now, timeoutMs: READY_TIMEOUT_MS });
   try {
     if (!s.ready) problems.push(`sim-${job.type}/${job.id}: nicht bereit`);
     const normal = await s.page.screenshot();

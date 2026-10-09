@@ -82,12 +82,14 @@ export async function openScenario(context, baseUrl, params, opts = {}) {
     return line ? JSON.parse(line.slice(marker.length + 1)) : null;
   };
   const readyLine = messages.find((m) => m.startsWith('CURA_READY'));
-  const settled = readyLine ? (readyLine.slice(10).trim() ? JSON.parse(readyLine.slice(10)).settled : null) : null;
+  const readyInfo = readyLine && readyLine.slice(10).trim() ? JSON.parse(readyLine.slice(10)) : null;
+  const settled = readyInfo ? readyInfo.settled : null;
   const flutterError = messages.find((m) => m.startsWith('CURA_ERROR'));
   return {
     page,
     ready,
     settled,
+    readyInfo,
     env: find('CURA_ENV'),
     dump: find('CURA_DUMP'),
     error: flutterError ?? (errors.length ? errors.join('\n') : null),

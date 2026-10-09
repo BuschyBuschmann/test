@@ -26,7 +26,7 @@ class PrivacyPlaceholderPage extends StatelessWidget {
               key: ProbeKeys.header,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  CuraSpace.s1,
+                  CuraSpace.s2,
                   CuraSpace.s2,
                   CuraSpace.pageMargin,
                   CuraSpace.s2,

@@ -233,6 +233,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     double reserve, {
     required bool headerScrolls,
     required bool compactFooter,
+    required bool micInScroll,
   }) {
     final AppController c = _controller;
     final Widget prompt = OnboardingManny(
@@ -280,13 +281,46 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           // wechseln Kopf und Hinweis gleichzeitig, paart Flutter ungeschlüsselte
           // Kinder nicht mehr, und der Inhalt verlöre Zustand und Fokus
           // (Textfeld, Tastatur).
-          compactFooter && current ? _moreToAddText() : const SizedBox.shrink(),
+          compactFooter && current
+              ? _moreToAddText(withMic: micInScroll)
+              : const SizedBox.shrink(),
         ],
       ),
     );
   }
 
-  Widget _moreToAddText() {
+  String get _primaryLabel => _step == 1 ? S.consentAccept : S.next;
+
+  /// Bricht der Button-Text in der kompakten Zeile (neben dem Mikrofon) mitten
+  /// im Wort, bekommt „Weiter“ die volle Breite und das Mikrofon steht in der
+  /// Scrollfläche bei „Noch etwas hinzufügen?“ (A-U3-RR R1). Gemessen: das
+  /// längste Wort des Textes samt Innenabstand gegen die Breite neben dem
+  /// Mikrofon.
+  bool _micInScroll(BuildContext context, bool compact) {
+    if (!compact) return false;
+    final double width =
+        (MediaQuery.sizeOf(context).width > CuraSize.lineLengthMax
+            ? CuraSize.lineLengthMax
+            : MediaQuery.sizeOf(context).width) -
+        CuraSpace.pageMargin * 2;
+    final double room =
+        width - CuraSize.micButton - CuraSpace.s2 - CuraSpace.s6 * 2;
+    final TextStyle style = CuraTypography.of(context).button;
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    double longest = 0;
+    for (final String word in _primaryLabel.split(' ')) {
+      final TextPainter p = TextPainter(
+        text: TextSpan(text: word, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout();
+      if (p.width > longest) longest = p.width;
+      p.dispose();
+    }
+    return longest > room;
+  }
+
+  Widget _moreToAddText({required bool withMic}) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
     return Padding(
@@ -296,12 +330,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         CuraSpace.pageMargin,
         0,
       ),
-      child: Semantics(
-        container: true,
-        child: Text(
-          S.moreToAdd,
-          style: type.body.copyWith(color: colors.text2),
-        ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Semantics(
+              container: true,
+              child: Text(
+                S.moreToAdd,
+                style: type.body.copyWith(color: colors.text2),
+              ),
+            ),
+          ),
+          if (withMic) ...<Widget>[
+            const SizedBox(width: CuraSpace.s3),
+            MicButton(onPressed: _onMic),
+          ],
+        ],
       ),
     );
   }
@@ -325,7 +369,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       key: fixed ? ProbeKeys.header : ProbeKeys.scrollHeader,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          CuraSpace.s1,
+          CuraSpace.s2,
           CuraSpace.s2,
           CuraSpace.pageMargin,
           0,
@@ -360,20 +404,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  Widget _bottom(BuildContext context, AppController c, bool compact) {
+  Widget _bottom(
+    BuildContext context,
+    AppController c,
+    bool compact, {
+    required bool micInScroll,
+  }) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
     final Widget primary = PillButton(
       key: ProbeKeys.primary,
-      label: _step == 1 ? S.consentAccept : S.next,
+      label: _primaryLabel,
       onPressed: _canContinue(c) ? _next : null,
     );
     final Widget mic = MicButton(onPressed: _onMic);
     // Mit Tastatur, bei großer Schrift oder geringer Höhe bleibt wenig Platz:
     // Mikrofon und Button teilen sich eine Zeile, der Text der Mikrofon-Zeile
     // wandert ans Ende der Scrollfläche ([_moreToAddText]).
-    final Widget block = compact
+    final Widget block = compact && micInScroll
+        ? primary
+        : compact
         ? Row(
             children: <Widget>[
               mic,
@@ -432,6 +483,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final bool keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     final bool headerScrolls = _headerScrolls(context);
     final bool compactFooter = keyboard || headerScrolls;
+    final bool micInScroll = _micInScroll(context, compactFooter);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSnackbar());
     return PopScope(
       canPop: false,
@@ -478,13 +530,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           _snackbarReserve,
                           headerScrolls: headerScrolls,
                           compactFooter: compactFooter,
+                          micInScroll: micInScroll,
                         ),
                       ),
                     ),
                   ),
                   Builder(
-                    builder: (BuildContext context) =>
-                        _bottom(context, c, compactFooter),
+                    builder: (BuildContext context) => _bottom(
+                      context,
+                      c,
+                      compactFooter,
+                      micInScroll: micInScroll,
+                    ),
                   ),
                 ],
               ),

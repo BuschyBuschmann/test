@@ -1324,6 +1324,28 @@ void main() {
     });
   });
 
+  group('N1: Zielgröße über den ganzen Scrollweg', () {
+    testWidgets('20×20-Ziel bei 1500 dp in einer Liste wird gemeldet', (
+      WidgetTester tester,
+    ) async {
+      Widget list({required double size}) => ListView(
+        key: PreviewKeys.scroll,
+        children: <Widget>[
+          for (int i = 0; i < 40; i++)
+            SizedBox(
+              height: 60,
+              child: Center(child: _tap(300, i == 25 ? size : 48)),
+            ),
+        ],
+      );
+      await pump(tester, list(size: 20));
+      final List<Finding> f = await checkTapTargetSize(tester);
+      expect(f, isNotEmpty, reason: 'Ziel Nr. 25 liegt bei 1500 dp');
+      await pump(tester, list(size: 48));
+      expect(await checkTapTargetSize(tester), isEmpty);
+    });
+  });
+
   group('probeKeyedRects: nur sichtbare Teilbäume (R-U3 MINOR-2)', () {
     const ValueKey<String> mark = ValueKey<String>('overlay:probe-test');
 

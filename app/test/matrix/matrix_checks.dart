@@ -571,16 +571,33 @@ Future<T> atScrollStart<T>(
   }
 }
 
-/// Tap-Ziele ≥ 48 × 48 dp (Flutter-Leitlinie `androidTapTargetGuideline`),
-/// im Anfangszustand der Scrollbereiche ([atScrollStart]).
+/// Tap-Ziele ≥ 48 × 48 dp: Flutter-Leitlinie `androidTapTargetGuideline` für
+/// den Anfangszustand der Scrollbereiche ([atScrollStart]) **und** die
+/// Rechtecke aller Ziele über den ganzen Scrollweg ([scanAll]), damit auch ein
+/// zu kleines Ziel weit unten in einer langen Liste auffällt (R-U3-RR N1).
 Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
   final Evaluation e = await atScrollStart(
     tester,
     () => androidTapTargetGuideline.evaluate(tester),
   );
-  return e.passed
-      ? const <Finding>[]
-      : <Finding>[Finding('Tap-Ziel ≥ 48 dp', e.reason ?? '')];
+  final List<Finding> out = <Finding>[
+    if (!e.passed) Finding('Tap-Ziel ≥ 48 dp', e.reason ?? ''),
+  ];
+  const double min = CuraSize.touchTarget - 0.01;
+  for (final ScrollScan scan in await scanAll(tester)) {
+    for (final TapTarget t in scan.targets) {
+      if (t.rect.width < min || t.rect.height < min) {
+        out.add(
+          Finding(
+            'Tap-Ziel ≥ 48 dp',
+            '$t im Scrollweg ist kleiner als 48 × 48 dp '
+                '(${t.rect.width.toStringAsFixed(1)} × ${t.rect.height.toStringAsFixed(1)})',
+          ),
+        );
+      }
+    }
+  }
+  return out;
 }
 
 /// Abstand ≥ 8 dp zwischen Tap-Ziel-Rechtecken, paarweise ohne verschachtelte

@@ -71,17 +71,24 @@ Map<String, Object?> _environment(PreviewConfig config) {
   };
 }
 
-/// Höchstens 2 s Wanduhrzeit einschwingen (Szenarien mit Dauer-Animation, z. B.
-/// Fortschrittskreis, werden nie ruhig und rendern in Software langsam),
-/// ruhig = 3 Abfragen in Folge.
-const Duration _maxSettle = Duration(seconds: 2);
+/// Einschwingen: Szenarien mit Dauer-Animation (`loops`, z. B. Fortschrittskreis)
+/// werden nie ruhig und rendern in Software langsam, darum höchstens 2 s
+/// Wanduhrzeit. Alle anderen warten bis zu 10 s: sie enden, sobald es ruhig
+/// ist (3 Abfragen in Folge); die längere Frist fängt nur einen langsamen
+/// Start unter Last ab (R3), sie verdeckt keine Dauer-Animation (die würde
+/// auch nach 10 s als „nicht zur Ruhe gekommen“ gemeldet).
+const Duration _maxSettleLoops = Duration(seconds: 2);
+const Duration _maxSettleRest = Duration(seconds: 10);
 const int _idlePolls = 3;
 
 Future<void> _afterSettle(PreviewConfig config) async {
   await WidgetsBinding.instance.endOfFrame;
   int idle = 0;
   final Stopwatch watch = Stopwatch()..start();
-  while (watch.elapsed < _maxSettle && idle < _idlePolls) {
+  final Duration limit = (scenarioById(config.scenarioId ?? '')?.loops ?? false)
+      ? _maxSettleLoops
+      : _maxSettleRest;
+  while (watch.elapsed < limit && idle < _idlePolls) {
     await Future<void>.delayed(CuraMotion.fastDuration);
     final SchedulerBinding b = SchedulerBinding.instance;
     idle = (b.transientCallbackCount == 0 && !b.hasScheduledFrame)
@@ -95,7 +102,12 @@ Future<void> _afterSettle(PreviewConfig config) async {
   }
   _announce(
     'CURA_READY',
-    jsonEncode(<String, Object?>{'settled': idle >= _idlePolls}),
+    jsonEncode(<String, Object?>{
+      'settled': idle >= _idlePolls,
+      'waitedMs': watch.elapsedMilliseconds,
+      'transientCallbacks': SchedulerBinding.instance.transientCallbackCount,
+      'frameScheduled': SchedulerBinding.instance.hasScheduledFrame,
+    }),
   );
 }
 

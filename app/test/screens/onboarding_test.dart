@@ -22,7 +22,10 @@ import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/path_error_view.dart';
 import 'package:curaone/ui/onboarding/step4_date.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
+import 'package:curaone/theme/cura_metrics.dart';
+import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -808,6 +811,97 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await pumpCura(tester, h.controller, size: Viewports.small);
       expect(find.text(S.moreToAdd, skipOffstage: false), findsOneWidget);
+      await disposeApp(tester);
+    });
+  });
+
+  group('Weiter-Leiste bei großer Schrift (A-U3-RR R1)', () {
+    /// Der Text des Primärbuttons bricht nur an Wortgrenzen: das längste Wort
+    /// passt in die Breite, die der Absatz bekommt.
+    void expectWholeWords(WidgetTester tester, String label) {
+      final RenderParagraph p = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.byType(PillButton),
+          matching: find.text(label),
+        ),
+      );
+      final TextStyle style = p.text.style!;
+      final TextScaler scaler = p.textScaler;
+      double longest = 0;
+      for (final String word in label.split(' ')) {
+        final TextPainter tp = TextPainter(
+          text: TextSpan(text: word, style: style),
+          textDirection: TextDirection.ltr,
+          textScaler: scaler,
+        )..layout();
+        if (tp.width > longest) longest = tp.width;
+        tp.dispose();
+      }
+      expect(
+        p.constraints.maxWidth,
+        greaterThanOrEqualTo(longest - 0.5),
+        reason: '„$label“ bricht mitten im Wort',
+      );
+    }
+
+    testWidgets('320 × 568, 200 %, Schritt 2: „Verstanden, weiter“ bricht nur '
+        'an Wortgrenzen; das Mikrofon steht in der Scrollfläche', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _boot();
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _enterName(tester, 'Jakob');
+      await tester.ensureVisible(_next());
+      await tester.tap(_next());
+      await tester.pumpAndSettle();
+      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expectWholeWords(tester, S.consentAccept);
+      expect(
+        find.descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.byType(MicButton),
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+        reason: 'Mikrofon neben „Noch etwas hinzufügen?“ in der Scrollfläche',
+      );
+      expect(tester.takeException(), isNull);
+      await disposeApp(tester);
+    });
+
+    testWidgets('passt der Text neben das Mikrofon, bleibt es in der Leiste', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _boot();
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpCura(tester, h.controller, size: Viewports.small);
+      // Schritt 1: „Weiter“ passt neben das Mikrofon.
+      expect(
+        find.descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.byType(MicButton),
+          skipOffstage: false,
+        ),
+        findsNothing,
+      );
+      expectWholeWords(tester, S.next);
+      await disposeApp(tester);
+    });
+  });
+
+  group('Kopf: Fokusring-Abstand (A-U3-RR R2)', () {
+    testWidgets('Zurück-Pfeil im Onboarding-Kopf und auf der Datenschutzseite '
+        'hat 8 dp Abstand zum linken Rand', (WidgetTester tester) async {
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      await _advanceTo(tester, 1);
+      expect(tester.getTopLeft(find.byType(HeaderIconButton)).dx, CuraSpace.s2);
+      await tester.tap(find.text(S.privacyLink));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byType(HeaderIconButton)).dx, CuraSpace.s2);
       await disposeApp(tester);
     });
   });
