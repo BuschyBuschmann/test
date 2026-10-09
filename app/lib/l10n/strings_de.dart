@@ -117,6 +117,23 @@ abstract final class S {
   static String bossLabel(String status) => '$unitBoss, $status.';
 
   // -------------------------------------------------------------------------
+  // Kopfzeile Pfad (Brief 5.9, 8; Ergänzung 1, 3.1)
+  // -------------------------------------------------------------------------
+  /// Zusatzlabel an der Streak-Pill (Text, nicht nur Farbe, UI-18, UI-22).
+  static const String streakFrozenWord = 'eingefroren';
+
+  /// „Streak: 12 Tage“ (Screenreader); [daysText] kommt aus `tage(n)`.
+  static String streakLabel(String daysText) => 'Streak: $daysText';
+  static String streakFrozenLabel(String daysText) =>
+      'Streak: $daysText, $streakFrozenWord';
+
+  /// „Streak-Freezes: 2“
+  static String freezesLabel(int n) => 'Streak-Freezes: $n';
+
+  /// Einstieg ins Sheet „Deine Daten“ (Tooltip und Label des Icons).
+  static const String dataSheetOpen = 'Deine Daten';
+
+  // -------------------------------------------------------------------------
   // Heute (Plan 7.4, 7.5)
   // -------------------------------------------------------------------------
   static const String exercisesHeadingEmpty = 'Übungen';
@@ -345,9 +362,7 @@ abstract final class S {
   static const String newDayAnnouncement =
       'Neuer Tag. Dein Programm für heute ist neu.';
 
-  // Platzhalter der Tabs, bis Pfad (U3a) und Heute (U3b) sie ersetzen.
-  static const String pathTabTitle = 'Dein Pfad';
-  static const String pathTabPlaceholder = 'Hier entsteht dein Pfad.';
+  // Platzhalter des Tabs Heute, bis U3b ihn ersetzt.
   static String todayTitle(String name) => 'Heute, $name';
   static const String todayTabPlaceholder = 'Hier entsteht dein Tag.';
 

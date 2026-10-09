@@ -216,30 +216,43 @@ List<TapTarget> tapTargets(WidgetTester tester) {
 }
 
 /// Rechtecke aller Render-Objekte mit Tap-Semantik (`Semantics(onTap:)`,
-/// `GestureDetector`), in dp.
+/// `GestureDetector`), in dp. Nur **sichtbare** Teilbäume: Eine Route unter
+/// einer opaken Route (Home unter dem Chat) hat ihre Render-Objekte noch, sie
+/// gehören aber nicht zum Bildschirm (Element-Baum: `debugVisitOnstageChildren`,
+/// wie bei [probeKeyedRects]). Sonst würden die Units des Pfads unter den
+/// Kontaktzeilen als „innere Ziele“ der Zeilen gezählt.
 List<Rect> _renderTapRects(WidgetTester tester) {
   final List<Rect> out = <Rect>[];
   final double dpr = tester.view.devicePixelRatio;
-  void walk(RenderObject r) {
-    bool tap = false;
-    if (r is RenderSemanticsAnnotations) tap = r.properties.onTap != null;
-    if (r is RenderSemanticsGestureHandler) tap = r.onTap != null;
-    // Nur Ziele in Scrollbereichen: Index-Zellen gibt es nur dort, und feste
-    // Overlays dürfen nicht in die Zelle darunter hineingerechnet werden.
-    if (tap &&
-        r is RenderBox &&
-        r.attached &&
-        r.hasSize &&
-        RenderAbstractViewport.maybeOf(r) != null) {
-      final Rect g = r.localToGlobal(Offset.zero) & r.size;
-      out.add(
-        Rect.fromLTRB(g.left / dpr, g.top / dpr, g.right / dpr, g.bottom / dpr),
-      );
+  void walk(Element e) {
+    final RenderObject? r = e.renderObject;
+    if (e is RenderObjectElement && r != null) {
+      bool tap = false;
+      if (r is RenderSemanticsAnnotations) tap = r.properties.onTap != null;
+      if (r is RenderSemanticsGestureHandler) tap = r.onTap != null;
+      // Nur Ziele in Scrollbereichen: Index-Zellen gibt es nur dort, und feste
+      // Overlays dürfen nicht in die Zelle darunter hineingerechnet werden.
+      if (tap &&
+          r is RenderBox &&
+          r.attached &&
+          r.hasSize &&
+          RenderAbstractViewport.maybeOf(r) != null) {
+        final Rect g = r.localToGlobal(Offset.zero) & r.size;
+        out.add(
+          Rect.fromLTRB(
+            g.left / dpr,
+            g.top / dpr,
+            g.right / dpr,
+            g.bottom / dpr,
+          ),
+        );
+      }
     }
-    r.visitChildren(walk);
+    e.debugVisitOnstageChildren(walk);
   }
 
-  walk(tester.binding.renderViews.first);
+  final Element? root = WidgetsBinding.instance.rootElement;
+  if (root != null) walk(root);
   return out;
 }
 
@@ -366,6 +379,23 @@ class ScrollScan {
       position.axis == Axis.vertical ? Offset(0, pixels) : Offset(pixels, 0);
 }
 
+/// Ein Scrollbereich **in** einem Overlay (`overlay:*`) ist kein Inhaltsbereich:
+/// Der Text einer begrenzten Blase scrollt innen (Plan 4.6, letzte Stufe), und
+/// die Pfad-Units, die unter der Blase liegen, gehören nicht zu seinem
+/// Scrollweg. Der markierte Hauptbereich ([PreviewKeys.scroll]) bleibt immer
+/// dabei.
+bool _insideOverlay(Element e) {
+  bool inside = false;
+  e.visitAncestorElements((Element a) {
+    if (_isKeyedWith(a, (String k) => k.startsWith('overlay:'))) {
+      inside = true;
+      return false;
+    }
+    return true;
+  });
+  return inside;
+}
+
 /// Alle Scrollbereiche, die Tap-Ziele tragen können: der markierte
 /// ([PreviewKeys.scroll]) und jeder weitere vertikale `Scrollable` mit
 /// Scrollweg (Sheet über Liste, Chat-Nachrichtenliste, R-U2-RR N1). Ein
@@ -388,7 +418,8 @@ List<ScrollableState> _scrollables(WidgetTester tester) {
   for (final Element e in find.byType(Scrollable).evaluate()) {
     final ScrollableState st = (e as StatefulElement).state as ScrollableState;
     if (st.position.axis == Axis.vertical &&
-        st.position.maxScrollExtent > 0.5) {
+        st.position.maxScrollExtent > 0.5 &&
+        !_insideOverlay(e)) {
       out.add(st);
     }
   }

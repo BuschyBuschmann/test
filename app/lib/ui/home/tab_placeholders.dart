@@ -1,5 +1,6 @@
-// Einfache Platzhalter-Inhalte der Tabs, bis Pfad (U3a) und Heute (U3b) sie
-// ersetzen. Sie tragen keine Funktion; nur Überschrift und Hinweis.
+// Einfacher Platzhalter-Inhalt des Tabs Heute, bis U3b ihn ersetzt. Er trägt
+// keine Funktion; nur Überschrift und Hinweis. (Der Pfad-Tab ist seit U3a der
+// `PathScreen`.)
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -45,14 +46,6 @@ class _TabPlaceholder extends StatelessWidget {
       ),
     );
   }
-}
-
-class PathTabPlaceholder extends StatelessWidget {
-  const PathTabPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const _TabPlaceholder(title: S.pathTabTitle, text: S.pathTabPlaceholder);
 }
 
 class TodayTabPlaceholder extends StatelessWidget {

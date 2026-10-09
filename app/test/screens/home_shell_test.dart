@@ -10,6 +10,7 @@ import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/home/tab_placeholders.dart';
+import 'package:curaone/ui/path/path_screen.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
 import 'package:flutter/material.dart';
@@ -64,7 +65,7 @@ void main() {
     ) async {
       await _home(tester);
       expect(_shell(tester).activeTab, HomeTab.path);
-      expect(find.text(S.pathTabTitle), findsOneWidget);
+      expect(find.text(S.weekTitle(5)), findsOneWidget);
       expect(_navEntry(S.navPath), findsOneWidget);
       expect(_navEntry(S.navToday), findsOneWidget);
       expect(
@@ -87,7 +88,7 @@ void main() {
       expect(_shell(tester).activeTab, HomeTab.today);
       expect(find.text(S.todayTitle('Jakob')), findsOneWidget);
       // IndexedStack: der inaktive Tab bleibt gebaut (Scrollposition bleibt).
-      expect(find.byType(PathTabPlaceholder, skipOffstage: false), findsOne);
+      expect(find.byType(PathScreen, skipOffstage: false), findsOne);
       await disposeApp(tester);
     });
 
@@ -98,10 +99,10 @@ void main() {
       bool enabled(Type type) => TickerMode.valuesOf(
         tester.element(find.byType(type, skipOffstage: false)),
       ).enabled;
-      expect(enabled(PathTabPlaceholder), isTrue);
+      expect(enabled(PathScreen), isTrue);
       expect(enabled(TodayTabPlaceholder), isFalse);
       await _selectToday(tester);
-      expect(enabled(PathTabPlaceholder), isFalse);
+      expect(enabled(PathScreen), isFalse);
       expect(enabled(TodayTabPlaceholder), isTrue);
       await disposeApp(tester);
     });
@@ -111,10 +112,10 @@ void main() {
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
       await _home(tester);
-      expect(find.bySemanticsLabel(S.pathTabTitle), findsOneWidget);
+      expect(find.bySemanticsLabel(S.weekTitle(5)), findsOneWidget);
       expect(find.bySemanticsLabel(S.todayTitle('Jakob')), findsNothing);
       await _selectToday(tester);
-      expect(find.bySemanticsLabel(S.pathTabTitle), findsNothing);
+      expect(find.bySemanticsLabel(S.weekTitle(5)), findsNothing);
       expect(find.bySemanticsLabel(S.todayTitle('Jakob')), findsOneWidget);
       handle.dispose();
       await disposeApp(tester);

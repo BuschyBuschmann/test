@@ -80,6 +80,62 @@ abstract final class CuraSize {
   static const double unitRingGap = 9;
   static const double unitRingWidth = 1.5;
 
+  // Pfad-Layout (Brief 5.5, 6.2; pfad-v4.png, Plan 4.6, 7.3). Ablage der
+  // Brief-Werte, keine neuen Design-Tokens.
+  /// Manny sitzt mit den Füßen so weit auf der Unit (Überlappung der
+  /// Fußunterkante mit dem oberen Rand des Kreises).
+  static const double mannyPerchOverlap = 6;
+
+  /// Kleinster lichter Abstand zweier Units (pfad-v4.png). Der Pfad vergrößert
+  /// ihn, damit Manny und die Beschriftung darüber Platz haben.
+  static const double pathUnitGapMin = 84;
+
+  /// Abstand zwischen Unit und ihrer Beschriftung (`caption`).
+  static const double pathLabelGap = 4;
+
+  /// Luft zwischen Manny (bzw. Beschriftung) und der Unit darüber.
+  static const double pathUnitAir = 4;
+
+  /// Die Linie läuft um Units und Beschriftungen herum: so weit reicht die
+  /// Aussparung über den Rand hinaus.
+  static const double pathLineClipUnit = 1;
+  static const double pathLineClipLabel = 2;
+
+  /// Abstand der Punkte der Zukunftslinie (Mitte zu Mitte, Linienstärke 3).
+  static const double pathDotSpacing = 9;
+
+  /// Symbolgröße in der Unit als Anteil des Durchmessers.
+  static const double unitIconFactor = 0.5;
+
+  /// Weicher Schein der aktuellen Unit und Ring-Puls reichen so weit über den
+  /// Ring hinaus (dp).
+  static const double unitGlowExtent = 28;
+  static const double unitPulseExtent = 24;
+  static const double unitPulseWidth = 3;
+
+  /// Luft auf gemessene Textbreiten (Gleitkomma-Rundung): sonst bricht der Text
+  /// im Widget in eine weitere Zeile um.
+  static const double measureSlack = 1;
+
+  // Kopfzeile Pfad (Ergänzung 1, 3.1). Umbruch-Layout, wenn der Textblock
+  // links weniger als 150 dp bekäme.
+  static const double pathHeaderWrapMinText = 150;
+  static const double statPillGap = 4;
+  static const double statPillPaddingH = 12;
+  static const double statPillPaddingV = 6;
+  static const double statPillIcon = 20;
+
+  // NodeHint (Ergänzung 1, 3.5): wenn oben weniger als 64 dp frei sind,
+  // erscheint er unter der Unit.
+  static const double hintMinSpaceAbove = 64;
+  static const double hintPaddingVertical = 12;
+  static const double hintPaddingHorizontal = 16;
+  static const double hintMinSideWidth = 120;
+
+  /// Ab dieser Textskalierung steht die Blase über Manny statt rechts daneben
+  /// (rechts bliebe kaum Breite für den Text).
+  static const double bubbleAboveTextScale = 1.5;
+
   // Manny.
   static const double mannyPathHeight = 80;
   static const double mannyOnboardingMinHeight = 56;

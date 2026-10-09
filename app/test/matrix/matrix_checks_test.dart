@@ -13,6 +13,7 @@ import 'package:curaone/ui/components/glow_background.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -1415,6 +1416,152 @@ void main() {
       expect(probeKeyedRects(prefix: 'overlay:'), isNot(contains(mark.value)));
     });
   });
+
+  _u3aMatrixTests(testWidgets, pump);
+}
+
+/// Gegenproben zu den Matrix-Anpassungen aus U3a: Scrollbereiche in Overlays
+/// und Render-Ziele unter einer opaken Route.
+void _u3aMatrixTests(
+  void Function(String, Future<void> Function(WidgetTester)) testWidgets,
+  Future<void> Function(WidgetTester, Widget, {Size? size}) pump,
+) {
+  group(
+    'U3a: Scrollbereich in einem Overlay, Ziele unter einer opaken Route',
+    () {
+      testWidgets(
+        'ein innerer Scrollbereich im Overlay ist kein Inhaltsbereich',
+        (WidgetTester tester) async {
+          final Widget list = SingleChildScrollView(
+            key: PreviewKeys.scroll,
+            child: Column(
+              children: <Widget>[
+                for (int i = 0; i < 30; i++)
+                  SizedBox(height: 100, child: Center(child: _tap(120, 48))),
+              ],
+            ),
+          );
+          Widget board({required bool innerScroll}) => Stack(
+            children: <Widget>[
+              Positioned.fill(child: list),
+              if (innerScroll)
+                Positioned(
+                  left: 20,
+                  top: 200,
+                  width: 150,
+                  height: 100,
+                  child: KeyedSubtree(
+                    key: PreviewKeys.bubble,
+                    child: const SingleChildScrollView(
+                      child: SizedBox(height: 400, child: Text('lang')),
+                    ),
+                  ),
+                ),
+            ],
+          );
+          await pump(tester, board(innerScroll: false));
+          final int plain = (await scanAll(tester)).length;
+          expect(plain, 1);
+          await pump(tester, board(innerScroll: true));
+          // Der Scrollbereich der Blase zählt nicht als eigener Inhaltsbereich:
+          // nur der markierte Hauptbereich wird durchlaufen.
+          expect((await scanAll(tester)).length, 1);
+        },
+      );
+
+      testWidgets('ein Scrollbereich ohne Overlay bleibt im Scan (kein '
+          'Ausblenden aus Versehen)', (WidgetTester tester) async {
+        await pump(
+          tester,
+          Column(
+            children: <Widget>[
+              Expanded(
+                child: SingleChildScrollView(
+                  key: PreviewKeys.scroll,
+                  child: SizedBox(
+                    height: 2000,
+                    child: Center(child: _tap(48, 48)),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 120,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    height: 400,
+                    child: Center(child: _tap(48, 48)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        expect((await scanAll(tester)).length, 2);
+      });
+
+      testWidgets('Tap-Render-Ziele unter einer opaken Route zählen nicht als '
+          'innere Ziele der Zeilen darüber', (WidgetTester tester) async {
+        // Home mit einer scrollenden Liste (Ziel 48 × 48), darüber eine opake
+        // Route mit einer Liste, deren Zeile größer ist.
+        final GlobalKey<NavigatorState> nav = GlobalKey<NavigatorState>();
+        setViewport(tester, Viewports.phone);
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: nav,
+            home: Scaffold(
+              body: ListView(
+                children: <Widget>[
+                  for (int i = 0; i < 10; i++)
+                    SizedBox(height: 100, child: Center(child: _tap(48, 48))),
+                ],
+              ),
+            ),
+          ),
+        );
+        unawaited(
+          nav.currentState!.push<void>(
+            PageRouteBuilder<void>(
+              opaque: true,
+              pageBuilder:
+                  (BuildContext c, Animation<double> a, Animation<double> b) =>
+                      Scaffold(
+                        body: ListView(
+                          key: PreviewKeys.scroll,
+                          children: <Widget>[
+                            for (int i = 0; i < 10; i++)
+                              SizedBox(
+                                height: 100,
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Zeile $i',
+                                  onTap: () {},
+                                  child: const SizedBox(
+                                    width: 390,
+                                    height: 100,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final List<TapTarget> rows = tapTargets(tester)
+            .where((TapTarget t) => t.label.startsWith('Zeile'))
+            .toList();
+        expect(rows, isNotEmpty);
+        for (final TapTarget t in rows) {
+          expect(
+            t.rect.width,
+            390,
+            reason: '${t.label}: ganze Zeile, kein Ziel von darunter',
+          );
+        }
+      });
+    },
+  );
 }
 
 class _Spinner extends StatefulWidget {

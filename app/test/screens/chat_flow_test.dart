@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'package:curaone/data/manny_chat_source.dart';
 import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/logic/app_state.dart';
+import 'package:curaone/logic/clock.dart';
+import 'package:curaone/logic/manny_state.dart';
 import 'package:curaone/logic/chat_model.dart';
 import 'package:curaone/logic/manny_occasions.dart';
 import 'package:curaone/theme/cura_metrics.dart';
@@ -19,6 +21,7 @@ import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/opaque_surface.dart';
+import 'package:curaone/ui/components/path_node.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/messages/chat_bubble.dart';
@@ -34,6 +37,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_harness.dart';
+import '../support/builders.dart';
 import '../support/controller_harness.dart';
 import '../support/pump_app.dart';
 import '../support/stores.dart';
@@ -43,7 +47,16 @@ Future<Harness> _home(
   MannyChatSource? source,
   Size size = Viewports.phone,
 }) async {
-  final Harness h = await Harness.onboarded();
+  // Ohne Manny-Blase auf dem Pfad: Öffnen und Schließen des Chats ändern
+  // sonst den Zustand (die Blase zählt als gezeigt, U3a); das prüfen die
+  // Pfad-Tests.
+  final Harness h = await Harness.onboarded(
+    tweak: (AppState s) => s.copyWith(
+      manny: MannyState(
+        lastShown: <MannyOccasion, LocalDay>{MannyOccasion.fact: kToday},
+      ),
+    ),
+  );
   addTearDown(h.dispose);
   await pumpCura(tester, h.controller, chatSource: source, size: size);
   return h;
@@ -218,24 +231,35 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Tab-Reihenfolge Pfad: Nachrichten-Button, Manny-Button, Nav '
-        '(UI-89)', (WidgetTester tester) async {
+    testWidgets('Tab-Reihenfolge Pfad: Kopf, Units, Nachrichten-Button, '
+        'Manny-Button, Nav (UI-89, Ergänzung 2, 4)', (
+      WidgetTester tester,
+    ) async {
       await _home(tester);
       final List<String> seen = <String>[];
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 80; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
-        if (_focusInside(find.byType(MessagesButton))) {
-          seen.add('messages');
+        final String kind;
+        if (_focusInside(find.byType(HeaderIconButton))) {
+          kind = 'header';
+        } else if (_focusInside(find.byType(PathNode))) {
+          kind = 'unit';
+        } else if (_focusInside(find.byType(MessagesButton))) {
+          kind = 'messages';
         } else if (_focusInside(find.byType(MannyChatButton))) {
-          seen.add('chat');
+          kind = 'chat';
         } else if (_focusInside(find.byType(FloatingNav))) {
-          seen.add('nav');
+          kind = 'nav';
         } else {
-          seen.add('?');
+          kind = '?';
         }
+        if (seen.isEmpty || seen.last != kind) seen.add(kind);
+        if (kind == 'nav') break;
       }
-      expect(seen.take(3), <String>[
+      expect(seen, <String>[
+        'header',
+        'unit',
         'messages',
         'chat',
         'nav',

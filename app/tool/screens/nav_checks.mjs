@@ -2,7 +2,10 @@
 // Browser-Prüfungen der Navigation (U2b, U2c, Plan 4.3, 12.5): Browser-Zurück =
 // Android-Zurück (`page.goBack()`), Reload im Onboarding, Tabwechsel, Zeitsprung
 // über Mitternacht mit der Fake-Uhr (`page.clock.install` + `runFor`), Manny-
-// Chat und Nachrichten über die Button-Gruppe (Abschnitt 5).
+// Chat und Nachrichten über die Button-Gruppe (Abschnitt 5), Pfad-Abläufe (U3a,
+// Abschnitt 6): Zurück schließt zuerst die Blase, dann den Hinweis; Manny-Tipp
+// öffnet den Chat; Tipp auf die aktuelle Unit wechselt auf Heute; Hinweis an
+// einer gesperrten Unit (Escape, Zurück, 5 s).
 //
 //   export PATH=/opt/flutter/bin:$PATH
 //   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
@@ -62,7 +65,14 @@ async function gone(page, text, timeout = 4000) {
     return false;
   }
 }
-const button = (page, name) => page.locator('flt-semantics[role="button"]', { hasText: name }).first();
+// „Heute“ und „Pfad“ sind die Nav-Einträge: exakter Treffer, denn auch die Units
+// des Pfads tragen „Öffnet Heute.“ im Label.
+const button = (page, name) =>
+  page
+    .locator('flt-semantics[role="button"]', {
+      hasText: name === 'Heute' || name === 'Pfad' ? new RegExp(`^${name}$`) : name,
+    })
+    .first();
 async function click(page, name) {
   const b = button(page, name);
   await b.waitFor({ state: 'attached', timeout: 8000 });
@@ -146,18 +156,18 @@ const browser = await launch();
   await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
   const page = s.page;
-  check('Home startet auf Tab Pfad (A-1)', await seen(page, 'Dein Pfad'));
+  check('Home startet auf Tab Pfad (A-1)', await seen(page, 'Woche 5'));
   check('Home: Nav mit Pfad und Heute', (await button(page, 'Heute').count()) > 0 && (await button(page, 'Pfad').count()) > 0);
   await click(page, 'Heute');
   check('Tab Heute zeigt „Heute, Jakob“', await seen(page, 'Heute, Jakob'));
   await shot(page, 'home-heute');
   await page.goBack();
   await page.waitForTimeout(600);
-  check('Browser-Zurück auf Heute → Tab Pfad', await seen(page, 'Dein Pfad'));
+  check('Browser-Zurück auf Heute → Tab Pfad', await seen(page, 'Woche 5'));
   const homeUrl = page.url();
   await page.goBack();
   await page.waitForTimeout(800);
-  const homeStayed = page.url() === homeUrl && (await seen(page, 'Dein Pfad', 1500));
+  const homeStayed = page.url() === homeUrl && (await seen(page, 'Woche 5', 1500));
   console.log(`info    Browser-Zurück auf Pfad: ${homeStayed ? 'Seite bleibt stehen' : 'Seite wird verlassen'} (URL ${homeUrl} → ${page.url()})`);
   results.push({ name: 'Browser-Zurück auf Pfad', ok: null, detail: homeStayed ? 'bleibt stehen' : `verlässt die Seite (${page.url()})` });
   await ctx.close();
@@ -169,7 +179,7 @@ const browser = await launch();
   await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
   const page = s.page;
-  check('Zeitsprung: Home geladen', await seen(page, 'Dein Pfad'));
+  check('Zeitsprung: Home geladen', await seen(page, 'Woche 5'));
   await page.clock.runFor(30000); // 30 s: über Mitternacht
   await page.waitForTimeout(300);
   const date = await page.evaluate(() => new Date().toString());
@@ -219,7 +229,7 @@ const browser = await launch();
   await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
   const page = s.page;
-  await seen(page, 'Dein Pfad');
+  await seen(page, 'Woche 5');
   await click(page, 'Heute');
   await seen(page, 'Heute, Jakob');
   // Seite „im Hintergrund“, Uhr über Mitternacht, dann zurück.
@@ -251,7 +261,7 @@ const browser = await launch();
   await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
   const page = s.page;
-  check('Chat-Ablauf: Home auf Pfad, Button-Gruppe vorhanden', (await seen(page, 'Dein Pfad')) && (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0);
+  check('Chat-Ablauf: Home auf Pfad, Button-Gruppe vorhanden', (await seen(page, 'Woche 5')) && (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0);
   await shot(page, 'pfad-gruppe');
 
   await click(page, 'Manny, Chat öffnen');
@@ -262,7 +272,7 @@ const browser = await launch();
   await shot(page, 'chat-manny');
   await page.goBack();
   await page.waitForTimeout(700);
-  check('Browser-Zurück im Manny-Chat → Pfad (Tab bleibt)', (await seen(page, 'Dein Pfad')) && (await gone(page, 'Dein Reha-Begleiter')));
+  check('Browser-Zurück im Manny-Chat → Pfad (Tab bleibt)', (await seen(page, 'Woche 5')) && (await gone(page, 'Dein Reha-Begleiter')));
 
   await click(page, 'Nachrichten');
   check('Nachrichten-Button öffnet die Nachrichten (Beispiel-Hinweis)', await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.'));
@@ -277,8 +287,118 @@ const browser = await launch();
   check('Browser-Zurück im Beispiel-Chat → Nachrichten', (await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.')) && (await gone(page, 'Physio · Beispiel')));
   await page.goBack();
   await page.waitForTimeout(700);
-  check('Browser-Zurück in den Nachrichten → Pfad (Ausgangs-Tab)', (await seen(page, 'Dein Pfad')) && (await gone(page, 'Beispiel-Ansicht. Echte Chats folgen.')));
+  check('Browser-Zurück in den Nachrichten → Pfad (Ausgangs-Tab)', (await seen(page, 'Woche 5')) && (await gone(page, 'Beispiel-Ansicht. Echte Chats folgen.')));
   await ctx.close();
+}
+
+// 6. Pfad (U3a): Blase, Hinweis, Manny-Tipp, Unit-Tipp ---------------------------
+// Das Fixture enthält eine ausstehende Feier von heute: beim ersten Pfad-Besuch
+// steht die Blase „Stark, Jakob. Das war Tag 12.“ (Anlass Feier, Priorität 1).
+{
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
+  const page = s.page;
+  check('Pfad: Kopfzeile „Woche 5“ und Beispielpfad', (await seen(page, 'Woche 5')) && (await seen(page, 'Beispielpfad')));
+  check('Pfad: Feier-Blase beim ersten Besuch (Anlass Feier)', await seen(page, 'Stark, Jakob. Das war Tag 12.'));
+  check('Pfad: Blase hat „Nachricht schließen“', (await button(page, 'Nachricht schließen').count()) > 0);
+  await shot(page, 'pfad-feier-blase');
+
+  // Zurück (Browser = Android): zuerst die Blase.
+  await page.goBack();
+  await page.waitForTimeout(600);
+  check('Browser-Zurück: schließt zuerst die Blase, bleibt auf dem Pfad', (await gone(page, 'Stark, Jakob. Das war Tag 12.')) && (await seen(page, 'Woche 5')));
+
+  // Hinweis an einer gesperrten Unit.
+  const locked = button(page, 'Woche 5, Wochenziel, gesperrt');
+  const lockedBox = await locked.boundingBox();
+  await click(page, 'Woche 5, Wochenziel, gesperrt');
+  check('Unit-Tipp (gesperrt): NodeHint „Kommt noch diese Woche“, Tab bleibt', (await seen(page, 'Kommt noch diese Woche')) && (await seen(page, 'Woche 5')));
+  await shot(page, 'pfad-hinweis');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  check('Escape schließt den Hinweis', await gone(page, 'Kommt noch diese Woche'));
+
+  await click(page, 'Woche 5, Wochenziel, gesperrt');
+  await seen(page, 'Kommt noch diese Woche');
+  await page.goBack();
+  await page.waitForTimeout(600);
+  check('Browser-Zurück schließt den Hinweis (danach erst die App)', (await gone(page, 'Kommt noch diese Woche')) && (await seen(page, 'Woche 5')));
+
+  // Bei aktivem Screenreader schließt der Hinweis nicht von selbst.
+  await click(page, 'Woche 5, Wochenziel, gesperrt');
+  await page.clock.runFor(6500);
+  check('a11y aktiv: Hinweis bleibt über 5 s stehen', await seen(page, 'Kommt noch diese Woche', 1500));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
+  // Erledigte Unit.
+  await click(page, 'Woche 5, Trainingstag 1, erledigt');
+  check('Unit-Tipp (erledigt): „Erledigt. Das hast du geschafft.“', await seen(page, 'Erledigt. Das hast du geschafft.'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
+  // Manny-Tipp: Koordinaten der Bild-Semantik (Manny hat keine Button-Semantik).
+  const mannyNode = page.locator('[aria-label="Manny, dein Begleiter"]').first();
+  await mannyNode.waitFor({ state: 'attached', timeout: 8000 });
+  // Der Tipp auf die Unit hat den Pfad verschoben: Manny wieder ins Bild holen.
+  await page.mouse.move(195, 400);
+  for (let i = 0; i < 12; i++) {
+    const b = await mannyNode.boundingBox();
+    if (b && b.y > 120 && b.y + b.height < 700) break;
+    await page.mouse.wheel(0, b && b.y < 120 ? -300 : 300);
+    await page.waitForTimeout(300);
+  }
+  const mb = await mannyNode.boundingBox();
+  check(
+    'Manny: Bild-Label „Manny, dein Begleiter“, aber keine Button-Semantik',
+    !!mb && (await page.locator('[role="button"][aria-label*="Manny, dein Begleiter"]').count()) === 0,
+  );
+  await shot(page, 'pfad-manny-vor-tipp');
+  if (mb) {
+    await page.mouse.click(mb.x + mb.width / 2, mb.y + mb.height * 0.55);
+    await page.waitForTimeout(700);
+  }
+  check('Manny-Tipp öffnet den Manny-Chat (Tab bleibt)', await seen(page, 'Dein Reha-Begleiter'));
+  await shot(page, 'pfad-manny-chat');
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück im Chat → Pfad (Tab Pfad, kein Tabwechsel)', (await seen(page, 'Woche 5')) && (await gone(page, 'Dein Reha-Begleiter')));
+
+  // Aktuelle Unit → Heute.
+  await click(page, 'aktuell. Öffnet Heute.');
+  check('Tipp auf die aktuelle Unit wechselt auf Heute', await seen(page, 'Heute, Jakob'));
+  await shot(page, 'pfad-unit-heute');
+  await page.goBack();
+  await page.waitForTimeout(600);
+  check('Browser-Zurück auf Heute → Pfad', await seen(page, 'Woche 5'));
+  await ctx.close();
+
+  // 6b. Ohne Screenreader schließt der Hinweis nach 5 s (Pixelvergleich).
+  if (lockedBox) {
+    const ctx2 = await browser.newContext(ctxOptions);
+    await ctx2.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+    const s2 = await openScenario(ctx2, base, { live: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
+    const p2 = s2.page;
+    await p2.waitForTimeout(1500);
+    // Blase der Feier schließen (Tipp irgendwo), dann die Unit antippen.
+    await p2.mouse.click(lockedBox.x + lockedBox.width / 2, lockedBox.y + lockedBox.height / 2);
+    await p2.waitForTimeout(500);
+    await p2.mouse.click(lockedBox.x + lockedBox.width / 2, lockedBox.y + lockedBox.height / 2);
+    await p2.waitForTimeout(700);
+    const withHint = await p2.screenshot();
+    fs.writeFileSync(path.join(outDir, 'pfad-hinweis-ohne-a11y.png'), withHint);
+    await p2.clock.runFor(6000);
+    await p2.waitForTimeout(500);
+    const afterTimeout = await p2.screenshot();
+    await p2.waitForTimeout(1200);
+    const stable = await p2.screenshot();
+    check(
+      'ohne a11y: Hinweis endet nach 5 s (Bild ändert sich, danach stabil)',
+      Buffer.compare(withHint, afterTimeout) !== 0 && Buffer.compare(afterTimeout, stable) === 0,
+    );
+    await ctx2.close();
+  }
 }
 
 await browser.close();

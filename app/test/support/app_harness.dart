@@ -1,6 +1,7 @@
 import 'package:curaone/app.dart';
 import 'package:curaone/data/manny_chat_source.dart';
 import 'package:curaone/state/app_controller.dart';
+import 'package:curaone/ui/path/path_source.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,11 @@ Future<void> pumpCura(
   Future<void> Function(AppController)? startup,
   double keyboard = 0,
   MannyChatSource? chatSource,
+  PathSource? pathSource,
+  double textScale = 1,
+  bool disableAnimations = false,
+  bool accessibleNavigation = false,
+  bool highContrast = false,
 }) async {
   setViewport(tester, size);
   if (keyboard > 0) {
@@ -31,6 +37,23 @@ Future<void> pumpCura(
       navigatorKey: navigatorKey,
       startup: startup,
       chatSource: chatSource ?? const ExampleMannyChatSource(),
+      pathSource: pathSource ?? const ImmediatePathSource(),
+      // Overrides wirken nur im `MaterialApp.builder` (Plan 8.1).
+      previewWrapper:
+          (textScale != 1 ||
+              disableAnimations ||
+              accessibleNavigation ||
+              highContrast)
+          ? (BuildContext context, Widget child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(textScale),
+                disableAnimations: disableAnimations,
+                accessibleNavigation: accessibleNavigation,
+                highContrast: highContrast,
+              ),
+              child: child,
+            )
+          : null,
     ),
   );
   if (settle) await tester.pumpAndSettle();

@@ -9,13 +9,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../logic/path_model.dart' show UnitStatus;
 import '../theme/glow.dart';
 import '../ui/components/action_circle.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
 import '../ui/components/glow_background.dart';
 import '../ui/components/manny_bubble.dart';
+import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
+import '../ui/components/path_node.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
@@ -149,12 +152,17 @@ TextProbe probeTexts({Element? root, required Size view}) {
     } else if (w is CuraSnackbar ||
         w is CuraDialog ||
         w is ActionCircle ||
+        w is NodeHint ||
         w is OpaqueSurface) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
       g = (w.variant == PillButtonVariant.outline || w.onPressed == null)
           ? TextGround.bg
           : TextGround.opaque;
+    } else if (w is PathNode) {
+      // Erledigte und aktuelle Units haben eine deckende Füllung (`text-1`,
+      // `accent`); gesperrte sind Glas (Brief 5.5).
+      g = w.status == UnitStatus.locked ? TextGround.glass : TextGround.opaque;
     } else if (w is CuraSheetFrame) {
       // Sheet: E2 (`surface-float` mit Blur), streng wie Glas (A-35).
       g = TextGround.glass;

@@ -18,6 +18,7 @@ import 'state/app_controller.dart';
 import 'state/app_scope.dart';
 import 'state/chat_source_scope.dart';
 import 'theme/cura_theme.dart';
+import 'ui/path/path_source.dart';
 import 'ui/start/start_gate.dart';
 
 /// Wählt den Token-Satz nach `MediaQuery.highContrast` (Normal oder
@@ -47,6 +48,7 @@ class CuraApp extends StatelessWidget {
     this.previewWrapper,
     this.navigatorKey,
     this.chatSource = const ExampleMannyChatSource(),
+    this.pathSource = const ImmediatePathSource(),
   });
 
   final AppController controller;
@@ -54,6 +56,9 @@ class CuraApp extends StatelessWidget {
   /// Quelle des Manny-Chat-Verlaufs (KS-5, nur lesend). Standard: fester
   /// Beispielverlauf.
   final MannyChatSource chatSource;
+
+  /// Quelle der Pfaddaten (Ladezustand des Pfad-Tabs). Standard: sofort da.
+  final PathSource pathSource;
 
   /// Start vor der ersten Route. Standard: `controller.load()`. Die
   /// Prüfumgebung und Tests ersetzen ihn (z. B. um vorher zu löschen).
@@ -68,20 +73,23 @@ class CuraApp extends StatelessWidget {
       controller: controller,
       child: ChatSourceScope(
         source: chatSource,
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          navigatorKey: navigatorKey,
-          title: S.appTitle,
-          theme: CuraTheme.build(),
-          locale: const Locale('de'),
-          supportedLocales: const <Locale>[Locale('de')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          builder: (BuildContext context, Widget? app) {
-            final Widget themed = CuraThemeSelector(child: app!);
-            final PreviewWrapper? wrap = previewWrapper;
-            return wrap == null ? themed : wrap(context, themed);
-          },
-          home: StartGate(startup: startup),
+        child: PathSourceScope(
+          source: pathSource,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorKey: navigatorKey,
+            title: S.appTitle,
+            theme: CuraTheme.build(),
+            locale: const Locale('de'),
+            supportedLocales: const <Locale>[Locale('de')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            builder: (BuildContext context, Widget? app) {
+              final Widget themed = CuraThemeSelector(child: app!);
+              final PreviewWrapper? wrap = previewWrapper;
+              return wrap == null ? themed : wrap(context, themed);
+            },
+            home: StartGate(startup: startup),
+          ),
         ),
       ),
     );

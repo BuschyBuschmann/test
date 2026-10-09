@@ -12,7 +12,8 @@
 //   Zustand anwenden (Controller), alle Heute-Routen schließen und das Ende der
 //   Entfernung abwarten, dann prüfen, ob Heute aktiv **und** die Home-Route
 //   oberste Route ist; nur dann Snackbar „Neuer Tag, neues Programm.“ und Ansage.
-// - Tabwechsel beendet das Rückgängig-Fenster, den `NodeHint` und die Snackbar.
+// - Tabwechsel beendet das Rückgängig-Fenster, den `NodeHint` und die Snackbar;
+//   verlässt man den Pfad, schließt auch die Blase (zählt als gezeigt).
 // - Button-Gruppe (Ergänzung 2, Plan 4.6): `ActionCluster` im Modus `path`
 //   über dem Pfad-Tab (rechts 16 dp, Manny-Button 16 dp über der Nav,
 //   Nachrichten-Button rechtsbündig 8 dp darüber). Auf Heute übernimmt U3b die
@@ -24,8 +25,12 @@
 //   Snackbar schließen; nach dem Schließen der Route kehrt der Fokus an den
 //   auslösenden Button zurück (A-38: auch bei Öffnen über Manny auf dem Pfad,
 //   der keine eigene Fokusstation hat).
-// - Ob Pfad und Heute in U2b noch Platzhalter sind, ändert nichts an diesem
-//   Gerüst: U3a/U3b ersetzen nur den Inhalt der Tabs.
+// - Pfad-Tab (U3a): `PathScreen` ersetzt den Platzhalter. Die Button-Gruppe
+//   steht nur, wenn der Pfad **bereit** ist (Plan 4.6, A-43: nicht in Laden und
+//   Fehler). Der Ladezustand kommt aus der `PathSource`; „Nochmal versuchen“
+//   bereitet den Pfad erneut vor. Escape und Zurück schließen zuerst Blase und
+//   Hinweis ([dismissPathOverlays]).
+// - Heute (U3b) ersetzt den zweiten Platzhalter.
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +46,8 @@ import '../components/floating_nav.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
 import '../routes/app_routes.dart';
+import '../path/path_screen.dart';
+import '../path/path_source.dart';
 import '../routes/route_focus.dart';
 import 'tab_placeholders.dart';
 import 'today_route_registry.dart';
@@ -101,13 +108,58 @@ class HomeShellState extends State<HomeShell> {
     debugLabel: 'Nachrichten-Button',
   );
 
+  final FocusNode _pageFocus = FocusNode(
+    debugLabel: 'Home',
+    skipTraversal: true,
+  );
+
+  /// Ladezustand des Pfad-Tabs (Plan 4.6, A-43).
+  PathLoadState _pathLoad = PathLoadState.ready;
+  int _pathAttempt = 0;
+
   /// Aktiver Tab (`HomeTab.path` oder `HomeTab.today`).
   int get activeTab => _tab;
+
+  /// Der Pfad ist bereit (nicht Laden, nicht Fehler).
+  PathLoadState get pathLoad => _pathLoad;
 
   @override
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _onResume);
+    _preparePath();
+  }
+
+  /// Bereitet den Pfad über die [PathSource] vor: sofort bereit, Laden bis ein
+  /// `Future` endet, oder Fehler (Ausnahme).
+  void _preparePath() {
+    final int attempt = ++_pathAttempt;
+    final PathSource source = PathSourceScope.read(context);
+    void set(PathLoadState state) {
+      if (!mounted || attempt != _pathAttempt) return;
+      if (state != _pathLoad) setState(() => _pathLoad = state);
+    }
+
+    try {
+      final Future<void>? pending = source.prepare();
+      if (pending == null) {
+        _pathLoad = PathLoadState.ready;
+      } else {
+        _pathLoad = PathLoadState.loading;
+        pending.then(
+          (_) => set(PathLoadState.ready),
+          onError: (Object _) => set(PathLoadState.error),
+        );
+      }
+    } catch (e) {
+      debugPrint('Pfad nicht bereit: $e');
+      _pathLoad = PathLoadState.error;
+    }
+  }
+
+  /// „Nochmal versuchen“ im Fehlerzustand des Pfads.
+  void retryPath() {
+    setState(_preparePath);
   }
 
   @override
@@ -116,6 +168,7 @@ class HomeShellState extends State<HomeShell> {
     snackbar.dispose();
     chatButtonFocus.dispose();
     messagesButtonFocus.dispose();
+    _pageFocus.dispose();
     super.dispose();
   }
 
@@ -169,10 +222,42 @@ class HomeShellState extends State<HomeShell> {
     final DayChangeResult change = c.checkDayChange();
     c.transient.endUndoWindow();
     c.transient.dismissHint();
+    // Wer den Pfad verlässt, hat die Blase gesehen: sie zählt als gezeigt und
+    // steht beim Zurückkehren nicht mehr da.
+    if (_tab == HomeTab.path && index != HomeTab.path) _closeBubble(c);
     snackbar.close();
     if (index != _tab) setState(() => _tab = index);
     if (change.changed) dayChanged();
   }
+
+  /// Schließt eine sichtbare Manny-Blase (zählt als gezeigt); idempotent.
+  /// `true`, wenn eine Blase geschlossen wurde.
+  bool closeBubble() => _closeBubble(_controller);
+
+  /// Tipp irgendwo: Blase und Hinweis schließen. `true`, wenn etwas offen war.
+  bool dismissPathOverlays() {
+    final AppController c = _controller;
+    final bool bubble = _closeBubble(c);
+    final bool hint = c.transient.hintUnitId != null;
+    c.transient.dismissHint();
+    return bubble || hint;
+  }
+
+  /// Escape und Zurück: **ein** Schritt, erst die Blase, dann der Hinweis
+  /// (Plan 4.3). `true`, wenn etwas geschlossen wurde.
+  bool dismissPathOverlayStep() {
+    final AppController c = _controller;
+    if (_closeBubble(c)) return true;
+    if (c.transient.hintUnitId != null) {
+      c.transient.dismissHint();
+      return true;
+    }
+    return false;
+  }
+
+  /// Einstieg „Deine Daten“ in der Pfad-Kopfzeile. Das Sheet selbst liefert U4;
+  /// bis dahin tut der Einstieg nichts (Platzhalter-Aktion laut Plan 14).
+  void openDataSheet() {}
 
   /// Schließt eine sichtbare Manny-Blase; weggetippt zählt als gezeigt.
   /// `true`, wenn eine Blase geschlossen wurde.
@@ -217,12 +302,7 @@ class HomeShellState extends State<HomeShell> {
       selectTab(HomeTab.path);
       return;
     }
-    final AppController c = _controller;
-    if (_closeBubble(c)) return;
-    if (c.transient.hintUnitId != null) {
-      c.transient.dismissHint();
-      return;
-    }
+    if (dismissPathOverlayStep()) return;
     SystemNavigator.pop();
   }
 
@@ -230,9 +310,26 @@ class HomeShellState extends State<HomeShell> {
     final bool active = index == _tab;
     return ExcludeFocus(
       excluding: !active,
-      child: TickerMode(enabled: active, child: page),
+      child: TickerMode(
+        enabled: active,
+        // Fokusreihenfolge (Ergänzung 2, 4): Inhalt des Tabs (Pfad: Kopf,
+        // Units), dann die Button-Gruppe, dann die Nav.
+        child: FocusTraversalOrder(
+          order: const NumericFocusOrder(_focusOrderContent),
+          child: page,
+        ),
+      ),
     );
   }
+
+  /// Fokusreihenfolge innerhalb der Home-Route: Kopf (z. B. „Deine Daten“),
+  /// Inhalt (Pfad: Units), Button-Gruppe, Nav. Ohne explizite Reihenfolge
+  /// stünden Units, die oberhalb des Sichtfensters liegen, vor dem Kopf (die
+  /// Lesereihenfolge folgt den Rechtecken).
+  static const double focusOrderHeader = 1;
+  static const double _focusOrderContent = 2;
+  static const double _focusOrderCluster = 3;
+  static const double _focusOrderNav = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -244,57 +341,89 @@ class HomeShellState extends State<HomeShell> {
       child: HomeShellScope(
         shell: this,
         tab: _tab,
-        child: ScreenFrame(
-          overlays: <Widget>[
-            Positioned.fill(
-              child: SnackbarHost(
-                controller: snackbar,
-                bottomOffset:
-                    FloatingNav.occupiedHeight(context) + CuraSpace.snackbarGap,
-              ),
-            ),
-            if (_tab == HomeTab.path)
-              Positioned(
-                right: CuraSpace.pageMargin,
-                bottom:
-                    FloatingNav.occupiedHeight(context) + CuraSpace.pageMargin,
-                child: KeyedSubtree(
-                  key: ProbeKeys.cluster,
-                  child: ActionCluster(
-                    mode: ActionClusterMode.path,
-                    rectKey: clusterKey,
-                    onOpenChat: openChat,
-                    onOpenMessages: openMessages,
-                    chatFocusNode: chatButtonFocus,
-                    messagesFocusNode: messagesButtonFocus,
-                  ),
-                ),
-              ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: KeyedSubtree(
-                key: ProbeKeys.nav,
-                child: FloatingNav(
-                  currentIndex: _tab,
-                  onSelected: selectTab,
-                  items: const <NavItem>[
-                    NavItem(icon: Icons.route_rounded, label: S.navPath),
-                    NavItem(
-                      icon: Icons.event_available_rounded,
-                      label: S.navToday,
+        // Escape schließt Blase und Hinweis (Plan 4.3); der Fokus der Seite
+        // fängt die Taste auch ohne fokussiertes Element ab. Ohne eigenen
+        // Semantik-Knoten, sonst verschmilzt `Focus` die Seite zu einem Knoten.
+        child: CallbackShortcuts(
+          bindings: <ShortcutActivator, VoidCallback>{
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              if (_tab == HomeTab.path) dismissPathOverlayStep();
+            },
+          },
+          child: Focus(
+            focusNode: _pageFocus,
+            autofocus: true,
+            includeSemantics: false,
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: ScreenFrame(
+                overlays: <Widget>[
+                  Positioned.fill(
+                    child: SnackbarHost(
+                      controller: snackbar,
+                      bottomOffset:
+                          FloatingNav.occupiedHeight(context) +
+                          CuraSpace.snackbarGap,
                     ),
+                  ),
+                  if (_tab == HomeTab.path && _pathLoad == PathLoadState.ready)
+                    Positioned(
+                      right: CuraSpace.pageMargin,
+                      bottom:
+                          FloatingNav.occupiedHeight(context) +
+                          CuraSpace.pageMargin,
+                      child: FocusTraversalOrder(
+                        order: const NumericFocusOrder(_focusOrderCluster),
+                        child: KeyedSubtree(
+                          key: ProbeKeys.cluster,
+                          child: ActionCluster(
+                            mode: ActionClusterMode.path,
+                            rectKey: clusterKey,
+                            onOpenChat: openChat,
+                            onOpenMessages: openMessages,
+                            chatFocusNode: chatButtonFocus,
+                            messagesFocusNode: messagesButtonFocus,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: FocusTraversalOrder(
+                      order: const NumericFocusOrder(_focusOrderNav),
+                      child: KeyedSubtree(
+                        key: ProbeKeys.nav,
+                        child: FloatingNav(
+                          currentIndex: _tab,
+                          onSelected: selectTab,
+                          items: const <NavItem>[
+                            NavItem(
+                              icon: Icons.route_rounded,
+                              label: S.navPath,
+                            ),
+                            NavItem(
+                              icon: Icons.event_available_rounded,
+                              label: S.navToday,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                child: IndexedStack(
+                  index: _tab,
+                  sizing: StackFit.expand,
+                  children: <Widget>[
+                    _tabPage(
+                      HomeTab.path,
+                      PathScreen(load: _pathLoad, onRetry: retryPath),
+                    ),
+                    _tabPage(HomeTab.today, const TodayTabPlaceholder()),
                   ],
                 ),
               ),
             ),
-          ],
-          child: IndexedStack(
-            index: _tab,
-            sizing: StackFit.expand,
-            children: <Widget>[
-              _tabPage(HomeTab.path, const PathTabPlaceholder()),
-              _tabPage(HomeTab.today, const TodayTabPlaceholder()),
-            ],
           ),
         ),
       ),

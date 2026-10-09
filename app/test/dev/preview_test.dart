@@ -146,7 +146,9 @@ void main() {
       WidgetTester tester,
     ) async {
       await pump(tester, const PreviewConfig(scenarioId: 'gibt-es-nicht'));
+      // Die Liste ist lang und baut lazy: jede Kennung wird erst gescrollt.
       for (final Scenario s in kScenarios) {
+        await tester.scrollUntilVisible(find.text(s.id), 200);
         expect(find.text(s.id), findsOneWidget);
       }
     });

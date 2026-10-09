@@ -34,6 +34,25 @@ extension CuraColorRoles on CuraColors {
   /// Neutraler Avatar-Ring (Familie, Freunde): Weiß 30 % (Ergänzung 2, 3.3).
   Color get avatarRingNeutral => _white(Palette.avatarRingNeutralAlpha);
 
+  /// Pfad-Units (Brief 5.5): Rand gesperrter Units Weiß 20 % (Hoher Kontrast:
+  /// `border-control-hc`), Schloss/Stern Weiß 50 %, zukünftige Strecke Weiß
+  /// 22 %, Ring der aktuellen Unit `accent` 40 %, ihr Schein `accent` 50 %,
+  /// Rand der Boss-Unit `accent` 55 %.
+  Color get lockedBorder =>
+      highContrast ? controlBorder : _white(Palette.lockedBorderAlpha);
+  Color get lockedIcon => _white(Palette.lockedIconAlpha);
+  Color get futureLine => _white(Palette.futureLineAlpha);
+  Color get accentRing => accent.withValues(alpha: Palette.accentRingAlpha);
+  Color get accentUnitGlow =>
+      accent.withValues(alpha: Palette.accentUnitGlowAlpha);
+  Color get bossBorder => accent.withValues(alpha: Palette.bossBorderAlpha);
+
+  /// Ende des Scheins der aktuellen Unit (voll durchsichtig).
+  Color get accentUnitGlowClear => accentUnitGlow.withValues(alpha: 0);
+
+  /// Ring-Puls nach der Feier: blendet mit [t] (0 … 1) aus.
+  Color unitPulse(double t) => accentHi.withValues(alpha: 1 - t);
+
   /// Rand der aktiven Nav-Pill: `accent` 60 % (Brief 5.4).
   Color get navActiveBorder =>
       accent.withValues(alpha: Palette.navActiveBorderAlpha);

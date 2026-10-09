@@ -13,6 +13,11 @@ import 'package:flutter/material.dart';
 import '../l10n/strings_de.dart';
 import '../logic/app_state.dart';
 import '../logic/clock.dart';
+import '../logic/day_program.dart';
+import '../logic/manny_state.dart';
+import '../logic/path_generator.dart';
+import '../logic/path_model.dart';
+import '../logic/streak.dart';
 import '../logic/injury_type.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
@@ -74,6 +79,10 @@ typedef ScenarioBuilder = Widget Function(
   ScenarioEnv env,
 );
 
+/// Wie sich der Pfad-Tab eines App-Szenarios lädt (`path-loading`,
+/// `path-error`); sonst sofort bereit.
+enum PathSeedMode { ready, loading, error }
+
 /// Zustand einer **App-Szenarios** (Plan 12.4: `ob*`, `shell-*`): die echte
 /// App (`CuraApp` mit StartGate, Routen und Speicher) startet mit diesem
 /// Speicher. So laufen Matrix und Screenshots durch denselben Code wie die
@@ -86,7 +95,21 @@ class AppSeed {
     this.loadError = false,
     this.focusField = false,
     this.taps = const <String>[],
+    this.now,
+    this.pathMode = PathSeedMode.ready,
+    this.scrollPathToEnd = false,
   });
+
+  /// Uhrzeit der Fake-Uhr dieses Szenarios; `null` = die der Umgebung
+  /// (`ScenarioEnv.now`). Z. B. 19:00 Uhr für die Streak-Gefahr-Blase.
+  final DateTime? now;
+
+  /// Ladezustand des Pfad-Tabs.
+  final PathSeedMode pathMode;
+
+  /// Der Pfad wird nach dem Start bis ans Ende gescrollt (unterste Unit über
+  /// die Button-Gruppe geschoben).
+  final bool scrollPathToEnd;
 
   /// Gespeicherter Zustand; `null` = Erststart (nichts gespeichert).
   final AppState? state;
@@ -785,8 +808,198 @@ AppSeed _exampleChatFamily(ScenarioEnv env) =>
 AppSeed _exampleChatDoctor(ScenarioEnv env) =>
     _exampleChat(env, 'aerzte-weber');
 
+// ---------------------------------------------------------------------------
+// App-Szenarien (U3a): Pfad (Plan 12.4)
+// ---------------------------------------------------------------------------
+// Alle laufen durch die echte App (StartGate, HomeShell, PathScreen). Ohne
+// Anlass der Manny-Blase markiert [_pathState] den Beispielfakt des Tages als
+// gezeigt, damit die Ruhelage ohne Blase geprüft wird; die Szenarien
+// `path-bubble-*` und `path-cluster-bubble` zeigen eine.
+
+DateTime _at(ScenarioEnv env, int hour) =>
+    DateTime(env.now.year, env.now.month, env.now.day, hour);
+
+/// Alle Unit-IDs der Woche 12 samt Phasen-Abschluss 3 (Endfall: nur der Boss
+/// ist offen).
+List<String> _endCompleted() => <String>[
+  for (final PathUnit u in kSamplePath)
+    if (u.week == kPathWeeks && u.kind != UnitKind.boss) u.id,
+];
+
+AppState _pathState(
+  ScenarioEnv env, {
+  int daysSinceInjury = 30,
+  StreakState streak = const StreakState(),
+  MannyState? manny,
+  List<String> completed = const <String>[],
+  String? pulse,
+  CelebrationState? celebration,
+  bool dayDone = false,
+}) {
+  final LocalDay today = _today(env);
+  return _completedState(env).copyWith(
+    onboarding: OnboardingState(
+      completed: true,
+      step: 3,
+      name: PreviewTexts.nameValue,
+      injuryType: InjuryType.acl,
+      injuryDate: today.addDays(-daysSinceInjury),
+    ),
+    streak: streak,
+    manny:
+        manny ??
+        MannyState(
+          lastShown: <MannyOccasion, LocalDay>{MannyOccasion.fact: today},
+        ),
+    path: PathState(completedUnitIds: completed, pulsePending: pulse),
+    celebration: celebration,
+    day: DayProgramState(dayKey: today, done: dayDone),
+  );
+}
+
+/// Streak 12, gestern trainiert (aktiv).
+StreakState _streakActive(ScenarioEnv env) {
+  final LocalDay today = _today(env);
+  return StreakState(
+    count: 12,
+    lastTrainingDay: today.addDays(-1),
+    evaluatedThrough: today.addDays(-1),
+  );
+}
+
+/// Streak 12, vorgestern trainiert, gestern per Freeze gedeckt (eingefroren).
+StreakState _streakFrozen(ScenarioEnv env) {
+  final LocalDay today = _today(env);
+  return StreakState(
+    count: 12,
+    freezes: 1,
+    lastTrainingDay: today.addDays(-2),
+    evaluatedThrough: today.addDays(-1),
+    coveredInGap: 1,
+  );
+}
+
+AppSeed _pathLoading(ScenarioEnv env) =>
+    AppSeed(state: _pathState(env), pathMode: PathSeedMode.loading);
+
+AppSeed _pathError(ScenarioEnv env) =>
+    AppSeed(state: _pathState(env), pathMode: PathSeedMode.error);
+
+AppSeed _pathActive(ScenarioEnv env) =>
+    AppSeed(state: _pathState(env, streak: _streakActive(env)));
+
+AppSeed _pathFrozen(ScenarioEnv env) =>
+    AppSeed(state: _pathState(env, streak: _streakFrozen(env)));
+
+AppSeed _pathReset(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    streak: const StreakState(freezes: 0, uncoveredInGap: 2),
+  ),
+);
+
+AppSeed _pathBubbleGreeting(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 0,
+    manny: const MannyState(greetingPending: true),
+  ),
+);
+
+/// Abends (19:00): Streak-Gefahr.
+AppSeed _pathBubbleDanger(ScenarioEnv env) => AppSeed(
+  now: _at(env, 19),
+  state: _pathState(env, streak: _streakActive(env), manny: const MannyState()),
+);
+
+AppSeed _pathBubbleRestart(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    streak: const StreakState(
+      freezes: 0,
+      uncoveredInGap: 2,
+      resetNoticePending: true,
+    ),
+    manny: const MannyState(),
+  ),
+);
+
+/// Feier mit Ring-Puls: heute Unit `w5-d1` erledigt (Streak 13).
+AppSeed _pathCelebration(ScenarioEnv env) {
+  final LocalDay today = _today(env);
+  return AppSeed(
+    state: _pathState(
+      env,
+      streak: StreakState(
+        count: 13,
+        lastTrainingDay: today,
+        evaluatedThrough: today.addDays(-1),
+      ),
+      manny: const MannyState(),
+      completed: const <String>['w5-d1'],
+      pulse: 'w5-d1',
+      celebration: CelebrationState(day: today, unitId: 'w5-d1'),
+      dayDone: true,
+    ),
+  );
+}
+
+String _unitLabel(String id, UnitStatus status) {
+  final PathUnit unit = kSamplePath.firstWhere((PathUnit u) => u.id == id);
+  return unitSemanticsLabel(unit, status);
+}
+
+/// Tipp auf eine gesperrte Unit der laufenden Woche: „Kommt noch diese Woche“.
+AppSeed _pathHintLocked(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  taps: <String>[_unitLabel('w5-d2', UnitStatus.locked)],
+);
+
+/// Tipp auf eine erledigte Unit: „Erledigt. Das hast du geschafft.“
+AppSeed _pathHintDone(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  taps: <String>[_unitLabel('w4-d3', UnitStatus.done)],
+);
+
+AppSeed _pathWeek1(ScenarioEnv env) =>
+    AppSeed(state: _pathState(env, daysSinceInjury: 0));
+
+AppSeed _pathEnd(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 200,
+    streak: _streakActive(env),
+    completed: _endCompleted(),
+  ),
+);
+
+/// Pfad ganz nach unten gescrollt, Manny auf der untersten Unit nahe der
+/// Button-Gruppe, Begrüßungsblase: sie wechselt über Manny.
+AppSeed _pathClusterBubble(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 0,
+    manny: const MannyState(greetingPending: true),
+  ),
+  scrollPathToEnd: true,
+);
+
+/// Pfad ganz nach unten gescrollt, Hinweis an einer erledigten Unit nahe der
+/// Gruppe (Woche 5: die unteren Units sind erledigt).
+AppSeed _pathClusterHint(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  scrollPathToEnd: true,
+  taps: <String>[_unitLabel('w1-d2', UnitStatus.done)],
+);
+
+/// Unterste Unit über die Button-Gruppe geschoben (Woche 5, Pfad ganz unten).
+AppSeed _pathScrolledBottom(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  scrollPathToEnd: true,
+);
+
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
-const List<Scenario> kScenarios = <Scenario>[
+final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
   Scenario(id: 'cmp-buttons', builder: _buttons, expectsPrimary: true),
   Scenario(id: 'cmp-busy', builder: _busy, loops: true),
@@ -899,6 +1112,35 @@ const List<Scenario> kScenarios = <Scenario>[
     expectsCluster: true,
   ),
   Scenario(id: 'shell-tab-today', app: _shellToday, expectsNav: true),
+  // Pfad (U3a): in Laden und Fehler steht keine Button-Gruppe (A-43).
+  Scenario(
+    id: 'path-loading',
+    app: _pathLoading,
+    maxBackdrops: 1,
+    expectsNav: true,
+  ),
+  Scenario(
+    id: 'path-error',
+    app: _pathError,
+    maxBackdrops: 1,
+    expectsNav: true,
+    expectsPrimary: true,
+  ),
+  _pathScenario('path-active', _pathActive, tablet: true),
+  _pathScenario('path-frozen', _pathFrozen),
+  _pathScenario('path-reset', _pathReset),
+  _pathScenario('path-bubble-greeting', _pathBubbleGreeting),
+  _pathScenario('path-bubble-danger', _pathBubbleDanger),
+  _pathScenario('path-bubble-restart', _pathBubbleRestart),
+  _pathScenario('path-celebration', _pathCelebration),
+  _pathScenario('path-hint-locked', _pathHintLocked),
+  _pathScenario('path-hint-done', _pathHintDone),
+  _pathScenario('path-week1', _pathWeek1),
+  _pathScenario('path-end', _pathEnd),
+  _pathScenario('path-header-wrap', _pathActive, fixedTextScale: 1.2),
+  _pathScenario('path-cluster-bubble', _pathClusterBubble),
+  _pathScenario('path-cluster-hint', _pathClusterHint),
+  _pathScenario('path-scrolled-bottom', _pathScrolledBottom),
   Scenario(
     id: 'chat-manny',
     app: _chatManny,
@@ -951,6 +1193,24 @@ const List<Scenario> kScenarios = <Scenario>[
     expectsChatFooter: true,
   ),
 ];
+
+/// Pfad im Standard-Zustand: Nav, Button-Gruppe und Kopf sind Pflicht (die
+/// Matrix meldet einen fehlenden Marker als harten Befund); höchstens zwei
+/// `BackdropFilter` (Nav plus Blase).
+Scenario _pathScenario(
+  String id,
+  AppSeedBuilder seed, {
+  bool tablet = false,
+  double? fixedTextScale,
+}) => Scenario(
+  id: id,
+  app: seed,
+  expectsNav: true,
+  expectsCluster: true,
+  expectsHeader: true,
+  tablet: tablet,
+  fixedTextScale: fixedTextScale,
+);
 
 Scenario? scenarioById(String id) {
   for (final Scenario s in kScenarios) {

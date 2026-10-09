@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../ui/components/cura_pressable.dart';
+import '../ui/components/probe_keys.dart';
 
 /// Höchstens so viele Frames lang wird auf den Baustein gewartet.
 const int _maxFrames = 600;
@@ -16,6 +17,7 @@ class PreviewScript extends StatefulWidget {
     required this.taps,
     required this.child,
     this.focusField = false,
+    this.scrollPathToEnd = false,
   });
 
   /// Screenreader-Labels der Bausteine, die der Reihe nach „getippt“ werden.
@@ -23,6 +25,10 @@ class PreviewScript extends StatefulWidget {
 
   /// Nach den Tipps das erste sichtbare Textfeld fokussieren.
   final bool focusField;
+
+  /// Vor den Tipps den Pfad bis ans Ende scrollen (unterste Unit über die
+  /// Button-Gruppe geschoben, `path-scrolled-bottom`).
+  final bool scrollPathToEnd;
   final Widget child;
 
   @override
@@ -33,6 +39,7 @@ class _PreviewScriptState extends State<PreviewScript> {
   late final List<String> _pending = List<String>.of(widget.taps);
   int _frames = 0;
   late bool _focusPending = widget.focusField;
+  late bool _scrollEndPending = widget.scrollPathToEnd;
 
   @override
   void initState() {
@@ -41,7 +48,10 @@ class _PreviewScriptState extends State<PreviewScript> {
   }
 
   void _schedule() {
-    if ((_pending.isEmpty && !_focusPending) || _frames >= _maxFrames) return;
+    if ((_pending.isEmpty && !_focusPending && !_scrollEndPending) ||
+        _frames >= _maxFrames) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _step());
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -49,7 +59,9 @@ class _PreviewScriptState extends State<PreviewScript> {
   void _step() {
     if (!mounted) return;
     _frames++;
-    if (_pending.isNotEmpty) {
+    if (_scrollEndPending) {
+      if (_scrollPathToEnd()) _scrollEndPending = false;
+    } else if (_pending.isNotEmpty) {
       final VoidCallback? action = _find(_pending.first);
       if (action != null) {
         _pending.removeAt(0);
@@ -110,6 +122,37 @@ class _PreviewScriptState extends State<PreviewScript> {
     if (st == null) return;
     final ScrollPosition p = st.position;
     p.jumpTo((p.pixels + p.viewportDimension / 2).clamp(0, p.maxScrollExtent));
+  }
+
+  /// Scrollt den Pfad (Bereich mit dem Marker `scroll`) ans Ende. `false`,
+  /// solange er noch nicht im Baum steht.
+  bool _scrollPathToEnd() {
+    ScrollableState? found;
+    void walk(Element e) {
+      if (found != null) return;
+      final Widget w = e.widget;
+      if (w is Offstage && w.offstage) return;
+      if (w.key == ProbeKeys.scroll) {
+        void inner(Element c) {
+          if (found != null) return;
+          if (c is StatefulElement && c.state is ScrollableState) {
+            found = c.state as ScrollableState;
+            return;
+          }
+          c.visitChildren(inner);
+        }
+
+        e.visitChildren(inner);
+        return;
+      }
+      e.visitChildren(walk);
+    }
+
+    context.visitChildElements(walk);
+    final ScrollableState? st = found;
+    if (st == null) return false;
+    st.position.jumpTo(st.position.maxScrollExtent);
+    return true;
   }
 
   /// Erstes sichtbares, bearbeitbares Textfeld.

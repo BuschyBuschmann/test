@@ -40,6 +40,23 @@
     "start-error",
     "shell-tab-path",
     "shell-tab-today",
+    "path-loading",
+    "path-error",
+    "path-active",
+    "path-frozen",
+    "path-reset",
+    "path-bubble-greeting",
+    "path-bubble-danger",
+    "path-bubble-restart",
+    "path-celebration",
+    "path-hint-locked",
+    "path-hint-done",
+    "path-week1",
+    "path-end",
+    "path-header-wrap",
+    "path-cluster-bubble",
+    "path-cluster-hint",
+    "path-scrolled-bottom",
     "chat-manny",
     "chat-manny-scale15",
     "messages",
@@ -48,7 +65,7 @@
     "example-chat-family",
     "example-chat-doctor"
   ],
-  "fixedScale": ["chat-manny-scale15", "messages-scale15"],
+  "fixedScale": ["chat-manny-scale15", "messages-scale15", "path-header-wrap"],
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
     "scenarios": [
@@ -56,6 +73,7 @@
       "cmp-surfaces",
       "cmp-nav-cluster",
       "ob1-name",
+      "path-active",
       "chat-manny",
       "messages"
     ]
@@ -65,7 +83,7 @@
       { "name": "568x320", "w": 568, "h": 320 },
       { "name": "844x390", "w": 844, "h": 390 }
     ],
-    "scenarios": ["cmp-forms", "cmp-nav-cluster", "chat-manny", "messages"]
+    "scenarios": ["cmp-forms", "cmp-nav-cluster", "path-active", "chat-manny", "messages"]
   },
   "simulations": {
     "viewport": { "name": "390x844", "w": 390, "h": 844 },
@@ -77,6 +95,8 @@
         "cmp-nav-cluster",
         "cmp-surfaces",
         "ob3-acl",
+        "path-active",
+        "path-frozen",
         "messages"
       ]
     }

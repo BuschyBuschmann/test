@@ -17,6 +17,7 @@ import '../data/prefs_state_store.dart';
 import '../data/state_store.dart';
 import '../logic/clock.dart';
 import '../logic/manny_text_source.dart';
+import '../ui/path/path_source.dart';
 import '../state/app_controller.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
@@ -171,6 +172,12 @@ class PreviewThemeSelector extends StatelessWidget {
 class _AppRuntime {
   _AppRuntime._(this.controller, this.seed, this.startup);
 
+  PathSource get pathSource => switch (seed.pathMode) {
+    PathSeedMode.ready => const ImmediatePathSource(),
+    PathSeedMode.loading => const PendingPathSource(),
+    PathSeedMode.error => const FailingPathSource(),
+  };
+
   factory _AppRuntime.create(
     PreviewConfig config,
     ScenarioEnv env,
@@ -185,7 +192,7 @@ class _AppRuntime {
         null,
       );
     }
-    final DateTime now = env.now;
+    final DateTime now = seed.now ?? env.now;
     final MemoryStateStore store = seed.unreadable
         ? UnreadableStateStore()
         : seed.loadError
@@ -291,10 +298,12 @@ class _PreviewAppState extends State<PreviewApp> {
       return CuraApp(
         controller: runtime.controller,
         startup: runtime.startup,
+        pathSource: runtime.pathSource,
         previewWrapper: (BuildContext context, Widget child) {
           return PreviewScript(
             taps: runtime.seed.taps,
             focusField: runtime.seed.focusField,
+            scrollPathToEnd: runtime.seed.scrollPathToEnd,
             child: PreviewOverrides(
               config: config,
               viewInsetsBottom: _scenario?.keyboard ?? false

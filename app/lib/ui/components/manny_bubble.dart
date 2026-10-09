@@ -31,6 +31,7 @@ class MannyBubble extends StatelessWidget {
     required this.onClose,
     this.arrow = BubbleArrow.left,
     this.arrowOffset = CuraSpace.s6,
+    this.maxBodyHeight,
   });
 
   final String text;
@@ -40,6 +41,11 @@ class MannyBubble extends StatelessWidget {
   /// Abstand der Pfeilspitze vom Anfang der Blasenkante (oben bei `left`,
   /// links bei `down`), in dp.
   final double arrowOffset;
+
+  /// Höhe des Körpers (ohne Pfeil), wenn der Platz begrenzt ist (Rückfall der
+  /// Pfad-Platzierung, Plan 4.6): der Text scrollt dann innen. Ohne Wert so
+  /// hoch wie der Text.
+  final double? maxBodyHeight;
 
   /// Platzierung nach Brief 5.6: bleibt rechts neben Manny weniger als
   /// 140 dp, steht die Blase oberhalb.
@@ -56,9 +62,10 @@ class MannyBubble extends StatelessWidget {
     final BorderRadius shape = BorderRadius.circular(CuraRadius.bubble);
 
     final Widget body = ConstrainedBox(
-      constraints: const BoxConstraints(
+      constraints: BoxConstraints(
         maxWidth: CuraComponent.bubbleMaxWidth,
         minHeight: CuraSize.touchTarget,
+        maxHeight: maxBodyHeight ?? double.infinity,
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -88,10 +95,19 @@ class MannyBubble extends StatelessWidget {
                     ),
                     child: Semantics(
                       liveRegion: true,
-                      child: Text(
-                        text,
-                        style: type.bubble.copyWith(color: colors.text1),
-                      ),
+                      child: maxBodyHeight == null
+                          ? Text(
+                              text,
+                              style: type.bubble.copyWith(color: colors.text1),
+                            )
+                          : SingleChildScrollView(
+                              child: Text(
+                                text,
+                                style: type.bubble.copyWith(
+                                  color: colors.text1,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                 ),
