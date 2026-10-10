@@ -22,6 +22,7 @@ import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../components/manny.dart';
 import '../components/path_node.dart';
+import '../components/path_outlook.dart';
 
 /// Beschriftung unter einer Unit (`caption`, `text-3`).
 class PathLabel {
@@ -77,6 +78,7 @@ class PathView extends StatelessWidget {
     required this.mannyPose,
     required this.onUnitPressed,
     required this.onMannyTap,
+    required this.onOutlookPressed,
     this.pulseUnitId,
     this.onPulseDone,
   });
@@ -88,6 +90,9 @@ class PathView extends StatelessWidget {
   final MannyPose mannyPose;
   final void Function(int index) onUnitPressed;
   final VoidCallback onMannyTap;
+
+  /// Tipp auf den Ausblick (Ergänzung 3): zeigt dessen `NodeHint`.
+  final VoidCallback onOutlookPressed;
   final String? pulseUnitId;
   final VoidCallback? onPulseDone;
 
@@ -116,6 +121,22 @@ class PathView extends StatelessWidget {
         ),
       ),
     ];
+    // Der Ausblick ist das oberste Element: zuerst in Lese- und Fokus-
+    // reihenfolge, dann der Boss und die übrigen Units von oben nach unten.
+    final OutlookPlacement? outlook = layout.outlook;
+    if (outlook != null) {
+      children.add(
+        Positioned(
+          left: outlook.left,
+          top: outlook.top,
+          width: outlook.width,
+          child: PathOutlook(
+            key: const ValueKey<String>('outlook'),
+            onPressed: onOutlookPressed,
+          ),
+        ),
+      );
+    }
     for (int i = n - 1; i >= 0; i--) {
       final PathUnit unit = progress.units[i];
       final NodePlacement p = layout.placements[i];
@@ -225,6 +246,20 @@ class _PathLinesPainter extends CustomPainter {
     for (final Rect r in labelRects) {
       hole.addRect(r.inflate(CuraSize.pathLineClipLabel));
     }
+    final OutlookPlacement? outlook = layout.outlook;
+    if (outlook != null) {
+      hole.addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            outlook.left,
+            outlook.top,
+            outlook.right,
+            outlook.bottom,
+          ).inflate(CuraSize.pathLineClipUnit),
+          const Radius.circular(CuraRadius.card + CuraSize.pathLineClipUnit),
+        ),
+      );
+    }
     canvas.clipPath(hole);
 
     final Paint solid = Paint()
@@ -250,13 +285,36 @@ class _PathLinesPainter extends CustomPainter {
       if (statuses[s.to] != UnitStatus.locked) {
         canvas.drawPath(path, solid);
       } else {
-        for (final PathMetric m in path.computeMetrics()) {
-          for (double d = 0; d <= m.length; d += CuraSize.pathDotSpacing) {
-            final Tangent? t = m.getTangentForOffset(d);
-            if (t != null) {
-              canvas.drawCircle(t.position, CuraSize.pathLine / 2, dot);
-            }
-          }
+        _dots(canvas, path, dot);
+      }
+    }
+    // Vom Boss weiter zur Unterkante des Ausblicks (Mitte), dort Ende. Der
+    // Ausblick ist immer gesperrt, die Linie also immer gepunktet.
+    final PathSegment? out = layout.outlookSegment;
+    if (out != null) {
+      _dots(
+        canvas,
+        Path()
+          ..moveTo(out.start.x, out.start.y)
+          ..cubicTo(
+            out.control1.x,
+            out.control1.y,
+            out.control2.x,
+            out.control2.y,
+            out.end.x,
+            out.end.y,
+          ),
+        dot,
+      );
+    }
+  }
+
+  void _dots(Canvas canvas, Path path, Paint dot) {
+    for (final PathMetric m in path.computeMetrics()) {
+      for (double d = 0; d <= m.length; d += CuraSize.pathDotSpacing) {
+        final Tangent? t = m.getTangentForOffset(d);
+        if (t != null) {
+          canvas.drawCircle(t.position, CuraSize.pathLine / 2, dot);
         }
       }
     }
@@ -282,6 +340,14 @@ class _PathLinesPainter extends CustomPainter {
     }
     for (int i = 0; i < labelRects.length; i++) {
       if (old.labelRects[i] != labelRects[i]) return true;
+    }
+    final OutlookPlacement? a = old.layout.outlook;
+    final OutlookPlacement? b = layout.outlook;
+    if ((a == null) != (b == null)) return true;
+    if (a != null &&
+        b != null &&
+        (a.center != b.center || a.width != b.width || a.height != b.height)) {
+      return true;
     }
     return false;
   }

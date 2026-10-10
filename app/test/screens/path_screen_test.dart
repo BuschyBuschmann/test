@@ -22,6 +22,7 @@ import 'package:curaone/state/app_controller.dart'
     show ProfileUpdateResult, TrainingResult;
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
+import 'package:curaone/theme/cura_roles.dart';
 import 'package:curaone/ui/chat/manny_chat_screen.dart';
 import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
@@ -32,6 +33,7 @@ import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/node_hint.dart';
 import 'package:curaone/ui/components/path_header.dart';
 import 'package:curaone/ui/components/path_node.dart';
+import 'package:curaone/ui/components/path_outlook.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/overlay_placement.dart' show kOverlayTopLimit;
@@ -119,6 +121,29 @@ Rect _viewport(WidgetTester tester) =>
 Future<void> _reveal(WidgetTester tester, String id) async {
   await Scrollable.ensureVisible(tester.element(_unit(id)), alignment: 0.5);
   await tester.pump();
+}
+
+Finder get _outlook => find.byType(PathOutlook, skipOffstage: false);
+
+Future<void> _revealOutlook(WidgetTester tester) async {
+  await Scrollable.ensureVisible(tester.element(_outlook), alignment: 0.5);
+  await tester.pump();
+}
+
+/// Endfall: alles bis vor den Boss erledigt.
+AppState _allDone(AppState s) => s.copyWith(
+  path: s.path.copyWith(
+    completedUnitIds: <String>[
+      for (final PathUnit u in kSamplePath)
+        if (u.kind != UnitKind.boss) u.id,
+    ],
+  ),
+);
+
+Future<void> _tapOutlook(WidgetTester tester) async {
+  await _revealOutlook(tester);
+  await tester.tap(_outlook);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _tapUnit(WidgetTester tester, String id) async {
@@ -1140,6 +1165,405 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  group(
+    'Ausblick „Prävention & Gesundheitssport“ (Ergänzung 3, UI-90 bis UI-99)',
+    () {
+      for (final Size size in Viewports.matrix) {
+        testWidgets('UI-90, UI-91, UI-94: Marke mittig, ≤ 300 dp und ≤ Breite '
+            '− 32, ≥ 72 dp hoch, Boss darunter mit ≥ 84 dp Abstand '
+            '(${size.width.toInt()} × ${size.height.toInt()})', (
+          WidgetTester tester,
+        ) async {
+          await _pump(tester, size: size);
+          expect(find.text(S.outlookTitle), findsOneWidget);
+          expect(find.text(S.outlookSubtitle), findsOneWidget);
+          final Rect o = tester.getRect(_outlook);
+          final Rect boss = tester.getRect(_unit('boss'));
+          expect(o.width, lessThanOrEqualTo(300 + 0.01));
+          expect(o.width, lessThanOrEqualTo(size.width - 32 + 0.01));
+          expect(
+            o.width,
+            closeTo(size.width - 32 < 300 ? size.width - 32 : 300, 0.01),
+          );
+          expect(o.center.dx, closeTo(size.width / 2, 0.5));
+          expect(o.height, greaterThanOrEqualTo(72));
+          expect(boss.width, 92);
+          expect(o.bottom, lessThanOrEqualTo(boss.top - 84 + 0.01));
+          // Darüber steht keine weitere Unit.
+          for (final Element e
+              in find.byType(PathNode, skipOffstage: false).evaluate()) {
+            final RenderBox box = e.renderObject! as RenderBox;
+            final double top = box.localToGlobal(Offset.zero).dy;
+            expect(top, greaterThanOrEqualTo(boss.top - 0.01));
+          }
+          await _close(tester);
+        });
+      }
+
+      testWidgets('UI-90, UI-95: genau 52 Units, die Marke ist keine Unit und '
+          'trägt weder Ring noch Manny', (WidgetTester tester) async {
+        await _pump(tester, tweak: _tweak(_allDone));
+        expect(find.byType(PathNode, skipOffstage: false), findsNWidgets(52));
+        expect(
+          find.descendant(
+            of: _outlook,
+            matching: find.byType(PathNode, skipOffstage: false),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: _outlook,
+            matching: find.byType(MannyPlaceholder, skipOffstage: false),
+          ),
+          findsNothing,
+        );
+        final Rect o = tester.getRect(_outlook);
+        expect(tester.getRect(_manny).overlaps(o), isFalse);
+        expect(kPathOutlookShown, isTrue);
+        await _close(tester);
+      });
+
+      testWidgets('UI-91: Glas ohne Blur, gestrichelter Rand lockedBorder 6/4, '
+          'Schloss-Kreis 36 dp, Titel text-1, Untertitel text-2, keine '
+          'Animation', (WidgetTester tester) async {
+        await _pump(tester);
+        await _revealOutlook(tester);
+        final CuraColors c = colorsAt(tester, _outlook);
+        expect(backdropCount(tester), 1, reason: 'nur die Nav');
+        final DashedRRectPainter dashed = tester
+            .widgetList<CustomPaint>(
+              find.descendant(of: _outlook, matching: find.byType(CustomPaint)),
+            )
+            .map((CustomPaint p) => p.foregroundPainter)
+            .whereType<DashedRRectPainter>()
+            .single;
+        expect(dashed.color, c.lockedBorder);
+        expect(dashed.dash, 6);
+        expect(dashed.gap, 4);
+        expect(dashed.width, 1.5);
+        expect(dashed.radius, 24);
+        final BoxDecoration glass = decorationsUnder(
+          tester,
+          _outlook,
+        ).firstWhere((BoxDecoration x) => x.gradient != null);
+        expect(glass.gradient, c.cardFill);
+        final Finder lock = find.descendant(
+          of: _outlook,
+          matching: find.byIcon(Icons.lock_rounded),
+        );
+        expect(lock, findsOneWidget);
+        expect(tester.widget<Icon>(lock).color, c.lockedIcon);
+        final Finder circle = find.ancestor(
+          of: lock,
+          matching: find.byWidgetPredicate(
+            (Widget w) => w is SizedBox && w.width == 36 && w.height == 36,
+          ),
+        );
+        expect(circle, findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text(S.outlookTitle)).style!.color,
+          c.text1,
+        );
+        expect(
+          tester.widget<Text>(find.text(S.outlookSubtitle)).style!.color,
+          c.text2,
+        );
+        expect(
+          find.descendant(
+            of: _outlook,
+            matching: find.byIcon(Icons.star_rounded),
+          ),
+          findsNothing,
+        );
+        expect(tester.hasRunningAnimations, isFalse);
+        await _close(tester);
+      });
+
+      testWidgets(
+        'UI-91: Hoher Kontrast opak mit border-control-hc, kein Blur',
+        (WidgetTester tester) async {
+          await _pump(tester, hc: true);
+          await _revealOutlook(tester);
+          final CuraColors c = colorsAt(tester, _outlook);
+          expect(c.highContrast, isTrue);
+          final DashedRRectPainter dashed = tester
+              .widgetList<CustomPaint>(
+                find.descendant(
+                  of: _outlook,
+                  matching: find.byType(CustomPaint),
+                ),
+              )
+              .map((CustomPaint p) => p.foregroundPainter)
+              .whereType<DashedRRectPainter>()
+              .single;
+          expect(dashed.color, c.controlBorder);
+          final BoxDecoration glass = decorationsUnder(
+            tester,
+            _outlook,
+          ).firstWhere((BoxDecoration x) => x.gradient != null);
+          expect(glass.gradient!.colors, <Color>[
+            c.surfaceOpaque,
+            c.surfaceOpaque,
+          ]);
+          expect(backdropCount(tester), 0, reason: 'HC: kein Blur');
+          await _close(tester);
+        },
+      );
+
+      testWidgets('UI-92: Tipp zeigt den NodeHint, kein Tabwechsel, schließt '
+          'die Manny-Blase, höchstens einer, Pfeil auf die Mitte der Marke', (
+        WidgetTester tester,
+      ) async {
+        final Harness h = await _pump(tester, bubble: true);
+        expect(_bubble, findsOneWidget);
+        await _tapOutlook(tester);
+        expect(find.text(S.outlookHint), findsOneWidget);
+        expect(_hint, findsOneWidget);
+        expect(_bubble, findsNothing);
+        expect(h.controller.transient.visibleBubble, isNull);
+        expect(_shell(tester).activeTab, HomeTab.path);
+        final CuraColors c = colorsAt(tester, _hint);
+        final BoxDecoration d = decorationsUnder(
+          tester,
+          _hint,
+        ).firstWhere((BoxDecoration x) => x.borderRadius != null);
+        expect(d.color, c.surfaceOpaque);
+        final Rect hint = tester.getRect(_hint);
+        final Rect o = tester.getRect(_outlook);
+        final NodeHint w = tester.widget<NodeHint>(_hint);
+        expect(w.arrow, HintArrow.down, reason: 'über der Marke');
+        expect(hint.bottom, closeTo(o.top, 0.5));
+        expect(hint.left + w.arrowCenter, closeTo(o.center.dx, 0.5));
+        expect(hint.left, greaterThanOrEqualTo(16));
+        expect(hint.right, lessThanOrEqualTo(390 - 16));
+        // Ein neuer Hinweis an einer Unit ersetzt ihn (höchstens einer).
+        await _tapUnit(tester, 'w3-d2');
+        expect(_hint, findsOneWidget);
+        expect(find.text(S.outlookHint), findsNothing);
+        await _close(tester);
+      });
+
+      testWidgets('UI-92: Hinweis schließt durch Tipp, Escape, Scrollen und '
+          'nach 5 s', (WidgetTester tester) async {
+        await _pump(tester);
+        await _tapOutlook(tester);
+        await tester.tapAt(tester.getRect(find.byType(PathHeader)).center);
+        await tester.pumpAndSettle();
+        expect(_hint, findsNothing, reason: 'Tipp');
+        await _tapOutlook(tester);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(_hint, findsNothing, reason: 'Escape');
+        await _tapOutlook(tester);
+        await tester.drag(find.byKey(ProbeKeys.scroll), const Offset(0, 100));
+        await tester.pumpAndSettle();
+        expect(_hint, findsNothing, reason: 'Scrollen');
+        await _tapOutlook(tester);
+        await tester.pump(const Duration(milliseconds: 4600));
+        expect(_hint, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump();
+        expect(_hint, findsNothing, reason: '5 s');
+        await _close(tester);
+      });
+
+      testWidgets('UI-92, UI-93: bei aktivem Screenreader schließt der Hinweis '
+          'nicht von selbst und wird angesagt (Live-Region)', (
+        WidgetTester tester,
+      ) async {
+        final SemanticsHandle sem = tester.ensureSemantics();
+        await _pump(tester, screenReader: true);
+        await _tapOutlook(tester);
+        await tester.pump(const Duration(seconds: 12));
+        expect(_hint, findsOneWidget);
+        expect(find.bySemanticsLabel(S.outlookHint), findsOneWidget);
+        expect(
+          tester
+              .getSemantics(find.bySemanticsLabel(S.outlookHint))
+              .flagsCollection
+              .isLiveRegion,
+          isTrue,
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(_hint, findsNothing);
+        sem.dispose();
+        await _close(tester);
+      });
+
+      testWidgets('UI-93: Schaltfläche mit Label, Hit-Area ≥ 48 dp', (
+        WidgetTester tester,
+      ) async {
+        final SemanticsHandle sem = tester.ensureSemantics();
+        await _pump(tester);
+        await _revealOutlook(tester);
+        final Finder label = find.bySemanticsLabel(S.outlookLabel);
+        expect(label, findsOneWidget);
+        expect(S.outlookLabel, 'Prävention und Gesundheitssport, gesperrt.');
+        final SemanticsNode node = tester.getSemantics(label);
+        expect(node.flagsCollection.isButton, isTrue);
+        expect(node.rect.width, greaterThanOrEqualTo(48));
+        expect(node.rect.height, greaterThanOrEqualTo(48));
+        sem.dispose();
+        await _close(tester);
+      });
+
+      testWidgets(
+        'UI-93: Fokus Marke vor Boss vor den übrigen Units, Enter und '
+        'Leertaste lösen aus, Fokusring sichtbar',
+        (WidgetTester tester) async {
+          await _pump(tester);
+          final List<String> order = <String>[];
+          for (int i = 0; i < 4; i++) {
+            await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+            await tester.pump();
+            final BuildContext ctx =
+                FocusManager.instance.primaryFocus!.context!;
+            String kind = '?';
+            ctx.visitAncestorElements((Element e) {
+              final Widget w = e.widget;
+              if (w is PathOutlook) {
+                kind = 'outlook';
+                return false;
+              }
+              if (w is PathNode) {
+                kind = w.unit.id;
+                return false;
+              }
+              return true;
+            });
+            order.add(kind);
+            if (kind == 'outlook') {
+              await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+              await tester.pumpAndSettle();
+              expect(_hint, findsOneWidget, reason: 'Enter');
+              await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+              await tester.pumpAndSettle();
+              expect(_hint, findsNothing);
+              await tester.sendKeyEvent(LogicalKeyboardKey.space);
+              await tester.pumpAndSettle();
+              expect(
+                find.text(S.outlookHint),
+                findsOneWidget,
+                reason: 'Leertaste',
+              );
+            }
+          }
+          final int o = order.indexOf('outlook');
+          expect(o, greaterThanOrEqualTo(0), reason: '$order');
+          expect(order[o + 1], 'boss', reason: '$order');
+          expect(order[o + 2], 'p3-end', reason: '$order');
+          await _close(tester);
+        },
+      );
+
+      for (final Size size in <Size>[Viewports.small, Viewports.large]) {
+        testWidgets('UI-97: Marke, Boss und jede Unit lassen sich auf 55 % '
+            'scrollen (${size.width.toInt()} dp)', (WidgetTester tester) async {
+          await _pump(tester, size: size);
+          final Rect view = _viewport(tester);
+          final ScrollPosition pos = tester
+              .state<ScrollableState>(
+                find.descendant(
+                  of: find.byKey(ProbeKeys.scroll),
+                  matching: find.byType(Scrollable),
+                ),
+              )
+              .position;
+          Future<void> expect55(Finder f, String reason) async {
+            final double dy = tester.getRect(f).center.dy;
+            final double target = view.top + 0.55 * view.height;
+            final double want = (pos.pixels + dy - target).clamp(
+              pos.minScrollExtent,
+              pos.maxScrollExtent,
+            );
+            pos.jumpTo(want);
+            await tester.pump();
+            expect(
+              tester.getRect(f).center.dy,
+              closeTo(target, 1),
+              reason: reason,
+            );
+          }
+
+          await expect55(_outlook, 'Marke');
+          await expect55(_unit('boss'), 'Boss');
+          await expect55(_unit('p3-end'), 'p3-end');
+          await expect55(_unit('w6-goal'), 'mittlere Unit');
+          await expect55(_unit('w1-d1'), 'erste Unit');
+          // In der Endlage oben liegt die Marke nicht hinter der Kopfzeile.
+          pos.jumpTo(pos.minScrollExtent);
+          await tester.pump();
+          expect(tester.getRect(_outlook).top, greaterThanOrEqualTo(view.top));
+          await _close(tester);
+        });
+      }
+
+      for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
+        testWidgets('UI-99: 200 % Schrift bei ${size.width.toInt()} dp: Titel '
+            'bricht um, nichts überlappt, kein Abschneiden', (
+          WidgetTester tester,
+        ) async {
+          await _pump(tester, size: size, scale: 2);
+          await _revealOutlook(tester);
+          final Rect o = tester.getRect(_outlook);
+          final Rect title = tester.getRect(find.text(S.outlookTitle));
+          final Rect sub = tester.getRect(find.text(S.outlookSubtitle));
+          expect(o.height, greaterThan(72), reason: 'wächst mit der Schrift');
+          expect(title.bottom, lessThanOrEqualTo(sub.top + 0.5));
+          expect(title.left, greaterThanOrEqualTo(o.left));
+          expect(title.right, lessThanOrEqualTo(o.right));
+          expect(sub.bottom, lessThanOrEqualTo(o.bottom));
+          expect(title.top, greaterThanOrEqualTo(o.top));
+          expect(o.left, greaterThanOrEqualTo(16 - 0.01));
+          expect(o.right, lessThanOrEqualTo(size.width - 16 + 0.01));
+          expect(
+            tester.getRect(_unit('boss')).top - o.bottom,
+            greaterThanOrEqualTo(84 - 0.01),
+          );
+          await _close(tester);
+        });
+      }
+
+      testWidgets('UI-99: Hinweis bei 320 × 568 und 200 % bleibt im Bild und '
+          'über der Gruppe', (WidgetTester tester) async {
+        await _pump(tester, size: Viewports.small, scale: 2);
+        await _tapOutlook(tester);
+        final Rect hint = tester.getRect(_hint);
+        final Rect cluster = tester.getRect(find.byType(ActionCluster));
+        expect(hint.left, greaterThanOrEqualTo(16));
+        expect(hint.right, lessThanOrEqualTo(320 - 16));
+        expect(hint.overlaps(cluster), isFalse);
+        expect(hint.top, greaterThanOrEqualTo(_viewport(tester).top));
+        await _close(tester);
+      });
+
+      testWidgets('UI-98: Kopfzeile unverändert (Woche, Phase, Beispielpfad), '
+          'keine Phase 4; Texte der Marke ohne Zahl', (
+        WidgetTester tester,
+      ) async {
+        await _pump(
+          tester,
+          tweak: _tweak((AppState s) => _allDone(_week(s, 200))),
+        );
+        expect(find.text('Woche 12'), findsOneWidget);
+        expect(find.text('Phase 3 · Kreuzband'), findsOneWidget);
+        expect(find.textContaining('Phase 4'), findsNothing);
+        final RegExp digit = RegExp(r'\d');
+        for (final String t in <String>[
+          S.outlookTitle,
+          S.outlookSubtitle,
+          S.outlookHint,
+          S.outlookLabel,
+        ]) {
+          expect(digit.hasMatch(t), isFalse, reason: t);
+        }
+        await _close(tester);
+      });
+    },
+  );
+
   group('Zurück und Escape (Plan 4.3, N-6)', () {
     testWidgets('Pfad: erst Blase, dann Hinweis, dann App schließen', (
       WidgetTester tester,

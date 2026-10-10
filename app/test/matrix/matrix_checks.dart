@@ -1041,10 +1041,13 @@ List<Finding> checkFocusedField(WidgetTester tester, Scenario scenario) {
 /// Sichtfensters (z. B. künftige Knotenhinweise, U3a); dort braucht ein
 /// Szenario sein Overlay als festes Overlay über der Liste.
 class FreeZone {
-  FreeZone(WidgetTester tester)
+  FreeZone(WidgetTester tester, {Set<String> ignoring = const <String>{}})
     : screen = Offset.zero & viewSize(tester),
       header = headerRect(),
-      overlays = overlayRects().values.toList();
+      overlays = <Rect>[
+        for (final MapEntry<String, Rect> e in overlayRects().entries)
+          if (!ignoring.contains(e.key)) e.value,
+      ];
 
   final Rect screen;
   final Rect? header;
@@ -1066,6 +1069,10 @@ class FreeZone {
   bool freeInHeader(Rect r) => _contains(screen, r) && _clearOfOverlays(r);
 }
 
+/// Overlays, die der Pfad beim Scrollen durch den Nutzer schließt (Blase,
+/// `NodeHint`; Marker `overlay:bubble`, `overlay:hint`).
+const Set<String> kDismissedOnScroll = <String>{'bubble', 'hint'};
+
 /// Inhalt nach Scrollen erreichbar (UI-31 neu, UI-88): jedes Tap-Ziel des
 /// Inhalts lässt sich in eine Lage scrollen, in der es vollständig sichtbar,
 /// unter dem Kopf und von keinem Overlay verdeckt ist. Der Scrollweg wird
@@ -1077,6 +1084,19 @@ class FreeZone {
 Future<List<Finding>> checkReachability(WidgetTester tester) async {
   final FreeZone zone = FreeZone(tester);
   final bool Function(Rect) free = zone.free;
+  // Blase und `NodeHint` des Pfads schließen, sobald der Nutzer scrollt
+  // (UI-23, UI-62): beim Scrollen zu einem Ziel stehen sie nicht mehr im Weg.
+  // In der Ruhelage (oben) zählen sie weiter. Ohne diese Unterscheidung wäre
+  // eine 96 dp hohe Marke (320 × 568) bei offener Blase nie „frei“ (Fenster
+  // zwischen Kopf, Blase und Gruppe nur 71 und 79 dp).
+  final bool Function(Rect) freeWhileScrolling = FreeZone(
+    tester,
+    ignoring: kDismissedOnScroll,
+  ).free;
+  final List<Rect> dismissible = <Rect>[
+    for (final MapEntry<String, Rect> e in overlayRects().entries)
+      if (kDismissedOnScroll.contains(e.key)) e.value,
+  ];
   final List<Finding> out = <Finding>[];
 
   final List<TapTarget> rest = tapTargets(tester);
@@ -1120,7 +1140,7 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
       // die kein Overlay-Marker sind; Inhalt dahinter ist abgeschnitten.
       bool reachable(double offset) {
         final Rect r = t.rect.shift(-scan.shiftFor(offset));
-        return free(r) && _contains(scan.viewport, r);
+        return freeWhileScrolling(r) && _contains(scan.viewport, r);
       }
 
       double? hit;
@@ -1146,6 +1166,11 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
       position.jumpTo(hit);
       await tester.pump();
       final Offset center = t.rect.center - scan.shiftFor(position.pixels);
+      // Liegt das Ziel unter Blase oder Hinweis, die beim Scrollen schließen,
+      // trifft der Test nur das Overlay: das Ziel selbst ist frei.
+      final bool underDismissible = dismissible.any(
+        (Rect r) => r.contains(center),
+      );
       final HitTestResult result = tester.hitTestOnBinding(center);
       bool onContent = false;
       if (sr == null) {
@@ -1169,7 +1194,7 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
           }
           if (onContent) break;
         }
-        if (!onContent) {
+        if (!onContent && !underDismissible) {
           out.add(
             Finding(
               'Inhalt erreichbar',

@@ -118,6 +118,90 @@ void main() {
     });
   }
 
+  // Ausblick `PathOutlook` (Ergänzung 3, UI-94, UI-97).
+  for (final (double w, double h, double oh) in <(double, double, double)>[
+    (320, 568, 72),
+    (320, 568, 140),
+    (390, 844, 72),
+    (430, 932, 72),
+  ]) {
+    group('Ausblick $w×$h, Höhe $oh', () {
+      final PathLayout l = layoutPath(
+        units: kSamplePath,
+        width: w,
+        viewportHeight: h,
+        metrics: metrics,
+        bottomReserve: 200,
+        outlookHeight: oh,
+      );
+      final OutlookPlacement o = l.outlook!;
+      final int boss = kSamplePath.length - 1;
+
+      test('mittig, Breite min(Breite − 32, 300), Höhe wie übergeben', () {
+        expect(o.center.x, w / 2);
+        expect(o.width, math.min(w - 32, 300));
+        expect(o.height, oh);
+        expect(o.left, greaterThanOrEqualTo(16 - 1e-9));
+        expect(o.right, lessThanOrEqualTo(w - 16 + 1e-9));
+      });
+
+      test('oberstes Element; lichter Abstand zum Boss ≥ 84 dp', () {
+        expect(o.top, closeTo(l.padTop, 1e-9));
+        final double bossTop =
+            l.placements[boss].center.y - l.placements[boss].diameter / 2;
+        expect(bossTop - o.bottom, greaterThanOrEqualTo(84 - 1e-9));
+      });
+
+      test(
+        'Offset auf 55 % für Ausblick, Boss, erste, mittlere, letzte Unit',
+        () {
+          final double off = l.scrollOffsetForOutlook!;
+          expect(off, greaterThanOrEqualTo(-1e-9));
+          expect(off, lessThanOrEqualTo(l.maxScrollExtent + 1e-9));
+          expect(o.center.y - off, closeTo(0.55 * h, 1e-9));
+          for (final int i in <int>[0, 26, boss]) {
+            final double u = l.scrollOffsetFor(i);
+            expect(u, greaterThanOrEqualTo(-1e-9), reason: 'Unit $i');
+            expect(
+              u,
+              lessThanOrEqualTo(l.maxScrollExtent + 1e-9),
+              reason: '$i',
+            );
+          }
+        },
+      );
+
+      test('Linie vom Boss zur Unterkante der Marke (Mitte), endet dort', () {
+        final PathSegment s = l.outlookSegment!;
+        expect(s.from, boss);
+        expect(s.start, l.placements[boss].center);
+        expect(s.end.x, o.center.x);
+        expect(s.end.y, o.bottom);
+        expect(s.control1.x, s.start.x);
+        expect(s.control2.x, s.end.x);
+        // Keine Linie über die Marke hinaus: nichts oberhalb ihrer Unterkante.
+        expect(s.start.y, greaterThan(s.end.y));
+      });
+
+      test('Gesamthöhe = Polster + Ausblick + Abstand + Units + Polster', () {
+        final double units =
+            l.placements.fold(0.0, (double s, p) => s + p.diameter) +
+            (l.placements.length - 1) * 24;
+        expect(
+          l.totalHeight,
+          closeTo(l.padTop + oh + 84 + units + l.padBottom, 1e-9),
+        );
+      });
+    });
+  }
+
+  test('ohne outlookHeight: kein Ausblick, Layout wie bisher', () {
+    final PathLayout l = layoutFor(390, 844);
+    expect(l.outlook, isNull);
+    expect(l.outlookSegment, isNull);
+    expect(l.scrollOffsetForOutlook, isNull);
+  });
+
   test('Gruppen-Reserve: padBottom ≥ bottomReserve (UI-75)', () {
     final PathLayout l = layoutFor(390, 844, reserve: 600);
     expect(l.padBottom, greaterThanOrEqualTo(600));

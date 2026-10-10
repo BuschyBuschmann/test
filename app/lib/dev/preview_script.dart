@@ -18,6 +18,11 @@ const int _maxFrames = 600;
 /// Wechsel auf Heute, `today-cluster`).
 const String kPreviewScrollEnd = 'preview:scroll-end';
 
+/// Eintrag in [PreviewScript.taps]: scrollt den Hauptscrollbereich des
+/// sichtbaren Tabs ganz nach oben (Pfad: der Ausblick `PathOutlook` über dem
+/// Boss, `path-outlook`).
+const String kPreviewScrollStart = 'preview:scroll-start';
+
 class PreviewScript extends StatefulWidget {
   const PreviewScript({
     super.key,
@@ -79,6 +84,11 @@ class _PreviewScriptState extends State<PreviewScript> {
     _frames++;
     if (_scrollEndPending) {
       if (_scrollPathToEnd()) _scrollEndPending = false;
+    } else if (_pending.isNotEmpty && _pending.first == kPreviewScrollStart) {
+      if (_scrollPath(toEnd: false) && ++_endJumps >= _endJumpFrames) {
+        _pending.removeAt(0);
+        _endJumps = 0;
+      }
     } else if (_pending.isNotEmpty && _pending.first == kPreviewScrollEnd) {
       // Mehrere Frames lang: Die Reserve am Listenende wächst nach der Messung
       // der Button-Gruppe, das Ende liegt dann etwas weiter unten.
@@ -161,7 +171,10 @@ class _PreviewScriptState extends State<PreviewScript> {
 
   /// Scrollt den Pfad (Bereich mit dem Marker `scroll`) ans Ende. `false`,
   /// solange er noch nicht im Baum steht.
-  bool _scrollPathToEnd() {
+  bool _scrollPathToEnd() => _scrollPath(toEnd: true);
+
+  /// Scrollt den Pfad ans Ende bzw. (mit [toEnd] `false`) an den Anfang.
+  bool _scrollPath({required bool toEnd}) {
     ScrollableState? found;
     void walk(Element e) {
       if (found != null) return;
@@ -191,7 +204,9 @@ class _PreviewScriptState extends State<PreviewScript> {
     if (!st.position.hasContentDimensions || st.position.maxScrollExtent < 1) {
       return false;
     }
-    st.position.jumpTo(st.position.maxScrollExtent);
+    st.position.jumpTo(
+      toEnd ? st.position.maxScrollExtent : st.position.minScrollExtent,
+    );
     return true;
   }
 

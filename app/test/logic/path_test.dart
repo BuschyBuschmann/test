@@ -1,5 +1,6 @@
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/injury_type.dart';
+import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/logic/path_generator.dart';
 import 'package:curaone/logic/path_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -229,6 +230,51 @@ void main() {
       expect(label('boss'), 'Return to Sport, gesperrt.');
       expect(label('w5-goal'), 'Woche 5, Wochenziel, gesperrt.');
       expect(label('p2-end'), 'Woche 8, Phasen-Abschluss, gesperrt.');
+    });
+  });
+
+  group('Ausblick „Prävention & Gesundheitssport“ (Ergänzung 3, UI-95)', () {
+    test('Ausblick ist kein Teil der Liste: weiter 52 Units, keine ID '
+        '„outlook“, Boss bleibt letzte Unit', () {
+      expect(kPathOutlookShown, isTrue);
+      expect(kSamplePath, hasLength(52));
+      expect(kSamplePath.last.id, 'boss');
+      expect(
+        kSamplePath.where((PathUnit u) => u.id == kPathOutlookHintId),
+        isEmpty,
+      );
+    });
+
+    test('in jedem Zustand nie aktuell und nie erledigt: Statusliste hat '
+        'genau 52 Einträge, Manny sitzt auf einer Unit der Liste', () {
+      final List<List<String>> variants = <List<String>>[
+        const <String>[],
+        <String>[
+          for (final PathUnit u in kSamplePath)
+            if (u.kind != UnitKind.boss) u.id,
+        ],
+      ];
+      for (final int days in <int>[0, 30, 84, 200]) {
+        for (final List<String> done in variants) {
+          final PathProgress p = progress(days, completed: done);
+          expect(p.statuses, hasLength(52));
+          expect(p.units, hasLength(52));
+          expect(p.mannyIndex, inInclusiveRange(0, 51));
+          expect(p.units[p.mannyIndex].kind, isNot(UnitKind.boss));
+          expect(p.current?.kind, isNot(UnitKind.boss));
+          expect(p.statuses.last, UnitStatus.locked);
+        }
+      }
+    });
+
+    test('Texte: Schlüssel und Wortlaut aus Ergänzung 3', () {
+      expect(S.outlookTitle, 'Prävention & Gesundheitssport');
+      expect(S.outlookSubtitle, 'Danach geht es weiter');
+      expect(
+        S.outlookHint,
+        'Nach Return to Sport geht es hier weiter. Die Details folgen noch.',
+      );
+      expect(S.outlookLabel, 'Prävention und Gesundheitssport, gesperrt.');
     });
   });
 

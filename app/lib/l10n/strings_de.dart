@@ -104,6 +104,15 @@ abstract final class S {
   static String hintBossComesInWeek(int week) =>
       'Return to Sport kommt in Woche $week';
 
+  /// Ausblick hinter dem Boss (Ergänzung 3, Abschnitt 3). PLATZHALTER: die volle
+  /// Phase folgt mit eigener Spec. Keine Zahl, Übung oder Zeitangabe.
+  static const String outlookTitle = 'Prävention & Gesundheitssport';
+  static const String outlookSubtitle = 'Danach geht es weiter';
+  static const String outlookHint =
+      'Nach Return to Sport geht es hier weiter. Die Details folgen noch.';
+  static const String outlookLabel =
+      'Prävention und Gesundheitssport, gesperrt.';
+
   static const String statusCurrent = 'aktuell';
   static const String statusLocked = 'gesperrt';
   static const String statusDone = 'erledigt';

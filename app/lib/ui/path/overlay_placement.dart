@@ -321,7 +321,23 @@ HintPlacement placeHint({
     if (second != null) return _shifted(second, scroll);
   }
 
-  // 5. Auf die freie Fläche begrenzt, Text scrollt innen.
+  // 5. Auf die freie Fläche begrenzt, Text scrollt innen. Passen Unit und
+  //    Hinweis nicht zusammen in die freie Fläche (hohe Marke bei großer
+  //    Schrift), schiebt der Pfad die Unit so, dass der Hinweis darüber
+  //    mindestens 48 dp Text zeigt: ihre Unterkante an die Unterkante der
+  //    freien Fläche, ist sie dafür zu hoch, ihre Oberkante nach unten.
+  if (allowScroll && scroll == 0) {
+    const double minAbove = arrow + CuraSize.touchTarget;
+    final double wantedTop = unit.height + minAbove <= free
+        ? bottomLimit - unit.height
+        : topLimit + minAbove;
+    final double next = (scrollOffset + unit.top - wantedTop).clamp(
+      0,
+      maxScrollOffset,
+    );
+    scroll = next - scrollOffset;
+    u = unit.shift(Offset(0, -scroll));
+  }
   final double roomBelow = bottomLimit - u.bottom - arrow;
   final double roomAbove = u.top - topLimit - arrow;
   final bool below = roomBelow >= roomAbove;

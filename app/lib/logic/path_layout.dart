@@ -21,6 +21,8 @@ class PathLayoutMetrics {
     required this.boss,
     required this.sideMargin,
     required this.verticalGap,
+    this.outlookMaxWidth = 300,
+    this.outlookGap = 84,
   });
 
   /// Durchmesser je Unit-Art.
@@ -34,6 +36,13 @@ class PathLayoutMetrics {
 
   /// Lichter Abstand zwischen zwei Units (konstant).
   final double verticalGap;
+
+  /// Höchstbreite des Ausblicks (Ergänzung 3, 2.1: 300 dp).
+  final double outlookMaxWidth;
+
+  /// Kleinster lichter Abstand zwischen Boss-Oberkante und Unterkante des
+  /// Ausblicks (Ergänzung 3, 2.2: `pathUnitGapMin`, 84 dp).
+  final double outlookGap;
 
   double diameterOf(UnitKind kind) {
     switch (kind) {
@@ -54,6 +63,26 @@ class NodePlacement {
 
   final math.Point<double> center;
   final double diameter;
+}
+
+/// Lage des Ausblicks `PathOutlook` (Ergänzung 3): Abschnittsmarke, **keine
+/// Unit**, mittig im Pfadbereich, oberstes Element. Platzhalter, die volle
+/// Phase folgt mit eigener Spec.
+class OutlookPlacement {
+  const OutlookPlacement({
+    required this.center,
+    required this.width,
+    required this.height,
+  });
+
+  final math.Point<double> center;
+  final double width;
+  final double height;
+
+  double get top => center.y - height / 2;
+  double get bottom => center.y + height / 2;
+  double get left => center.x - width / 2;
+  double get right => center.x + width / 2;
 }
 
 /// Kubische Bézier-Strecke von Unit [from] zu Unit [to] (Index + 1).
@@ -83,6 +112,8 @@ class PathLayout {
     required this.padTop,
     required this.padBottom,
     required this.viewportHeight,
+    this.outlook,
+    this.outlookSegment,
   });
 
   /// Gleiche Reihenfolge wie die Units (Index 0 = Woche 1 = unten).
@@ -93,6 +124,13 @@ class PathLayout {
   final double padBottom;
   final double viewportHeight;
 
+  /// Ausblick über dem Boss (`null`, wenn nicht gezeigt).
+  final OutlookPlacement? outlook;
+
+  /// Zukunftslinie vom Boss (`from` = letzte Unit) zur Unterkante des
+  /// Ausblicks, Mitte (`to` = Länge der Unit-Liste; keine Unit).
+  final PathSegment? outlookSegment;
+
   /// Größter gültiger Scroll-Offset.
   double get maxScrollExtent => math.max(0, totalHeight - viewportHeight);
 
@@ -100,17 +138,26 @@ class PathLayout {
   /// durch das Polster liegt er für **jede** Unit in `0..maxScrollExtent`).
   double scrollOffsetFor(int index) =>
       placements[index].center.y - kPathFocusFraction * viewportHeight;
+
+  /// Offset, der den Ausblick auf 55 % der Viewport-Höhe setzt.
+  double? get scrollOffsetForOutlook {
+    final OutlookPlacement? o = outlook;
+    return o == null ? null : o.center.y - kPathFocusFraction * viewportHeight;
+  }
 }
 
 /// Berechnet das Layout. Y wächst nach unten; die letzte Unit (Boss) liegt
 /// oben, die erste unten. [bottomReserve] ist der Mindestwert für `padBottom`
-/// aus der Button-Gruppe (Plan 4.6, UI-75).
+/// aus der Button-Gruppe (Plan 4.6, UI-75). [outlookHeight] (gemessen von der
+/// UI, mindestens 72 dp) schaltet den Ausblick ein: er steht zentriert über dem
+/// Boss, `padTop` bezieht sich auf ihn.
 PathLayout layoutPath({
   required List<PathUnit> units,
   required double width,
   required double viewportHeight,
   required PathLayoutMetrics metrics,
   double bottomReserve = 0,
+  double? outlookHeight,
 }) {
   final int n = units.length;
   final List<double> diameters = <double>[
@@ -120,9 +167,10 @@ PathLayout layoutPath({
   // Polster, damit jede Unit auf 55 % gescrollt werden kann.
   final double topDiameter = n == 0 ? 0 : diameters[n - 1];
   final double bottomDiameter = n == 0 ? 0 : diameters[0];
+  final double? oh = n == 0 ? null : outlookHeight;
   final double padTop = math.max(
     0,
-    kPathFocusFraction * viewportHeight - topDiameter / 2,
+    kPathFocusFraction * viewportHeight - (oh ?? topDiameter) / 2,
   );
   final double padBottom = math.max(
     math.max(0, (1 - kPathFocusFraction) * viewportHeight - bottomDiameter / 2),
@@ -132,6 +180,19 @@ PathLayout layoutPath({
   // Von oben (Index n-1) nach unten (Index 0).
   final List<double> ys = List<double>.filled(n, 0);
   double cursor = padTop;
+  OutlookPlacement? outlook;
+  if (oh != null) {
+    final double w = math.max(
+      0,
+      math.min(width - 2 * metrics.sideMargin, metrics.outlookMaxWidth),
+    );
+    outlook = OutlookPlacement(
+      center: math.Point<double>(width / 2, cursor + oh / 2),
+      width: w,
+      height: oh,
+    );
+    cursor += oh + metrics.outlookGap;
+  }
   for (int i = n - 1; i >= 0; i--) {
     ys[i] = cursor + diameters[i] / 2;
     cursor += diameters[i] + (i > 0 ? metrics.verticalGap : 0);
@@ -172,7 +233,27 @@ PathLayout layoutPath({
     );
   }
 
+  PathSegment? outlookSegment;
+  if (outlook != null) {
+    final math.Point<double> boss = placements[n - 1].center;
+    final math.Point<double> end = math.Point<double>(
+      outlook.center.x,
+      outlook.bottom,
+    );
+    final double midY = (boss.y + end.y) / 2;
+    outlookSegment = PathSegment(
+      from: n - 1,
+      to: n,
+      start: boss,
+      control1: math.Point<double>(boss.x, midY),
+      control2: math.Point<double>(end.x, midY),
+      end: end,
+    );
+  }
+
   return PathLayout(
+    outlook: outlook,
+    outlookSegment: outlookSegment,
     placements: List<NodePlacement>.unmodifiable(placements),
     segments: List<PathSegment>.unmodifiable(segments),
     totalHeight: totalHeight,

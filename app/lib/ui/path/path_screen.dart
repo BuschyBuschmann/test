@@ -51,6 +51,7 @@ import '../components/action_cluster.dart';
 import '../components/floating_nav.dart';
 import '../components/manny_bubble.dart';
 import '../components/node_hint.dart';
+import '../components/path_outlook.dart';
 import '../components/path_header.dart';
 import '../components/probe_keys.dart';
 import '../components/size_reporter.dart';
@@ -277,6 +278,19 @@ class _PathScreenState extends State<PathScreen> {
     _transient.showHint(progress.units[index].id);
   }
 
+  /// Tipp auf den Ausblick (Ergänzung 3): wie eine gesperrte Unit, Hinweis
+  /// über der Marke; eine Manny-Blase schließt, der Tab bleibt.
+  void _onOutlookPressed() {
+    final HomeShellState shell = HomeShellScope.of(context);
+    if (_layout?.outlook == null) return;
+    shell.closeBubble();
+    final HintPlacement? plan = _planOutlookHint(allowScroll: true);
+    if (plan != null && plan.scrollOffsetDelta.abs() > 0.01) {
+      _scrollBy(plan.scrollOffsetDelta);
+    }
+    _transient.showHint(kPathOutlookHintId);
+  }
+
   void _onMannyTap() {
     // Öffnet den Chat; Blase und Hinweis schließen dabei (HomeShell).
     HomeShellScope.of(context).openChat();
@@ -418,24 +432,30 @@ class _PathScreenState extends State<PathScreen> {
     );
   }
 
-  HintPlacement? _planHint(int index, {required bool allowScroll}) {
+  HintPlacement? _planOutlookHint({required bool allowScroll}) {
     final PathLayout? layout = _layout;
-    final PathProgress? progress = _progress;
-    if (layout == null || progress == null || _viewport.isEmpty) return null;
-    final String? text = nodeHintText(
-      progress.units[index],
-      progress.statuses[index],
-      progress.week,
+    final OutlookPlacement? o = layout?.outlook;
+    if (layout == null || o == null || _viewport.isEmpty) return null;
+    return _placeHintFor(
+      Rect.fromCenter(
+        center: Offset(o.center.x, o.center.y + _contentTop - _offset),
+        width: o.width,
+        height: o.height,
+      ),
+      S.outlookHint,
+      layout,
+      allowScroll: allowScroll,
     );
-    if (text == null) return null;
+  }
+
+  HintPlacement? _placeHintFor(
+    Rect unit,
+    String text,
+    PathLayout layout, {
+    required bool allowScroll,
+  }) {
     final CuraTypography type = CuraTypography.of(context);
     final TextScaler scaler = MediaQuery.textScalerOf(context);
-    final NodePlacement p = layout.placements[index];
-    final Rect unit = Rect.fromCenter(
-      center: Offset(p.center.x, p.center.y + _contentTop - _offset),
-      width: p.diameter,
-      height: p.diameter,
-    );
     final ScrollController? c = _scroll;
     final double max = c != null && c.hasClients
         ? c.position.maxScrollExtent
@@ -452,6 +472,25 @@ class _PathScreenState extends State<PathScreen> {
     );
   }
 
+  HintPlacement? _planHint(int index, {required bool allowScroll}) {
+    final PathLayout? layout = _layout;
+    final PathProgress? progress = _progress;
+    if (layout == null || progress == null || _viewport.isEmpty) return null;
+    final String? text = nodeHintText(
+      progress.units[index],
+      progress.statuses[index],
+      progress.week,
+    );
+    if (text == null) return null;
+    final NodePlacement p = layout.placements[index];
+    final Rect unit = Rect.fromCenter(
+      center: Offset(p.center.x, p.center.y + _contentTop - _offset),
+      width: p.diameter,
+      height: p.diameter,
+    );
+    return _placeHintFor(unit, text, layout, allowScroll: allowScroll);
+  }
+
   // -------------------------------------------------------------------------
   // Bauen
   // -------------------------------------------------------------------------
@@ -463,7 +502,28 @@ class _PathScreenState extends State<PathScreen> {
     boss: CuraSize.unitBoss,
     sideMargin: CuraSpace.pageMargin,
     verticalGap: gap,
+    outlookMaxWidth: CuraSize.outlookMaxWidth,
+    outlookGap: CuraSize.pathUnitGapMin,
   );
+
+  /// Höhe des Ausblicks: Titel plus Untertitel in der Textspalte der Marke,
+  /// Innenabstand, mindestens 72 dp (wächst mit der Schrift, bricht um).
+  double _outlookHeight(double width, CuraTypography type, TextScaler scaler) {
+    final double w = math.max(
+      0.0,
+      math.min(width - 2 * CuraSpace.pageMargin, CuraSize.outlookMaxWidth),
+    );
+    final double textWidth = PathOutlook.textWidthFor(w);
+    final double h =
+        _measureText(S.outlookTitle, type.heading, textWidth, scaler).height +
+        _measureText(
+          S.outlookSubtitle,
+          type.secondary,
+          textWidth,
+          scaler,
+        ).height;
+    return PathOutlook.heightFor(h);
+  }
 
   String? _labelText(PathUnit u) {
     switch (u.kind) {
@@ -578,6 +638,9 @@ class _PathScreenState extends State<PathScreen> {
           viewportHeight: viewport.height,
           metrics: _metrics(gap),
           bottomReserve: reserve,
+          outlookHeight: kPathOutlookShown
+              ? _outlookHeight(width, type, scaler)
+              : null,
         );
         final List<PathLabel> labels = <PathLabel>[];
         for (int i = 0; i < progress.units.length; i++) {
@@ -664,6 +727,7 @@ class _PathScreenState extends State<PathScreen> {
           mannyPose: pose,
           onUnitPressed: _onUnitPressed,
           onMannyTap: _onMannyTap,
+          onOutlookPressed: _onOutlookPressed,
           pulseUnitId: _pulseUnitId,
           onPulseDone: () {
             if (mounted) setState(() => _pulseUnitId = null);
@@ -787,17 +851,25 @@ class _PathScreenState extends State<PathScreen> {
       _hintKey = null;
       return null;
     }
-    final int index = progress.units.indexWhere((PathUnit u) => u.id == id);
-    if (index < 0) return null;
-    final String? text = nodeHintText(
-      progress.units[index],
-      progress.statuses[index],
-      progress.week,
-    );
+    final bool outlook = id == kPathOutlookHintId;
+    final int index = outlook
+        ? -1
+        : progress.units.indexWhere((PathUnit u) => u.id == id);
+    if (!outlook && index < 0) return null;
+    if (outlook && layout.outlook == null) return null;
+    final String? text = outlook
+        ? S.outlookHint
+        : nodeHintText(
+            progress.units[index],
+            progress.statuses[index],
+            progress.week,
+          );
     final Object key = (id, viewport, _textScale, _cluster, _headerH);
     if (_hintKey != key) {
       _hintKey = key;
-      _hintPlan = _planHint(index, allowScroll: false);
+      _hintPlan = outlook
+          ? _planOutlookHint(allowScroll: false)
+          : _planHint(index, allowScroll: false);
     }
     final HintPlacement? plan = _hintPlan;
     if (text == null || plan == null) return null;

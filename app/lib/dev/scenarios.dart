@@ -44,7 +44,7 @@ import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
 import '../ui/messages/example_contacts.dart';
-import 'preview_script.dart' show kPreviewScrollEnd;
+import 'preview_script.dart' show kPreviewScrollEnd, kPreviewScrollStart;
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
@@ -992,6 +992,30 @@ AppSeed _pathEnd(ScenarioEnv env) => AppSeed(
   ),
 );
 
+/// Endfall (alles bis vor Boss erledigt), Pfad ganz nach oben gescrollt: der
+/// gesperrte Ausblick „Prävention & Gesundheitssport“ über dem Boss
+/// (Ergänzung 3, UI-90 bis UI-98).
+AppSeed _pathOutlook(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 200,
+    streak: _streakActive(env),
+    completed: _endCompleted(),
+  ),
+  taps: const <String>[kPreviewScrollStart],
+);
+
+/// Wie `path-outlook`, dazu Tipp auf die Marke: `NodeHint` über ihr (UI-92).
+AppSeed _pathOutlookHint(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 200,
+    streak: _streakActive(env),
+    completed: _endCompleted(),
+  ),
+  taps: const <String>[kPreviewScrollStart, S.outlookLabel],
+);
+
 /// Pfad ganz nach unten gescrollt, Manny auf der untersten Unit nahe der
 /// Button-Gruppe, Begrüßungsblase: sie wechselt über Manny.
 AppSeed _pathClusterBubble(ScenarioEnv env) => AppSeed(
@@ -1332,6 +1356,8 @@ final List<Scenario> kScenarios = <Scenario>[
   _pathScenario('path-hint-done', _pathHintDone),
   _pathScenario('path-week1', _pathWeek1),
   _pathScenario('path-end', _pathEnd),
+  _pathScenario('path-outlook', _pathOutlook),
+  _pathScenario('path-outlook-hint', _pathOutlookHint),
   _pathScenario('path-header-wrap', _pathActive, fixedTextScale: 1.2),
   _pathScenario('path-cluster-bubble', _pathClusterBubble),
   _pathScenario('path-cluster-hint', _pathClusterHint),

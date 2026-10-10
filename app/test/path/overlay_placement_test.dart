@@ -370,6 +370,28 @@ void main() {
       },
     );
 
+    test('hohe Marke (Ausblick bei 200 %): die Unit rückt hoch genug, der '
+        'Hinweis bleibt über der Gruppe und im Bild', () {
+      const Size v = Size(320, 568);
+      final Rect c = _cluster(v);
+      final Rect tall = Rect.fromLTWH(16, 446, 288, 252);
+      final HintPlacement p = placeHint(
+        unit: tall,
+        viewport: v,
+        cluster: c,
+        measure: _hintOf(240, 232),
+        scrollOffset: 0,
+        maxScrollOffset: 1000,
+        allowScroll: true,
+        topLimit: 48,
+      );
+      expect(p.scrollOffsetDelta, greaterThan(0));
+      expect(p.arrow, HintArrow.down);
+      expect(p.rect.bottom, lessThanOrEqualTo(c.top - 8 + 0.01));
+      expect(p.rect.top, greaterThanOrEqualTo(48 - 0.01));
+      expect(p.limited, isTrue);
+    });
+
     test('Hinweis überdeckt die Gruppe in keinem Fall (Gitter)', () {
       for (final Size viewport in <Size>[small, phone]) {
         final Rect cluster = _cluster(viewport);

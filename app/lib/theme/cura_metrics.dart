@@ -104,6 +104,17 @@ abstract final class CuraSize {
   /// Abstand der Punkte der Zukunftslinie (Mitte zu Mitte, Linienstärke 3).
   static const double pathDotSpacing = 9;
 
+  /// Ausblick `PathOutlook` (Ergänzung 3, 2.1): Höchstbreite, Strich und
+  /// Lücke des gestrichelten Rands, Schloss-Kreis, Abstände. Mindesthöhe ist
+  /// `unitLarge`.
+  static const double outlookMaxWidth = 300;
+  static const double outlookDash = 6;
+  static const double outlookDashGap = 4;
+  static const double outlookLock = 36;
+  static const double outlookLockGap = 12;
+  static const double outlookPaddingVertical = 14;
+  static const double outlookPaddingHorizontal = 16;
+
   /// Symbolgröße in der Unit als Anteil des Durchmessers.
   static const double unitIconFactor = 0.5;
 

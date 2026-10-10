@@ -22,6 +22,7 @@ import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/opaque_surface.dart';
 import 'package:curaone/ui/components/path_node.dart';
+import 'package:curaone/ui/components/path_outlook.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/messages/chat_bubble.dart';
@@ -231,41 +232,45 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Tab-Reihenfolge Pfad: Kopf, Units, Nachrichten-Button, '
-        'Manny-Button, Nav (UI-89, Ergänzung 2, 4)', (
-      WidgetTester tester,
-    ) async {
-      await _home(tester);
-      final List<String> seen = <String>[];
-      for (int i = 0; i < 80; i++) {
-        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-        await tester.pump();
-        final String kind;
-        if (_focusInside(find.byType(HeaderIconButton))) {
-          kind = 'header';
-        } else if (_focusInside(find.byType(PathNode))) {
-          kind = 'unit';
-        } else if (_focusInside(find.byType(MessagesButton))) {
-          kind = 'messages';
-        } else if (_focusInside(find.byType(MannyChatButton))) {
-          kind = 'chat';
-        } else if (_focusInside(find.byType(FloatingNav))) {
-          kind = 'nav';
-        } else {
-          kind = '?';
+    testWidgets(
+      'Tab-Reihenfolge Pfad: Kopf, Ausblick, Units, Nachrichten-Button, '
+      'Manny-Button, Nav (UI-89, Ergänzung 2, 4)',
+      (WidgetTester tester) async {
+        await _home(tester);
+        final List<String> seen = <String>[];
+        for (int i = 0; i < 80; i++) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          final String kind;
+          if (_focusInside(find.byType(HeaderIconButton))) {
+            kind = 'header';
+          } else if (_focusInside(find.byType(PathOutlook))) {
+            kind = 'outlook';
+          } else if (_focusInside(find.byType(PathNode))) {
+            kind = 'unit';
+          } else if (_focusInside(find.byType(MessagesButton))) {
+            kind = 'messages';
+          } else if (_focusInside(find.byType(MannyChatButton))) {
+            kind = 'chat';
+          } else if (_focusInside(find.byType(FloatingNav))) {
+            kind = 'nav';
+          } else {
+            kind = '?';
+          }
+          if (seen.isEmpty || seen.last != kind) seen.add(kind);
+          if (kind == 'nav') break;
         }
-        if (seen.isEmpty || seen.last != kind) seen.add(kind);
-        if (kind == 'nav') break;
-      }
-      expect(seen, <String>[
-        'header',
-        'unit',
-        'messages',
-        'chat',
-        'nav',
-      ], reason: '$seen');
-      await disposeApp(tester);
-    });
+        expect(seen, <String>[
+          'header',
+          'outlook',
+          'unit',
+          'messages',
+          'chat',
+          'nav',
+        ], reason: '$seen');
+        await disposeApp(tester);
+      },
+    );
   });
 
   group('Manny-Chat (UI-76 bis UI-78, UI-81)', () {
