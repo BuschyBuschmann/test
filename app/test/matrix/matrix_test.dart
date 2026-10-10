@@ -84,6 +84,7 @@ void main() {
               ...checkTextStyles(probe(tester)),
               ...checkPrimary(tester, s),
               ...checkZones(tester, s),
+              ...checkTodayGroup(tester, s),
               ...checkVisibleArea(tester, s),
               ...await checkReachability(tester),
               ...checkFocusedField(tester, s),

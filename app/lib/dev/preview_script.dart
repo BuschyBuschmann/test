@@ -6,10 +6,17 @@
 import 'package:flutter/material.dart';
 
 import '../ui/components/cura_pressable.dart';
+import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
+import '../ui/home/home_shell.dart';
 
 /// Höchstens so viele Frames lang wird auf den Baustein gewartet.
 const int _maxFrames = 600;
+
+/// Eintrag in [PreviewScript.taps]: scrollt den Hauptscrollbereich des
+/// **sichtbaren** Tabs an dieser Stelle der Abfolge ans Ende (z. B. nach dem
+/// Wechsel auf Heute, `today-cluster`).
+const String kPreviewScrollEnd = 'preview:scroll-end';
 
 class PreviewScript extends StatefulWidget {
   const PreviewScript({
@@ -18,7 +25,12 @@ class PreviewScript extends StatefulWidget {
     required this.child,
     this.focusField = false,
     this.scrollPathToEnd = false,
+    this.afterTaps,
   });
+
+  /// Läuft einmal nach den Tipps (z. B. Zeitsprung der Uhr). Danach prüft das
+  /// Skript den Tageswechsel wie ein Fortsetzen der App (`today-newday-snackbar`).
+  final VoidCallback? afterTaps;
 
   /// Screenreader-Labels der Bausteine, die der Reihe nach „getippt“ werden.
   final List<String> taps;
@@ -40,6 +52,9 @@ class _PreviewScriptState extends State<PreviewScript> {
   int _frames = 0;
   late bool _focusPending = widget.focusField;
   late bool _scrollEndPending = widget.scrollPathToEnd;
+  late bool _afterPending = widget.afterTaps != null;
+  int _endJumps = 0;
+  static const int _endJumpFrames = 4;
 
   @override
   void initState() {
@@ -48,7 +63,10 @@ class _PreviewScriptState extends State<PreviewScript> {
   }
 
   void _schedule() {
-    if ((_pending.isEmpty && !_focusPending && !_scrollEndPending) ||
+    if ((_pending.isEmpty &&
+            !_focusPending &&
+            !_scrollEndPending &&
+            !_afterPending) ||
         _frames >= _maxFrames) {
       return;
     }
@@ -61,6 +79,13 @@ class _PreviewScriptState extends State<PreviewScript> {
     _frames++;
     if (_scrollEndPending) {
       if (_scrollPathToEnd()) _scrollEndPending = false;
+    } else if (_pending.isNotEmpty && _pending.first == kPreviewScrollEnd) {
+      // Mehrere Frames lang: Die Reserve am Listenende wächst nach der Messung
+      // der Button-Gruppe, das Ende liegt dann etwas weiter unten.
+      if (_scrollPathToEnd() && ++_endJumps >= _endJumpFrames) {
+        _pending.removeAt(0);
+        _endJumps = 0;
+      }
     } else if (_pending.isNotEmpty) {
       final VoidCallback? action = _find(_pending.first);
       if (action != null) {
@@ -69,6 +94,10 @@ class _PreviewScriptState extends State<PreviewScript> {
       } else {
         _scrollForward();
       }
+    } else if (_afterPending) {
+      _afterPending = false;
+      widget.afterTaps?.call();
+      _checkDayChange();
     } else if (_focusPending) {
       final EditableText? field = _findField();
       if (field != null) {
@@ -90,7 +119,13 @@ class _PreviewScriptState extends State<PreviewScript> {
         found = w.onPressed;
         return;
       }
-      e.visitChildren(walk);
+      // Primärbuttons tragen ihr Label als Text („Training starten“).
+      if (w is PillButton && w.label == label && w.onPressed != null) {
+        found = w.onPressed;
+        return;
+      }
+      // Nur sichtbare Teilbäume: der inaktive Tab im `IndexedStack` zählt nicht.
+      e.debugVisitOnstageChildren(walk);
     }
 
     context.visitChildElements(walk);
@@ -114,7 +149,7 @@ class _PreviewScriptState extends State<PreviewScript> {
           return;
         }
       }
-      e.visitChildren(walk);
+      e.debugVisitOnstageChildren(walk);
     }
 
     context.visitChildElements(walk);
@@ -145,14 +180,36 @@ class _PreviewScriptState extends State<PreviewScript> {
         e.visitChildren(inner);
         return;
       }
-      e.visitChildren(walk);
+      // Nur sichtbare Teilbäume: der inaktive Tab im `IndexedStack` zählt nicht.
+      e.debugVisitOnstageChildren(walk);
     }
 
     context.visitChildElements(walk);
     final ScrollableState? st = found;
     if (st == null) return false;
+    // Erst scrollen, wenn die Fläche gelegt ist und etwas zu scrollen hat.
+    if (!st.position.hasContentDimensions || st.position.maxScrollExtent < 1) {
+      return false;
+    }
     st.position.jumpTo(st.position.maxScrollExtent);
     return true;
+  }
+
+  /// Prüft den Tageswechsel wie nach einem Fortsetzen der App: ein Tabwechsel
+  /// auf den aktiven Tab ruft `checkDayChange` und die Folgen in der Shell.
+  void _checkDayChange() {
+    HomeShellState? shell;
+    void walk(Element e) {
+      if (shell != null) return;
+      if (e is StatefulElement && e.state is HomeShellState) {
+        shell = e.state as HomeShellState;
+        return;
+      }
+      e.visitChildren(walk);
+    }
+
+    context.visitChildElements(walk);
+    shell?.selectTab(shell!.activeTab);
   }
 
   /// Erstes sichtbares, bearbeitbares Textfeld.
@@ -166,7 +223,7 @@ class _PreviewScriptState extends State<PreviewScript> {
         found = w;
         return;
       }
-      e.visitChildren(walk);
+      e.debugVisitOnstageChildren(walk);
     }
 
     context.visitChildElements(walk);

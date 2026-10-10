@@ -20,6 +20,9 @@ extension CuraColorRoles on CuraColors {
   /// Innere Lichtkante der Glas-Karte E1 (Brief 3.5): Weiß 10 %.
   Color get lightEdge => _white(Palette.lightEdgeAlpha);
 
+  /// Aktionschip (Brief 5.3): Füllung Weiß 7 %.
+  Color get chipFill => _white(Palette.chipFillAlpha);
+
   /// Disabled: Füllung Weiß 10 %, Inhalt `text-1` 38 % (Brief 5).
   Color get disabledFill => _white(Palette.disabledFillAlpha);
   Color get disabledContent =>

@@ -207,6 +207,29 @@ abstract final class CuraSize {
   static const double cardPaddingWithStripe = 22;
   static const double categoryStripe = 4;
   static const double categoryIconTile = 20;
+
+  /// Kategorie-Karte (Brief 5.2): Streifen 4 dp vom Kartenrand, 14 dp Abstand
+  /// oben und unten; Symbol in der Kachel; Abstand Kachel zu Label.
+  static const double categoryStripeEdge = 4;
+  static const double categoryStripeInset = 14;
+  static const double categoryIconGlyph = 14;
+
+  /// Gestrichelte Aktion „+ Eigene Übung“ (Brief 5.3): Strichlänge und Lücke.
+  static const double dashLength = 6;
+  static const double dashGap = 4;
+
+  /// Heute (Brief 6.3, Ergänzung 2): Abstand der Zeitwahl-Segmente und Luft
+  /// zwischen Listenende und Button-Gruppe.
+  static const double segmentGap = 12;
+  static const double todayEndAir = 8;
+
+  /// Statische Platzhalterkarten der Ladeansicht Heute (Brief 6.3).
+  static const double placeholderCardHeight = 96;
+
+  /// Dialog: unter dieser Höhe (Bildschirm abzüglich Rand, Safe Area und
+  /// Tastatur) scrollt der ganze Dialog samt Buttons statt nur sein Inhalt;
+  /// sonst bliebe für Felder bei eingeblendeter Tastatur kein Platz.
+  static const double dialogCompactMaxHeight = 420;
   static const double dialogMaxWidth = 400;
   static const double nodeHintMaxWidth = 240;
   static const double nodeHintArrow = 8;

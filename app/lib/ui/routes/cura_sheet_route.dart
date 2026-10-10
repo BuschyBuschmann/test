@@ -13,6 +13,7 @@
 // (`surface-float`, Blur über `CuraBlur`, bei Hoher Kontrast opak).
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 
 import '../../l10n/strings_de.dart';
@@ -89,7 +90,10 @@ class CuraSheetRoute<T> extends PopupRoute<T> {
 }
 
 /// Unten ausgerichtet, höchstens so breit wie die Zeilenlänge, über der
-/// Tastatur.
+/// Tastatur. Ein durchsichtiges `Material` darunter liefert den
+/// Standard-Textstil und den Untergrund für Eingabefelder; es malt nichts.
+/// (Ohne es fallen Texte ohne eigenen Stil auf die gelb unterstrichene
+/// Ersatzschrift zurück.)
 class _SheetPlacement extends StatelessWidget {
   const _SheetPlacement({required this.child});
 
@@ -101,21 +105,24 @@ class _SheetPlacement extends StatelessWidget {
     return MediaQuery.removeViewInsets(
       context: context,
       removeBottom: true,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: CuraSize.lineLengthMax),
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints box) {
-                final double maxHeight =
-                    box.maxHeight * CuraSize.sheetMaxHeightFraction;
-                return ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: maxHeight),
-                  child: child,
-                );
-              },
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: CuraSize.lineLengthMax),
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints box) {
+                  final double maxHeight =
+                      box.maxHeight * CuraSize.sheetMaxHeightFraction;
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    child: child,
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -235,6 +242,10 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
             children: <Widget>[
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
+                // Die Wischgeste ist kein Bedienweg für den Screenreader
+                // („Schließen“ ist eine eigene Schaltfläche); ohne Ausschluss
+                // würde der Kopf zu einem scrollenden Knoten.
+                excludeFromSemantics: true,
                 onVerticalDragStart: _onDragStart,
                 onVerticalDragUpdate: _onDragUpdate,
                 onVerticalDragEnd: _onDragEnd,

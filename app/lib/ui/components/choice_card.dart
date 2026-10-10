@@ -45,7 +45,11 @@ class ChoiceCard extends StatelessWidget {
     final CuraMotion motion = CuraMotion.of(context);
     return CuraPressable(
       onPressed: onPressed,
-      semanticLabel: S.choiceLabel(title, selected),
+      // Der Untertitel gehört zur Beschriftung: der Screenreader liest sonst
+      // nur den Titel („Manuell“), nicht „Ich trage es nachher ein“.
+      semanticLabel: subtitle == null
+          ? S.choiceLabel(title, selected)
+          : S.choiceLabelDetail(title, subtitle!, selected),
       autofocus: autofocus,
       focusNode: focusNode,
       ringRadius: CuraRadius.card,

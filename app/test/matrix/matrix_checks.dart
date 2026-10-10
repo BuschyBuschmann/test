@@ -19,6 +19,7 @@ import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/glow_background.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
+import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,11 +146,14 @@ bool _isKeyedWith(Element e, bool Function(String key) test) {
   return key is ValueKey<String> && test(key.value);
 }
 
-/// Tap-Ziele im markierten Overlay-Teilbaum (`overlay:*`) und in der Leiste
-/// eines `SnackbarHost`.
+/// Tap-Ziele im markierten Overlay-Teilbaum (`overlay:*`), in der Leiste eines
+/// `SnackbarHost` und im Scrim (`ModalBarrier`).
 Set<int> overlayTapNodeIds() => tapNodeIdsUnder(
   (Element e) =>
       _isKeyedWith(e, (String k) => k.startsWith('overlay:')) ||
+      // Der Scrim hinter Sheet und Dialog („Schließen“, ganzer Bildschirm) ist
+      // kein Inhalt, sondern eine Ebene unter der Route.
+      e.widget is ModalBarrier ||
       (e.widget is CuraSnackbar && _insideSnackbarHost(e)),
 );
 
@@ -318,7 +322,12 @@ List<(String, Rect)> labeledNodes(WidgetTester tester) {
 /// sichtbare Snackbar-Leiste (`CuraSnackbar`) zählt automatisch als
 /// `snackbar`, auch ohne Marker (der Host füllt den ganzen Bildschirm).
 Map<String, Rect> overlayRects() {
-  final Map<String, Rect> raw = probeKeyedRects(prefix: 'overlay:');
+  // Ohne die Overlays einer überdeckten Route (Home unter Sheet oder Dialog):
+  // Nav und Button-Gruppe sind dort abgedunkelt und nicht bedienbar.
+  final Map<String, Rect> raw = probeKeyedRects(
+    prefix: 'overlay:',
+    skipBuried: true,
+  );
   final Map<String, Rect> out = <String, Rect>{
     for (final MapEntry<String, Rect> e in raw.entries)
       e.key.substring('overlay:'.length): e.value,
@@ -401,7 +410,12 @@ bool _insideOverlay(Element e) {
 /// Scrollweg (Sheet über Liste, Chat-Nachrichtenliste, R-U2-RR N1). Ein
 /// zweiter, nicht markierter Bereich fällt so nicht still heraus.
 List<ScrollableState> _scrollables(WidgetTester tester) {
-  final Finder keyed = find.byKey(PreviewKeys.scroll);
+  // Nicht die Bereiche einer überdeckten Route (Liste von Heute unter einem
+  // Sheet oder Dialog): ihr Scrollstand verschiebt die Ziele der oberen Route
+  // nicht, und sie sind abgedunkelt und nicht bedienbar.
+  final Finder keyed = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.scroll && !isBuriedRoute(e),
+  );
   final Set<ScrollableState> out = <ScrollableState>{};
   if (keyed.evaluate().isNotEmpty) {
     final Finder inner = find.descendant(
@@ -419,7 +433,8 @@ List<ScrollableState> _scrollables(WidgetTester tester) {
     final ScrollableState st = (e as StatefulElement).state as ScrollableState;
     if (st.position.axis == Axis.vertical &&
         st.position.maxScrollExtent > 0.5 &&
-        !_insideOverlay(e)) {
+        !_insideOverlay(e) &&
+        !isBuriedRoute(e)) {
       out.add(st);
     }
   }
@@ -676,8 +691,16 @@ Future<List<Finding>> _checkTapTargetGaps(WidgetTester tester) async {
       pair(nonScroll[i], nonScroll[j]);
     }
   }
+  // Scrollender Inhalt, der nicht ganz im Sichtfenster seines Scrollbereichs
+  // liegt, ist dort abgeschnitten oder nicht sichtbar (Dialog: Buttons fest
+  // unter dem Scrollbereich; vorgebaute Zeilen außerhalb): kein Abstandsbefund.
+  // Nur ganz sichtbarer Inhalt zählt.
+  bool clipped(TapTarget c) =>
+      scans.isNotEmpty &&
+      !scans.any((ScrollScan sc) => _contains(sc.viewport, c.rect));
   for (final TapTarget f in fixed) {
     for (final TapTarget c in scrollRest) {
+      if (clipped(c)) continue;
       pair(f, c);
     }
   }
@@ -715,8 +738,12 @@ List<Finding> checkTextStyles(TextProbe probe) {
 }
 
 /// Primärbutton ([PreviewKeys.primary]) vollständig sichtbar und antippbar.
+/// Es zählt nur der Primärbutton der **obersten** Route: unter einem Sheet oder
+/// Dialog liegt „Training starten“ abgedunkelt unter dem Scrim.
 List<Finding> checkPrimary(WidgetTester tester, Scenario scenario) {
-  final Finder f = find.byKey(PreviewKeys.primary);
+  final Finder f = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),
+  );
   if (f.evaluate().isEmpty) {
     return scenario.expectsPrimary
         ? const <Finding>[Finding('Primärbutton', 'Marker fehlt im Baum')]
@@ -787,8 +814,13 @@ List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
       view.width,
       navTop,
     );
+    // Heute: Die Primärbutton-Reihe gehört zur Gruppe (Manny-Button, darüber
+    // der Nachrichten-Button); die Zonenregel gilt nur dem Pfad (UI-24 neu).
+    // Für Heute gelten [checkTodayGroup] und die Erreichbarkeit.
+    final bool today = o.containsKey('primary-row');
     for (final MapEntry<String, Rect> e in o.entries) {
       if (e.key == 'nav' || e.key == 'cluster') continue;
+      if (today && e.key == 'primary-row') continue;
       if (e.value.overlaps(left)) {
         out.add(
           Finding(
@@ -819,6 +851,100 @@ List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
     }
   }
   return out;
+}
+
+/// Button-Gruppe auf Heute (UI-71, UI-73, UI-37/41 präzisiert): Der
+/// Nachrichten-Button sitzt rechtsbündig **8 dp über der Oberkante des
+/// Manny-Buttons** (auch im Umbruchszustand von „Training starten“, wenn die
+/// Reihe höher als 56 dp ist); der Manny-Button steht unten bündig mit dem
+/// Primärbutton; dessen Breite ist die Breite des Rahmens − 96 dp (Seitenränder
+/// 2 × 16, Manny-Button 56, Abstand 8); eine Snackbar steht 12 dp über der
+/// Oberkante der Gruppe. Gilt nur, wenn die Reihe (`overlay:primary-row`) im
+/// Baum steht.
+List<Finding> checkTodayGroup(WidgetTester tester, Scenario scenario) {
+  final Map<String, Rect> o = overlayRects();
+  final Rect? row = o['primary-row'];
+  final Rect? messages = o['cluster'];
+  if (row == null || messages == null) return const <Finding>[];
+  final Finder manny = find.byElementPredicate(
+    (Element e) => e.widget is MannyChatButton && !isBuriedRoute(e),
+  );
+  final Finder primary = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),
+  );
+  if (manny.evaluate().isEmpty || primary.evaluate().isEmpty) {
+    return const <Finding>[
+      Finding('Button-Gruppe Heute', 'Manny-Button oder Primärbutton fehlt'),
+    ];
+  }
+  final Rect m = tester.getRect(manny.first);
+  final Rect p = tester.getRect(primary.first);
+  final List<Finding> out = <Finding>[];
+  const double tol = 0.6;
+  final double gap = m.top - messages.bottom;
+  if ((gap - CuraSpace.clusterGap).abs() > tol) {
+    out.add(
+      Finding(
+        'Nachrichten-Button 8 dp über dem Manny-Button',
+        '${gap.toStringAsFixed(1)} dp zwischen $messages und $m '
+            '(Primärbutton ${p.height.toStringAsFixed(0)} dp hoch)',
+      ),
+    );
+  }
+  if ((messages.right - m.right).abs() > tol) {
+    out.add(
+      Finding(
+        'Nachrichten-Button rechtsbündig mit dem Manny-Button',
+        'rechts $messages gegen $m',
+      ),
+    );
+  }
+  if ((m.bottom - p.bottom).abs() > tol) {
+    out.add(
+      Finding('Manny-Button unten bündig mit dem Primärbutton', '$m gegen $p'),
+    );
+  }
+  final double frame = viewSize(tester).width < CuraSize.lineLengthMax
+      ? viewSize(tester).width
+      : CuraSize.lineLengthMax;
+  final double expected =
+      frame -
+      CuraSpace.pageMargin * 2 -
+      CuraSize.mannyChatButton -
+      CuraSpace.clusterGap;
+  if ((p.width - expected).abs() > tol) {
+    out.add(
+      Finding(
+        'Primärbutton Breite = Breite − 96 dp',
+        '${p.width.toStringAsFixed(1)} statt ${expected.toStringAsFixed(1)}',
+      ),
+    );
+  }
+  final Rect? snackbar = o['snackbar'];
+  if (snackbar != null && !isBuriedSnackbar(tester)) {
+    final double above = row.top - snackbar.bottom;
+    if ((above - CuraSpace.snackbarGap).abs() > tol) {
+      out.add(
+        Finding(
+          'Snackbar 12 dp über der Gruppe',
+          '${above.toStringAsFixed(1)} dp zwischen $snackbar und der Gruppe $row',
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/// Die Snackbar-Leiste liegt in einer überdeckten Route (kein Befund-Fall).
+bool isBuriedSnackbar(WidgetTester tester) {
+  final Element? bar = find
+      .descendant(
+        of: find.byType(SnackbarHost),
+        matching: find.byType(CuraSnackbar),
+      )
+      .evaluate()
+      .firstOrNull;
+  return bar != null && isBuriedRoute(bar);
 }
 
 /// Mindest-Sichtfläche zwischen Kopf und den Overlays über volle Breite
@@ -989,14 +1115,22 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
     final double max = scan.reachedMax;
     final RenderObject? sr = scan.renderObject;
     for (final TapTarget t in scan.targets) {
+      // Frei von Kopf und Overlays **und** ganz im Sichtfenster des
+      // Scrollbereichs: Ein Dialog hat feste Buttons unter seinem Scrollbereich,
+      // die kein Overlay-Marker sind; Inhalt dahinter ist abgeschnitten.
+      bool reachable(double offset) {
+        final Rect r = t.rect.shift(-scan.shiftFor(offset));
+        return free(r) && _contains(scan.viewport, r);
+      }
+
       double? hit;
       for (double offset = 0; offset <= max + 0.001; offset += 2) {
-        if (free(t.rect.shift(-scan.shiftFor(offset)))) {
+        if (reachable(offset)) {
           hit = offset;
           break;
         }
       }
-      if (hit == null && max > 0 && free(t.rect.shift(-scan.shiftFor(max)))) {
+      if (hit == null && max > 0 && reachable(max)) {
         hit = max;
       }
       if (hit == null) {
@@ -1281,6 +1415,12 @@ Future<List<Finding>> checkTextContrast(WidgetTester tester) async {
           ratio >= 2.0 &&
           ratio < 2.5;
     }
+    // Eingabefelder: Der Wert ist wenig Text auf einem Glas-Verlauf. Die
+    // Leitlinie liest die zwei häufigsten Farben aus dem Bild und trifft dabei
+    // zwei Stufen des Verlaufs statt der Textfarbe (gemeldete Paare liegen bei
+    // 1,01 bis 1,02, beide Farben Untergrund). Messartefakt: `text1` auf Glas
+    // und auf `surface-opaque` ist durch den Token-Test (UI-3) belegt.
+    if (b.contains('isTextField')) continue;
     if (known) continue;
     out.add(
       Finding('Text-Kontrast (Leitlinie)', b.split('\n').take(3).join(' | ')),

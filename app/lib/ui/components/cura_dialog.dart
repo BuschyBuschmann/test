@@ -7,7 +7,10 @@
 // Routennamen liefert die `CuraDialogRoute` (U2b); hier steht die Semantik
 // `alertdialog` und der Titel benennt die Route.
 //
-// Braucht eine begrenzte Höhe vom Elternelement (die Route stellt sie).
+// Braucht eine begrenzte Höhe vom Elternelement (die Route stellt sie). Ist sie
+// kleiner als `CuraSize.dialogCompactMaxHeight` (kleines Gerät mit Tastatur,
+// Querformat), scrollt der ganze Dialog samt Buttons: bei fest unten
+// stehenden Buttons bliebe sonst für Eingabefelder kein sichtbarer Platz.
 import 'dart:ui' show SemanticsRole;
 
 import 'package:flutter/material.dart';
@@ -21,14 +24,17 @@ class CuraDialog extends StatelessWidget {
   const CuraDialog({
     super.key,
     required this.title,
-    required this.message,
     required this.actions,
+    this.message,
     this.icon,
     this.extra,
   });
 
   final String title;
-  final String message;
+
+  /// Erklärender Text unter dem Titel; entfällt bei Dialogen, die nur Felder
+  /// zeigen (Eigene Übung).
+  final String? message;
 
   /// Buttons (`PillButton`s), von oben nach unten: die sichere Aktion zuerst.
   final List<Widget> actions;
@@ -60,61 +66,99 @@ class CuraDialog extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(CuraComponent.dialogPadding),
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            if (icon != null) ...<Widget>[
-                              ExcludeSemantics(
-                                child: Icon(
-                                  icon,
-                                  size: CuraComponent.dialogIconSize,
-                                  color: colors.text1,
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints box) {
+                  final bool compact =
+                      box.hasBoundedHeight &&
+                      box.maxHeight + CuraComponent.dialogPadding * 2 <
+                          CuraSize.dialogCompactMaxHeight;
+                  final Widget content = _content(context, colors, type);
+                  final Widget buttons = _buttons();
+                  return SizedBox(
+                    width: double.infinity,
+                    child: compact
+                        ? SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                content,
+                                const SizedBox(
+                                  height: CuraComponent.dialogPadding,
                                 ),
-                              ),
-                              const SizedBox(height: CuraComponent.dialogGap),
-                            ],
-                            Semantics(
-                              namesRoute: true,
-                              header: true,
-                              child: Text(
-                                title,
-                                style: type.title.copyWith(color: colors.text1),
-                              ),
+                                buttons,
+                              ],
                             ),
-                            const SizedBox(height: CuraComponent.dialogGap),
-                            Text(
-                              message,
-                              style: type.body.copyWith(color: colors.text1),
-                            ),
-                            if (extra != null) ...<Widget>[
-                              const SizedBox(height: CuraComponent.dialogGap),
-                              extra!,
+                          )
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Flexible(
+                                child: SingleChildScrollView(child: content),
+                              ),
+                              const SizedBox(
+                                height: CuraComponent.dialogPadding,
+                              ),
+                              buttons,
                             ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: CuraComponent.dialogPadding),
-                    for (int i = 0; i < actions.length; i++) ...<Widget>[
-                      if (i > 0) const SizedBox(height: CuraSpace.s2),
-                      actions[i],
-                    ],
-                  ],
-                ),
+                          ),
+                  );
+                },
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _content(
+    BuildContext context,
+    CuraColors colors,
+    CuraTypography type,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        if (icon != null) ...<Widget>[
+          ExcludeSemantics(
+            child: Icon(
+              icon,
+              size: CuraComponent.dialogIconSize,
+              color: colors.text1,
+            ),
+          ),
+          const SizedBox(height: CuraComponent.dialogGap),
+        ],
+        Semantics(
+          namesRoute: true,
+          header: true,
+          child: Text(title, style: type.title.copyWith(color: colors.text1)),
+        ),
+        if (message != null) ...<Widget>[
+          const SizedBox(height: CuraComponent.dialogGap),
+          Text(message!, style: type.body.copyWith(color: colors.text1)),
+        ],
+        if (extra != null) ...<Widget>[
+          const SizedBox(height: CuraComponent.dialogGap),
+          extra!,
+        ],
+      ],
+    );
+  }
+
+  Widget _buttons() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (int i = 0; i < actions.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(height: CuraSpace.s2),
+          actions[i],
+        ],
+      ],
     );
   }
 }

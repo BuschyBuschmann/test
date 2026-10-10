@@ -5,9 +5,11 @@ import 'package:curaone/dev/preview_app.dart';
 import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
+import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
+import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/node_hint.dart';
 import 'package:curaone/ui/components/path_header.dart';
 import 'package:curaone/ui/components/pill_button.dart';
@@ -293,6 +295,160 @@ void main() {
       );
       expect(unit.bottom, lessThanOrEqualTo(tester.getRect(cluster).top));
     });
+  });
+
+  // Heute-Szenarien (U3b, Plan 12.4): jedes zeigt, was sein Name sagt, über den
+  // echten Weg der App (StartGate, HomeShell, TodayScreen, echte Aktionen).
+  group('Heute-Szenarien', () {
+    Future<void> today(WidgetTester tester, String id, {Size? size}) async {
+      setViewport(tester, size ?? Viewports.phone);
+      await tester.pumpWidget(
+        PreviewApp(config: PreviewConfig(scenarioId: id)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    ScrollableState list(WidgetTester tester) => tester.state(
+      find.descendant(
+        of: find.byKey(ProbeKeys.scroll),
+        matching: find.byType(Scrollable),
+      ),
+    );
+
+    testWidgets('today-standard: Mittwoch, Physio, Gruppe, 20 Min', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-standard');
+      expect(find.text('Mittwoch, 7. Oktober'), findsOneWidget);
+      expect(find.text(S.apptPhysioTitle), findsOneWidget);
+      expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
+      expect(find.byType(MessagesButton), findsOneWidget);
+      expect(find.byKey(ProbeKeys.primaryRow), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-friday / today-weekend: Termine nach Wochentag', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-friday');
+      expect(find.text('Freitag, 9. Oktober'), findsOneWidget);
+      expect(find.text(S.apptDoctorTitle), findsOneWidget);
+      expect(find.text(S.apptPhysioTitle), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-weekend');
+      expect(find.text('Samstag, 10. Oktober'), findsOneWidget);
+      expect(find.text(S.noAppointments), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-10 / today-30: Zeitwahl im Zustand', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-10');
+      expect(find.text('ÜBUNGEN · CA. 10 MIN'), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-30');
+      expect(find.text('ÜBUNGEN · CA. 30 MIN'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-empty / today-done / today-empty-done', (
+      WidgetTester tester,
+    ) async {
+      PillButton primary() =>
+          tester.widget<PillButton>(find.byKey(ProbeKeys.primary));
+      await today(tester, 'today-empty');
+      expect(find.text(S.emptyExercises), findsOneWidget);
+      expect(primary().label, S.startTraining);
+      expect(primary().onPressed, isNull);
+      await disposeApp(tester);
+      await today(tester, 'today-done');
+      expect(primary().label, S.trainingDone);
+      await disposeApp(tester);
+      await today(tester, 'today-empty-done');
+      expect(find.text(S.emptyExercises), findsOneWidget);
+      expect(primary().label, S.trainingDone);
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-loading / today-error: ohne Button-Gruppe', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-loading');
+      expect(find.byType(MessagesButton), findsNothing);
+      expect(find.byType(FloatingNav), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-error');
+      expect(find.text(S.todayLoadError), findsOneWidget);
+      expect(find.text(S.retry), findsOneWidget);
+      expect(find.byType(MessagesButton), findsNothing);
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-cluster / today-done-cluster: Liste ganz unten', (
+      WidgetTester tester,
+    ) async {
+      for (final String id in <String>['today-cluster', 'today-done-cluster']) {
+        await today(tester, id, size: Viewports.small);
+        final ScrollableState st = list(tester);
+        expect(st.position.maxScrollExtent, greaterThan(0));
+        expect(st.position.pixels, st.position.maxScrollExtent, reason: id);
+        await disposeApp(tester);
+      }
+    });
+
+    testWidgets('today-snackbar-removed / -logged / -cluster', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-snackbar-removed');
+      expect(find.text(S.removedSnackbar), findsOneWidget);
+      expect(find.text(S.exSquatName), findsNothing);
+      await disposeApp(tester);
+      await today(tester, 'today-snackbar-logged');
+      expect(find.text(S.loggedSnackbar), findsOneWidget);
+      expect(find.text(S.trainingDone), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-snackbar-cluster', size: Viewports.small);
+      expect(find.text(S.removedSnackbar), findsOneWidget);
+      final ScrollableState st = list(tester);
+      expect(st.position.pixels, greaterThan(0), reason: 'am Ende, nicht oben');
+      await disposeApp(tester);
+    });
+
+    testWidgets('today-mode-sheet / today-custom-dialog(-keyboard)', (
+      WidgetTester tester,
+    ) async {
+      await today(tester, 'today-mode-sheet');
+      expect(find.text(S.trainingSheetTitle), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-custom-dialog');
+      expect(find.byType(CuraDialog), findsOneWidget);
+      await disposeApp(tester);
+      await today(tester, 'today-custom-dialog-keyboard');
+      expect(find.byType(CuraDialog), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('overlay:keyboard')), findsOne);
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
+      await disposeApp(tester);
+    });
+
+    testWidgets(
+      'today-newday-snackbar: Zeitsprung, frisches Programm, Snackbar',
+      (WidgetTester tester) async {
+        await today(tester, 'today-newday-snackbar');
+        expect(find.text('Donnerstag, 8. Oktober'), findsOneWidget);
+        expect(find.text(S.newDaySnackbar), findsOneWidget);
+        // Das Szenario hatte eine Übung entfernt: das neue Programm ist frisch.
+        expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 10));
+        await disposeApp(tester);
+      },
+    );
   });
 
   group('live=1 (echter Speicher, Reload)', () {

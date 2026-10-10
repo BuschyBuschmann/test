@@ -313,6 +313,10 @@ abstract final class S {
   static String choiceLabel(String title, bool selected) =>
       '$title, Auswahl, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}';
 
+  /// Mit Untertitel: „Manuell, Ich trage es nachher ein, Auswahl, ausgewählt“.
+  static String choiceLabelDetail(String title, String detail, bool selected) =>
+      choiceLabel('$title, $detail', selected);
+
   /// Snackbar mit Aktion: „Eingetragen. Rückgängig, Schaltfläche“
   /// (Ergänzung 1, 3.3).
   static String snackbarWithAction(String text, String action) =>
@@ -362,9 +366,80 @@ abstract final class S {
   static const String newDayAnnouncement =
       'Neuer Tag. Dein Programm für heute ist neu.';
 
-  // Platzhalter des Tabs Heute, bis U3b ihn ersetzt.
+  // -------------------------------------------------------------------------
+  // Heute (Brief 6.3, Ergänzung 1 und 2, U3b)
+  // -------------------------------------------------------------------------
   static String todayTitle(String name) => 'Heute, $name';
-  static const String todayTabPlaceholder = 'Hier entsteht dein Tag.';
+
+  /// Fehlerzustand des Tabs Heute (Brief 6.3: „Text plus Nochmal versuchen“;
+  /// Wortlaut analog zum Pfad, Annahme bis zur Klärung mit dem ui-designer).
+  static const String todayLoadError =
+      'Dein Programm konnte nicht geladen werden.';
+
+  static const String cancel = 'Abbrechen';
+
+  /// Zeitwahl (Spec 2): sichtbar „20 Min“, vorgelesen „20 Minuten“.
+  static const String timeChoiceGroup = 'Trainingszeit';
+  static String timeChoiceText(int minutes) => '$minutes Min';
+  static String timeChoiceLabel(int minutes) => '$minutes Minuten';
+
+  static const String appointmentsHeading = 'Termine';
+  static const String noAppointments = 'Heute keine Termine.';
+
+  static const String categoryExercise = 'Übung';
+  static const String exerciseSwap = 'Tauschen';
+  static const String exerciseRemove = 'Entfernen';
+  static String exerciseSwapLabel(String name) => '$name tauschen';
+  static String exerciseRemoveLabel(String name) => '$name entfernen';
+
+  /// „3 × 12 Wdh. · 6 Min“
+  static String exerciseMeta(String reps, int minutes) =>
+      '$reps · $minutes Min';
+
+  /// Vorlesetext der Wiederholungen: „3 × 12 Wdh.“ wird „3 mal 12
+  /// Wiederholungen“, „3 × 30 Sek.“ wird „3 mal 30 Sekunden“.
+  static String repsSpoken(String reps) => reps
+      .replaceAll(' × ', ' mal ')
+      .replaceAll('Wdh.', 'Wiederholungen')
+      .replaceAll('Sek.', 'Sekunden');
+
+  /// „Übung, Kniebeuge am Stuhl, 3 mal 12 Wiederholungen, 6 Minuten“
+  static String exerciseLabel(String name, String reps, int minutes) =>
+      '$categoryExercise, $name, ${repsSpoken(reps)}, '
+      '${minutes == 1 ? '1 Minute' : '$minutes Minuten'}';
+
+  static const String emptyExercises = 'Heute noch nichts geplant.';
+  static const String customAdd = 'Eigene Übung';
+  static const String customAddLabel = 'Eigene Übung hinzufügen';
+
+  static const String startTraining = 'Training starten';
+  static const String trainingDone = 'Heute erledigt';
+
+  /// Trainings-Sheet „Wie willst du trainieren?“ (Brief 6.3, Spec 2).
+  static const String trainingSheetTitle = 'Wie willst du trainieren?';
+  static const String modeManual = 'Manuell';
+  static const String modeManualHint = 'Ich trage es nachher ein';
+  static const String modePassive = 'Passiv';
+  static const String modeActive = 'Aktiv';
+  static const String modeSoon = 'Folgt';
+  static String modeDisabledLabel(String title) =>
+      '$title, folgt, noch nicht verfügbar';
+  static const String trainingLog = 'Training eintragen';
+
+  /// Snackbars mit Rückgängig (Ergänzung 1, 3.3; Brief 6.3).
+  static const String loggedSnackbar = 'Eingetragen.';
+  static const String removedSnackbar = 'Entfernt.';
+  static const String undo = 'Rückgängig';
+  static const String undoLoggedLabel = 'Eintrag rückgängig machen';
+  static const String undoRemovedLabel = 'Entfernen rückgängig machen';
+  static const String loggedUndoneAnnouncement = 'Eintrag zurückgenommen.';
+
+  /// Dialog „Eigene Übung“ (Brief 6.3, Plan 9 B-4).
+  static const String customDialogTitle = 'Eigene Übung';
+  static const String customNameLabel = 'Name';
+  static const String customRepsLabel = 'Wiederholungen';
+  static const String customMinutesLabel = 'Dauer in Minuten';
+  static const String customAddButton = 'Hinzufügen';
 
   // -------------------------------------------------------------------------
   // Onboarding (Brief 6.1)

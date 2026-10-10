@@ -5,6 +5,7 @@
 // `maybePop` auf (so greift ein `PopScope` des Dialogs, etwa während des
 // Löschens). Den Inhalt (`CuraDialog`) liefert der Aufrufer; Routenname und
 // `alertdialog`-Semantik stecken im `CuraDialog`.
+import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 
 import '../../l10n/strings_de.dart';
@@ -44,7 +45,9 @@ class CuraDialogRoute<T> extends RawDialogRoute<T> {
 }
 
 /// Stellt dem Dialog eine begrenzte Höhe (Bildschirm abzüglich Rand, Safe
-/// Area und Tastatur) und zentriert ihn.
+/// Area und Tastatur) und zentriert ihn. Ein durchsichtiges `Material` darunter
+/// gibt Eingabefeldern (`TextField`) den Untergrund, den sie verlangen; es
+/// malt nichts.
 class _DialogPage extends StatelessWidget {
   const _DialogPage({required this.child});
 
@@ -62,7 +65,10 @@ class _DialogPage extends StatelessWidget {
             top: CuraSpace.pageMargin,
             bottom: CuraSpace.pageMargin + media.viewInsets.bottom,
           ),
-          child: Center(child: child),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Center(child: child),
+          ),
         ),
       ),
     );

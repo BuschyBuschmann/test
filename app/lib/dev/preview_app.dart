@@ -18,6 +18,7 @@ import '../data/state_store.dart';
 import '../logic/clock.dart';
 import '../logic/manny_text_source.dart';
 import '../ui/path/path_source.dart';
+import '../ui/today/today_source.dart';
 import '../state/app_controller.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
@@ -168,15 +169,40 @@ class PreviewThemeSelector extends StatelessWidget {
   }
 }
 
+/// Veränderliche Uhr eines App-Szenarios.
+class _PreviewClock {
+  _PreviewClock(this.now);
+
+  DateTime now;
+}
+
 /// Laufzeit eines App-Szenarios: Controller, Speicher und Startfunktion.
 class _AppRuntime {
-  _AppRuntime._(this.controller, this.seed, this.startup);
+  _AppRuntime._(this.controller, this.seed, this.startup, [this._clock]);
+
+  /// Szenario-Uhr (veränderlich für Zeitsprünge); `null` bei `live`.
+  final _PreviewClock? _clock;
 
   PathSource get pathSource => switch (seed.pathMode) {
     PathSeedMode.ready => const ImmediatePathSource(),
     PathSeedMode.loading => const PendingPathSource(),
     PathSeedMode.error => const FailingPathSource(),
   };
+
+  TodaySource get todaySource => switch (seed.todayMode) {
+    TodaySeedMode.ready => const ImmediateTodaySource(),
+    TodaySeedMode.loading => const PendingTodaySource(),
+    TodaySeedMode.error => const FailingTodaySource(),
+  };
+
+  /// Verschiebt die Uhr des Szenarios (nur Szenarien mit Seed): Zeitsprung
+  /// nach den Tipps (`today-newday-snackbar`).
+  void advanceDays(int days) {
+    final _PreviewClock? c = _clock;
+    if (c == null) return;
+    final DateTime t = c.now;
+    c.now = DateTime(t.year, t.month, t.day + days, t.hour, t.minute);
+  }
 
   factory _AppRuntime.create(
     PreviewConfig config,
@@ -198,8 +224,9 @@ class _AppRuntime {
         : seed.loadError
         ? FailingReadStateStore()
         : MemoryStateStore(seed.state);
+    final _PreviewClock clock = _PreviewClock(now);
     return _AppRuntime._(
-      _controller(() => now, store, store),
+      _controller(() => clock.now, store, store),
       seed,
       seed.deleteFirst
           ? (AppController c) async {
@@ -207,6 +234,7 @@ class _AppRuntime {
               await c.deleteAll();
             }
           : null,
+      clock,
     );
   }
 
@@ -299,11 +327,15 @@ class _PreviewAppState extends State<PreviewApp> {
         controller: runtime.controller,
         startup: runtime.startup,
         pathSource: runtime.pathSource,
+        todaySource: runtime.todaySource,
         previewWrapper: (BuildContext context, Widget child) {
           return PreviewScript(
             taps: runtime.seed.taps,
             focusField: runtime.seed.focusField,
             scrollPathToEnd: runtime.seed.scrollPathToEnd,
+            afterTaps: runtime.seed.daysAfterTaps == 0
+                ? null
+                : () => runtime.advanceDays(runtime.seed.daysAfterTaps),
             child: PreviewOverrides(
               config: config,
               viewInsetsBottom: _scenario?.keyboard ?? false

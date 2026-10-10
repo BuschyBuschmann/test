@@ -5,7 +5,10 @@
 // Chat und Nachrichten über die Button-Gruppe (Abschnitt 5), Pfad-Abläufe (U3a,
 // Abschnitt 6): Zurück schließt zuerst die Blase, dann den Hinweis; Manny-Tipp
 // öffnet den Chat; Tipp auf die aktuelle Unit wechselt auf Heute; Hinweis an
-// einer gesperrten Unit (Escape, Zurück, 5 s).
+// einer gesperrten Unit (Escape, Zurück, 5 s); Heute-Abläufe (U3b, Abschnitt 7):
+// Training eintragen → Rückgängig, Heute → Pfad zeigt die Feier erst danach,
+// Entfernen → Rückgängig, Eigene Übung, Tageswechsel über Mitternacht bei offenem
+// Trainings-Sheet (Eintrag zählt für den Vortag).
 //
 //   export PATH=/opt/flutter/bin:$PATH
 //   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
@@ -66,11 +69,12 @@ async function gone(page, text, timeout = 4000) {
   }
 }
 // „Heute“ und „Pfad“ sind die Nav-Einträge: exakter Treffer, denn auch die Units
-// des Pfads tragen „Öffnet Heute.“ im Label.
+// des Pfads tragen „Öffnet Heute.“ im Label. „Hinzufügen“ (Dialog) ebenso: „Eigene
+// Übung hinzufügen“ enthält das Wort.
 const button = (page, name) =>
   page
     .locator('flt-semantics[role="button"]', {
-      hasText: name === 'Heute' || name === 'Pfad' ? new RegExp(`^${name}$`) : name,
+      hasText: name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' ? new RegExp(`^${name}$`) : name,
     })
     .first();
 async function click(page, name) {
@@ -399,6 +403,101 @@ const browser = await launch();
     );
     await ctx2.close();
   }
+}
+
+
+// 7. Heute (U3b): Abläufe mit echtem Speicher und Fake-Uhr -----------------------
+// Frischer Tag mit Streak 12 (gestern trainiert): Eintragen erhöht auf 13.
+const HEUTE_DOC = (() => {
+  const d = JSON.parse(FIXTURE);
+  d.onboarding = { ...d.onboarding, name: 'Jakob', injuryType: 'acl', injuryOther: '', injuryDate: '2026-09-07' };
+  d.streak = { count: 12, freezes: 2, lastTrainingDay: '2026-10-06', evaluatedThrough: '2026-10-06', coveredInGap: 0, uncoveredInGap: 0, resetNoticePending: false };
+  d.path = { completedUnitIds: [], pulsePending: null };
+  d.day = { dayKey: '2026-10-07', removed: [], swaps: {}, custom: [], done: false };
+  d.prefs = { timeChoice: 20 };
+  d.manny = { lastShown: { fact: '2026-10-07' }, greetingPending: false };
+  d.celebration = null;
+  return JSON.stringify(d);
+})();
+
+async function openHeute(now, params = { live: 1, a11y: 1 }) {
+  const ctx = await browser.newContext(ctxOptions);
+  // Wie bei den anderen Abläufen: der Speicher legt den Text JSON-kodiert ab.
+  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), HEUTE_DOC);
+  const s = await openScenario(ctx, base, params, { clock: 'install', now });
+  await seen(s.page, 'Woche 5');
+  await click(s.page, 'Heute');
+  await seen(s.page, 'Heute, Jakob');
+  return { ctx, page: s.page };
+}
+
+// 7a. Training eintragen → Rückgängig → erneut eintragen → Pfad zeigt die Feier
+{
+  const { ctx, page } = await openHeute('2026-10-07T12:00:00+02:00');
+  check('Heute: Datum, Zeitwahl und Übungen (Wdh. und Dauer)', (await seen(page, 'Mittwoch, 7. Oktober')) && (await seen(page, 'Kniebeuge am Stuhl, 3 mal 12 Wiederholungen, 6 Minuten')) && (await seen(page, 'Beispieltermin, Physio, Physiotherapie, Praxis Müller, 17:00 Uhr')));
+  check('Heute: Button-Gruppe (Manny, Nachrichten) und „Training starten“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0 && (await button(page, 'Training starten').count()) > 0);
+  await shot(page, 'heute-standard');
+  await click(page, 'Training starten');
+  check('Training starten öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trage es nachher ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
+  check('Sheet offen: Button-Gruppe ist aus der Semantik (nicht bedienbar)', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0);
+  await shot(page, 'heute-sheet');
+  await click(page, 'Training eintragen');
+  check('Eintragen: Sheet zu, „Heute erledigt“, Snackbar „Eingetragen.“ mit Rückgängig (UI-37)', (await seen(page, 'Eingetragen.')) && (await seen(page, 'Heute erledigt')) && (await gone(page, 'Wie willst du trainieren?')));
+  await shot(page, 'heute-eingetragen');
+  await click(page, 'Eintrag rückgängig machen');
+  check('Rückgängig: „Training starten“ wieder da, Snackbar weg (UI-38)', (await seen(page, 'Training starten')) && (await gone(page, 'Eingetragen.')));
+  // Erneut eintragen, auf den Pfad: Fenster endet, die Feier folgt.
+  await click(page, 'Training starten');
+  await click(page, 'Training eintragen');
+  await seen(page, 'Eingetragen.');
+  await click(page, 'Pfad');
+  check('Heute → Pfad: Feier-Blase „Das war Tag 13.“ erst nach dem Fenster (UI-40)', await seen(page, 'Stark, Jakob. Das war Tag 13.'));
+  check('Pfad: Streak 13 nach dem Eintrag', await seen(page, 'Streak: 13 Tage'));
+  await shot(page, 'heute-feier-pfad');
+  await ctx.close();
+}
+
+// 7b. Entfernen → Rückgängig; Tauschen; Eigene Übung ------------------------------
+{
+  const { ctx, page } = await openHeute('2026-10-07T12:00:00+02:00');
+  await click(page, 'Kniebeuge am Stuhl entfernen');
+  check('Entfernen: Karte weg, Snackbar „Entfernt.“ mit Rückgängig', (await seen(page, 'Entfernt.')) && (await gone(page, 'Kniebeuge am Stuhl, 3 mal 12 Wiederholungen')));
+  await shot(page, 'heute-entfernt');
+  await click(page, 'Entfernen rückgängig machen');
+  check('Rückgängig: die Übung ist wieder da', (await seen(page, 'Kniebeuge am Stuhl, 3 mal 12 Wiederholungen')) && (await gone(page, 'Entfernt.')));
+  await click(page, 'Kniebeuge am Stuhl tauschen');
+  check('Tauschen: nächste Alternative „Aufstehen vom Stuhl“', await seen(page, 'Aufstehen vom Stuhl'));
+  await click(page, 'Eigene Übung hinzufügen');
+  const labelled = (l) => page.locator(`[aria-label="${l}"]`).count();
+  check('Eigene Übung: Dialog mit den drei Feldern (Name, Wiederholungen, Dauer in Minuten)', (await seen(page, 'Eigene Übung', 3000)) && (await labelled('Name')) > 0 && (await labelled('Wiederholungen')) > 0 && (await labelled('Dauer in Minuten')) > 0);
+  await shot(page, 'heute-eigene-uebung');
+  // Das Eingabefeld des Dialogs braucht einen Moment, bis sein Semantik-Knoten
+  // Eingaben annimmt (erst nach dem Einblenden).
+  await page.waitForTimeout(800);
+  const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
+  await field.click({ force: true });
+  await page.waitForTimeout(300);
+  await page.keyboard.type('Plank', { delay: 40 });
+  await page.waitForTimeout(500);
+  await click(page, 'Hinzufügen');
+  check('Eigene Übung: Karte mit Name, „3 × 10 · 5 Min“ (ohne Tauschen)', (await seen(page, 'Plank, 3 mal 10, 5 Minuten')) && (await button(page, 'Plank tauschen').count()) === 0);
+  await ctx.close();
+}
+
+// 7c. Tageswechsel über Mitternacht bei offenem Trainings-Sheet --------------------
+{
+  const { ctx, page } = await openHeute('2026-10-07T23:59:40+02:00');
+  await click(page, 'Training starten');
+  await seen(page, 'Wie willst du trainieren?');
+  await page.clock.runFor(30000); // 30 s: über Mitternacht
+  await page.waitForTimeout(300);
+  await click(page, 'Training eintragen');
+  check('Über Mitternacht: Sheet zu, Snackbar „Neuer Tag, neues Programm.“, neues Datum, frisches Programm', (await seen(page, 'Neuer Tag, neues Programm.', 10000)) && (await seen(page, 'Donnerstag, 8. Oktober')) && (await seen(page, 'Training starten')) && (await gone(page, 'Wie willst du trainieren?')));
+  check('Über Mitternacht: kein „Rückgängig“ (der Wechsel beendet das Fenster)', (await button(page, 'Eintrag rückgängig machen').count()) === 0);
+  await shot(page, 'heute-mitternacht');
+  await click(page, 'Pfad');
+  check('Über Mitternacht: der Eintrag zählte für den Vortag (Streak 13), keine Feier', (await seen(page, 'Streak: 13 Tage')) && (await page.getByText('Stark, Jakob', { exact: false }).count()) === 0);
+  await ctx.close();
 }
 
 await browser.close();

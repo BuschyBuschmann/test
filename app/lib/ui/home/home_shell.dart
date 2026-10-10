@@ -30,7 +30,13 @@
 //   Fehler). Der Ladezustand kommt aus der `PathSource`; „Nochmal versuchen“
 //   bereitet den Pfad erneut vor. Escape und Zurück schließen zuerst Blase und
 //   Hinweis ([dismissPathOverlays]).
-// - Heute (U3b) ersetzt den zweiten Platzhalter.
+// - Heute (U3b): `TodayScreen` ersetzt den zweiten Platzhalter. Er baut die
+//   Primärbutton-Reihe mit dem Manny-Button und den Nachrichten-Button darüber
+//   selbst (nur im Standard-Zustand, A-43) und meldet die gemessene Höhe der
+//   Gruppe über [todayGroupHeight]: Die Snackbar auf Heute steht 12 dp über der
+//   Gruppe. Laden und Fehler kommen wie beim Pfad aus einer Quelle
+//   (`TodaySource`). Der Tageswechsel schließt Snackbar, Rückgängig-Fenster und
+//   alle Heute-Routen, bevor er die Bedingung prüft ([dayChanged]).
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -49,7 +55,8 @@ import '../routes/app_routes.dart';
 import '../path/path_screen.dart';
 import '../path/path_source.dart';
 import '../routes/route_focus.dart';
-import 'tab_placeholders.dart';
+import '../today/today_screen.dart';
+import '../today/today_source.dart';
 import 'today_route_registry.dart';
 
 /// Tab-Indizes der Home-Route.
@@ -117,6 +124,20 @@ class HomeShellState extends State<HomeShell> {
   PathLoadState _pathLoad = PathLoadState.ready;
   int _pathAttempt = 0;
 
+  /// Ladezustand des Tabs Heute (Plan 4.6, A-43).
+  TodayLoadState _todayLoad = TodayLoadState.ready;
+  int _todayAttempt = 0;
+
+  /// Gemessene Höhe der Button-Gruppe auf Heute (Reihe samt Nachrichten-Button
+  /// über dem Manny-Button); 0 solange sie nicht gebaut ist. Der Snackbar-Host
+  /// liest sie (Snackbar 12 dp über der Gruppe, Plan 4.6, UI-73).
+  final ValueNotifier<double> todayGroupHeight = ValueNotifier<double>(0);
+
+  /// Gemessene Höhe der sichtbaren Snackbar (0 ohne Snackbar): Heute vergrößert
+  /// die Scroll-Reserve damit, damit die Snackbar den letzten Eintrag nie
+  /// überdeckt.
+  final ValueNotifier<double> snackbarHeight = ValueNotifier<double>(0);
+
   /// Aktiver Tab (`HomeTab.path` oder `HomeTab.today`).
   int get activeTab => _tab;
 
@@ -128,6 +149,38 @@ class HomeShellState extends State<HomeShell> {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _onResume);
     _preparePath();
+    _prepareToday();
+  }
+
+  /// Bereitet das Tagesprogramm über die [TodaySource] vor (wie [_preparePath]).
+  void _prepareToday() {
+    final int attempt = ++_todayAttempt;
+    final TodaySource source = TodaySourceScope.read(context);
+    void set(TodayLoadState state) {
+      if (!mounted || attempt != _todayAttempt) return;
+      if (state != _todayLoad) setState(() => _todayLoad = state);
+    }
+
+    try {
+      final Future<void>? pending = source.prepare();
+      if (pending == null) {
+        _todayLoad = TodayLoadState.ready;
+      } else {
+        _todayLoad = TodayLoadState.loading;
+        pending.then(
+          (_) => set(TodayLoadState.ready),
+          onError: (Object _) => set(TodayLoadState.error),
+        );
+      }
+    } catch (e) {
+      debugPrint('Heute nicht bereit: $e');
+      _todayLoad = TodayLoadState.error;
+    }
+  }
+
+  /// „Nochmal versuchen“ im Fehlerzustand von Heute.
+  void retryToday() {
+    setState(_prepareToday);
   }
 
   /// Bereitet den Pfad über die [PathSource] vor: sofort bereit, Laden bis ein
@@ -166,6 +219,8 @@ class HomeShellState extends State<HomeShell> {
   void dispose() {
     _lifecycle.dispose();
     snackbar.dispose();
+    todayGroupHeight.dispose();
+    snackbarHeight.dispose();
     chatButtonFocus.dispose();
     messagesButtonFocus.dispose();
     _pageFocus.dispose();
@@ -189,6 +244,8 @@ class HomeShellState extends State<HomeShell> {
   /// den Wechsel ausgelöst hat.
   Future<void> dayChanged() async {
     _controller.transient.endUndoWindow();
+    // Eine offene Snackbar (z. B. „Eingetragen. Rückgängig“) gehört zum Vortag.
+    snackbar.close();
     // (2) alle Heute-Routen schließen und das Ende der Entfernung abwarten.
     todayRoutes.closeAll();
     await WidgetsBinding.instance.endOfFrame;
@@ -328,7 +385,12 @@ class HomeShellState extends State<HomeShell> {
   /// Lesereihenfolge folgt den Rechtecken).
   static const double focusOrderHeader = 1;
   static const double _focusOrderContent = 2;
-  static const double _focusOrderCluster = 3;
+  static const double focusOrderCluster = 3;
+
+  /// Heute (Ergänzung 2, 4): Nachrichten-Button (3), „Training starten“,
+  /// Manny-Button, dann die Nav.
+  static const double focusOrderStart = 3.1;
+  static const double focusOrderManny = 3.2;
   static const double _focusOrderNav = 4;
 
   @override
@@ -357,13 +419,31 @@ class HomeShellState extends State<HomeShell> {
             child: FocusTraversalGroup(
               policy: OrderedTraversalPolicy(),
               child: ScreenFrame(
+                // Auf Home steht kein Eingabefeld; Dialoge über Heute stellen
+                // ihre Tastatur selbst frei. Die Nav bleibt unten stehen.
+                resizeToAvoidBottomInset: false,
                 overlays: <Widget>[
                   Positioned.fill(
-                    child: SnackbarHost(
-                      controller: snackbar,
-                      bottomOffset:
-                          FloatingNav.occupiedHeight(context) +
-                          CuraSpace.snackbarGap,
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: todayGroupHeight,
+                      builder: (BuildContext context, double group, _) {
+                        // Heute: 12 dp über der Button-Gruppe; sonst über der
+                        // Nav (Pfad: keine Snackbar, Plan 4.6).
+                        final double above =
+                            _tab == HomeTab.today &&
+                                _todayLoad == TodayLoadState.ready
+                            ? CuraSpace.pageMargin + group
+                            : 0;
+                        return SnackbarHost(
+                          controller: snackbar,
+                          onHeightChanged: (double h) =>
+                              snackbarHeight.value = h,
+                          bottomOffset:
+                              FloatingNav.occupiedHeight(context) +
+                              above +
+                              CuraSpace.snackbarGap,
+                        );
+                      },
                     ),
                   ),
                   if (_tab == HomeTab.path && _pathLoad == PathLoadState.ready)
@@ -373,7 +453,7 @@ class HomeShellState extends State<HomeShell> {
                           FloatingNav.occupiedHeight(context) +
                           CuraSpace.pageMargin,
                       child: FocusTraversalOrder(
-                        order: const NumericFocusOrder(_focusOrderCluster),
+                        order: const NumericFocusOrder(focusOrderCluster),
                         child: KeyedSubtree(
                           key: ProbeKeys.cluster,
                           child: ActionCluster(
@@ -419,7 +499,10 @@ class HomeShellState extends State<HomeShell> {
                       HomeTab.path,
                       PathScreen(load: _pathLoad, onRetry: retryPath),
                     ),
-                    _tabPage(HomeTab.today, const TodayTabPlaceholder()),
+                    _tabPage(
+                      HomeTab.today,
+                      TodayScreen(load: _todayLoad, onRetry: retryToday),
+                    ),
                   ],
                 ),
               ),

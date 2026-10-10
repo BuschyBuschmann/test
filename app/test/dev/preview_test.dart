@@ -147,7 +147,12 @@ void main() {
     ) async {
       await pump(tester, const PreviewConfig(scenarioId: 'gibt-es-nicht'));
       // Die Liste ist lang und baut lazy: jede Kennung wird erst gescrollt.
+      final ScrollableState list = tester.state(find.byType(Scrollable));
       for (final Scenario s in kScenarios) {
+        // Jede Suche beginnt oben: Der Rest der Wischbewegung der vorigen Suche
+        // würde sonst bei langer Liste am gesuchten Eintrag vorbeitragen.
+        list.position.jumpTo(0);
+        await tester.pump();
         await tester.scrollUntilVisible(find.text(s.id), 200);
         expect(find.text(s.id), findsOneWidget);
       }

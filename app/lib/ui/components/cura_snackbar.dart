@@ -23,6 +23,7 @@ import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
 import 'cura_pressable.dart';
+import 'size_reporter.dart';
 
 /// Warum eine Snackbar endete (für das Rückgängig-Fenster, Ergänzung 1, 3.3).
 enum SnackbarCloseReason {
@@ -236,10 +237,16 @@ class SnackbarHost extends StatefulWidget {
     super.key,
     required this.controller,
     this.bottomOffset = 0,
+    this.onHeightChanged,
   });
 
   final SnackbarController controller;
   final double bottomOffset;
+
+  /// Meldet die gemessene Höhe der sichtbaren Snackbar (0, wenn keine
+  /// sichtbar ist): Heute rechnet die Scroll-Reserve am Listenende damit, damit
+  /// die Snackbar den letzten Eintrag nie überdeckt (Plan 4.6).
+  final ValueChanged<double>? onHeightChanged;
 
   @override
   State<SnackbarHost> createState() => _SnackbarHostState();
@@ -297,6 +304,7 @@ class _SnackbarHostState extends State<SnackbarHost> {
     }
     _syncTimer();
     if (!mounted) return;
+    if (_c.current == null) widget.onHeightChanged?.call(0);
     // `show` kann mitten im Bauen aufgerufen werden: dann nach dem Frame.
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -397,7 +405,10 @@ class _SnackbarHostState extends State<SnackbarHost> {
             tween: Tween<double>(begin: 0, end: 1),
             duration: motion.duration(MotionTokens.base),
             curve: motion.curve,
-            child: content,
+            child: SizeReporter(
+              onSize: (Size size) => widget.onHeightChanged?.call(size.height),
+              child: content,
+            ),
             builder: (BuildContext context, double t, Widget? child) {
               return Opacity(
                 opacity: t,

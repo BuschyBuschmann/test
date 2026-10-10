@@ -9,7 +9,7 @@ import 'package:curaone/state/app_controller.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/home/home_shell.dart';
-import 'package:curaone/ui/home/tab_placeholders.dart';
+import 'package:curaone/ui/today/today_screen.dart';
 import 'package:curaone/ui/path/path_screen.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
@@ -100,10 +100,10 @@ void main() {
         tester.element(find.byType(type, skipOffstage: false)),
       ).enabled;
       expect(enabled(PathScreen), isTrue);
-      expect(enabled(TodayTabPlaceholder), isFalse);
+      expect(enabled(TodayScreen), isFalse);
       await _selectToday(tester);
       expect(enabled(PathScreen), isFalse);
-      expect(enabled(TodayTabPlaceholder), isTrue);
+      expect(enabled(TodayScreen), isTrue);
       await disposeApp(tester);
     });
 

@@ -17,6 +17,7 @@ import '../logic/day_program.dart';
 import '../logic/manny_state.dart';
 import '../logic/path_generator.dart';
 import '../logic/path_model.dart';
+import '../logic/placeholder_pools.dart';
 import '../logic/streak.dart';
 import '../logic/injury_type.dart';
 import '../theme/cura_colors.dart';
@@ -43,6 +44,7 @@ import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
 import '../ui/messages/example_contacts.dart';
+import 'preview_script.dart' show kPreviewScrollEnd;
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
@@ -83,6 +85,10 @@ typedef ScenarioBuilder = Widget Function(
 /// `path-error`); sonst sofort bereit.
 enum PathSeedMode { ready, loading, error }
 
+/// Wie sich der Tab Heute eines App-Szenarios lädt (`today-loading`,
+/// `today-error`); sonst sofort bereit.
+enum TodaySeedMode { ready, loading, error }
+
 /// Zustand einer **App-Szenarios** (Plan 12.4: `ob*`, `shell-*`): die echte
 /// App (`CuraApp` mit StartGate, Routen und Speicher) startet mit diesem
 /// Speicher. So laufen Matrix und Screenshots durch denselben Code wie die
@@ -97,8 +103,18 @@ class AppSeed {
     this.taps = const <String>[],
     this.now,
     this.pathMode = PathSeedMode.ready,
+    this.todayMode = TodaySeedMode.ready,
     this.scrollPathToEnd = false,
+    this.daysAfterTaps = 0,
   });
+
+  /// Ladezustand des Tabs Heute.
+  final TodaySeedMode todayMode;
+
+  /// Nach den Tipps springt die Szenario-Uhr um so viele Kalendertage weiter
+  /// und die Shell prüft den Tageswechsel wie nach einem Fortsetzen der App
+  /// (`today-newday-snackbar`).
+  final int daysAfterTaps;
 
   /// Uhrzeit der Fake-Uhr dieses Szenarios; `null` = die der Umgebung
   /// (`ScenarioEnv.now`). Z. B. 19:00 Uhr für die Streak-Gefahr-Blase.
@@ -107,8 +123,9 @@ class AppSeed {
   /// Ladezustand des Pfad-Tabs.
   final PathSeedMode pathMode;
 
-  /// Der Pfad wird nach dem Start bis ans Ende gescrollt (unterste Unit über
-  /// die Button-Gruppe geschoben).
+  /// Der Hauptscrollbereich (Marker `scroll`: Pfad bzw. Liste von Heute) wird
+  /// nach dem Start bis ans Ende gescrollt (unterste Unit bzw. letzter Eintrag
+  /// über die Button-Gruppe geschoben).
   final bool scrollPathToEnd;
 
   /// Gespeicherter Zustand; `null` = Erststart (nichts gespeichert).
@@ -129,7 +146,9 @@ class AppSeed {
   /// gescrollt.
   final bool focusField;
 
-  /// Screenreader-Labels von Bausteinen, die nach dem Start „getippt“ werden.
+  /// Screenreader-Labels von Bausteinen, die nach dem Start „getippt“ werden;
+  /// [kPreviewScrollEnd] scrollt an dieser Stelle den sichtbaren Hauptbereich
+  /// ans Ende.
   final List<String> taps;
 }
 
@@ -998,6 +1017,182 @@ AppSeed _pathScrolledBottom(ScenarioEnv env) => AppSeed(
   scrollPathToEnd: true,
 );
 
+// ---------------------------------------------------------------------------
+// App-Szenarien (U3b): Heute (Plan 12.4)
+// ---------------------------------------------------------------------------
+// Alle laufen durch die echte App (StartGate, HomeShell, TodayScreen): sie
+// starten auf dem Pfad und wechseln über die Nav auf Heute. Aktionen (Entfernen,
+// Training eintragen, Sheet, Dialog) laufen über die echten Bausteine.
+
+/// Zustand für Heute: [day] (Standard: Tag der Umgebung), Zeitwahl, Tagesprogramm.
+AppState _todayState(
+  ScenarioEnv env, {
+  LocalDay? day,
+  int timeChoice = kDefaultTimeChoice,
+  List<String> removed = const <String>[],
+  List<CustomExercise> custom = const <CustomExercise>[],
+  bool done = false,
+}) {
+  final LocalDay d = day ?? _today(env);
+  return _completedState(env).copyWith(
+    onboarding: OnboardingState(
+      completed: true,
+      step: 3,
+      name: PreviewTexts.nameValue,
+      injuryType: InjuryType.acl,
+      injuryDate: d.addDays(-30),
+    ),
+    manny: MannyState(
+      lastShown: <MannyOccasion, LocalDay>{MannyOccasion.fact: d},
+    ),
+    prefs: PrefsState(timeChoice: timeChoice),
+    day: DayProgramState(
+      dayKey: d,
+      removed: removed,
+      custom: custom,
+      done: done,
+    ),
+  );
+}
+
+/// Alle Basis-IDs der Zeitwahl 20 (leere Übungsliste).
+List<String> _allBaseIds() => <String>[
+  for (final ExerciseFamily f in kBaseExercises[kDefaultTimeChoice]!) f.base.id,
+];
+
+const List<String> _toToday = <String>[S.navToday];
+
+/// Erste und letzte Basisübung der Zeitwahl 20 (Entfernen-Labels).
+String _firstRemoveLabel() =>
+    S.exerciseRemoveLabel(kBaseExercises[kDefaultTimeChoice]!.first.base.name);
+String _lastRemoveLabel() =>
+    S.exerciseRemoveLabel(kBaseExercises[kDefaultTimeChoice]!.last.base.name);
+
+AppSeed _todayLoading(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  todayMode: TodaySeedMode.loading,
+  taps: _toToday,
+);
+
+AppSeed _todayError(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  todayMode: TodaySeedMode.error,
+  taps: _toToday,
+);
+
+AppSeed _todayStandard(ScenarioEnv env) =>
+    AppSeed(state: _todayState(env), taps: _toToday);
+
+/// Freitag: Arzttermin 09:30 und Physio 17:00.
+AppSeed _todayFriday(ScenarioEnv env) {
+  final DateTime now = DateTime(2026, 10, 9, 12);
+  return AppSeed(
+    now: now,
+    state: _todayState(env, day: LocalDay.from(now)),
+    taps: _toToday,
+  );
+}
+
+/// Samstag: keine Termine („Heute keine Termine.“).
+AppSeed _todayWeekend(ScenarioEnv env) {
+  final DateTime now = DateTime(2026, 10, 10, 12);
+  return AppSeed(
+    now: now,
+    state: _todayState(env, day: LocalDay.from(now)),
+    taps: _toToday,
+  );
+}
+
+AppSeed _today10(ScenarioEnv env) =>
+    AppSeed(state: _todayState(env, timeChoice: 10), taps: _toToday);
+
+AppSeed _today30(ScenarioEnv env) =>
+    AppSeed(state: _todayState(env, timeChoice: 30), taps: _toToday);
+
+/// Eine eigene Übung am Ende der Liste (Karte ohne „Tauschen“).
+AppSeed _todayCustom(ScenarioEnv env) => AppSeed(
+  state: _todayState(
+    env,
+    custom: const <CustomExercise>[
+      CustomExercise(
+        id: 'custom-1',
+        name: 'Plank am Stuhl',
+        reps: S.customDefaultReps,
+        minutes: S.customDefaultMinutes,
+      ),
+    ],
+  ),
+  taps: _toToday,
+);
+
+AppSeed _todayEmpty(ScenarioEnv env) => AppSeed(
+  state: _todayState(env, removed: _allBaseIds()),
+  taps: _toToday,
+);
+
+AppSeed _todayDone(ScenarioEnv env) =>
+    AppSeed(state: _todayState(env, done: true), taps: _toToday);
+
+/// Leer und erledigt: „Heute erledigt“ gewinnt beim Button (B-6).
+AppSeed _todayEmptyDone(ScenarioEnv env) => AppSeed(
+  state: _todayState(env, removed: _allBaseIds(), done: true),
+  taps: _toToday,
+);
+
+/// Standard bis zum Listenende gescrollt (Reserve, Gruppe).
+AppSeed _todayCluster(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: const <String>[S.navToday, kPreviewScrollEnd],
+);
+
+AppSeed _todayDoneCluster(ScenarioEnv env) => AppSeed(
+  state: _todayState(env, done: true),
+  taps: const <String>[S.navToday, kPreviewScrollEnd],
+);
+
+/// „Entfernt. Rückgängig“ (echter Weg: Tipp auf „Entfernen“).
+AppSeed _todaySnackbarRemoved(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: <String>[S.navToday, _firstRemoveLabel()],
+);
+
+/// „Eingetragen. Rückgängig“ (echter Weg: Sheet, „Training eintragen“).
+AppSeed _todaySnackbarLogged(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: const <String>[S.navToday, S.startTraining, S.trainingLog],
+);
+
+/// Snackbar über der Gruppe bei bis ans Ende gescrollter Liste.
+AppSeed _todaySnackbarCluster(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: <String>[S.navToday, kPreviewScrollEnd, _lastRemoveLabel()],
+);
+
+AppSeed _todayModeSheet(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: const <String>[S.navToday, S.startTraining],
+);
+
+AppSeed _todayCustomDialog(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: const <String>[S.navToday, S.customAddLabel],
+);
+
+AppSeed _todayCustomDialogKeyboard(ScenarioEnv env) => AppSeed(
+  state: _todayState(env),
+  taps: const <String>[S.navToday, S.customAddLabel],
+  focusField: true,
+);
+
+/// Tageswechsel auf Heute: Zeitsprung um einen Tag nach dem Wechsel auf Heute;
+/// Heute zeigt das neue Datum, das frische Programm und die Snackbar „Neuer
+/// Tag, neues Programm.“.
+AppSeed _todayNewDaySnackbar(ScenarioEnv env) => AppSeed(
+  state: _todayState(env, removed: <String>[_allBaseIds().first]),
+  taps: _toToday,
+  daysAfterTaps: 1,
+);
+
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
 final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
@@ -1141,6 +1336,48 @@ final List<Scenario> kScenarios = <Scenario>[
   _pathScenario('path-cluster-bubble', _pathClusterBubble),
   _pathScenario('path-cluster-hint', _pathClusterHint),
   _pathScenario('path-scrolled-bottom', _pathScrolledBottom),
+  // Heute (U3b): in Laden und Fehler steht keine Button-Gruppe (A-43).
+  Scenario(
+    id: 'today-loading',
+    app: _todayLoading,
+    maxBackdrops: 1,
+    expectsNav: true,
+  ),
+  Scenario(
+    id: 'today-error',
+    app: _todayError,
+    maxBackdrops: 1,
+    expectsNav: true,
+    expectsPrimary: true,
+  ),
+  _todayScenario('today-standard', _todayStandard, tablet: true),
+  _todayScenario('today-friday', _todayFriday),
+  _todayScenario('today-weekend', _todayWeekend),
+  _todayScenario('today-10', _today10),
+  _todayScenario('today-30', _today30),
+  _todayScenario('today-custom', _todayCustom),
+  _todayScenario('today-empty', _todayEmpty),
+  _todayScenario('today-done', _todayDone),
+  _todayScenario('today-empty-done', _todayEmptyDone),
+  _todayScenario('today-cluster', _todayCluster),
+  _todayScenario('today-done-cluster', _todayDoneCluster),
+  // Umbruchszustand: „Training starten“ bricht um (UI-71, UI-73).
+  _todayScenario('today-wrap', _todayStandard, fixedTextScale: 1.5),
+  _todayScenario('today-snackbar-removed', _todaySnackbarRemoved),
+  _todayScenario('today-snackbar-logged', _todaySnackbarLogged),
+  _todayScenario('today-snackbar-cluster', _todaySnackbarCluster),
+  _todayScenario('today-newday-snackbar', _todayNewDaySnackbar),
+  // Sheet und Dialog: Nav und Button-Gruppe von Home liegen unter dem Scrim
+  // (abgedunkelt, nicht bedienbar) und zählen nicht als Overlay der oberen
+  // Route. Höchstens zwei BackdropFilter (Nav und Sheet). Der Primärbutton des
+  // Sheets ist „Training eintragen“; der Dialog hat keinen markierten.
+  Scenario(id: 'today-mode-sheet', app: _todayModeSheet, expectsPrimary: true),
+  Scenario(id: 'today-custom-dialog', app: _todayCustomDialog),
+  Scenario(
+    id: 'today-custom-dialog-keyboard',
+    app: _todayCustomDialogKeyboard,
+    keyboard: true,
+  ),
   Scenario(
     id: 'chat-manny',
     app: _chatManny,
@@ -1208,6 +1445,25 @@ Scenario _pathScenario(
   expectsNav: true,
   expectsCluster: true,
   expectsHeader: true,
+  tablet: tablet,
+  fixedTextScale: fixedTextScale,
+);
+
+/// Heute im Standard-Zustand: Nav und Button-Gruppe sind Pflicht (die Matrix
+/// meldet einen fehlenden Marker als harten Befund), der Primärbutton ist
+/// sichtbar und antippbar; höchstens zwei `BackdropFilter` (Nav plus Sheet).
+/// Ein festes Kopfelement gibt es nicht: Datum und Titel laufen mit der Liste.
+Scenario _todayScenario(
+  String id,
+  AppSeedBuilder seed, {
+  bool tablet = false,
+  double? fixedTextScale,
+}) => Scenario(
+  id: id,
+  app: seed,
+  expectsNav: true,
+  expectsCluster: true,
+  expectsPrimary: true,
   tablet: tablet,
   fixedTextScale: fixedTextScale,
 );

@@ -20,6 +20,7 @@ import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
 import '../ui/components/path_node.dart';
 import '../ui/components/pill_button.dart';
+import '../ui/components/category_card.dart';
 import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
 import '../ui/routes/cura_sheet_route.dart';
@@ -49,6 +50,7 @@ class ProbedText {
     required this.glowAlpha,
     required this.onScreen,
     required this.isIcon,
+    this.inOverlay = false,
   });
 
   final String text;
@@ -75,6 +77,12 @@ class ProbedText {
   /// Kontrast als Symbol (3:1), nicht für Schrift- und Glow-Regeln.
   final bool isIcon;
 
+  /// Der Text gehört zu einem markierten Overlay (`overlay:*`: Nav,
+  /// Button-Gruppe, Reihe, Blase). Alle anderen Texte können unter einem
+  /// Overlay verschwinden (scrollender Inhalt); die Pixelmessung im Browser
+  /// lässt sie dann aus.
+  final bool inOverlay;
+
   Map<String, Object?> toJson() => <String, Object?>{
     'text': text,
     'x': rect.left,
@@ -89,6 +97,7 @@ class ProbedText {
     'glowAlpha': glowAlpha,
     'onScreen': onScreen,
     'isIcon': isIcon,
+    'inOverlay': inOverlay,
   };
 }
 
@@ -143,7 +152,7 @@ TextProbe probeTexts({Element? root, required Size view}) {
   final List<ProbedText> out = <ProbedText>[];
   final Rect screen = Offset.zero & view;
 
-  void walk(Element e, TextGround ground, bool covered) {
+  void walk(Element e, TextGround ground, bool covered, bool inOverlay) {
     final Widget w = e.widget;
     if (w is Offstage && w.offstage) return;
     TextGround g = ground;
@@ -153,6 +162,7 @@ TextProbe probeTexts({Element? root, required Size view}) {
         w is CuraDialog ||
         w is ActionCircle ||
         w is NodeHint ||
+        w is CategoryIconTile ||
         w is OpaqueSurface) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
@@ -175,18 +185,22 @@ TextProbe probeTexts({Element? root, required Size view}) {
     // Texte unter einer anderen Route (Dialog, Sheet mit Scrim) oder in einer
     // verdeckten Route zählen nicht als sichtbar (R-U2 Punkt 12).
     bool c = covered;
+    final Key? key = w.key;
+    final bool o =
+        inOverlay ||
+        (key is ValueKey<String> && key.value.startsWith('overlay:'));
     if (w is RichText) {
       if (!c && _isBuriedRoute(e)) c = true;
       final RenderObject? r = e.renderObject;
       if (r is RenderParagraph && r.attached && r.hasSize) {
-        final ProbedText? p = _probe(r, g, glow, glowOrigin, screen, c);
+        final ProbedText? p = _probe(r, g, glow, glowOrigin, screen, c, o);
         if (p != null) out.add(p);
       }
     }
-    e.visitChildren((Element child) => walk(child, g, c));
+    e.visitChildren((Element child) => walk(child, g, c, o));
   }
 
-  walk(start, TextGround.bg, false);
+  walk(start, TextGround.bg, false, false);
   return TextProbe(texts: out, hasGlow: glow != null, view: view);
 }
 
@@ -197,6 +211,7 @@ ProbedText? _probe(
   Offset glowOrigin,
   Rect screen,
   bool covered,
+  bool inOverlay,
 ) {
   final String plain = r.text.toPlainText(includePlaceholders: false);
   if (plain.trim().isEmpty) return null;
@@ -272,18 +287,29 @@ ProbedText? _probe(
     glowAlpha: alpha,
     onScreen: !covered && !clipped && rect.overlaps(screen),
     isIcon: _isIcon(plain),
+    inOverlay: inOverlay,
   );
 }
 
 /// Rechtecke aller Widgets mit einem Marker-Schlüssel `ValueKey<String>` mit
-/// dem Präfix [prefix] (z. B. `probe:`) in globalen Koordinaten.
-Map<String, Rect> probeKeyedRects({Element? root, required String prefix}) {
+/// dem Präfix [prefix] (z. B. `probe:`) in globalen Koordinaten. Mit
+/// [skipBuried] zählen Elemente nicht, deren Route von einer weiteren Route
+/// überdeckt wird (Home unter Sheet oder Dialog mit Scrim): ihre Nav und
+/// Button-Gruppe sind dort abgedunkelt und nicht bedienbar, also kein Overlay
+/// über dem Inhalt der oberen Route.
+Map<String, Rect> probeKeyedRects({
+  Element? root,
+  required String prefix,
+  bool skipBuried = false,
+}) {
   final Map<String, Rect> out = <String, Rect>{};
   final Element? start = root ?? WidgetsBinding.instance.rootElement;
   if (start == null) return out;
   void walk(Element e) {
     final Key? key = e.widget.key;
-    if (key is ValueKey<String> && key.value.startsWith(prefix)) {
+    if (key is ValueKey<String> &&
+        key.value.startsWith(prefix) &&
+        !(skipBuried && _isBuriedRoute(e))) {
       final RenderObject? r = e.renderObject;
       if (r is RenderBox && r.attached && r.hasSize) {
         out[key.value] = r.localToGlobal(Offset.zero) & r.size;
@@ -313,6 +339,8 @@ bool _isIcon(String text) {
 // bei Routenwechsel). Das ist hier bewusst hingenommen: Die Sonde läuft nur
 // in Tests und der Preview, und der Scope-Typ ist privat (`_ModalScopeStatus`),
 // ein Weg ohne Abhängigkeit existiert nicht öffentlich.
+bool isBuriedRoute(Element e) => _isBuriedRoute(e);
+
 bool _isBuriedRoute(Element e) {
   try {
     final ModalRoute<dynamic>? route = ModalRoute.of(e);

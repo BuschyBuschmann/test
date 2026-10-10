@@ -2,6 +2,7 @@ import 'package:curaone/app.dart';
 import 'package:curaone/data/manny_chat_source.dart';
 import 'package:curaone/state/app_controller.dart';
 import 'package:curaone/ui/path/path_source.dart';
+import 'package:curaone/ui/today/today_source.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,7 @@ Future<void> pumpCura(
   double keyboard = 0,
   MannyChatSource? chatSource,
   PathSource? pathSource,
+  TodaySource? todaySource,
   double textScale = 1,
   bool disableAnimations = false,
   bool accessibleNavigation = false,
@@ -38,6 +40,7 @@ Future<void> pumpCura(
       startup: startup,
       chatSource: chatSource ?? const ExampleMannyChatSource(),
       pathSource: pathSource ?? const ImmediatePathSource(),
+      todaySource: todaySource ?? const ImmediateTodaySource(),
       // Overrides wirken nur im `MaterialApp.builder` (Plan 8.1).
       previewWrapper:
           (textScale != 1 ||

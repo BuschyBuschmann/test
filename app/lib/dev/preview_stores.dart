@@ -8,6 +8,7 @@ import '../data/state_store.dart';
 import '../logic/app_state.dart';
 import '../logic/json_support.dart' show UnreadableDataException;
 import '../ui/path/path_source.dart';
+import '../ui/today/today_source.dart';
 
 /// Zustand im Arbeitsspeicher; `null` = nichts gespeichert (Erststart).
 class MemoryStateStore implements StateStore, DataEraser {
@@ -77,4 +78,22 @@ class FailingPathSource implements PathSource {
 
   @override
   Future<void>? prepare() => throw StateError('Szenario: Pfad nicht ladbar');
+}
+
+/// Heute-Quelle, die nie fertig wird: der Tab Heute bleibt im Ladezustand
+/// (`today-loading`, Brief 6.3).
+class PendingTodaySource implements TodaySource {
+  const PendingTodaySource();
+
+  @override
+  Future<void>? prepare() => Completer<void>().future;
+}
+
+/// Heute-Quelle, die scheitert: der Tab Heute zeigt den Fehlerzustand mit
+/// „Nochmal versuchen“ (`today-error`).
+class FailingTodaySource implements TodaySource {
+  const FailingTodaySource();
+
+  @override
+  Future<void>? prepare() => throw StateError('Szenario: Heute nicht ladbar');
 }

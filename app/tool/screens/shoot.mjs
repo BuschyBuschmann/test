@@ -151,8 +151,16 @@ async function runShot(worker, job) {
 
 async function measureContrast(png, dump, job) {
   const rows = [];
+  // Scrollender Inhalt, der unter einem festen Overlay (Nav, Button-Gruppe,
+  // Primärbutton-Reihe) liegt, ist dort verdeckt: Das Median-Verfahren würde die
+  // Farbe des Overlays als Untergrund lesen. Nur Texte des Overlays selbst
+  // und Texte ohne Überschneidung zählen.
+  const overlays = Object.values(dump.overlays ?? {});
+  const hidden = (t) =>
+    !t.inOverlay &&
+    overlays.some((o) => t.x < o.x + o.w && t.x + t.w > o.x && t.y < o.y + o.h && t.y + t.h > o.y);
   const texts = dump.texts.filter(
-    (t) => t.onScreen && t.glowAlpha > 0 && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
+    (t) => t.onScreen && !hidden(t) && t.glowAlpha > 0 && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
   );
   if (!texts.length) return rows;
   const requests = texts.map((t, i) => ({

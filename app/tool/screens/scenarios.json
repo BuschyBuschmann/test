@@ -57,6 +57,27 @@
     "path-cluster-bubble",
     "path-cluster-hint",
     "path-scrolled-bottom",
+    "today-loading",
+    "today-error",
+    "today-standard",
+    "today-friday",
+    "today-weekend",
+    "today-10",
+    "today-30",
+    "today-custom",
+    "today-empty",
+    "today-done",
+    "today-empty-done",
+    "today-cluster",
+    "today-done-cluster",
+    "today-wrap",
+    "today-snackbar-removed",
+    "today-snackbar-logged",
+    "today-snackbar-cluster",
+    "today-newday-snackbar",
+    "today-mode-sheet",
+    "today-custom-dialog",
+    "today-custom-dialog-keyboard",
     "chat-manny",
     "chat-manny-scale15",
     "messages",
@@ -65,7 +86,7 @@
     "example-chat-family",
     "example-chat-doctor"
   ],
-  "fixedScale": ["chat-manny-scale15", "messages-scale15", "path-header-wrap"],
+  "fixedScale": ["chat-manny-scale15", "messages-scale15", "path-header-wrap", "today-wrap"],
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
     "scenarios": [
@@ -74,6 +95,7 @@
       "cmp-nav-cluster",
       "ob1-name",
       "path-active",
+      "today-standard",
       "chat-manny",
       "messages"
     ]
@@ -83,7 +105,7 @@
       { "name": "568x320", "w": 568, "h": 320 },
       { "name": "844x390", "w": 844, "h": 390 }
     ],
-    "scenarios": ["cmp-forms", "cmp-nav-cluster", "path-active", "chat-manny", "messages"]
+    "scenarios": ["cmp-forms", "cmp-nav-cluster", "path-active", "today-standard", "chat-manny", "messages"]
   },
   "simulations": {
     "viewport": { "name": "390x844", "w": 390, "h": 844 },
@@ -97,6 +119,8 @@
         "ob3-acl",
         "path-active",
         "path-frozen",
+        "today-standard",
+        "today-friday",
         "messages"
       ]
     }

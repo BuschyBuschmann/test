@@ -116,6 +116,10 @@ void _dump(PreviewConfig config) {
   final Size size = view.physicalSize / view.devicePixelRatio;
   final TextProbe probe = probeTexts(view: size);
   final Map<String, Rect> keyed = probeKeyedRects(prefix: 'probe:');
+  final Map<String, Rect> overlays = probeKeyedRects(
+    prefix: 'overlay:',
+    skipBuried: true,
+  );
   _announce(
     'CURA_DUMP',
     jsonEncode(<String, Object?>{
@@ -129,6 +133,15 @@ void _dump(PreviewConfig config) {
       'texts': <Map<String, Object?>>[
         for (final ProbedText t in probe.texts) t.toJson(),
       ],
+      'overlays': <String, Object?>{
+        for (final MapEntry<String, Rect> e in overlays.entries)
+          e.key: <String, double>{
+            'x': e.value.left,
+            'y': e.value.top,
+            'w': e.value.width,
+            'h': e.value.height,
+          },
+      },
       'probes': <String, Object?>{
         for (final MapEntry<String, Rect> e in keyed.entries)
           e.key: <String, double>{

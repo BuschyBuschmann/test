@@ -2,7 +2,8 @@
 // Lesen“): `status-error`-Icon, Text und „Nochmal versuchen“. Der StartGate
 // zeigt sie, solange unklar ist, ob das Onboarding abgeschlossen war (A-6);
 // der Pfad-Screen (U3a) verwendet sie für `path-error` mit eigenem Text
-// (Erratum E-4: zwei getrennte Texte). `status-error` ist hier
+// (Erratum E-4: zwei getrennte Texte), der Tab Heute (U3b) für `today-error`
+// mit „Dein Programm konnte nicht geladen werden.“. `status-error` ist hier
 // Status, nie Handlungsfarbe: der Button ist ein gewöhnlicher Primärbutton.
 import 'package:flutter/material.dart';
 
@@ -24,7 +25,7 @@ class PathErrorView extends StatelessWidget {
   final VoidCallback onRetry;
 
   /// Text je Ort: `S.startLoadError` im StartGate, `S.pathLoadError` im
-  /// Pfad-Tab (Erratum E-4).
+  /// Pfad-Tab (Erratum E-4), `S.todayLoadError` im Tab Heute.
   final String message;
 
   @override
