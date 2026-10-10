@@ -13,6 +13,7 @@ Onboarding (4 Schritte), Pfad mit Manny und Streak, „Heute“, plus „Deine D
 |---|---|---|
 | Design-Brief v1 inkl. Errata E-1/E-2 | freigegeben | `docs/design/design-brief-v1.md` (Abschnitt 14 Errata) |
 | Brief-Ergänzung 1 (Rückgängig, Tageswechsel, Deine Daten, Pfad-Tipps) | freigegeben | `docs/design/design-brief-v1-ergaenzung-1.md` (UI-37–69) |
+| Brief-Ergänzung 3 (Ausblick Prävention & Gesundheitssport) | freigegeben | `docs/design/design-brief-v1-ergaenzung-3.md` (UI-90–99), Mockup `docs/design/mockups/pfad-ausblick-v1.png` |
 | Brief-Ergänzung 2 (Manny-Chat, Nachrichten) | freigegeben | `docs/design/design-brief-v1-ergaenzung-2.md` (UI-70–89), Mockups `docs/design/mockups/*-v4.png`, `manny-chat-v1.png`, `nachrichten*-v1.png` |
 | Vollständigkeits-Check (`/app-experience`) | gespeichert | `docs/produkt/curaone-vollstaendigkeit.md` |
 | **Flutter-Plan v1.3** | **freigegeben** | `docs/plan/flutter-plan-v1.md` (9 Pakete, Abschnitt 14; Nutzerentscheidungen Abschnitt 18) |
@@ -51,6 +52,7 @@ Onboarding (4 Schritte), Pfad mit Manny und Streak, „Heute“, plus „Deine D
 - Vorschläge für `KONVENTIONEN.md` (Nutzer fragen): Beispieltexte der Prüfumgebung in `lib/dev/preview_texts.dart`; `lib/dev`/`main_preview.dart` nie Teil von `main.dart`; neue Szenarien in `lib/dev/scenarios.dart` **und** `tool/screens/scenarios.json`.
 - Verträge für Folgepakete: `AppController.completeDeletion()` sofort nach Neuaufbau des Onboardings (U2b/U4); Screens setzen `PreviewKeys`-Marker; Store in die Löscher-Liste in `main` (U2b).
 - KI-Plan: Freigabe und Entscheidungen E-1–E-26 vor dem KI-Ausschnitt (blockierend u. a. Backend, Weg zur KI/EU-Region, Auth, Zugang Testphase, Limits).
+- **Phase „Prävention & Gesundheitssport“ nach Return to Sport** (Nutzerwunsch 2026-10-10): im ersten Ausschnitt nur gesperrter Ausblick über dem Boss (Brief-Ergänzung 3, UI-90–99, Paket U3c). Volle Phase später über `/product-strategist`; offen: Länge, Inhalte/Wahlmöglichkeiten, Streak-/Freeze-Regeln und Wochenrhythmus dort, Fachinhalte (Physio-Framework).
 - Direktnachrichten haben keine Spec (Platzhalter) → später `/product-strategist`.
 - Bekannte Blocker unverändert: Physio-Framework, Datenschutz-Konzept (Anwalt, inkl. MDR-Frage), Manny-Illustration.
 

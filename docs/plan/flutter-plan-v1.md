@@ -32,7 +32,7 @@ Kennzeichnung: **A-n** = Annahme (gilt bis zur Klärung), **F-n** = offene Frage
 | Backend | Nicht angebunden. Entscheidungsvorlage: **Supabase (EU-Region)** empfohlen, Firebase als Alternative (Abschnitt 11) |
 | Verifikation | `flutter analyze`, Unit-, Widget-, Golden-Tests, gestufte Matrix, statische Code-Regeln als Test, Web-Screenshots per Playwright/Chromium inkl. CDP-Farbsehschwäche-Simulation und Pixel-Kontrastmessung. Gerätekriterien explizit markiert |
 | Chat/Nachrichten | Nur sichtbar, ohne Funktion: Manny-Chat mit festem Beispielverlauf und deaktivierter Eingabeleiste, Nachrichten-Übersicht und Beispiel-Chats nur ansehbar; nichts gespeichert, nichts gesendet; Einstieg über Button-Gruppe (Pfad, Heute) und Manny auf dem Pfad |
-| Umsetzung | 9 Umsetzungspakete (sonnet), in dieser Reihenfolge: U1a, U1b, U2a (Bausteine), U2p (Prüf-Infrastruktur), U2b, U2c (Chat + Nachrichten), U3a (Pfad), U3b (Heute), U4; ein Schreiber (Abschnitt 14) |
+| Umsetzung | 10 Umsetzungspakete (sonnet), in dieser Reihenfolge: U1a, U1b, U2a (Bausteine), U2p (Prüf-Infrastruktur), U2b, U2c (Chat + Nachrichten), U3a (Pfad), U3b (Heute), U3c (Pfad-Ausblick, Ergänzung 3), U4; ein Schreiber (Abschnitt 14) |
 
 ---
 
@@ -373,7 +373,7 @@ Zeitzonenwechsel nach Osten (z. B. Reise) kann einen Kalendertag überspringen; 
 
 ### 7.2 Pfad-Generator (`path_generator.dart`, `path_model.dart`)
 
-**Beispielpfad (Platzhalter, Brief 6.2, A-10):** 12 Wochen, 3 Phasen à 4 Wochen. Je Woche: 3 Trainingstage (klein), 1 Wochenziel (mittel). Am Ende jeder Phase (Woche 4, 8, 12) eine große Unit „Phasen-Abschluss". Danach die Boss-Unit „Return to Sport" (Woche 12). Reihenfolge je Woche: Tag 1, Tag 2, Tag 3, Wochenziel, ggf. Phasen-Abschluss. Gesamt 52 Units. Gleich für alle Verletzungstypen (N-3), immer mit Label „Beispielpfad" – **auch für ACL** (UI-25; bewusste Abweichung vom Mockup, das kein Label zeigt). Konstante `kSamplePathIsPlaceholder = true`.
+**Beispielpfad (Platzhalter, Brief 6.2, A-10):** 12 Wochen, 3 Phasen à 4 Wochen. Je Woche: 3 Trainingstage (klein), 1 Wochenziel (mittel). Am Ende jeder Phase (Woche 4, 8, 12) eine große Unit „Phasen-Abschluss". Danach die Boss-Unit „Return to Sport" (Woche 12). Reihenfolge je Woche: Tag 1, Tag 2, Tag 3, Wochenziel, ggf. Phasen-Abschluss. Gesamt 52 Units; der Ausblick „Prävention & Gesundheitssport" (Ergänzung 3) ist **nicht** Teil dieser Liste, sondern ein reines Darstellungselement `PathOutlook` ohne ID, Status oder Einfluss auf Generator, Streak und Profil-Neuberechnung (Konstante `kPathOutlookShown = true`). Gleich für alle Verletzungstypen (N-3), immer mit Label „Beispielpfad" – **auch für ACL** (UI-25; bewusste Abweichung vom Mockup, das kein Label zeigt). Konstante `kSamplePathIsPlaceholder = true`.
 
 IDs stabil: `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`.
 
@@ -381,7 +381,7 @@ IDs stabil: `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`.
 
 **Status je Unit:**
 - erledigt ⇔ `unit.week < W` **oder** `unit.id ∈ completedUnitIds`.
-- aktuell = erste nicht erledigte Unit in Pfadreihenfolge, **außer Boss** (Boss bleibt immer gesperrt, Brief 13).
+- aktuell = erste nicht erledigte Unit in Pfadreihenfolge, **außer Boss** (Boss bleibt immer gesperrt, Brief 13; der Ausblick hat keinen Status und ist nie aktuell oder erledigt, Ergänzung 3).
 - sonst gesperrt.
 - Eintragen erledigt die aktuelle Unit (UI-30). Ist die laufende Woche fertig, rückt „aktuell" in die nächste Woche vor (A-11).
 - Keine aktuelle Unit mehr (alles bis vor Boss erledigt): Manny sitzt auf der letzten erledigten Unit, Eintragen zählt nur für den Streak (A-11).
@@ -395,16 +395,16 @@ IDs stabil: `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`.
 
 **Kopfzeile:** „Woche W", „Phase P · <Kurzname>"; Kurznamen (A-13, Vorschlag ui-designer): ACL „Kreuzband", Sprunggelenk „Sprunggelenk", Muskelfaserriss „Muskelfaser", Anderes „Reha".
 
-**NodeHint-Texte (Ergänzung 3.5):** gesperrt, Woche der Unit = W → „Kommt noch diese Woche"; sonst Trainingstag/Wochenziel „Kommt in Woche N", Phasen-Abschluss „Phasen-Abschluss kommt in Woche N", Boss „Return to Sport kommt in Woche 12". Erledigt: „Erledigt. Das hast du geschafft."
+**NodeHint-Texte (Ergänzung 3.5):** gesperrt, Woche der Unit = W → „Kommt noch diese Woche"; sonst Trainingstag/Wochenziel „Kommt in Woche N", Phasen-Abschluss „Phasen-Abschluss kommt in Woche N", Boss in Woche 12 „Dein Ziel: zurück in deinen Sport." (Nutzerentscheidung, wie im Code), sonst „Return to Sport kommt in Woche N". Ausblick (Ergänzung 3): „Nach Return to Sport geht es hier weiter. Die Details folgen noch." Erledigt: „Erledigt. Das hast du geschafft."
 
-**Screenreader-Labels:** „Woche 5, Trainingstag 3, aktuell. Öffnet Heute." · „Woche 7, Trainingstag 1, gesperrt." · „Woche 3, Trainingstag 2, erledigt." · Boss „Return to Sport, gesperrt." · analog „Woche 5, Wochenziel, gesperrt.", „Woche 8, Phasen-Abschluss, gesperrt." (A-14).
+**Screenreader-Labels:** „Woche 5, Trainingstag 3, aktuell. Öffnet Heute." · „Woche 7, Trainingstag 1, gesperrt." · „Woche 3, Trainingstag 2, erledigt." · Boss „Return to Sport, gesperrt." · Ausblick „Prävention und Gesundheitssport, gesperrt." (Aktivieren sagt den Hinweistext an; Schlüssel `outlookTitle`, `outlookSubtitle`, `outlookHint`, `outlookLabel`), analog „Woche 5, Wochenziel, gesperrt.", „Woche 8, Phasen-Abschluss, gesperrt." (A-14).
 
-**Unit-Tests:** Anzahl/Reihenfolge/IDs; W und Phase für Datum heute, vor 4/5/27/28/84/200 Tagen; Status bei W = 5; Eintragen setzt nächste Unit aktuell; Wochenende → nächste Woche; Endfall; Boss nie aktuell; Neuberechnung (siehe oben); Hinweistexte inkl. „noch diese Woche".
+**Unit-Tests:** Anzahl (weiter 52)/Reihenfolge/IDs, Ausblick nie `current`; W und Phase für Datum heute, vor 4/5/27/28/84/200 Tagen; Status bei W = 5; Eintragen setzt nächste Unit aktuell; Wochenende → nächste Woche; Endfall; Boss nie aktuell; Neuberechnung (siehe oben); Hinweistexte inkl. „noch diese Woche".
 
 ### 7.3 Pfad-Layout (`path_layout.dart`)
 Reine Funktion `layout(units, width, viewportHeight) → {placements: List<NodePlacement {center, diameter}>, totalHeight, padTop, padBottom}`. Vertikal von unten (Woche 1) nach oben (Boss), konstanter Abstand je Unit plus Durchmesser; x alternierend über eine Sinuskurve innerhalb `width − 2×16 dp` (Brief 7). Verbindungen als kubische Bézier-Strecken.
 
-**Polster (M4, B-7):** Oben und unten wird der Scrollinhalt so gepolstert, dass **jede** Unit, auch die erste (Woche 1, Tag 1) und die letzte (Boss), auf 55 % der Viewport-Höhe gescrollt werden kann: `padBottom = 0,45 × viewportHeight` (abzüglich des Platzes, den die erste Unit unten ohnehin hat), `padTop = 0,55 × viewportHeight` entsprechend. Damit begrenzt der Scrollbereich das initiale `jumpTo` nicht mehr. Zusätzlich gilt unten die Reserve für die Button-Gruppe (4.6, Ergänzung 2): `padBottom = max(Zentrier-Polster, Nav + 16 + 56 + 8 + 48 + 16 dp)` aus gemessenen Höhen. Initiales Scrollen und Neuberechnung nach Profiländerung (UI-55): Offset so, dass die aktuelle Unit (bzw. Manny-Unit) auf 55 % liegt; `jumpTo` (RM und Neuberechnung ohne Animation, Ergänzung 4).
+**Polster (M4, B-7):** Oben und unten wird der Scrollinhalt so gepolstert, dass **jede** Unit, auch die erste (Woche 1, Tag 1), die letzte (Boss) und der Ausblick `PathOutlook` (Ergänzung 3, oberstes Element, mittig, Höhe statt Durchmesser; `layout()` liefert dafür ein zusätzliches Placement, `padTop` bezieht sich auf ihn, Abstand Boss zu Ausblick ≥ 84 dp), auf 55 % der Viewport-Höhe gescrollt werden kann: `padBottom = 0,45 × viewportHeight` (abzüglich des Platzes, den die erste Unit unten ohnehin hat), `padTop = 0,55 × viewportHeight` entsprechend. Damit begrenzt der Scrollbereich das initiale `jumpTo` nicht mehr. Zusätzlich gilt unten die Reserve für die Button-Gruppe (4.6, Ergänzung 2): `padBottom = max(Zentrier-Polster, Nav + 16 + 56 + 8 + 48 + 16 dp)` aus gemessenen Höhen. Initiales Scrollen und Neuberechnung nach Profiländerung (UI-55): Offset so, dass die aktuelle Unit (bzw. Manny-Unit) auf 55 % liegt; `jumpTo` (RM und Neuberechnung ohne Animation, Ergänzung 4).
 
 Tests: x innerhalb der Grenzen inkl. Durchmesser; nicht alle x gleich (UI-20); y streng monoton; Durchmesser 48/60/72/92; bei 320 und 430 dp gültig; für erste, letzte und mittlere Unit existiert ein gültiger Offset, der sie auf 55 % setzt.
 
@@ -647,7 +647,7 @@ Tastatur-Szenarien (B-10, nur W/G): 320×568 mit `viewInsets.bottom = 300`: Prim
 
 ---
 
-## 13. Zuordnung UI-1 … UI-89
+## 13. Zuordnung UI-1 … UI-99
 
 „Prüfung": Kürzel aus 12.2. **[D-offen]** = auf echtem Gerät zu prüfen, hier nicht prüfbar.
 
@@ -768,9 +768,10 @@ Sequenziell, ein Schreiber. Jedes Paket endet mit grünen Befehlen aus 12.1 (sow
 | **U2c Chat + Nachrichten** | `CuraFullscreenRoute`, `ChatScreenScaffold`, `ChatHeader`, `ExampleNotice`, `ChatMessageList` (alle Enum-Werte, Ende-Folgen), `ChatComposer` (nur deaktiviert), `ChatFooterLayout`, `ContactRow`, `ChatBubble`; `MannyChatScreen`, `MessagesScreen`, `ExampleChatScreen`, `example_contacts.dart`; `ChatSourceScope`; Anbindung im `HomeShell`: `ActionCluster` (Modus `path`) über dem Pfad-Tab, Öffnen/Schließen inkl. `endUndoWindow()`, Fokusrückgabe, Sichtbarkeit unter Sheets, Tageswechsel bei offenem Chat (A-39); Szenarien `chat-*`, `messages*`, `example-chat-*` | UI-70, 71, 76–89 (soweit ohne fertige Pfad-/Heute-Screens prüfbar); Matrix + Screenshots für die neuen Szenarien | U2b |
 | **U3a Pfad** | `PathScreen`, `PathView`, `PathNode`, `PathHeader`, `StatPill`, `NodeHint` (alle nur hier), Layout mit Zentrier-Polster und Gruppen-Reserve, Scroll, Manny-Tipp, Anlässe über `MannyTextSource`, Feier/Puls, Unit-Tipps, Kollisionen und Rückfall (4.6); Szenarien `path*` | UI-18–25, 59–63, 74, 75; UI-24 neu; Matrix + Screenshots für `path*` | U2c |
 | **U3b Heute** | `TodayScreen`, `PrimaryActionRow`, `CategoryCard`, `CuraChip`, `TimeSegment`, `DashedAction`, `TrainingModeSheet`, `CustomExerciseDialog` (alle nur hier), Nachrichten-Button (`ActionCluster` Modus `today`, 8 dp über dem Manny-Button), Snackbar 12 dp über der Gruppe, Scroll-Reserve (UI-31 neu), Tageswechsel inkl. Eintrag über Mitternacht in der Reihenfolge aus 4.6; Szenarien `today*` | UI-26–31, 37–45, 71 (Umbruchszustand), 73; Matrix + Screenshots für `today*` | U3a |
-| **U4 Deine Daten + Abschluss** | `DataSheet`, `DeleteDialog`, `DiscardDialog` (Profil ändern, Verwerfen, Löschen inkl. Sperre/Fehler/Laden, Gruppe unter dem Scrim), restliche Szenarien in Matrix/Goldens/Screenshots, Kriterienbericht UI-1…UI-89 mit K-1, K-2 und [D-offen]-Prüfliste für den Nutzer | UI-46–58, 64–69, 82 (W-Teil), Rest von 70–89; vollständiger Bericht | U3b |
+| **U3c Pfad-Ausblick** (nach U3b, vor U4) | `PathOutlook` (Abschnittsmarke, Strichel-Rand, Schloss, Titel/Untertitel), Linienende im Pfad-Painter vom Boss zur Marke, `layout()`-Placement und `padTop` auf den Ausblick, NodeHint-Text, Screenreader-Label, Strings `outlook*`; Szenarien `path*` erweitert; Code-Kommentar „Platzhalter, volle Phase folgt mit eigener Spec" | UI-90–99; Matrix + Screenshots für `path*` | U3b |
+| **U4 Deine Daten + Abschluss** | `DataSheet`, `DeleteDialog`, `DiscardDialog` (Profil ändern, Verwerfen, Löschen inkl. Sperre/Fehler/Laden, Gruppe unter dem Scrim), restliche Szenarien in Matrix/Goldens/Screenshots, Kriterienbericht UI-1…UI-99 mit K-1, K-2 und [D-offen]-Prüfliste für den Nutzer | UI-46–58, 64–69, 82 (W-Teil), Rest von 70–89; vollständiger Bericht | U3c |
 
-**Reihenfolge (verbindlich):** U1a → U1b → U2a → U2p → U2b → U2c → U3a → U3b → U4. Jeder Baustein aus Abschnitt 9 ist genau **einem** Paket zugeordnet (Tabelle oben); Pakete nach U2p bringen ihre Szenarien in die Registry und lassen Matrix und Screenshot-Lauf für ihre Szenarien laufen. Zwischenstand-Rückmeldungen sind in jedem Paket zulässig, wenn sie als solche gekennzeichnet sind (kein `ERLEDIGT` vor Abschluss aller Paketkriterien).
+**Reihenfolge (verbindlich):** U1a → U1b → U2a → U2p → U2b → U2c → U3a → U3b → U3c → U4. Jeder Baustein aus Abschnitt 9 ist genau **einem** Paket zugeordnet (Tabelle oben); Pakete nach U2p bringen ihre Szenarien in die Registry und lassen Matrix und Screenshot-Lauf für ihre Szenarien laufen. Zwischenstand-Rückmeldungen sind in jedem Paket zulässig, wenn sie als solche gekennzeichnet sind (kein `ERLEDIGT` vor Abschluss aller Paketkriterien).
 
 Begründung der Schnitte (M5, v1.2/v1.3): U1a/U1b trennen Infrastruktur von Logik; die KS-Teile sind klein, rein Dart und gehören zur Logik (U1b). U2a liefert nur die geteilten Bausteine; die **Prüf-Infrastruktur ist ein eigenes Paket U2p** (Nutzerentscheidung v1.3), damit U2a klein bleibt und jedes folgende Paket seine Szenarien sofort prüft. Screen-spezifische Bausteine liegen bei ihrem Screen-Paket (U3a/U3b/U4), damit es keine Doppelzuordnung gibt. Die Chat-/Nachrichten-Bausteine und -Screens bilden ein **eigenes Paket U2c**, weil sie ein eigener Schreibbereich mit eigenen Szenarien sind und U2a/U2b sonst zu groß würden. **U3 wird geteilt** (U3a Pfad, U3b Heute): Mit Manny-Tipp, Button-Gruppe, Reserven und Kollisionsregeln wäre ein gemeinsames Paket für ein sonnet-Paket zu groß. Die Kopplung über Eintragen/Rückgängig/Feier liegt in der Logik (U1b) und ist in U3a über Szenario-Zustände prüfbar; U3b prüft den Ablauf Heute → Pfad am Ende. U4 enthält nur den Rest und den Bericht. Reviews: nach U1b (Logik inkl. KS), nach U2p (Bausteine und Prüf-Infrastruktur zusammen), nach U2c (Chat-Bausteine, Fokus, Speicherfreiheit), nach U4 (gesamt).
 
@@ -908,7 +909,7 @@ Geschlossen: F-20 (ui-designer: bestehende Tokens `heading` 18/24, `secondary` 1
 | R-9 | KS-9: bei künftig mehreren Löschern Teil-Löschstand möglich, wenn ein späterer Löscher fehlschlägt | im ersten Ausschnitt nur ein Löscher; im KI-Ausschnitt neu bewerten |
 | R-10 | `ChatMessageList` „Ende folgen“ ist im ersten Ausschnitt nur per Test-Widget geprüft (keine echten wachsenden Nachrichten) | im KI-Ausschnitt mit echtem Streaming erneut prüfen |
 
-Review-Schwerpunkte: nach U1b Streak/Pfad/Tageswechsel/Migration (Tabellen 6.2, 7.1, 7.5); nach U2a Token-Disziplin, Blur-Budget, Glow-Prüfung, Fokus/Semantik; nach U4 Löschen (Vollständigkeit, Sperren, Stapel), Rückgängig/Feier, Matrix- und Screenshot-Ergebnisse gegen UI-1 … UI-89; nach U2c Chat-Bausteine (Ende-Folgen, deaktivierte Leiste), Fokusrückgabe, Sichtbarkeit der Button-Gruppe, Speicherfreiheit (UI-82/83).
+Review-Schwerpunkte: nach U1b Streak/Pfad/Tageswechsel/Migration (Tabellen 6.2, 7.1, 7.5); nach U2a Token-Disziplin, Blur-Budget, Glow-Prüfung, Fokus/Semantik; nach U4 Löschen (Vollständigkeit, Sperren, Stapel), Rückgängig/Feier, Matrix- und Screenshot-Ergebnisse gegen UI-1 … UI-99 (UI-90–99: Ergänzung 3, Paket U3c); nach U2c Chat-Bausteine (Ende-Folgen, deaktivierte Leiste), Fokusrückgabe, Sichtbarkeit der Button-Gruppe, Speicherfreiheit (UI-82/83).
 
 ---
 

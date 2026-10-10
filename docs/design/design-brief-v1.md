@@ -201,7 +201,7 @@ Größen (Durchmesser): klein 48 dp (Trainingstag), mittel 60 dp (Wochenziel), g
 | Boss gesperrt | wie Gesperrt, Rand `accent` 55 %, Stern `accent-hi` |
 | Groß gesperrt | wie Gesperrt, Stern Weiß 50 % |
 
-Beschriftung unter großen und Boss-Units sowie mittleren (`caption`, `text-3`). Zukünftige Strecke: gepunktete Linie Weiß 22 %, 3 dp. Der Pfad ist geschwungen (Kurve durch alternierende Positionen links/rechts, keine gerade Linie), vertikal scrollend, Zukunft oben.
+Beschriftung unter großen und Boss-Units sowie mittleren (`caption`, `text-3`). Zukünftige Strecke: gepunktete Linie Weiß 22 %, 3 dp, vom Boss weiter bis zum Ausblick `PathOutlook` (Ergänzung 3, keine Unit, kein weiterer Durchmesser). Der Pfad ist geschwungen (Kurve durch alternierende Positionen links/rechts, keine gerade Linie), vertikal scrollend, Zukunft oben.
 
 ### 5.6 Manny-Platzhalter und Sprechblase (`MannyPlaceholder`, `MannyBubble`, neu)
 - **Manny:** Flutter-Formen (`CustomPainter`): Körper `#34425F` mit Rand Weiß 35 % (1 dp), Flügel, weißer Bauch `#F2F0EB`, zwei weiße Augen mit dunklen Pupillen, Schnabel und Füße in `accent-hi`. Drei Posen als Parameter (`neutral`, `motiviert`, `feiernd`), statisch. Höhe auf dem Pfad ca. 80 dp, im Onboarding 56–64 dp, in der Sprechblase nicht enthalten. Eine spätere Illustration ersetzt nur dieses Widget.
@@ -257,7 +257,7 @@ Folge für die Anzeige: Die Fortschrittsanzeige zeigt **"Schritt X von 4"**, nic
 
 Layout (von oben): Statusleiste, `PathHeader`, scrollender Pfad (Zukunft oben, Vergangenheit unten), `FloatingNav`. Platz unten rechts über der Nav (56 dp, 16 dp Abstand) und unten links bleibt **frei** für den späteren Manny-Chat-Button (Spec 7) bzw. Montags-Brief (Spec 5). Nichts wird dort gezeichnet.
 
-Inhalt: Pfad-Einheit ist die **Woche** (Spec 3). Je Woche mehrere kleine Units (Trainingstage), eine mittlere (Wochenziel); am Ende einer Phase eine große Unit (Phasen-Abschluss), am Ende des Pfads die Boss-Unit "Return to Sport". Manny sitzt auf der aktuellen Unit. Erledigte Units sind klar markiert (Haken).
+Inhalt: Pfad-Einheit ist die **Woche** (Spec 3). Je Woche mehrere kleine Units (Trainingstage), eine mittlere (Wochenziel); am Ende einer Phase eine große Unit (Phasen-Abschluss), am Ende des Pfads die Boss-Unit "Return to Sport", dahinter ein gesperrter Ausblick "Prävention & Gesundheitssport" (Ergänzung 3). Manny sitzt auf der aktuellen Unit. Erledigte Units sind klar markiert (Haken).
 
 **Platzhalterdaten (Annahme, keine medizinische Aussage):** Ein Generator liefert für ACL einen festen Beispielpfad, dessen Länge und Phasen **nur Demo-Werte** sind (z. B. 12 Wochen in 3 Phasen mit je 3 Trainingstagen und 1 Wochenziel pro Woche). Die aktuelle Woche ergibt sich aus dem Datum (Schritt 4). Die echten Werte kommen aus dem Physio-Framework (Blocker, extern). Bei Datum in der Zukunft, über das Pfadende oder bei anderem Verletzungstyp: derselbe Beispielpfad mit Hinweiszeile "Beispielpfad" in der Kopfzeile (kleines Label), damit nichts als echte Planung erscheint.
 
@@ -309,7 +309,7 @@ Verhalten:
 - **Reduzierte Bewegung:** siehe 3.6.
 - **Fokus und Tastatur/Switch:** Sichtbarer `focus-ring`. Reihenfolge entspricht der visuellen Reihenfolge von oben nach unten und links nach rechts. Primärbutton ist über die Tastatur erreichbar. Sprechblase hat Schließen-Aktion, Escape/Zurück schließt sie.
 - **Screenreader (TalkBack/VoiceOver), Beispiele für Labels:**
-  - Pfad-Unit: "Woche 5, Trainingstag 3, aktuell" / "… erledigt" / "… gesperrt". Boss: "Return to Sport, gesperrt". Die Pfadlinie ist ausgeblendet.
+  - Pfad-Unit: "Woche 5, Trainingstag 3, aktuell" / "… erledigt" / "… gesperrt". Boss: "Return to Sport, gesperrt". Ausblick: "Prävention und Gesundheitssport, gesperrt." (Ergänzung 3). Die Pfadlinie ist ausgeblendet.
   - Streak: "Streak: 12 Tage" und "Streak-Freezes: 2". Eingefroren: "Streak: 12 Tage, eingefroren".
   - Manny-Blase: Text wird vorgelesen, Schließen-Button "Nachricht schließen". Manny-Bild: "Manny, dein Begleiter" (nicht doppelt zur Blase).
   - Auswahlkarte: "Kreuzbandriss (ACL), Auswahl, nicht ausgewählt/ausgewählt".
@@ -416,7 +416,7 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 
 ## 13. Nicht enthalten
 
-Kalender-Ansicht, Vor-/Nachbereitung, Tap-Abfrage, Modi Passiv/Aktiv, Push-Benachrichtigungen, Symptom-Check und Triage-Ansicht (Spec 4; nur Tokens und Regeln), Fortschritts-Ansicht (Spec 5), Return-to-Sport-Phase (Spec 6) bis auf die Boss-Unit als gesperrtes Element, Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8), Dokument-Upload, Team/Google Places, heller Modus, Manny-Illustration und -Animationen, Physio-Framework, echte KI-Texte.
+Kalender-Ansicht, Vor-/Nachbereitung, Tap-Abfrage, Modi Passiv/Aktiv, Push-Benachrichtigungen, Symptom-Check und Triage-Ansicht (Spec 4; nur Tokens und Regeln), Fortschritts-Ansicht (Spec 5), Return-to-Sport-Phase (Spec 6) bis auf die Boss-Unit als gesperrtes Element und den gesperrten Ausblick Prävention & Gesundheitssport (Ergänzung 3; die volle Phase folgt mit eigener Spec), Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8), Dokument-Upload, Team/Google Places, heller Modus, Manny-Illustration und -Animationen, Physio-Framework, echte KI-Texte.
 
 ---
 
