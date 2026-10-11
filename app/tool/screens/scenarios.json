@@ -80,6 +80,15 @@
     "today-mode-sheet",
     "today-custom-dialog",
     "today-custom-dialog-keyboard",
+    "data-sheet",
+    "path-sheet-open",
+    "data-sheet-other",
+    "data-sheet-dirty",
+    "data-discard-dialog",
+    "data-delete-dialog",
+    "data-delete-busy",
+    "data-delete-error",
+    "data-sheet-keyboard",
     "chat-manny",
     "chat-manny-scale15",
     "messages",
@@ -99,7 +108,8 @@
       "path-active",
       "today-standard",
       "chat-manny",
-      "messages"
+      "messages",
+      "data-sheet"
     ]
   },
   "landscape": {

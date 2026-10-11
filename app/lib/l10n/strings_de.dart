@@ -143,6 +143,47 @@ abstract final class S {
   static const String dataSheetOpen = 'Deine Daten';
 
   // -------------------------------------------------------------------------
+  // Deine Daten (Ergänzung 1, 3.2; U4)
+  // -------------------------------------------------------------------------
+  /// Titel und Routenname des Sheets.
+  static const String dataSheetTitle = 'Deine Daten';
+  static const String dataSheetSubtitle =
+      'Alles bleibt auf diesem Gerät. Hier kannst du es ändern oder löschen.';
+  static const String dataProfileLabel = 'Dein Profil';
+  static const String dataInjuryLabel = 'Verletzung';
+  static const String dataDateLabel = 'Verletzung oder OP';
+  static const String dataRecomputeNote =
+      'Ändern sich Verletzung oder Datum, werden Woche, Phase und Pfad neu '
+      'berechnet. Dein Streak bleibt.';
+  static const String dataDeleteLabel = 'Daten löschen';
+  static const String dataDeleteText =
+      'Löscht alles auf diesem Gerät und nimmt deine Einwilligung zurück. '
+      'Danach startest du neu.';
+  static const String dataDeleteButton = 'Alle Daten löschen und neu starten';
+  static const String dataSave = 'Speichern';
+
+  /// Ansagen nach dem Speichern (kein Snackbar auf dem Pfad, K2).
+  static const String dataSaved = 'Gespeichert.';
+  static const String dataSavedRecomputed = 'Gespeichert. Pfad neu berechnet.';
+
+  /// Dialog „Änderungen verwerfen?“.
+  static const String discardTitle = 'Änderungen verwerfen?';
+  static const String discardText =
+      'Du hast Änderungen noch nicht gespeichert.';
+  static const String discardKeep = 'Weiter bearbeiten';
+  static const String discardConfirm = 'Verwerfen';
+
+  /// Dialog „Alles löschen?“.
+  static const String deleteTitle = 'Alles löschen?';
+  static const String deleteText =
+      'Name, Verletzung, Pfad, Streak und deine Einwilligung werden von '
+      'diesem Gerät gelöscht. Das lässt sich nicht rückgängig machen. Danach '
+      'startest du wieder bei Schritt 1.';
+  static const String deleteConfirm = 'Ja, alles löschen';
+  static const String deleteError =
+      'Das Löschen hat nicht geklappt. Versuch es nochmal.';
+
+  // -------------------------------------------------------------------------
   // Heute (Plan 7.4, 7.5)
   // -------------------------------------------------------------------------
   static const String exercisesHeadingEmpty = 'Übungen';

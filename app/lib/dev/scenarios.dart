@@ -89,6 +89,11 @@ enum PathSeedMode { ready, loading, error }
 /// `today-error`); sonst sofort bereit.
 enum TodaySeedMode { ready, loading, error }
 
+/// Wie sich „Alles löschen“ eines App-Szenarios verhält: gewöhnlich, langsam
+/// (der Vorgang endet nie: `data-delete-busy`) oder mit Fehler
+/// (`data-delete-error`).
+enum DeleteSeedMode { normal, slow, failing }
+
 /// Zustand einer **App-Szenarios** (Plan 12.4: `ob*`, `shell-*`): die echte
 /// App (`CuraApp` mit StartGate, Routen und Speicher) startet mit diesem
 /// Speicher. So laufen Matrix und Screenshots durch denselben Code wie die
@@ -106,7 +111,11 @@ class AppSeed {
     this.todayMode = TodaySeedMode.ready,
     this.scrollPathToEnd = false,
     this.daysAfterTaps = 0,
+    this.deleteMode = DeleteSeedMode.normal,
   });
+
+  /// Verhalten des Löschens (Löschdialog-Szenarien).
+  final DeleteSeedMode deleteMode;
 
   /// Ladezustand des Tabs Heute.
   final TodaySeedMode todayMode;
@@ -1217,6 +1226,72 @@ AppSeed _todayNewDaySnackbar(ScenarioEnv env) => AppSeed(
   daysAfterTaps: 1,
 );
 
+// ---------------------------------------------------------------------------
+// App-Szenarien (U4): Deine Daten, Verwerfen, Löschen
+// ---------------------------------------------------------------------------
+// Sie öffnen das Sheet über den echten Weg (Icon „Deine Daten“ in der
+// Pfad-Kopfzeile) und weiter über Tipps auf die echten Bausteine.
+
+const List<String> _openData = <String>[S.dataSheetOpen];
+
+/// Ein anderer Typ als der gespeicherte (ACL) ist gewählt: Entwurf geändert.
+final String _otherTypeCard = S.choiceLabel(S.injuryMuscle, false);
+
+AppSeed _dataSheet(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), taps: _openData);
+
+/// Gruppe unter dem Scrim: Pfad im aktiven Zustand mit offenem Sheet.
+AppSeed _pathSheetOpen(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  taps: _openData,
+);
+
+/// „Anderes“ mit gespeichertem Freitext (Feld „Was ist passiert?“).
+AppSeed _dataSheetOther(ScenarioEnv env) => AppSeed(
+  state: _completedState(env).copyWith(
+    onboarding: _completedState(env).onboarding.copyWith(
+      injuryType: InjuryType.other,
+      injuryOther: PreviewTexts.injuryOtherValue,
+    ),
+  ),
+  taps: _openData,
+);
+
+/// Entwurf geändert: „Speichern“ ist aktiv.
+AppSeed _dataSheetDirty(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[...(_openData), _otherTypeCard],
+);
+
+/// Geändert, dann Schließen: „Änderungen verwerfen?“.
+AppSeed _dataDiscardDialog(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, _otherTypeCard, S.close],
+);
+
+AppSeed _dataDeleteDialog(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, S.dataDeleteButton],
+);
+
+/// Löschen läuft (der Speicher antwortet nie): nach 300 ms Fortschrittskreis.
+AppSeed _dataDeleteBusy(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, S.dataDeleteButton, S.deleteConfirm],
+  deleteMode: DeleteSeedMode.slow,
+);
+
+/// Löschen schlägt fehl: Fehlerhinweis und „Nochmal versuchen“.
+AppSeed _dataDeleteError(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, S.dataDeleteButton, S.deleteConfirm],
+  deleteMode: DeleteSeedMode.failing,
+);
+
+/// Tastatur im Sheet: das Namensfeld hat den Fokus.
+AppSeed _dataSheetKeyboard(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), taps: _openData, focusField: true);
+
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
 final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
@@ -1403,6 +1478,28 @@ final List<Scenario> kScenarios = <Scenario>[
     id: 'today-custom-dialog-keyboard',
     app: _todayCustomDialogKeyboard,
     keyboard: true,
+  ),
+  // Deine Daten (U4): Sheet über dem Pfad (Nav und Button-Gruppe liegen unter
+  // dem Scrim). Der Primärbutton des Sheets ist „Speichern“. Die Dialoge haben
+  // keinen markierten Primärbutton.
+  Scenario(
+    id: 'data-sheet',
+    app: _dataSheet,
+    expectsPrimary: true,
+    tablet: true,
+  ),
+  Scenario(id: 'path-sheet-open', app: _pathSheetOpen, expectsPrimary: true),
+  Scenario(id: 'data-sheet-other', app: _dataSheetOther, expectsPrimary: true),
+  Scenario(id: 'data-sheet-dirty', app: _dataSheetDirty, expectsPrimary: true),
+  Scenario(id: 'data-discard-dialog', app: _dataDiscardDialog),
+  Scenario(id: 'data-delete-dialog', app: _dataDeleteDialog),
+  Scenario(id: 'data-delete-busy', app: _dataDeleteBusy, loops: true),
+  Scenario(id: 'data-delete-error', app: _dataDeleteError),
+  Scenario(
+    id: 'data-sheet-keyboard',
+    app: _dataSheetKeyboard,
+    keyboard: true,
+    expectsPrimary: true,
   ),
   Scenario(
     id: 'chat-manny',

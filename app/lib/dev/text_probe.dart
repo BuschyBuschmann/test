@@ -174,8 +174,11 @@ TextProbe probeTexts({Element? root, required Size view}) {
       // `accent`); gesperrte sind Glas (Brief 5.5).
       g = w.status == UnitStatus.locked ? TextGround.glass : TextGround.opaque;
     } else if (w is CuraSheetFrame) {
-      // Sheet: E2 (`surface-float` mit Blur), streng wie Glas (A-35).
-      g = TextGround.glass;
+      // Sheet: E2 (`surface-float` mit Blur), streng wie Glas (A-35). Im
+      // kompakten Zustand (wenig Platz über der Tastatur) ist die Fläche opak.
+      final bool compact =
+          e.getInheritedWidgetOfExactType<CuraSheetScope>()?.compact ?? false;
+      g = compact ? TextGround.opaque : TextGround.glass;
     }
     // Weitere Flächentypen ordnen die Pakete, die sie einführen, mit einer
     // `is`-Prüfung ein (nie über `runtimeType`: Release-Builds minifizieren

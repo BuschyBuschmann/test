@@ -26,11 +26,27 @@ Future<void> _tapEveryTarget(
   List<Finding> out,
   bool allowProgress,
 ) async {
-  final List<TapTarget> targets = tapTargets(tester)
-      .where((TapTarget t) => !t.isTextField && !t.hidden)
-      .toList();
   final Rect view = Offset.zero & viewSize(tester);
-  for (final TapTarget t in targets) {
+  List<TapTarget> current() =>
+      tapTargets(tester)
+          .where((TapTarget t) => !t.isTextField && !t.hidden)
+          .toList();
+  // Die Ziele werden vor **jedem** Tipp neu gelesen: Ein Tipp kann das Layout
+  // ändern (die Karte „Anderes“ blendet ein Textfeld ein und schiebt alles
+  // darunter weiter), und ein veraltetes Rechteck träfe dann ein anderes Ziel.
+  // Gemerkt wird nur die Reihenfolge der Beschriftungen (mehrfach vorkommende
+  // Beschriftungen zählen der Reihe nach).
+  final List<String> labels = <String>[
+    for (final TapTarget t in current()) t.label,
+  ];
+  final Map<String, int> seen = <String, int>{};
+  for (final String label in labels) {
+    final int nth = seen.update(label, (int n) => n + 1, ifAbsent: () => 0);
+    final List<TapTarget> now = current()
+        .where((TapTarget t) => t.label == label)
+        .toList();
+    if (now.length <= nth) continue;
+    final TapTarget t = now[nth];
     if (!view.contains(t.rect.center)) continue;
     await tester.tapAt(t.rect.center);
     await _pastReducedLimit(tester);

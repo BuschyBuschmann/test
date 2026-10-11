@@ -245,6 +245,18 @@ abstract final class CuraSize {
   static const double nodeHintMaxWidth = 240;
   static const double nodeHintArrow = 8;
   static const double sheetMaxHeightFraction = 0.90;
+
+  /// Abstand zwischen Bildschirmoberkante und Sheet-Oberkante (Mindestwert):
+  /// Der Titel steht dann unterhalb des stärksten Lichtflecks (Text auf Glas
+  /// höchstens 16 % Glow, Errata E-1). Auf hohen Bildschirmen ohne Tastatur ist
+  /// die 90-%-Grenze ohnehin knapper.
+  static const double sheetTopClearance = 64;
+
+  /// Verfügbare Höhe (Bildschirm abzüglich Tastatur) unter der das Sheet den
+  /// ganzen Platz nimmt und sein Kopf mit dem Inhalt scrollt (kleines Gerät mit
+  /// Tastatur, Querformat; gleiche Schwelle wie Onboarding und Chat). Der
+  /// Fuß mit der Hauptaktion bleibt fest.
+  static const double sheetCompactAvailHeight = 440;
   // Wischgeste des Sheets (A-36): Schließen ab 30 % der Höhe oder bei einem
   // Fling über 700 dp/s nach unten.
   static const double sheetCloseFraction = 0.30;

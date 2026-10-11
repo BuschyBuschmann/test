@@ -39,6 +39,10 @@ class CuraMotion {
   static const Duration fastDuration = MotionTokens.fast;
   static const Duration baseDuration = MotionTokens.base;
   static const Duration slowDuration = MotionTokens.slow;
+
+  /// Ein laufender Vorgang zeigt seinen Fortschrittskreis erst nach dieser
+  /// Zeit (Erratum E-3, UI-52).
+  static const Duration busyDelay = MotionTokens.busyDelay;
   static const Curve easing = MotionTokens.curve;
 
   /// Bewegung reduzieren ist aktiv.

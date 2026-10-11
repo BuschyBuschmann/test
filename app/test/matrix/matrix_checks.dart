@@ -236,11 +236,15 @@ List<Rect> _renderTapRects(WidgetTester tester) {
       if (r is RenderSemanticsGestureHandler) tap = r.onTap != null;
       // Nur Ziele in Scrollbereichen: Index-Zellen gibt es nur dort, und feste
       // Overlays dürfen nicht in die Zelle darunter hineingerechnet werden.
+      // Nicht die Ziele einer überdeckten Route (Pfad unter dem Sheet „Deine
+      // Daten“): sie liegen unter dem Scrim und gehören nicht zu den Zellen der
+      // oberen Route, auch wenn ihr Rechteck zufällig darin liegt.
       if (tap &&
           r is RenderBox &&
           r.attached &&
           r.hasSize &&
-          RenderAbstractViewport.maybeOf(r) != null) {
+          RenderAbstractViewport.maybeOf(r) != null &&
+          !isBuriedRoute(e)) {
         final Rect g = r.localToGlobal(Offset.zero) & r.size;
         out.add(
           Rect.fromLTRB(
@@ -348,7 +352,11 @@ Map<String, Rect> overlayRects() {
   return out;
 }
 
-Rect? headerRect() => probeKeyedRects(prefix: 'header')['header'];
+/// Fester Kopf der **obersten** Route: der Kopf einer überdeckten Route (Pfad
+/// unter dem Sheet „Deine Daten“) liegt unter dem Scrim und begrenzt den
+/// Inhalt der oberen Route nicht.
+Rect? headerRect() =>
+    probeKeyedRects(prefix: 'header', skipBuried: true)['header'];
 
 /// Ergebnis von [scanAll] für **einen** Scrollbereich: Tap-Ziele in
 /// **Inhaltskoordinaten** (Scrollstand 0), über den ganzen Scrollweg

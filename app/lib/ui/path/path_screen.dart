@@ -82,6 +82,7 @@ typedef _Anchor = (
   double h,
   double scale,
   double headerH,
+  int profileKey,
 );
 
 class _PathScreenState extends State<PathScreen> {
@@ -175,6 +176,10 @@ class _PathScreenState extends State<PathScreen> {
     if (widget.load != PathLoadState.ready) return;
     final HomeShellState shell = HomeShellScope.of(context);
     if (shell.activeTab != HomeTab.path) return;
+    // Liegt eine Route über Home (Sheet „Deine Daten“, Chat, Nachrichten),
+    // erscheint keine Blase darunter: sie zählte sonst unbemerkt als gezeigt
+    // und stünde unter dem Scrim im Blur-Budget (UI-47).
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     // Läuft die Kopfzeile in der Scrollfläche mit, erst nach ihrer Messung und
     // der folgenden Mittenlage platzieren (sonst stünde die Blase falsch).
     final bool scrollsAlong =
@@ -568,6 +573,7 @@ class _PathScreenState extends State<PathScreen> {
         phaseLine: phaseLine(progress.phase, state.onboarding.injuryType),
         streak: streak,
         onOpenData: shell.openDataSheet,
+        dataFocusNode: shell.dataButtonFocus,
       ),
     );
     if (!headerScrolls && _headerH != 0) _headerH = 0;
@@ -687,6 +693,12 @@ class _PathScreenState extends State<PathScreen> {
           viewport.height,
           textScale,
           _headerH,
+          // Neuberechnung nach „Deine Daten“ (Typ oder Datum): auch bei gleicher
+          // Unit und Woche wieder auf die aktuelle Unit zentrieren (UI-55).
+          Object.hash(
+            _controller.state.onboarding.injuryType,
+            _controller.state.onboarding.injuryDate,
+          ),
         );
         final double target =
             (layout.scrollOffsetFor(progress.mannyIndex) + _headerH).clamp(

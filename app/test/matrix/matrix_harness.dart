@@ -56,11 +56,16 @@ Future<void> pumpScenario(
 }
 
 /// Einschwingen: `pumpAndSettle` (Theme-Übergang 200 ms nach einem HC-Wechsel
-/// eingeschlossen), bei Dauer-Animation nur eine feste Zeit.
+/// eingeschlossen), bei Dauer-Animation eine feste Zeit in vielen kleinen
+/// Frames: Das Skript eines App-Szenarios (Tipps auf echte Bausteine, z. B.
+/// `data-delete-busy`) braucht je Schritt einen Frame, und der Fortschrittskreis
+/// erscheint erst nach 300 ms.
 Future<void> settle(WidgetTester tester, Scenario scenario) async {
   if (scenario.loops) {
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    for (int i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
   } else {
     await tester.pumpAndSettle();
   }

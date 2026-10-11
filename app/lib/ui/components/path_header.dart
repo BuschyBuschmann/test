@@ -32,6 +32,7 @@ class PathHeader extends StatelessWidget {
     required this.phaseLine,
     required this.streak,
     required this.onOpenData,
+    this.dataFocusNode,
   });
 
   final int week;
@@ -40,8 +41,11 @@ class PathHeader extends StatelessWidget {
   final String phaseLine;
   final StreakView streak;
 
-  /// Einstieg „Deine Daten“ (das Sheet liefert U4).
+  /// Einstieg „Deine Daten“ (öffnet das Sheet).
   final VoidCallback onOpenData;
+
+  /// Fokusknoten des Icons: Rückgabe des Fokus nach dem Schließen des Sheets.
+  final FocusNode? dataFocusNode;
 
   Widget _textBlock(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
@@ -106,6 +110,7 @@ class PathHeader extends StatelessWidget {
     final Widget data = HeaderIconButton(
       icon: Icons.person_outline_rounded,
       tooltip: S.dataSheetOpen,
+      focusNode: dataFocusNode,
       onPressed: onOpenData,
     );
     return Padding(

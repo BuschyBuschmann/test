@@ -8,7 +8,11 @@
 // einer gesperrten Unit (Escape, Zurück, 5 s); Heute-Abläufe (U3b, Abschnitt 7):
 // Training eintragen → Rückgängig, Heute → Pfad zeigt die Feier erst danach,
 // Entfernen → Rückgängig, Eigene Übung, Tageswechsel über Mitternacht bei offenem
-// Trainings-Sheet (Eintrag zählt für den Vortag).
+// Trainings-Sheet (Eintrag zählt für den Vortag); Deine Daten (U4, Abschnitt 8):
+// Profil ändern und Speichern (Name auf Heute, bleibt nach Reload), Verwerfen
+// (Schließen, Browser-Zurück, Weiter bearbeiten, Verwerfen), Löschen →
+// Onboarding Schritt 1 (Zurück erreicht den Pfad nicht, Reload bleibt bei
+// Schritt 1, localStorage ist leer).
 //
 //   export PATH=/opt/flutter/bin:$PATH
 //   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
@@ -74,7 +78,10 @@ async function gone(page, text, timeout = 4000) {
 const button = (page, name) =>
   page
     .locator('flt-semantics[role="button"]', {
-      hasText: name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' ? new RegExp(`^${name}$`) : name,
+      hasText:
+        name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' || name === 'Schließen'
+          ? new RegExp(`^${name}$`)
+          : name,
     })
     .first();
 async function click(page, name) {
@@ -497,6 +504,111 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
   await shot(page, 'heute-mitternacht');
   await click(page, 'Pfad');
   check('Über Mitternacht: der Eintrag zählte für den Vortag (Streak 13), keine Feier', (await seen(page, 'Streak: 13 Tage')) && (await page.getByText('Stark, Jakob', { exact: false }).count()) === 0);
+  await ctx.close();
+}
+
+// 8. Deine Daten (U4): Profil ändern, Verwerfen, Löschen ----------------------------
+async function openPfadMitDaten(now = '2026-10-07T12:00:00+02:00') {
+  const ctx = await browser.newContext(ctxOptions);
+  await ctx.addInitScript((doc) => {
+    // Nur beim ersten Laden seeden: ein Reload soll den gespeicherten Stand zeigen.
+    if (!sessionStorage.getItem('seeded')) {
+      localStorage.setItem('curaone.state.v1', JSON.stringify(doc));
+      sessionStorage.setItem('seeded', '1');
+    }
+  }, HEUTE_DOC);
+  const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now });
+  await seen(s.page, 'Woche 5');
+  return { ctx, page: s.page };
+}
+const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
+
+// 8a. Name ändern und speichern; Heute zeigt ihn; Reload behält ihn
+{
+  const { ctx, page } = await openPfadMitDaten();
+  check('Deine Daten: Icon in der Pfad-Kopfzeile', (await button(page, 'Deine Daten').count()) > 0);
+  await click(page, 'Deine Daten');
+  check(
+    'Deine Daten: Sheet mit Titel, Untertitel, vorbefüllten Karten und Datum',
+    (await seen(page, 'Alles bleibt auf diesem Gerät')) &&
+      (await seen(page, 'Kreuzbandriss (ACL), Auswahl, ausgewählt')) &&
+      (await seen(page, '7. September 2026')),
+  );
+  check(
+    'Deine Daten: Button-Gruppe und Nav sind aus der Semantik (unter dem Scrim)',
+    (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0,
+  );
+  await shot(page, 'daten-sheet');
+  const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
+  await field.click({ force: true });
+  // Ctrl+A markiert im Flutter-Web-Feld nicht zuverlässig: ans Ende, alles löschen.
+  await page.keyboard.press('End');
+  for (let i = 0; i < 12; i++) await page.keyboard.press('Backspace');
+  await page.keyboard.type('Mia', { delay: 40 });
+  await page.waitForTimeout(500);
+  await shot(page, 'daten-sheet-geaendert');
+  await click(page, 'Speichern');
+  check('Speichern: Sheet zu, Pfad sichtbar', await gone(page, 'Alles bleibt auf diesem Gerät'));
+  await click(page, 'Heute');
+  check('Speichern: Heute zeigt den neuen Namen', await seen(page, 'Heute, Mia'));
+  await page.reload();
+  await seen(page, 'Woche 5');
+  await click(page, 'Heute');
+  check('Reload: der neue Name bleibt gespeichert (UI-43)', await seen(page, 'Heute, Mia'));
+  await ctx.close();
+}
+
+// 8b. Verwerfen: Schließen, Browser-Zurück, Weiter bearbeiten, Verwerfen
+{
+  const { ctx, page } = await openPfadMitDaten();
+  await click(page, 'Deine Daten');
+  await seen(page, 'Alles bleibt auf diesem Gerät');
+  await click(page, 'Muskelfaserriss, Auswahl, nicht ausgewählt');
+  await click(page, 'Schließen');
+  check('Änderung + Schließen: „Änderungen verwerfen?“ mit beiden Buttons', (await seen(page, 'Änderungen verwerfen?')) && (await seen(page, 'Du hast Änderungen noch nicht gespeichert.')));
+  await shot(page, 'daten-verwerfen');
+  await click(page, 'Weiter bearbeiten');
+  check('Weiter bearbeiten: Dialog zu, Sheet und Änderung bleiben', (await gone(page, 'Änderungen verwerfen?')) && (await seen(page, 'Muskelfaserriss, Auswahl, ausgewählt')));
+  await page.goBack();
+  await page.waitForTimeout(500);
+  check('Browser-Zurück (Android-Zurück) öffnet „Änderungen verwerfen?“, schließt das Sheet nicht', await seen(page, 'Änderungen verwerfen?'));
+  await click(page, 'Verwerfen');
+  check('Verwerfen: Sheet zu', (await gone(page, 'Änderungen verwerfen?')) && (await gone(page, 'Alles bleibt auf diesem Gerät')));
+  await click(page, 'Deine Daten');
+  check('Verwerfen speichert nichts: wieder der gespeicherte Typ', await seen(page, 'Kreuzbandriss (ACL), Auswahl, ausgewählt'));
+  await ctx.close();
+}
+
+// 8c. Löschen → Onboarding Schritt 1
+{
+  const { ctx, page } = await openPfadMitDaten();
+  check('Vorher: Zustand im localStorage', (await storageKeys(page)).some((k) => k.includes('curaone.state.v1')));
+  await click(page, 'Deine Daten');
+  await seen(page, 'Alles bleibt auf diesem Gerät');
+  await click(page, 'Alle Daten löschen und neu starten');
+  check('Löschen: Dialog „Alles löschen?“ mit „Abbrechen“ und „Ja, alles löschen“', (await seen(page, 'Alles löschen?')) && (await seen(page, 'Abbrechen')) && (await seen(page, 'Ja, alles löschen')));
+  await shot(page, 'daten-loeschen-dialog');
+  await click(page, 'Abbrechen');
+  check('Abbrechen: Dialog zu, Sheet bleibt, Daten unverändert', (await gone(page, 'Alles löschen?')) && (await storageKeys(page)).some((k) => k.includes('curaone.state.v1')));
+  await click(page, 'Alle Daten löschen und neu starten');
+  await seen(page, 'Alles löschen?');
+  await click(page, 'Ja, alles löschen');
+  check('Ja, alles löschen: Onboarding Schritt 1 mit Hinweis „Alle Daten sind gelöscht.“', (await seen(page, 'Schritt 1 von 4')) && (await seen(page, 'Alle Daten sind gelöscht.')));
+  await shot(page, 'daten-geloescht');
+  check('Nach dem Löschen: kein Schlüssel des Zustands im localStorage (UI-51)', !(await storageKeys(page)).some((k) => k.includes('curaone.state.v1')));
+  await page.reload();
+  check('Reload nach dem Löschen: weiter Schritt 1', await seen(page, 'Schritt 1 von 4'));
+  // Browser-Zurück auf Schritt 1 verlässt im Web die Seite (wie `SystemNavigator.pop`,
+  // siehe Abschnitt 1); der Pfad und das Sheet sind nicht erreichbar.
+  const urlBefore = page.url();
+  await page.goBack();
+  await page.waitForTimeout(800);
+  const stayed = page.url() === urlBefore;
+  check(
+    'Browser-Zurück erreicht Pfad und Sheet nicht',
+    !stayed || ((await seen(page, 'Schritt 1 von 4', 1500)) && (await button(page, 'Deine Daten').count()) === 0),
+    stayed ? 'bleibt bei Schritt 1' : 'verlässt die Seite wie die App-Schließen-Taste',
+  );
   await ctx.close();
 }
 

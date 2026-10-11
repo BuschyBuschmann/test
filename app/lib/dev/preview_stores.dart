@@ -97,3 +97,23 @@ class FailingTodaySource implements TodaySource {
   @override
   Future<void>? prepare() => throw StateError('Szenario: Heute nicht ladbar');
 }
+
+/// Das Löschen schlägt fehl (Plattformfehler): der Löschdialog zeigt den
+/// Fehlerhinweis und „Nochmal versuchen“ (`data-delete-error`).
+class FailingDeleteStateStore extends MemoryStateStore {
+  FailingDeleteStateStore([super.state]);
+
+  @override
+  Future<void> deleteAll() async {
+    throw StateError('Szenario: Löschen fehlgeschlagen');
+  }
+}
+
+/// Das Löschen endet nie: der Löschdialog bleibt im Zustand „läuft“ und zeigt
+/// nach 300 ms den Fortschrittskreis (`data-delete-busy`).
+class SlowDeleteStateStore extends MemoryStateStore {
+  SlowDeleteStateStore([super.state]);
+
+  @override
+  Future<void> deleteAll() => Completer<void>().future;
+}

@@ -89,6 +89,41 @@ class CuraSheetRoute<T> extends PopupRoute<T> {
   }
 }
 
+/// Lage des Sheets für seinen Inhalt: [compact] gilt, wenn über der Tastatur
+/// (bzw. im Querformat) wenig Platz bleibt. Das Sheet nimmt dann den ganzen
+/// Platz, sein Kopf läuft mit dem Inhalt (wie im Onboarding), nur die Fußleiste
+/// mit der Hauptaktion bleibt fest.
+class CuraSheetScope extends InheritedWidget {
+  const CuraSheetScope({
+    super.key,
+    required this.compact,
+    required this.keyboardVisible,
+    required super.child,
+  });
+
+  final bool compact;
+
+  /// Die Tastatur ist eingeblendet. Der Inhalt sieht sie selbst nicht mehr: die
+  /// Route zieht ihre Höhe vor dem Aufbau des Inhalts ab.
+  final bool keyboardVisible;
+
+  /// `false` ohne Scope (Sheet-Rahmen außerhalb der Route, z. B. in Tests).
+  static bool compactOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<CuraSheetScope>()?.compact ??
+      false;
+
+  static bool keyboardVisibleOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<CuraSheetScope>()
+          ?.keyboardVisible ??
+      false;
+
+  @override
+  bool updateShouldNotify(CuraSheetScope oldWidget) =>
+      compact != oldWidget.compact ||
+      keyboardVisible != oldWidget.keyboardVisible;
+}
+
 /// Unten ausgerichtet, höchstens so breit wie die Zeilenlänge, über der
 /// Tastatur. Ein durchsichtiges `Material` darunter liefert den
 /// Standard-Textstil und den Untergrund für Eingabefelder; es malt nichts.
@@ -115,11 +150,24 @@ class _SheetPlacement extends StatelessWidget {
               constraints: BoxConstraints(maxWidth: CuraSize.lineLengthMax),
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints box) {
-                  final double maxHeight =
-                      box.maxHeight * CuraSize.sheetMaxHeightFraction;
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: maxHeight),
-                    child: child,
+                  // Wenig Platz (Tastatur, Querformat): das Sheet nimmt alles,
+                  // Kopf und Inhalt scrollen zusammen. Sonst höchstens 90 %
+                  // und nicht näher als `sheetTopClearance` an der Oberkante.
+                  final bool compact =
+                      box.maxHeight < CuraSize.sheetCompactAvailHeight;
+                  final double maxHeight = compact
+                      ? box.maxHeight
+                      : math.min(
+                          box.maxHeight * CuraSize.sheetMaxHeightFraction,
+                          box.maxHeight - CuraSize.sheetTopClearance,
+                        );
+                  return CuraSheetScope(
+                    compact: compact,
+                    keyboardVisible: media.viewInsets.bottom > 0,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: maxHeight),
+                      child: child,
+                    ),
                   );
                 },
               ),
@@ -134,6 +182,12 @@ class _SheetPlacement extends StatelessWidget {
 /// Fläche des Sheets (E2) mit festem Kopf, scrollendem Mittelteil und fester
 /// Fußleiste. Kopf und Fußleiste scrollen nicht mit. Die Ziehgeste liegt nur
 /// auf [header].
+///
+/// Im kompakten Zustand ([CuraSheetScope.compact]: wenig Platz über der
+/// Tastatur) läuft der Kopf als erstes Element mit dem Inhalt, die Fläche ist
+/// opak (`surface-opaque`, wie bei Hohem Kontrast; kein Blur, kein durch die
+/// Fläche scheinender Glow, Errata E-1: der Inhalt scrollt dort unter den
+/// Lichtfleck); die Fußleiste bleibt fest, ihr Rand ist enger.
 class CuraSheetFrame extends StatefulWidget {
   const CuraSheetFrame({
     super.key,
@@ -158,6 +212,7 @@ class CuraSheetFrame extends StatefulWidget {
 class _CuraSheetFrameState extends State<CuraSheetFrame>
     with SingleTickerProviderStateMixin {
   final GlobalKey _surfaceKey = GlobalKey();
+  final GlobalKey _contentKey = GlobalKey();
   late final AnimationController _spring;
   double _drag = 0;
   double _springFrom = 0;
@@ -217,6 +272,7 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
+    final bool compact = CuraSheetScope.compactOf(context);
     const BorderRadius shape = BorderRadius.vertical(
       top: Radius.circular(CuraRadius.sheet),
     );
@@ -225,49 +281,70 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
         borderRadius: shape,
         boxShadow: colors.shadowsEnabled ? CuraShadow.floating : null,
       ),
-      child: CuraBlur(
+      child: _MaybeBlur(
+        enabled: !compact,
         borderRadius: shape,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: colors.floatFill,
+            color: compact ? colors.surfaceOpaque : colors.floatFill,
             borderRadius: shape,
             border: Border.all(
               color: colors.cardBorder,
               width: CuraSize.hairline,
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                // Die Wischgeste ist kein Bedienweg für den Screenreader
-                // („Schließen“ ist eine eigene Schaltfläche); ohne Ausschluss
-                // würde der Kopf zu einem scrollenden Knoten.
-                excludeFromSemantics: true,
-                onVerticalDragStart: _onDragStart,
-                onVerticalDragUpdate: _onDragUpdate,
-                onVerticalDragEnd: _onDragEnd,
-                child: widget.header,
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: CuraSpace.pageMargin,
+          // Der Inhalt behält sein Element beim Wechsel zwischen normal und
+          // kompakt (Tastatur erscheint): sonst verlöre das gerade fokussierte
+          // Feld Fokus und Eingabeverbindung. Dafür der GlobalKey und gleiche
+          // Kindpositionen in beiden Zuständen (Platzhalter statt `if`).
+          child: KeyedSubtree(
+            key: _contentKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (compact)
+                  const SizedBox.shrink()
+                else
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    // Die Wischgeste ist kein Bedienweg für den Screenreader
+                    // („Schließen“ ist eine eigene Schaltfläche); ohne
+                    // Ausschluss würde der Kopf zu einem scrollenden Knoten.
+                    excludeFromSemantics: true,
+                    onVerticalDragStart: _onDragStart,
+                    onVerticalDragUpdate: _onDragUpdate,
+                    onVerticalDragEnd: _onDragEnd,
+                    child: widget.header,
                   ),
-                  child: widget.body,
-                ),
-              ),
-              if (widget.footer != null)
-                SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(CuraSpace.pageMargin),
-                    child: widget.footer,
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        if (compact) widget.header else const SizedBox.shrink(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: CuraSpace.pageMargin,
+                          ),
+                          child: widget.body,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-            ],
+                if (widget.footer != null)
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: EdgeInsets.all(
+                        compact ? CuraSpace.s2 : CuraSpace.pageMargin,
+                      ),
+                      child: widget.footer,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -276,5 +353,24 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
       offset: Offset(0, _drag),
       child: KeyedSubtree(key: _surfaceKey, child: surface),
     );
+  }
+}
+
+/// `CuraBlur` nur, wenn [enabled] (im kompakten Zustand ist die Fläche opak).
+class _MaybeBlur extends StatelessWidget {
+  const _MaybeBlur({
+    required this.enabled,
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final bool enabled;
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    return CuraBlur(borderRadius: borderRadius, child: child);
   }
 }

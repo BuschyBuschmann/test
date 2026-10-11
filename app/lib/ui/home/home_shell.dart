@@ -30,6 +30,9 @@
 //   Fehler). Der Ladezustand kommt aus der `PathSource`; „Nochmal versuchen“
 //   bereitet den Pfad erneut vor. Escape und Zurück schließen zuerst Blase und
 //   Hinweis ([dismissPathOverlays]).
+// - Deine Daten (U4): [openDataSheet] öffnet das Sheet über der Home-Route (die
+//   Button-Gruppe bleibt darunter, unter dem Scrim); der Fokus kehrt an das Icon
+//   der Pfad-Kopfzeile zurück ([dataButtonFocus]).
 // - Heute (U3b): `TodayScreen` ersetzt den zweiten Platzhalter. Er baut die
 //   Primärbutton-Reihe mit dem Manny-Button und den Nachrichten-Button darüber
 //   selbst (nur im Standard-Zustand, A-43) und meldet die gemessene Höhe der
@@ -37,6 +40,8 @@
 //   Gruppe. Laden und Fehler kommen wie beim Pfad aus einer Quelle
 //   (`TodaySource`). Der Tageswechsel schließt Snackbar, Rückgängig-Fenster und
 //   alle Heute-Routen, bevor er die Bedingung prüft ([dayChanged]).
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -51,6 +56,7 @@ import '../components/cura_snackbar.dart';
 import '../components/floating_nav.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
+import '../data_sheet/data_sheet.dart';
 import '../routes/app_routes.dart';
 import '../path/path_screen.dart';
 import '../path/path_source.dart';
@@ -114,6 +120,9 @@ class HomeShellState extends State<HomeShell> {
   final FocusNode messagesButtonFocus = FocusNode(
     debugLabel: 'Nachrichten-Button',
   );
+
+  /// Fokusrückgabe nach „Deine Daten“ (Icon in der Pfad-Kopfzeile).
+  final FocusNode dataButtonFocus = FocusNode(debugLabel: 'Deine Daten');
 
   final FocusNode _pageFocus = FocusNode(
     debugLabel: 'Home',
@@ -223,6 +232,7 @@ class HomeShellState extends State<HomeShell> {
     snackbarHeight.dispose();
     chatButtonFocus.dispose();
     messagesButtonFocus.dispose();
+    dataButtonFocus.dispose();
     _pageFocus.dispose();
     super.dispose();
   }
@@ -312,9 +322,28 @@ class HomeShellState extends State<HomeShell> {
     return false;
   }
 
-  /// Einstieg „Deine Daten“ in der Pfad-Kopfzeile. Das Sheet selbst liefert U4;
-  /// bis dahin tut der Einstieg nichts (Platzhalter-Aktion laut Plan 14).
-  void openDataSheet() {}
+  /// Einstieg „Deine Daten“ in der Pfad-Kopfzeile (Ergänzung 1, 3.2): öffnet
+  /// das Sheet. Vorher endet das Rückgängig-Fenster, `NodeHint` und Blase
+  /// schließen (die Blase zählt als gezeigt, Blur-Budget K3) und die Snackbar
+  /// verschwindet. Beim Schließen kehrt der Fokus an das Icon zurück (mit
+  /// `mounted`-Prüfung in `pushReturningFocus`). Hat das Speichern einen
+  /// Tageswechsel ausgelöst, setzt die Shell dessen Folgen um.
+  Future<void> openDataSheet() async {
+    final AppController c = _controller;
+    c.transient.endUndoWindow();
+    c.transient.dismissHint();
+    _closeBubble(c);
+    snackbar.close();
+    final ProfileUpdateResult? result =
+        await pushReturningFocus<ProfileUpdateResult?>(
+          Navigator.of(context),
+          DataSheet.route(context),
+          trigger: dataButtonFocus,
+        );
+    if (result != null && result.dayChanged && mounted) {
+      unawaited(dayChanged());
+    }
+  }
 
   /// Schließt eine sichtbare Manny-Blase; weggetippt zählt als gezeigt.
   /// `true`, wenn eine Blase geschlossen wurde.

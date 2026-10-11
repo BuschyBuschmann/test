@@ -11,6 +11,7 @@ import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../theme/cura_metrics.dart';
 import '../components/date_card.dart';
+import '../routes/cura_date_picker.dart';
 
 /// Grenzen der Datumsauswahl (A-27), als reine Funktion testbar.
 class DatePickerRange {
@@ -64,7 +65,7 @@ class _Step4DateState extends State<Step4Date> {
       today: c.today,
       saved: c.state.onboarding.injuryDate,
     );
-    final DateTime? picked = await showDatePicker(
+    final DateTime? picked = await showCuraDatePicker(
       context: context,
       initialDate: range.initial,
       firstDate: range.first,

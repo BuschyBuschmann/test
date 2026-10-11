@@ -167,6 +167,9 @@ abstract final class MotionTokens {
   static const Duration fast = Duration(milliseconds: 120);
   static const Duration base = Duration(milliseconds: 200);
   static const Duration slow = Duration(milliseconds: 320);
+  // Fortschrittskreis eines laufenden Vorgangs: sichtbar erst nach dieser
+  // Verzögerung (Erratum E-3, Löschen-Dialog UI-52).
+  static const Duration busyDelay = Duration(milliseconds: 300);
   static const Curve curve = Curves.easeOutCubic;
   // Reduzierte Bewegung: höchstens `fast`.
   static const Duration reducedMax = fast;

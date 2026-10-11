@@ -223,7 +223,11 @@ class _AppRuntime {
         ? UnreadableStateStore()
         : seed.loadError
         ? FailingReadStateStore()
-        : MemoryStateStore(seed.state);
+        : switch (seed.deleteMode) {
+            DeleteSeedMode.normal => MemoryStateStore(seed.state),
+            DeleteSeedMode.slow => SlowDeleteStateStore(seed.state),
+            DeleteSeedMode.failing => FailingDeleteStateStore(seed.state),
+          };
     final _PreviewClock clock = _PreviewClock(now);
     return _AppRuntime._(
       _controller(() => clock.now, store, store),

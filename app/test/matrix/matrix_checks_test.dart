@@ -997,6 +997,71 @@ void main() {
     );
 
     testWidgets(
+      'Sheet im kompakten Zustand (wenig Platz über der Tastatur) ist deckend',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          const Stack(
+            children: <Widget>[
+              Positioned.fill(child: GlowBackground()),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: CuraSheetScope(
+                  compact: true,
+                  keyboardVisible: true,
+                  child: SizedBox(
+                    height: 300,
+                    child: CuraSheetFrame(
+                      header: Text('Kopf'),
+                      body: Text('Inhalt'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        final Iterable<ProbedText> texts = probe(tester).texts
+            .where((ProbedText t) => t.text == 'Kopf' || t.text == 'Inhalt');
+        expect(texts, hasLength(2));
+        for (final ProbedText t in texts) {
+          expect(t.ground, TextGround.opaque);
+        }
+      },
+    );
+
+    testWidgets(
+      'headerRect: der Kopf einer überdeckten Route (Pfad unter dem Sheet) '
+      'zählt nicht',
+      (WidgetTester tester) async {
+        await pump(
+          tester,
+          const Align(
+            alignment: Alignment.topCenter,
+            child: KeyedSubtree(
+              key: ValueKey<String>('header'),
+              child: SizedBox(width: 100, height: 60),
+            ),
+          ),
+        );
+        expect(headerRect(), isNotNull);
+        final BuildContext ctx = tester.element(
+          find.byType(KeyedSubtree).first,
+        );
+        showDialog<void>(
+          context: ctx,
+          builder: (BuildContext c) => const SizedBox(width: 10, height: 10),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          headerRect(),
+          isNull,
+          reason: 'der Kopf liegt unter dem Scrim der oberen Route',
+        );
+      },
+    );
+
+    testWidgets(
       'Text außerhalb des Scroll-Sichtfensters ist nicht sichtbar, angeschnittener nur mit dem sichtbaren Teil',
       (WidgetTester tester) async {
         await pump(
