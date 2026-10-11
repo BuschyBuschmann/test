@@ -241,6 +241,39 @@ void main() {
     );
 
     testWidgets(
+      'F-7: Fokus nach „Entfernen“ auf „Tauschen“ der nachrückenden Karte, '
+      'zuletzt auf „+ Eigene Übung“',
+      (WidgetTester tester) async {
+        await _today(tester);
+        Finder cards() => find.byWidgetPredicate(
+          (Widget w) =>
+              w is CategoryCard &&
+              w.kind == CategoryKind.exercise &&
+              w.key is ValueKey<String>,
+        );
+        String firstId() =>
+            ((cards().first.evaluate().single.widget as CategoryCard).key!
+                    as ValueKey<String>)
+                .value
+                .substring('exercise:'.length);
+        int guard = 0;
+        while (cards().evaluate().isNotEmpty && guard++ < 10) {
+          final String removed = firstId();
+          await _tap(tester, _inCard(removed, S.exerciseRemove));
+          await tester.pump();
+          final String? label = FocusManager.instance.primaryFocus?.debugLabel;
+          if (cards().evaluate().isNotEmpty) {
+            expect(label, 'Tauschen ${firstId()}', reason: 'nach $removed');
+          } else {
+            expect(label, 'Eigene Übung', reason: 'letzte Karte');
+          }
+        }
+        expect(cards(), findsNothing);
+        await disposeApp(tester);
+      },
+    );
+
+    testWidgets(
       'Entfernen: Karte weg, „Entfernt. Rückgängig“, Rückgängig stellt her',
       (WidgetTester tester) async {
         final Harness h = await _today(tester);

@@ -150,7 +150,12 @@ class PathLayout {
 /// oben, die erste unten. [bottomReserve] ist der Mindestwert für `padBottom`
 /// aus der Button-Gruppe (Plan 4.6, UI-75). [outlookHeight] (gemessen von der
 /// UI, mindestens 72 dp) schaltet den Ausblick ein: er steht zentriert über dem
-/// Boss, `padTop` bezieht sich auf ihn.
+/// Boss, `padTop` bezieht sich auf ihn. [leadingExtent] ist die Höhe eines
+/// Kopfes, der **vor** dem Pfad in derselben Scrollfläche mitläuft (Brief-
+/// Ergänzung 3, 4.4): `padTop` zieht sie ab, damit das oberste Element ganz
+/// oben nicht tiefer steht als nötig (sonst stünde die Marke ab 150 % Schrift
+/// in der Endlage halb hinter Nav und Button-Gruppe). Die Koordinaten des
+/// Layouts beginnen weiter am Anfang des Pfads, nicht des Kopfes.
 PathLayout layoutPath({
   required List<PathUnit> units,
   required double width,
@@ -158,6 +163,7 @@ PathLayout layoutPath({
   required PathLayoutMetrics metrics,
   double bottomReserve = 0,
   double? outlookHeight,
+  double leadingExtent = 0,
 }) {
   final int n = units.length;
   final List<double> diameters = <double>[
@@ -170,7 +176,9 @@ PathLayout layoutPath({
   final double? oh = n == 0 ? null : outlookHeight;
   final double padTop = math.max(
     0,
-    kPathFocusFraction * viewportHeight - (oh ?? topDiameter) / 2,
+    kPathFocusFraction * viewportHeight -
+        (oh ?? topDiameter) / 2 -
+        math.max(0, leadingExtent),
   );
   final double padBottom = math.max(
     math.max(0, (1 - kPathFocusFraction) * viewportHeight - bottomDiameter / 2),

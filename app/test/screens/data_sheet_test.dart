@@ -48,6 +48,7 @@ import '../support/app_harness.dart';
 import '../support/builders.dart';
 import '../support/component_support.dart';
 import '../support/controller_harness.dart';
+import '../support/line_breaks.dart';
 import '../support/pump_app.dart';
 import '../support/stores.dart';
 
@@ -1048,6 +1049,43 @@ void main() {
       await disposeApp(tester);
     });
 
+    testWidgets('F-4: Löschfehler bei 320 × 568 × 2,0: Fehlertext ohne '
+        'Scrollen sichtbar, Buttons ohne Wortbruch', (
+      WidgetTester tester,
+    ) async {
+      final _Rig rig = await _rig(failTimes: 1);
+      await pumpCura(
+        tester,
+        rig.controller,
+        size: Viewports.small,
+        textScale: 2,
+      );
+      await _openSheet(tester);
+      await _openDelete(tester);
+      await tester.ensureVisible(_confirm);
+      await tester.pump();
+      await tester.tap(_confirm);
+      await _settle(tester);
+      expect(find.byType(DeleteErrorNotice), findsOneWidget);
+      final Rect err = tester.getRect(find.text(S.deleteError));
+      expect(err.top, greaterThanOrEqualTo(0));
+      expect(err.bottom, lessThanOrEqualTo(568));
+      // Ohne gescrollt zu haben: der Dialog steht am Anfang seines Wegs.
+      final ScrollableState st = tester.state(
+        find.descendant(
+          of: find.byType(DeleteDialog),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(st.position.pixels, 0);
+      for (final String t in <String>[S.cancel, S.retry]) {
+        final List<String> lines = paragraphLines(tester, find.text(t));
+        expect(lines.join(), t);
+        expect(midWordBreaks(lines), isEmpty, reason: '$t: $lines');
+      }
+      await disposeApp(tester);
+    });
+
     testWidgets('UI-52 Fehler: Icon, Text und „Nochmal versuchen“; Zustand '
         'unverändert; Abbrechen möglich; erneuter Versuch löscht', (
       WidgetTester tester,
@@ -1254,6 +1292,51 @@ void main() {
         await tester.tap(_save);
         await _settle(tester);
         expect(_sheet, findsNothing);
+        await disposeApp(tester);
+      });
+
+      testWidgets('F-6: kompaktes Sheet rückt unter die Statusleiste; nach '
+          'dem Schließen der Tastatur ist der Normalzustand zurück (Kopf und '
+          '„Schließen“ fest)', (WidgetTester tester) async {
+        tester.view.padding = const FakeViewPadding(top: 24);
+        addTearDown(tester.view.resetPadding);
+        await _pumpPath(tester, size: Viewports.small);
+        await _openSheet(tester);
+        Finder scrollAbove(Finder f) => find.ancestor(
+          of: f,
+          matching: find.descendant(
+            of: _sheet,
+            matching: find.byType(SingleChildScrollView),
+          ),
+        );
+        // Normal: „Schließen“ liegt im festen Kopf, nicht in der Scrollfläche.
+        expect(scrollAbove(_closeX), findsNothing);
+        await tester.tap(_nameField);
+        await tester.pumpAndSettle();
+        await _showKeyboard(tester);
+        // Kompakt: der Kopf läuft mit, steht aber unter dem oberen Inset.
+        expect(scrollAbove(_closeX), findsOneWidget);
+        tester
+            .state<ScrollableState>(
+              find
+                  .descendant(of: _sheet, matching: find.byType(Scrollable))
+                  .first,
+            )
+            .position
+            .jumpTo(0);
+        await tester.pump();
+        expect(tester.getRect(_closeX).top, greaterThanOrEqualTo(24 - 0.5));
+        // Tastatur zu: Normalzustand.
+        tester.view.resetViewInsets();
+        await tester.pumpAndSettle();
+        expect(scrollAbove(_closeX), findsNothing);
+        final Rect x = tester.getRect(_closeX);
+        final ScrollableState st = tester.state(
+          find.descendant(of: _sheet, matching: find.byType(Scrollable)).first,
+        );
+        st.position.jumpTo(st.position.maxScrollExtent);
+        await tester.pump();
+        expect(tester.getRect(_closeX), x, reason: 'Kopf fest');
         await disposeApp(tester);
       });
 

@@ -428,4 +428,93 @@ void main() {
       }
     });
   });
+
+  group('F-5/R-AB-5', () {
+    const Size small = Size(320, 504);
+
+    test('Blase: Manny links der Gruppe → der Pfad scrollt bis zur Nav-Kante '
+        'statt bis zur Gruppe, die Blase passt ganz', () {
+      final Rect cluster = _cluster(small);
+      // Manny links, Blase 232 hoch, über Manny nur 164 frei.
+      final Rect manny = Rect.fromLTWH(15, 172, 83, 88);
+      final BubblePlacement p = placeBubble(
+        manny: manny,
+        viewport: small,
+        cluster: cluster,
+        textScale: 2,
+        measure: _bubbleOf(224),
+        mannyBelowExtra: 40,
+        scrollOffset: 5000,
+        allowScroll: true,
+        scrollBottomLimit: 404,
+      );
+      expect(p.limited, isFalse);
+      expect(p.scrollOffsetDelta, lessThan(0));
+      expect(p.rect.top, greaterThanOrEqualTo(kOverlayTopLimit - 0.01));
+    });
+
+    test(
+      'Blase: Manny in der Spalte der Gruppe → weiter die Gruppe als Grenze',
+      () {
+        final Rect cluster = _cluster(small);
+        final Rect manny = Rect.fromLTWH(cluster.left - 20, 100, 83, 88);
+        final BubblePlacement p = placeBubble(
+          manny: manny,
+          viewport: small,
+          cluster: cluster,
+          textScale: 2,
+          measure: _bubbleOf(224),
+          mannyBelowExtra: 40,
+          scrollOffset: 5000,
+          allowScroll: true,
+          scrollBottomLimit: 404,
+        );
+        // Zu wenig Raum bis zur Gruppe: nicht so weit gescrollt, dass die Unit
+        // in die Gruppe geriete.
+        expect(
+          manny.bottom + 40 - p.scrollOffsetDelta,
+          lessThanOrEqualTo(cluster.top - 8 + 0.01),
+        );
+      },
+    );
+
+    test('Hinweis, letzte Stufe: nie höher als die freie Fläche, auch wenn '
+        'sie kleiner als 48 dp ist', () {
+      final Rect cluster = _cluster(small);
+      final HintPlacement p = placeHint(
+        unit: const Rect.fromLTWH(100, 230, 72, 72),
+        viewport: small,
+        cluster: cluster,
+        measure: _hintOf(240, 300),
+        topLimit: 8,
+      );
+      final double free = p.rect.height - CuraSize.nodeHintArrow;
+      expect(p.limited, isTrue);
+      expect(p.maxBodyHeight, isNotNull);
+      // Körper plus Pfeil liegen zwischen oberer Grenze und Gruppe.
+      expect(p.rect.top, greaterThanOrEqualTo(8 - 0.01));
+      expect(p.rect.bottom, lessThanOrEqualTo(cluster.top - 8 + 0.01));
+      expect(free, greaterThanOrEqualTo(0));
+    });
+
+    test(
+      'Hinweis: mit Scrollen zeigt die letzte Stufe mindestens drei Zeilen',
+      () {
+        final Rect cluster = _cluster(small);
+        final HintPlacement p = placeHint(
+          unit: const Rect.fromLTWH(100, 100, 252, 252),
+          viewport: small,
+          cluster: cluster,
+          measure: _hintOf(240, 300),
+          topLimit: 8,
+          scrollOffset: 400,
+          maxScrollOffset: 1000,
+          allowScroll: true,
+          minBodyHeight: 136,
+        );
+        expect(p.limited, isTrue);
+        expect(p.maxBodyHeight!, greaterThanOrEqualTo(136 - 0.01));
+      },
+    );
+  });
 }

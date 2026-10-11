@@ -222,4 +222,73 @@ void main() {
     expect(narrow.placements.every((p) => p.center.x.isFinite), isTrue);
     expect(math.max(0, narrow.maxScrollExtent), greaterThan(0));
   });
+
+  // F-2: ein Kopf, der vor dem Pfad in derselben Scrollfläche mitläuft
+  // (Textskalierung ab 1,5), wird vom Polster oben abgezogen (Brief-Ergänzung
+  // 3, 4.4). Sonst stünde die Marke ganz oben um die Kopfhöhe zu tief.
+  group('leadingExtent (F-2)', () {
+    for (final (double w, double h, double oh, double lead)
+        in <(double, double, double, double)>[
+          (320, 504, 252, 151),
+          (320, 504, 196, 120),
+          (390, 780, 160, 100),
+          (320, 504, 252, 600),
+        ]) {
+      test('$w×$h, Marke $oh, Kopf $lead: oberstes Element steht ganz oben '
+          'nicht tiefer als bei 55 %, jede Unit bleibt auf 55 % scrollbar', () {
+        PathLayout lay(double lead) => layoutPath(
+          units: kSamplePath,
+          width: w,
+          viewportHeight: h,
+          metrics: metrics,
+          bottomReserve: 200,
+          outlookHeight: oh,
+          leadingExtent: lead,
+        );
+        final PathLayout without = lay(0);
+        final PathLayout with_ = lay(lead);
+        // Ganz oben (Offset 0) steht die Marke samt Kopf höchstens so tief wie
+        // ohne Kopf: padTop zieht die Kopfhöhe ab.
+        expect(
+          lead + with_.outlook!.top,
+          lessThanOrEqualTo(math.max(lead, without.outlook!.top) + 1e-9),
+          reason:
+              'Kopf $lead + Marke ${with_.outlook!.top} gegen '
+              '${without.outlook!.top}',
+        );
+        expect(with_.padTop, greaterThanOrEqualTo(0));
+        expect(with_.padTop, closeTo(math.max(0, without.padTop - lead), 1e-9));
+        // Mit Kopf in der Scrollfläche (Offset = Layout-Offset + Kopf) liegt
+        // jede Unit in 0 … maxScrollExtent + Kopf.
+        for (int i = 0; i < kSamplePath.length; i++) {
+          final double off = with_.scrollOffsetFor(i) + lead;
+          expect(off, greaterThanOrEqualTo(-1e-9), reason: 'Unit $i');
+          expect(
+            off.clamp(0, with_.maxScrollExtent + lead),
+            closeTo(off < 0 ? 0 : off, 1e-9),
+          );
+        }
+      });
+    }
+
+    test('ohne Kopf bleibt alles beim Alten', () {
+      final PathLayout a = layoutPath(
+        units: kSamplePath,
+        width: 320,
+        viewportHeight: 568,
+        metrics: metrics,
+        outlookHeight: 100,
+      );
+      final PathLayout b = layoutPath(
+        units: kSamplePath,
+        width: 320,
+        viewportHeight: 568,
+        metrics: metrics,
+        outlookHeight: 100,
+        leadingExtent: 0,
+      );
+      expect(b.padTop, a.padTop);
+      expect(b.totalHeight, a.totalHeight);
+    });
+  });
 }

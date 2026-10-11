@@ -21,56 +21,6 @@ final MatrixReport _report = MatrixReport();
 String _name(Scenario s, Size size, String rest) =>
     '${s.id} ${size.width.toInt()}x${size.height.toInt()} $rest';
 
-Future<void> _tapEveryTarget(
-  WidgetTester tester,
-  List<Finding> out,
-  bool allowProgress,
-) async {
-  final Rect view = Offset.zero & viewSize(tester);
-  List<TapTarget> current() =>
-      tapTargets(tester)
-          .where((TapTarget t) => !t.isTextField && !t.hidden)
-          .toList();
-  // Die Ziele werden vor **jedem** Tipp neu gelesen: Ein Tipp kann das Layout
-  // ändern (die Karte „Anderes“ blendet ein Textfeld ein und schiebt alles
-  // darunter weiter), und ein veraltetes Rechteck träfe dann ein anderes Ziel.
-  // Gemerkt wird nur die Reihenfolge der Beschriftungen (mehrfach vorkommende
-  // Beschriftungen zählen der Reihe nach).
-  final List<String> labels = <String>[
-    for (final TapTarget t in current()) t.label,
-  ];
-  final Map<String, int> seen = <String, int>{};
-  for (final String label in labels) {
-    final int nth = seen.update(label, (int n) => n + 1, ifAbsent: () => 0);
-    final List<TapTarget> now = current()
-        .where((TapTarget t) => t.label == label)
-        .toList();
-    if (now.length <= nth) continue;
-    final TapTarget t = now[nth];
-    if (!view.contains(t.rect.center)) continue;
-    await tester.tapAt(t.rect.center);
-    await _pastReducedLimit(tester);
-    out.addAll(checkReducedMotion(tester, allowProgress: allowProgress));
-  }
-}
-
-/// Wartet so, dass jede erlaubte Animation (höchstens `dur-fast` = 120 ms)
-/// beendet ist, bevor gezählt wird:
-/// 1. ein kurzer erster Frame: baut die Folgen der Aktion (Tipp) und startet
-///    neue Animationen. Ohne ihn fiele der Start einer Animation erst in den
-///    121-ms-Frame, und sie liefe am Ende noch.
-/// 2. 121 ms (länger als jede erlaubte Animation),
-/// 3. ein weiterer Frame: Ein `LayoutBuilder` (jeder `ContentFrame`) legt einen
-///    einzelnen „aufgeschobenen“ Frame-Callback an, wenn unter ihm nach dem
-///    Frame etwas neu gebaut wird (z. B. Fokus-Folgen eines Tab-Wechsels). Er
-///    läuft im nächsten Frame ab und ist keine Animation; eine echte Animation
-///    über 120 ms läuft nach dem Zusatzframe weiter und wird erkannt.
-Future<void> _pastReducedLimit(WidgetTester tester) async {
-  await tester.pump(const Duration(milliseconds: 1));
-  await tester.pump(const Duration(milliseconds: 121));
-  await tester.pump(const Duration(milliseconds: 1));
-}
-
 void main() {
   tearDownAll(() => _report.write('matrix'));
 
@@ -138,10 +88,21 @@ void main() {
         await pumpScenario(tester, s, rm: true);
         final List<Finding> f = <Finding>[...takeLayoutExceptions(tester)];
         // Einblenden/Schieben seit dem Aufbau: nach 121 ms nichts mehr.
-        await _pastReducedLimit(tester);
+        await pastReducedLimit(tester);
         f.addAll(checkReducedMotion(tester, allowProgress: s.loops));
-        // Jeden Übergang auslösen, den die Tap-Ziele anbieten.
-        await _tapEveryTarget(tester, f, s.loops);
+        // Jeden Übergang auslösen, den die Tap-Ziele anbieten: jedes Ziel in
+        // frisch aufgebautem Ausgangszustand (R-AB-1).
+        final TapSweep sweep = await tapEveryTarget(
+          tester,
+          rebuild: () async {
+            await tester.pumpWidget(const SizedBox.shrink());
+            await pumpScenario(tester, s, rm: true);
+          },
+          allowProgress: s.loops,
+        );
+        f.addAll(sweep.findings);
+        _report.sweepCandidates += sweep.candidates;
+        _report.sweepTapped += sweep.tapped;
         f.addAll(takeLayoutExceptions(tester));
         await tester.pumpWidget(const SizedBox.shrink());
         semantics.dispose();

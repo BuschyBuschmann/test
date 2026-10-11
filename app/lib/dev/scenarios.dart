@@ -44,7 +44,8 @@ import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
 import '../ui/messages/example_contacts.dart';
-import 'preview_script.dart' show kPreviewScrollEnd, kPreviewScrollStart;
+import 'preview_script.dart'
+    show kPreviewScrollEnd, kPreviewScrollSheetEnd, kPreviewScrollStart;
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
@@ -1240,6 +1241,12 @@ final String _otherTypeCard = S.choiceLabel(S.injuryMuscle, false);
 AppSeed _dataSheet(ScenarioEnv env) =>
     AppSeed(state: _completedState(env), taps: _openData);
 
+/// Sheet ans Ende gescrollt: der Abschnitt „Daten löschen“ ist sichtbar (F-8).
+AppSeed _dataSheetBottom(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, kPreviewScrollSheetEnd],
+);
+
 /// Gruppe unter dem Scrim: Pfad im aktiven Zustand mit offenem Sheet.
 AppSeed _pathSheetOpen(ScenarioEnv env) => AppSeed(
   state: _pathState(env, streak: _streakActive(env)),
@@ -1487,6 +1494,11 @@ final List<Scenario> kScenarios = <Scenario>[
     app: _dataSheet,
     expectsPrimary: true,
     tablet: true,
+  ),
+  Scenario(
+    id: 'data-sheet-bottom',
+    app: _dataSheetBottom,
+    expectsPrimary: true,
   ),
   Scenario(id: 'path-sheet-open', app: _pathSheetOpen, expectsPrimary: true),
   Scenario(id: 'data-sheet-other', app: _dataSheetOther, expectsPrimary: true),

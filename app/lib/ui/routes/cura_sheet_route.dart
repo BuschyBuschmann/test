@@ -322,7 +322,17 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        if (compact) widget.header else const SizedBox.shrink(),
+                        // Das kompakte Sheet reicht bis an den oberen Rand: der
+                        // Kopf rückt unter die Statusleiste (F-6).
+                        if (compact)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: MediaQuery.paddingOf(context).top,
+                            ),
+                            child: widget.header,
+                          )
+                        else
+                          const SizedBox.shrink(),
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: CuraSpace.pageMargin,

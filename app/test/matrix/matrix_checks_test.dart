@@ -10,6 +10,7 @@ import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 
@@ -1627,6 +1628,290 @@ void _u3aMatrixTests(
       });
     },
   );
+
+  group('Abschluss-Review R-AB (R-AB-3, R-AB-4, R-AB-6)', () {
+    Widget bubbleOver(double left, double top, double w, double h) =>
+        Positioned(
+          left: left,
+          top: top,
+          width: w,
+          height: h,
+          child: KeyedSubtree(
+            key: PreviewKeys.bubble,
+            child: const SizedBox.expand(),
+          ),
+        );
+
+    testWidgets('R-AB-3: Ziel dauerhaft unter overlay:bubble (kein Scrollweg) '
+        'ist ein Befund', (WidgetTester tester) async {
+      Widget board({required bool covered}) => Stack(
+        children: <Widget>[
+          SingleChildScrollView(
+            key: PreviewKeys.scroll,
+            child: Column(
+              children: <Widget>[const SizedBox(height: 100), _tap(300, 48)],
+            ),
+          ),
+          bubbleOver(0, covered ? 100 : 400, 400, 48),
+        ],
+      );
+      await pump(tester, board(covered: true));
+      expect(await checkReachability(tester), isNotEmpty);
+      await pump(tester, board(covered: false));
+      expect(await checkReachability(tester), isEmpty);
+    });
+
+    testWidgets('R-AB-3: Blase deckt ein Ziel nur in der Ruhelage; durch '
+        'Nutzerscrollen frei erreichbar → kein Befund', (
+      WidgetTester tester,
+    ) async {
+      // Ruhelage 0: das erste Ziel (y 0 … 48) liegt unter der Blase; weiter
+      // unten ist die Liste frei, das Ziel scrollt aus dem Bereich der Blase.
+      await pump(
+        tester,
+        Stack(
+          children: <Widget>[
+            SingleChildScrollView(
+              key: PreviewKeys.scroll,
+              padding: const EdgeInsets.only(top: 100, bottom: 900),
+              child: Column(
+                children: <Widget>[
+                  for (int i = 0; i < 6; i++) ...<Widget>[
+                    _tap(300, 48),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+            ),
+            bubbleOver(0, 90, 400, 70),
+          ],
+        ),
+      );
+      expect(await checkReachability(tester), isEmpty);
+    });
+
+    testWidgets('R-AB-3: Hit-Test in der Ruhelage bleibt hart', (
+      WidgetTester tester,
+    ) async {
+      // Das Ziel steht in der Ruhelage frei laut Rechteck, wird aber von einem
+      // Overlay-losen Deckel getroffen: der Hit-Test meldet es.
+      await pump(
+        tester,
+        Stack(
+          children: <Widget>[
+            SingleChildScrollView(
+              key: PreviewKeys.scroll,
+              child: Column(children: <Widget>[_tap(300, 48)]),
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              width: 400,
+              height: 48,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+              ),
+            ),
+          ],
+        ),
+      );
+      expect(await checkReachability(tester), isNotEmpty);
+    });
+
+    test('R-AB-4: Messeigenheit nur für CuraTextField und Wert um 1,0', () {
+      expect(
+        isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: true),
+        isTrue,
+      );
+      expect(
+        isKnownTextFieldArtifact(ratio: 1.02, insideCuraTextField: true),
+        isTrue,
+      );
+      // Echter Mangel: Wert deutlich über 1,0.
+      expect(
+        isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: true),
+        isFalse,
+      );
+      expect(
+        isKnownTextFieldArtifact(ratio: 4.4, insideCuraTextField: true),
+        isFalse,
+      );
+      // Ein anderes Eingabefeld ist nie ausgenommen.
+      expect(
+        isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: false),
+        isFalse,
+      );
+      expect(
+        isKnownTextFieldArtifact(ratio: null, insideCuraTextField: true),
+        isFalse,
+      );
+    });
+
+    testWidgets('R-AB-4: Eingabefeld mit grauer Schrift auf grauem Grund '
+        '(kein CuraTextField) bleibt ein Befund', (WidgetTester tester) async {
+      await pump(
+        tester,
+        ColoredBox(
+          color: const Color(0xFF777777),
+          child: Center(
+            child: SizedBox(
+              width: 300,
+              child: TextField(
+                controller: TextEditingController(text: 'Wert im Feld'),
+                style: const TextStyle(color: Color(0xFF7A7A7A), fontSize: 20),
+              ),
+            ),
+          ),
+        ),
+      );
+      final List<Finding> f = await checkTextContrast(tester);
+      expect(f, isNotEmpty);
+    });
+
+    testWidgets('R-AB-6: clipped() — Ziel in einem zweiten Scrollbereich ohne '
+        'Scrollweg wird gegen ein festes Ziel geprüft', (
+      WidgetTester tester,
+    ) async {
+      Widget board({required double gap}) => Stack(
+        children: <Widget>[
+          // Bereich A: lang, mit Scrollweg (Scan-Fenster).
+          Positioned(
+            left: 0,
+            top: 0,
+            width: 200,
+            height: 300,
+            child: SingleChildScrollView(
+              key: PreviewKeys.scroll,
+              child: Column(
+                children: <Widget>[
+                  for (int i = 0; i < 12; i++) ...<Widget>[
+                    _tap(150, 48),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          // Bereich B: kürzer als die Fläche, kein Scrollweg.
+          Positioned(
+            left: 220,
+            top: 400,
+            width: 160,
+            height: 200,
+            child: SingleChildScrollView(child: _tap(150, 48)),
+          ),
+          // Festes Ziel im Abstand [gap] über dem Ziel in B.
+          Positioned(left: 220, top: 400 - 48 - gap, child: _tap(150, 48)),
+        ],
+      );
+      await pump(tester, board(gap: 2));
+      final List<Finding> near = await checkTapTargetGaps(tester);
+      expect(
+        near.where((Finding f) => f.message.contains('220.0')),
+        isNotEmpty,
+        reason: 'Abstand 2 dp zwischen festem Ziel und Ziel in B: $near',
+      );
+      await pump(tester, board(gap: 8));
+      final List<Finding> ok = await checkTapTargetGaps(tester);
+      expect(ok.where((Finding f) => f.message.contains('220.0')), isEmpty);
+    });
+
+    group('checkTodayGroup', () {
+      Widget group({
+        double gap = 8,
+        double messagesRight = 16,
+        double primaryBottom = 100,
+        double primaryWidth = 294,
+      }) => Stack(
+        children: <Widget>[
+          Positioned(
+            left: 16,
+            bottom: 100,
+            width: 358,
+            height: 56,
+            child: KeyedSubtree(
+              key: PreviewKeys.primaryRow,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            bottom: primaryBottom,
+            width: primaryWidth,
+            height: 56,
+            child: KeyedSubtree(
+              key: PreviewKeys.primary,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 100,
+            child: MannyChatButton(onPressed: () {}),
+          ),
+          Positioned(
+            right: messagesRight,
+            bottom: 100 + 56 + gap,
+            width: 56,
+            height: 56,
+            child: KeyedSubtree(
+              key: PreviewKeys.cluster,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ],
+      );
+
+      testWidgets('richtige Anordnung: kein Befund; jede Abweichung einzeln '
+          'ein Befund', (WidgetTester tester) async {
+        final Scenario s = _scenario();
+        await pump(tester, group());
+        expect(checkTodayGroup(tester, s), isEmpty);
+        await pump(tester, group(gap: 14));
+        expect(checkTodayGroup(tester, s), hasLength(1));
+        await pump(tester, group(messagesRight: 30));
+        expect(checkTodayGroup(tester, s), hasLength(1));
+        await pump(tester, group(primaryBottom: 110));
+        expect(checkTodayGroup(tester, s), isNotEmpty);
+        await pump(tester, group(primaryWidth: 280));
+        expect(checkTodayGroup(tester, s), hasLength(1));
+      });
+
+      testWidgets('fehlt der Manny-Button, ist das ein harter Befund', (
+        WidgetTester tester,
+      ) async {
+        await pump(
+          tester,
+          Stack(
+            children: <Widget>[
+              Positioned(
+                left: 16,
+                bottom: 100,
+                width: 358,
+                height: 56,
+                child: KeyedSubtree(
+                  key: PreviewKeys.primaryRow,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                bottom: 164,
+                width: 56,
+                height: 56,
+                child: KeyedSubtree(
+                  key: PreviewKeys.cluster,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ],
+          ),
+        );
+        expect(checkTodayGroup(tester, _scenario()), isNotEmpty);
+      });
+    });
+  });
 }
 
 class _Spinner extends StatefulWidget {

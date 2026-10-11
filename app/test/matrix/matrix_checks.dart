@@ -664,6 +664,20 @@ Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
 Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) =>
     atScrollStart(tester, () => _checkTapTargetGaps(tester));
 
+/// Sichtfenster vertikaler Scrollbereiche ohne Scrollweg (nicht in Overlays,
+/// nicht in überdeckten Routen).
+List<Rect> _idleViewports(WidgetTester tester) => <Rect>[
+  for (final Element e in find.byType(Scrollable).evaluate())
+    if (((e as StatefulElement).state as ScrollableState).position.axis ==
+            Axis.vertical &&
+        (e.state as ScrollableState).position.maxScrollExtent <= 0.5 &&
+        !_insideOverlay(e) &&
+        !isBuriedRoute(e) &&
+        e.renderObject is RenderBox)
+      (e.renderObject! as RenderBox).localToGlobal(Offset.zero) &
+          (e.renderObject! as RenderBox).size,
+];
+
 Future<List<Finding>> _checkTapTargetGaps(WidgetTester tester) async {
   final List<TapTarget> rest = tapTargets(tester);
   final List<ScrollScan> scans = await scanAll(tester);
@@ -703,9 +717,16 @@ Future<List<Finding>> _checkTapTargetGaps(WidgetTester tester) async {
   // liegt, ist dort abgeschnitten oder nicht sichtbar (Dialog: Buttons fest
   // unter dem Scrollbereich; vorgebaute Zeilen außerhalb): kein Abstandsbefund.
   // Nur ganz sichtbarer Inhalt zählt.
+  //
+  // Ein zweiter Scrollbereich **ohne** Scrollweg (Inhalt kürzer als die
+  // Fläche) hat kein Scan-Fenster, sein Inhalt ist aber voll sichtbar: Ein
+  // Ziel darin ist nicht abgeschnitten, nur weil ein anderer Bereich Fenster
+  // hat (R-AB-6).
+  final List<Rect> idle = _idleViewports(tester);
   bool clipped(TapTarget c) =>
       scans.isNotEmpty &&
-      !scans.any((ScrollScan sc) => _contains(sc.viewport, c.rect));
+      !scans.any((ScrollScan sc) => _contains(sc.viewport, c.rect)) &&
+      !idle.any((Rect v) => _contains(v, c.rect));
   for (final TapTarget f in fixed) {
     for (final TapTarget c in scrollRest) {
       if (clipped(c)) continue;
@@ -1092,15 +1113,16 @@ const Set<String> kDismissedOnScroll = <String>{'bubble', 'hint'};
 Future<List<Finding>> checkReachability(WidgetTester tester) async {
   final FreeZone zone = FreeZone(tester);
   final bool Function(Rect) free = zone.free;
-  // Blase und `NodeHint` des Pfads schließen, sobald der Nutzer scrollt
-  // (UI-23, UI-62): beim Scrollen zu einem Ziel stehen sie nicht mehr im Weg.
-  // In der Ruhelage (oben) zählen sie weiter. Ohne diese Unterscheidung wäre
-  // eine 96 dp hohe Marke (320 × 568) bei offener Blase nie „frei“ (Fenster
-  // zwischen Kopf, Blase und Gruppe nur 71 und 79 dp).
-  final bool Function(Rect) freeWhileScrolling = FreeZone(
-    tester,
-    ignoring: kDismissedOnScroll,
-  ).free;
+  // Blase und `NodeHint` des Pfads schließen, sobald der **Nutzer** scrollt
+  // (UI-23, UI-62; Test: `UserScrollNotification` schließt beide): in jeder
+  // Lage **außer der Ruhelage** stehen sie beim Erreichen eines Ziels nicht
+  // mehr im Weg. In der Ruhelage (dem Scrollstand des Szenarios) zählen sie
+  // weiter, ebenso beim Hit-Test: ein Ziel, das dort dauerhaft unter ihnen
+  // liegt, ist ein Befund (R-AB-3). Ohne die Ausnahme wäre eine 96 dp hohe
+  // Marke (320 × 568) bei offener Blase nie „frei“ (Fenster zwischen Kopf,
+  // Blase und Gruppe nur 71 und 79 dp).
+  final FreeZone scrollingZone = FreeZone(tester, ignoring: kDismissedOnScroll);
+  final bool Function(Rect) freeWhileScrolling = scrollingZone.free;
   final List<Rect> dismissible = <Rect>[
     for (final MapEntry<String, Rect> e in overlayRects().entries)
       if (kDismissedOnScroll.contains(e.key)) e.value,
@@ -1146,16 +1168,23 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
       // Frei von Kopf und Overlays **und** ganz im Sichtfenster des
       // Scrollbereichs: Ein Dialog hat feste Buttons unter seinem Scrollbereich,
       // die kein Overlay-Marker sind; Inhalt dahinter ist abgeschnitten.
+      bool atRest(double offset) => (offset - start).abs() <= 0.5;
       bool reachable(double offset) {
         final Rect r = t.rect.shift(-scan.shiftFor(offset));
-        return freeWhileScrolling(r) && _contains(scan.viewport, r);
+        // Ruhelage: Blase und Hinweis zählen; sonst sind sie weggescrollt.
+        final bool clear = atRest(offset) ? free(r) : freeWhileScrolling(r);
+        return clear && _contains(scan.viewport, r);
       }
 
       double? hit;
-      for (double offset = 0; offset <= max + 0.001; offset += 2) {
+      if (reachable(start)) hit = start;
+      for (
+        double offset = 0;
+        hit == null && offset <= max + 0.001;
+        offset += 2
+      ) {
         if (reachable(offset)) {
           hit = offset;
-          break;
         }
       }
       if (hit == null && max > 0 && reachable(max)) {
@@ -1174,11 +1203,11 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
       position.jumpTo(hit);
       await tester.pump();
       final Offset center = t.rect.center - scan.shiftFor(position.pixels);
-      // Liegt das Ziel unter Blase oder Hinweis, die beim Scrollen schließen,
-      // trifft der Test nur das Overlay: das Ziel selbst ist frei.
-      final bool underDismissible = dismissible.any(
-        (Rect r) => r.contains(center),
-      );
+      // Liegt das Ziel in einer gescrollten Lage unter Blase oder Hinweis, die
+      // beim Nutzerscrollen schließen, trifft der Test nur das Overlay: das
+      // Ziel selbst ist frei. In der Ruhelage gilt das nicht (R-AB-3).
+      final bool underDismissible =
+          !atRest(hit) && dismissible.any((Rect r) => r.contains(center));
       final HitTestResult result = tester.hitTestOnBinding(center);
       bool onContent = false;
       if (sr == null) {
@@ -1405,6 +1434,42 @@ List<Finding> checkReducedMotion(
 // M-Kontrast
 // ---------------------------------------------------------------------------
 
+/// Wertebereich der Messeigenheit bei Eingabefeldern (1,01 bis 1,02 gemessen);
+/// ein echter Kontrastmangel liegt darüber (R-AB-4).
+const double kTextFieldArtifactMaxRatio = 1.1;
+
+/// Ist die Meldung der Leitlinie zu einem Eingabefeld die bekannte
+/// Messeigenheit (Glas-Verlauf, zwei Stufen des Untergrunds als „Text“ und
+/// „Hintergrund“)? Nur wenn das Feld ein `CuraTextField` ist (Farben durch den
+/// Token-Test belegt) **und** der gemeldete Wert um 1,0 liegt.
+bool isKnownTextFieldArtifact({
+  required double? ratio,
+  required bool insideCuraTextField,
+}) =>
+    insideCuraTextField &&
+    ratio != null &&
+    ratio >= 1.0 &&
+    ratio < kTextFieldArtifactMaxRatio;
+
+/// Alle Texteingabe-Ziele mit dieser Beschriftung (bzw. diesem Wert) liegen in
+/// einem `CuraTextField`.
+bool _onlyInCuraTextField(WidgetTester tester, String label) {
+  final List<TapTarget> fields = tapTargets(tester)
+      .where((TapTarget t) => t.isTextField && t.label == label)
+      .toList();
+  if (fields.isEmpty) return false;
+  final double dpr = tester.view.devicePixelRatio;
+  final List<Rect> boxes = <Rect>[
+    for (final Element e in find.byType(CuraTextField).evaluate())
+      if (e.renderObject is RenderBox)
+        (e.renderObject! as RenderBox).localToGlobal(Offset.zero) / dpr &
+            ((e.renderObject! as RenderBox).size / dpr),
+  ];
+  return fields.every(
+    (TapTarget t) => boxes.any((Rect b) => _contains(b, t.rect)),
+  );
+}
+
 /// Bekannte Eigenheit von `textContrastGuideline` (U2a): Im **aktiven**
 /// Nav-Eintrag wertet sie die Icon-Pixel als Text und meldet fälschlich ca.
 /// 2,27:1. Die Nav-Paare stehen aus Tokens in `test/theme/contrast_test.dart`.
@@ -1431,6 +1496,9 @@ Future<List<Finding>> checkTextContrast(WidgetTester tester) async {
   for (final String b in blocks) {
     if (b.trim().isEmpty) continue;
     final String? label = RegExp(r'label: "([^"]*)"').firstMatch(b)?.group(1);
+    // Eingabefelder tragen den Text als `value`.
+    final String? shown =
+        label ?? RegExp(r'value: "([^"]*)"').firstMatch(b)?.group(1);
     final double? ratio = double.tryParse(
       RegExp(r'found (\d+\.\d+)').firstMatch(b)?.group(1) ?? '',
     );
@@ -1452,8 +1520,18 @@ Future<List<Finding>> checkTextContrast(WidgetTester tester) async {
     // Leitlinie liest die zwei häufigsten Farben aus dem Bild und trifft dabei
     // zwei Stufen des Verlaufs statt der Textfarbe (gemeldete Paare liegen bei
     // 1,01 bis 1,02, beide Farben Untergrund). Messartefakt: `text1` auf Glas
-    // und auf `surface-opaque` ist durch den Token-Test (UI-3) belegt.
-    if (b.contains('isTextField')) continue;
+    // und auf `surface-opaque` ist durch den Token-Test (UI-3) belegt. Die
+    // Ausnahme gilt nur für diese Eigenheit ([isKnownTextFieldArtifact]):
+    // Feld des Bausteins `CuraTextField` und Wert um 1,0 (R-AB-4).
+    final bool field = b.contains('isTextField');
+    if (field &&
+        isKnownTextFieldArtifact(
+          ratio: ratio,
+          insideCuraTextField:
+              shown != null && _onlyInCuraTextField(tester, shown),
+        )) {
+      continue;
+    }
     if (known) continue;
     out.add(
       Finding('Text-Kontrast (Leitlinie)', b.split('\n').take(3).join(' | ')),

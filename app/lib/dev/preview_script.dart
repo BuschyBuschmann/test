@@ -9,6 +9,7 @@ import '../ui/components/cura_pressable.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/home/home_shell.dart';
+import '../ui/routes/cura_sheet_route.dart' show CuraSheetFrame;
 
 /// Höchstens so viele Frames lang wird auf den Baustein gewartet.
 const int _maxFrames = 600;
@@ -22,6 +23,11 @@ const String kPreviewScrollEnd = 'preview:scroll-end';
 /// sichtbaren Tabs ganz nach oben (Pfad: der Ausblick `PathOutlook` über dem
 /// Boss, `path-outlook`).
 const String kPreviewScrollStart = 'preview:scroll-start';
+
+/// Eintrag in [PreviewScript.taps]: scrollt den Inhalt des offenen Sheets
+/// („Deine Daten“) ans Ende (`data-sheet-bottom`: der Löschen-Abschnitt ist
+/// sichtbar).
+const String kPreviewScrollSheetEnd = 'preview:scroll-sheet-end';
 
 class PreviewScript extends StatefulWidget {
   const PreviewScript({
@@ -86,6 +92,12 @@ class _PreviewScriptState extends State<PreviewScript> {
       if (_scrollPathToEnd()) _scrollEndPending = false;
     } else if (_pending.isNotEmpty && _pending.first == kPreviewScrollStart) {
       if (_scrollPath(toEnd: false) && ++_endJumps >= _endJumpFrames) {
+        _pending.removeAt(0);
+        _endJumps = 0;
+      }
+    } else if (_pending.isNotEmpty &&
+        _pending.first == kPreviewScrollSheetEnd) {
+      if (_scrollSheetToEnd() && ++_endJumps >= _endJumpFrames) {
         _pending.removeAt(0);
         _endJumps = 0;
       }
@@ -167,6 +179,38 @@ class _PreviewScriptState extends State<PreviewScript> {
     if (st == null) return;
     final ScrollPosition p = st.position;
     p.jumpTo((p.pixels + p.viewportDimension / 2).clamp(0, p.maxScrollExtent));
+  }
+
+  /// Scrollt den Inhalt des offenen Sheets ans Ende. `false`, solange es noch
+  /// nicht im Baum steht oder nichts zu scrollen hat.
+  bool _scrollSheetToEnd() {
+    ScrollableState? found;
+    void walk(Element e) {
+      if (found != null) return;
+      if (e.widget is CuraSheetFrame) {
+        void inner(Element c) {
+          if (found != null) return;
+          if (c is StatefulElement && c.state is ScrollableState) {
+            found = c.state as ScrollableState;
+            return;
+          }
+          c.visitChildren(inner);
+        }
+
+        e.visitChildren(inner);
+        return;
+      }
+      e.debugVisitOnstageChildren(walk);
+    }
+
+    context.visitChildElements(walk);
+    final ScrollableState? st = found;
+    if (st == null) return false;
+    if (!st.position.hasContentDimensions || st.position.maxScrollExtent < 1) {
+      return false;
+    }
+    st.position.jumpTo(st.position.maxScrollExtent);
+    return true;
   }
 
   /// Scrollt den Pfad (Bereich mit dem Marker `scroll`) ans Ende. `false`,

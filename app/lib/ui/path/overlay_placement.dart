@@ -82,6 +82,13 @@ class BubblePlacement {
 /// geraten). [scrollOffset] ist der aktuelle Offset (der Pfad kann nur bis 0
 /// zurück). Mit [allowScroll] darf die Platzierung den Pfad scrollen lassen
 /// (nur beim Erscheinen der Blase; danach folgt sie Manny nur noch).
+///
+/// [scrollBottomLimit] ist die Unterkante, bis zu der der Pfad Manny samt
+/// Unit beim Scrollen schieben darf, wenn Manny nicht in der Spalte der
+/// Button-Gruppe steht (typisch: Oberkante der Nav). Steht Manny in dieser
+/// Spalte, gilt weiter die Oberkante der Gruppe. So kann der Pfad bei großer
+/// Schrift weit genug nach unten scrollen, damit der Text der Blase ganz
+/// sichtbar ist (F-5).
 BubblePlacement placeBubble({
   required Rect manny,
   required Size viewport,
@@ -92,6 +99,7 @@ BubblePlacement placeBubble({
   double scrollOffset = 0,
   bool allowScroll = false,
   double topLimit = kOverlayTopLimit,
+  double? scrollBottomLimit,
 }) {
   final double bottomLimit = bottomLimitFor(viewport, cluster);
   const double margin = CuraSpace.pageMargin;
@@ -160,7 +168,14 @@ BubblePlacement placeBubble({
   double down = 0;
   if (allowScroll) {
     final double needed = topLimit - r.top;
-    final double room = bottomLimit - (manny.bottom + mannyBelowExtra);
+    final bool inClusterColumn =
+        cluster != null &&
+        cluster.left < manny.right + CuraSize.minTargetGap &&
+        cluster.right > manny.left - CuraSize.minTargetGap;
+    final double scrollLimit = inClusterColumn
+        ? bottomLimit
+        : (scrollBottomLimit ?? bottomLimit);
+    final double room = scrollLimit - (manny.bottom + mannyBelowExtra);
     down = math.max(0, math.min(needed, math.min(scrollOffset, room)));
     r = above(down);
     if (r.top >= topLimit - 0.01) {
@@ -230,7 +245,9 @@ HintPlacement _shifted(HintPlacement p, double scroll) => HintPlacement(
 /// Wählt Lage und Pfeil des Hinweises an [unit] (Rechteck des Kreises).
 ///
 /// [scrollOffset] und [maxScrollOffset] begrenzen das Scrollen der Stufe 4
-/// (nur mit [allowScroll], beim Erscheinen des Hinweises).
+/// (nur mit [allowScroll], beim Erscheinen des Hinweises). [minBodyHeight] ist
+/// die Höhe, die der Körper in der letzten Stufe mindestens zeigen soll
+/// (F-5: drei Zeilen Text samt Innenabstand).
 HintPlacement placeHint({
   required Rect unit,
   required Size viewport,
@@ -240,6 +257,7 @@ HintPlacement placeHint({
   double maxScrollOffset = 0,
   bool allowScroll = false,
   double topLimit = kOverlayTopLimit,
+  double minBodyHeight = CuraSize.touchTarget,
 }) {
   final double bottomLimit = bottomLimitFor(viewport, cluster);
   const double margin = CuraSpace.pageMargin;
@@ -324,10 +342,10 @@ HintPlacement placeHint({
   // 5. Auf die freie Fläche begrenzt, Text scrollt innen. Passen Unit und
   //    Hinweis nicht zusammen in die freie Fläche (hohe Marke bei großer
   //    Schrift), schiebt der Pfad die Unit so, dass der Hinweis darüber
-  //    mindestens 48 dp Text zeigt: ihre Unterkante an die Unterkante der
+  //    mindestens drei Zeilen Text zeigt: ihre Unterkante an die Unterkante der
   //    freien Fläche, ist sie dafür zu hoch, ihre Oberkante nach unten.
   if (allowScroll && scroll == 0) {
-    const double minAbove = arrow + CuraSize.touchTarget;
+    final double minAbove = arrow + math.min(minBodyHeight, body.height);
     final double wantedTop = unit.height + minAbove <= free
         ? bottomLimit - unit.height
         : topLimit + minAbove;
@@ -341,10 +359,9 @@ HintPlacement placeHint({
   final double roomBelow = bottomLimit - u.bottom - arrow;
   final double roomAbove = u.top - topLimit - arrow;
   final bool below = roomBelow >= roomAbove;
-  final double bodyMax = math.max(
-    CuraSize.touchTarget,
-    below ? roomBelow : roomAbove,
-  );
+  // Nie höher als die freie Fläche (R-AB-5): kein Überstehen über die Gruppe
+  // oder den oberen Rand.
+  final double bodyMax = math.max(0.0, below ? roomBelow : roomAbove);
   final Size b = measure(fullW);
   final double bodyH = math.min(b.height, bodyMax);
   final double left = clampLeft(u.center.dx - b.width / 2, b.width);

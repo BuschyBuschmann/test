@@ -3,11 +3,14 @@
 //
 // - Kopfzeile fix (`PathHeader`), darunter der Pfad scrollt (Zukunft oben,
 //   oben und unten gepolstert, unten mit der Reserve für die Button-Gruppe).
-//   Ab Textskalierung 1,5 wandert die Kopfzeile als erstes Element in die
+//   Ab Textskalierung 1,5 bleibt nur eine feste schmale Zeile stehen („Woche N“
+//   links, „Deine Daten“ rechts, höchstens 64 dp, Marker `header`); Phase,
+//   „Beispielpfad“, Freezes und Streak wandern als erstes Element in die
 //   Scrollfläche (Marker `scroll-header`): bei 320 × 568 und 200 % verbrauchte
-//   sie sonst mehr als die Hälfte des Bildschirms, und Units der rechten Bahn
-//   ließen sich nicht mehr frei von Kopf, Button-Gruppe und Nav scrollen
-//   (UI-33, UI-34; gleiche Regel wie im Onboarding).
+//   der volle Kopf sonst mehr als die Hälfte des Bildschirms, und Units der
+//   rechten Bahn ließen sich nicht mehr frei von Kopf, Button-Gruppe und Nav
+//   scrollen (UI-33, UI-34, F-1). `padTop` zieht die Höhe des mitlaufenden
+//   Teils ab (F-2).
 //   Beim Öffnen und nach einer Neuberechnung (Profil, Fortschritt) steht die
 //   aktuelle Unit auf 55 % der Sichtfläche (`jumpTo`, keine Animation).
 // - Manny sitzt auf der aktuellen Unit und öffnet bei einem Tipp den
@@ -111,6 +114,9 @@ class _PathScreenState extends State<PathScreen> {
   String? _pulseUnitId;
   Timer? _hintTimer;
   String? _timedHint;
+
+  /// Im Hinweis wird gescrollt oder getippt: er bleibt dann stehen (F-5).
+  bool _hintHeld = false;
 
   final Map<String, Size> _measures = <String, Size>{};
 
@@ -225,6 +231,7 @@ class _PathScreenState extends State<PathScreen> {
       _hintTimer?.cancel();
       _hintTimer = null;
       _timedHint = hint;
+      _hintHeld = false;
       final bool screenReader =
           context
               .getInheritedWidgetOfExactType<MediaQuery>()
@@ -232,7 +239,12 @@ class _PathScreenState extends State<PathScreen> {
               .accessibleNavigation ??
           false;
       if (hint != null && !screenReader) {
-        _hintTimer = Timer(SnackbarTokens.medium, _transient.dismissHint);
+        _hintTimer = Timer(SnackbarTokens.medium, () {
+          // Passt der Text nicht ganz hinein (innen scrollbar) oder wird im
+          // Hinweis gescrollt, schließt kein Zeitgeber (F-5, R-AB-5).
+          if (_hintHeld || (_hintPlan?.limited ?? false)) return;
+          _transient.dismissHint();
+        });
       }
     }
     if (!mounted) return;
@@ -245,6 +257,12 @@ class _PathScreenState extends State<PathScreen> {
     } else {
       setState(() {});
     }
+  }
+
+  void _holdHint() {
+    _hintHeld = true;
+    _hintTimer?.cancel();
+    _hintTimer = null;
   }
 
   /// Tipp irgendwo: Blase (zählt als gezeigt) und Hinweis schließen.
@@ -399,10 +417,9 @@ class _PathScreenState extends State<PathScreen> {
   /// (Höhe der mitlaufenden Kopfzeile).
   double get _contentTop => _headerH;
 
-  /// Obere Grenze der Overlays: läuft die Kopfzeile mit, bleibt oben der Platz
-  /// für „Deine Daten“ frei.
-  double get _overlayTop =>
-      _headerH > 0 ? CuraSize.touchTarget : kOverlayTopLimit;
+  /// Obere Grenze der Overlays. Die feste Kopfzeile (ab Skalierung 1,5 mit
+  /// „Deine Daten“) liegt über der Sichtfläche, nicht in ihr.
+  double get _overlayTop => kOverlayTopLimit;
 
   Rect _mannyRect(PathLayout layout, PathProgress progress) {
     final NodePlacement p = layout.placements[progress.mannyIndex];
@@ -434,6 +451,8 @@ class _PathScreenState extends State<PathScreen> {
       scrollOffset: _offset,
       allowScroll: allowScroll,
       topLimit: _overlayTop,
+      scrollBottomLimit:
+          _viewport.height - FloatingNav.occupiedHeight(context) - CuraSpace.s2,
     );
   }
 
@@ -465,7 +484,13 @@ class _PathScreenState extends State<PathScreen> {
     final double max = c != null && c.hasClients
         ? c.position.maxScrollExtent
         : layout.maxScrollExtent;
+    // Mindestens drei Zeilen Text samt Innenabstand sollen im Hinweis zu sehen
+    // sein, wenn er begrenzt werden muss (F-5).
+    final double threeLines =
+        _measureText('A\nA\nA', type.secondary, 1000, scaler).height +
+        2 * CuraSize.hintPaddingVertical;
     return placeHint(
+      minBodyHeight: threeLines,
       unit: unit,
       viewport: _viewport,
       cluster: allowScroll ? _clusterNow() : _cluster,
@@ -511,23 +536,21 @@ class _PathScreenState extends State<PathScreen> {
     outlookGap: CuraSize.pathUnitGapMin,
   );
 
-  /// Höhe des Ausblicks: Titel plus Untertitel in der Textspalte der Marke,
-  /// Innenabstand, mindestens 72 dp (wächst mit der Schrift, bricht um).
+  /// Höhe des Ausblicks: Schloss neben oder (bei schmalem Block) über dem Text,
+  /// Titel höchstens bei 150 %, Innenabstand, mindestens 72 dp (wächst mit der
+  /// Schrift, bricht um). Dieselbe Rechnung wie im Baustein selbst.
   double _outlookHeight(double width, CuraTypography type, TextScaler scaler) {
     final double w = math.max(
       0.0,
       math.min(width - 2 * CuraSpace.pageMargin, CuraSize.outlookMaxWidth),
     );
-    final double textWidth = PathOutlook.textWidthFor(w);
-    final double h =
-        _measureText(S.outlookTitle, type.heading, textWidth, scaler).height +
-        _measureText(
-          S.outlookSubtitle,
-          type.secondary,
-          textWidth,
-          scaler,
-        ).height;
-    return PathOutlook.heightFor(h);
+    return PathOutlook.layoutFor(
+      width: w,
+      type: type,
+      scaler: scaler,
+      measure: (String t, TextStyle style, double maxWidth, TextScaler s) =>
+          _measureText(t, style, maxWidth, s),
+    ).height;
   }
 
   String? _labelText(PathUnit u) {
@@ -566,30 +589,50 @@ class _PathScreenState extends State<PathScreen> {
     final double textScale = MediaQuery.textScalerOf(context)
         .scale(CuraSize.hairline);
     final bool headerScrolls = textScale >= CuraSize.textScaleScrollAlong;
+    // Ab 1,5 bleibt nur eine schmale Zeile fest („Woche N“, „Deine Daten“);
+    // Phase, Beispielpfad, Freezes und Streak laufen in der Scrollfläche mit.
     final Widget header = FocusTraversalOrder(
       order: const NumericFocusOrder(HomeShellState.focusOrderHeader),
-      child: PathHeader(
-        week: progress.week,
-        phaseLine: phaseLine(progress.phase, state.onboarding.injuryType),
-        streak: streak,
-        onOpenData: shell.openDataSheet,
-        dataFocusNode: shell.dataButtonFocus,
-      ),
+      child: headerScrolls
+          ? PathHeaderBar(
+              week: progress.week,
+              onOpenData: shell.openDataSheet,
+              dataFocusNode: shell.dataButtonFocus,
+            )
+          : PathHeader(
+              week: progress.week,
+              phaseLine: phaseLine(progress.phase, state.onboarding.injuryType),
+              streak: streak,
+              onOpenData: shell.openDataSheet,
+              dataFocusNode: shell.dataButtonFocus,
+            ),
     );
     if (!headerScrolls && _headerH != 0) _headerH = 0;
     return TapAnywhereDismiss(
       onDismiss: _dismissOverlays,
       child: SafeArea(
         bottom: false,
-        child: headerScrolls
-            ? _viewportArea(context, progress, scrollHeader: header)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  KeyedSubtree(key: ProbeKeys.header, child: header),
-                  Expanded(child: _viewportArea(context, progress)),
-                ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            KeyedSubtree(key: ProbeKeys.header, child: header),
+            Expanded(
+              child: _viewportArea(
+                context,
+                progress,
+                scrollHeader: headerScrolls
+                    ? PathHeaderInfo(
+                        phaseLine: phaseLine(
+                          progress.phase,
+                          state.onboarding.injuryType,
+                        ),
+                        streak: streak,
+                      )
+                    : null,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -647,6 +690,7 @@ class _PathScreenState extends State<PathScreen> {
           outlookHeight: kPathOutlookShown
               ? _outlookHeight(width, type, scaler)
               : null,
+          leadingExtent: _headerH,
         );
         final List<PathLabel> labels = <PathLabel>[];
         for (int i = 0; i < progress.units.length; i++) {
@@ -893,11 +937,21 @@ class _PathScreenState extends State<PathScreen> {
       width: plan.rect.width,
       child: KeyedSubtree(
         key: ProbeKeys.hint,
-        child: NodeHint(
-          text: text,
-          arrow: plan.arrow,
-          arrowCenter: plan.arrowCenter,
-          maxBodyHeight: plan.maxBodyHeight,
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _holdHint(),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification n) {
+              _holdHint();
+              return false;
+            },
+            child: NodeHint(
+              text: text,
+              arrow: plan.arrow,
+              arrowCenter: plan.arrowCenter,
+              maxBodyHeight: plan.maxBodyHeight,
+            ),
+          ),
         ),
       ),
     );

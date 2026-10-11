@@ -17,17 +17,18 @@ Prüfarten (Plan 12.2): U Unit-Test · W Widget-Test · M Matrix (M-Layout, M-Mo
 
 ## 2. Was in dieser Umgebung ausgeführt wurde
 
-Alle Befehle im Verzeichnis `/home/user/test/app` mit `export PATH=/opt/flutter/bin:$PATH`.
+Stand nach Korrekturpaket AB-K1 (Abschluss-Review R-AB und Design-Abnahme A-AB; nicht committet). Alle Befehle im Verzeichnis `/home/user/test/app` mit `export PATH=/opt/flutter/bin:$PATH`.
 
 | Prüfung | Ergebnis |
 |---|---|
 | `dart format --output=none --set-exit-if-changed lib test` | ohne Änderungen (Exit 0) |
 | `flutter analyze` | No issues found |
-| `flutter test --exclude-tags golden,matrix` | 1013 Tests, alle grün (978 vorher, 35 neu: 33 in `data_sheet_test.dart`, 2 Selbsttests der Matrix) |
-| `flutter test --tags golden` | 9 Goldens grün, unverändert (kein Golden neu erzeugt) |
-| `flutter test --tags matrix` | 827 Fälle grün (736 vorher, 91 neu), Laufzeit 338 s; 17 Richtwert-Befunde, alle Pfad auf 320 × 568 (nicht neu) |
-| Web-Build `-t lib/main_preview.dart` und vollständiger `shoot.mjs`-Lauf | Web-Build ok; 1115 Bilder (1005 Szenario-Bilder, 110 Simulationen) in 3488 s; Pipette 9/9 Δ 0; Pixel-Kontrast 4025 Texte/Symbole, 0 unter Schwelle |
-| `tool/screens/nav_checks.mjs` | 79/79 ohne Fehler (18 neue Punkte für Deine Daten: Profil ändern, Verwerfen, Löschen) |
+| `flutter test --exclude-tags golden,matrix` | 1067 Tests, alle grün (1013 vorher, 54 neu in AB-K1) |
+| `flutter test --tags golden` | 14 Goldens grün: die 9 bisherigen **unverändert**, 5 neu (`scenario_data-sheet`, `scenario_data-sheet-dirty`, `scenario_data-delete-dialog`, `scenario_data-discard-dialog`, `scenario_path-outlook`, 390 × 844, 1,0, normal); Sichtung durch den `ui-designer` und Freigabe durch den Nutzer stehen aus |
+| `flutter test --tags matrix` | 837 Fälle grün (827 vorher, 10 neu für `data-sheet-bottom`), Laufzeit 334 s; **RM-Durchlauf: 579 von 579 Tap-Zielen angetippt**; 23 Richtwert-Befunde, alle Pfad (17 vorher; die 6 neuen kommen daher, dass ab 1,5 jetzt die feste Zeile als Kopf zählt, Richtwert „Sichtfläche ≥ 120 dp“) |
+| Web-Build `-t lib/main_preview.dart` | ok |
+| `shoot.mjs` (vollständig) | 1127 Bilder (1016 Szenario-Bilder, 111 Simulationen) in 4822 s; Pipette 9/9 Δ 0; Pixel-Kontrast 4177 Texte/Symbole, 0 unter Schwelle; 1 Bild (`scale2/430x932/data-delete-busy`, Dauer-Animation) lief in das 30-s-Zeitlimit des Screenshots und wurde allein erneut erzeugt (ok, 55 s) |
+| `tool/screens/nav_checks.mjs` | 77/79: `Speichern: Heute zeigt den neuen Namen` und `Reload: der neue Name bleibt gespeichert` schlagen fehl, **auch auf dem unveränderten Stand HEAD 11c9e8c in dieser Umgebung** (Eingabe „Mia“ im Webfeld landet als „Jakobia“); keine Folge von AB-K1, die Ursache ist nicht geklärt (in U4 liefen 79/79) |
 | `tool/screens/main_smoke.mjs` | alle Punkte ok (eigener Build `lib/main.dart`, Port 8766) |
 
 Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de69-5d07-b67c-c1ea446d8068/scratchpad/screens/u4/` (nicht eingecheckt, Plan 12.5); die Kontaktbögen heißen `index.html` je Variante, die Kontrastwerte stehen in `contrast.csv`.
@@ -46,7 +47,7 @@ Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de
 | UI-6 | erfüllt | C: Regel 3; M-Layout (`BackdropFilter` ≤ 2 bzw. 0 in Chat/Nachrichten); `test/components/layout_surfaces_test.dart` | Mit Sheet „Deine Daten“ zählen Nav und Sheet (2); im kompakten Zustand ist das Sheet opak (1). |
 | UI-7 | erfüllt | U: `glow_test.dart`, `contrast_test.dart`; W: `layout_surfaces_test.dart`; M-Layout Glow-Alpha-Regel je Text; S: Pixel-Kontrast | Gilt nach Brief-Präzisierung nur in der **Ruhelage** (bekannte Grenze, Abschnitt 4). |
 | UI-8 | teilweise | W/M-Modus: `path_components_test`, `manny_bubble_test`, `home_shell_test`, `path_screen_test`, `data_sheet_test` (UI-64); M-Modus aller 83 Szenarien (RM, jeder Tipp-Übergang) | [D-offen] D-2: Systemschalter auf dem Gerät. Fortschrittskreis des Löschens läuft nach E-3 weiter (nur dieser). Die Datumsauswahl blendet jetzt über `CuraDialogRoute` ein (vorher feste 150 ms, über der 120-ms-Grenze). |
-| UI-9 | teilweise | W: `layout_surfaces_test`, `path_screen_test`, `data_sheet_test` (HC: Sheet, Dialoge opak, Scrim 72 %, kein Blur); U: 4,37 ≥ 4,3; M-Modus HC | [D-offen] D-3: Systemsignal (iOS 13+, Android 14+). |
+| UI-9 | teilweise | W: `layout_surfaces_test`, `path_screen_test`, `data_sheet_test` (HC: Sheet, Dialoge opak, Scrim 72 %, kein Blur); U: 4,37 ≥ 4,3; M-Modus HC; S: Sichtteil durch den `ui-designer` erledigt (Design-Abnahme A-AB) | [D-offen] D-3: Systemsignal (iOS 13+, Android 14+). |
 | UI-10 | [D-offen] | – | D-4: Scroll-Performance des Pfads im Profile-Modus. Vorbereitend: C/W, Blur nur in Nav, Blase, Sheet. |
 | UI-11 | erfüllt | W: `test/screens/onboarding_test.dart` (Ablauf 1 bis 4) | |
 | UI-12 | erfüllt | W: `onboarding_test` (disabled bei „“ und „   “, Name in Manny-Texten) | |
@@ -55,8 +56,8 @@ Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de
 | UI-15 | erfüllt | W: `onboarding_test` | |
 | UI-16 | erfüllt | W: `onboarding_test` (Mikrofon, Zurück, Fortsetzen); S: `nav_checks.mjs` (Reload, `page.goBack()`) | |
 | UI-17 | erfüllt | C: Regeln 4, 5 (neue Allowlist-Datei `delete_error_notice.dart` für `status-error` im Löschfehler) | Review steht an. |
-| UI-18 | teilweise | W: `path_components_test`, `today_screen_test`, `path_screen_test` (Icon plus Label je Zustand); S: Achromatopsie-Bilder aller Szenarien erzeugt | Sichtprüfung der Graustufen-Bilder durch `ui-designer` offen. |
-| UI-19 | teilweise | W: `today_screen_test` (Icon plus Label je Kategorie); S: Protanopie, Deuteranopie, Tritanopie für 9 Szenarien erzeugt | Sichtprüfung offen. |
+| UI-18 | erfüllt | W: `path_components_test`, `today_screen_test`, `path_screen_test` (Icon plus Label je Zustand); S: Achromatopsie-Bilder aller Szenarien erzeugt; Sichtung der Graustufen-Bilder durch den `ui-designer` abgeschlossen (Design-Abnahme A-AB) | |
+| UI-19 | erfüllt | W: `today_screen_test` (Icon plus Label je Kategorie); S: Protanopie, Deuteranopie, Tritanopie für 9 Szenarien erzeugt; Sichtung durch den `ui-designer` abgeschlossen (Design-Abnahme A-AB) | |
 | UI-20 | erfüllt | U: `path_layout_test`; W: `path_components_test`, `path_screen_test` | |
 | UI-21 | erfüllt | W: `path_screen_test` (40 bis 65 % der Viewport-Höhe in allen Lagen) | |
 | UI-22 | erfüllt | W: `path_components_test`, `path_screen_test` | |
@@ -70,8 +71,8 @@ Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de
 | UI-30 | erfüllt | W: `today_screen_test`; U: `app_controller_test`, `day_rollover_test` | |
 | UI-31 | erfüllt | W: `today_screen_test`; M-Layout (Erreichbarkeit nach Scrollen, auch `today-snackbar-cluster`) | |
 | UI-32 | teilweise | M-Layout (`androidTapTargetGuideline`, Abstand ≥ 8 dp) aller Szenarien inkl. der neuen | [D-offen] D-6: Layout-Inspektor auf dem Gerät. |
-| UI-33 | erfüllt | M-Layout bei 2,0 aller Szenarien; W: `today_screen_test`, `onboarding_test`, `floating_nav_test` (Nav ≤ 1,3); C: Regel 11 | Im Sheet „Deine Daten“ bricht der Titel des Löschen-Buttons um; ab 1,5 entfällt dort das Symbol (Abschnitt 6). |
-| UI-34 | erfüllt | M-Layout 320 × 568; W: `manny_bubble_test`, `onboarding_test` | |
+| UI-33 | erfüllt | M-Layout bei 2,0 aller Szenarien; W: `today_screen_test`, `onboarding_test`, `floating_nav_test` (Nav ≤ 1,3); C: Regel 11; **neu (AB-K1):** W `path_screen_test` F-1 (feste Pfad-Zeile ≤ 64 dp, Rest scrollt mit, 320 × 568 und 390 × 844 bei 1,5 und 2,0), F-2 (Marke ganz oben sichtbar), F-3 (Titel der Marke nur an Wortgrenzen), F-5 (Hinweis ≥ 3 Zeilen, nie höher als die freie Fläche); `cura_dialog_test` und `data_sheet_test` F-4 (Dialog scrollt ab 1,5 als Ganzes, Fehlertext sichtbar, Buttons ohne Wortbruch); M-RM mit Durchlauf „jedes Ziel antippen“ | Im Sheet „Deine Daten“ bricht der Titel des Löschen-Buttons um; ab 1,5 entfällt dort das Symbol (Abschnitt 6). |
+| UI-34 | erfüllt | M-Layout 320 × 568; W: `manny_bubble_test`, `onboarding_test`; **neu (AB-K1):** `path_screen_test` F-5 (Blase bei 320 × 568 × 2,0 ganz sichtbar, der Pfad scrollt programmatisch, die Blase bleibt offen), `overlay_placement_test` | |
 | UI-35 | teilweise | W: Labels, Reihenfolge, `FocusRing`; M-Kontrast (`labeledTapTargetGuideline`) | [D-offen] D-1: TalkBack/VoiceOver. |
 | UI-36 | erfüllt | C: Regeln 8, 10 auf `strings_de.dart` (inkl. der neuen Texte) | Tonprüfung durch `ui-designer` offen (Plan 13). |
 
@@ -100,15 +101,15 @@ Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de
 | UI-55 | erfüllt | W: `data_sheet_test` (nur Name; Typ und Datum: Pfad neu, Streak, Freezes, Heute-Änderungen bleiben, `pulsePending` leer, kein Puls, aktuelle Unit auf 55 %, Ansagen; nur Typ in gleicher Woche zentriert neu); `path_screen_test` | Der Pfad zentriert jetzt auch bei gleicher Unit und Woche neu (Schlüssel aus Typ und Datum). |
 | UI-56 | erfüllt | W: `data_sheet_test` | |
 | UI-57 | erfüllt | W: `data_sheet_test` (alle fünf Schließwege, Weiter bearbeiten, Verwerfen, Scrim, Aufbau); S: `nav_checks.mjs` (inkl. Browser-Zurück) | |
-| UI-58 | teilweise | W: `data_sheet_test` (320 × 568 mit Tastatur: „Speichern“ sichtbar, Feld sichtbar und fokussiert über den Wechsel in den kompakten Zustand; bei 200 % ebenso); M-Layout `data-sheet-keyboard` (alle Viewports, 1,0 und 2,0) | [D-offen] D-5: echte Tastatur. Bei kleiner Fläche mit Tastatur weicht das Sheet vom Brief ab (Abschnitt 6, A-U4-1). |
+| UI-58 | teilweise | W: `data_sheet_test` (320 × 568 mit Tastatur: „Speichern“ sichtbar, Feld sichtbar und fokussiert über den Wechsel in den kompakten Zustand; bei 200 % ebenso); M-Layout `data-sheet-keyboard` (alle Viewports, 1,0 und 2,0); S: Sichtteil durch den `ui-designer` erledigt; W: F-6 (Safe Area oben im kompakten Sheet) | [D-offen] D-5: echte Tastatur. Bei kleiner Fläche mit Tastatur weicht das Sheet vom Brief ab (Abschnitt 6, A-U4-1). |
 | UI-59 | erfüllt | W: `path_screen_test` | |
 | UI-60 | erfüllt | W: `path_screen_test`; U: `path_test` | |
 | UI-61 | erfüllt | W: `path_screen_test` | |
-| UI-62 | erfüllt | W: `path_screen_test`, `path_components_test` | |
+| UI-62 | erfüllt | W: `path_screen_test`, `path_components_test`; **neu (AB-K1):** `path_screen_test` F-5/R-AB-5 (kein 5-s-Zeitgeber, solange der Text nicht ganz passt oder im Hinweis gescrollt wird), R-AB-3 (Nutzerscrollen schließt Blase und Hinweis, `jumpTo` und `ensureVisible` nicht); `overlay_placement_test` (Körper nie höher als die freie Fläche) | |
 | UI-63 | erfüllt | W: `path_screen_test`; M-Layout | |
 | UI-64 | erfüllt | W: `data_sheet_test` (RM: Sheet und Dialoge ohne Schiebung, nach 121 ms keine Animation; Fortschrittskreis darf drehen), `path_components_test`, `cura_snackbar_test`; M-Modus RM aller Szenarien, jeder Tipp-Übergang | Datumsauswahl über eigene Route, damit ≤ 120 ms. |
 | UI-65 | erfüllt | W: `data_sheet_test` (HC: Sheet, Dialoge opak, `border-control-hc`, Scrim 72 %, kein Blur, Kreisrand am Icon), `cura_dialog_test`, `cura_snackbar_test`, `path_screen_test`; M-Modus HC | |
-| UI-66 | erfüllt | W: `data_sheet_test` (320 × 568 bei 200 %); M-Layout aller neuen Szenarien bei 2,0 | Kompakter Zustand (Abschnitt 6). |
+| UI-66 | erfüllt | W: `data_sheet_test` (320 × 568 bei 200 %); M-Layout aller neuen Szenarien bei 2,0; **neu (AB-K1):** `data_sheet_test` F-4 (Löschfehler bei 320 × 568 × 2,0 ohne Scrollen sichtbar), F-6 (kompaktes Sheet unter der Statusleiste, Normalzustand nach der Tastatur); `preview_app_scenarios_test` F-8 (`data-sheet-bottom`: Löschen-Abschnitt sichtbar) | Kompakter Zustand (Abschnitt 6). |
 | UI-67 | erfüllt | C: Regeln 1 bis 5; U: `tokens_test` (`scrim` 60/72 %) | |
 | UI-68 | teilweise | W: `data_sheet_test` (Routennamen, Fokusrückgabe, Ansagen, Tastaturbedienung); `cura_dialog_test`; S: ARIA in `nav_checks.mjs` | [D-offen] D-1: TalkBack/VoiceOver. |
 | UI-69 | erfüllt | C: Regeln 8, 10 | Tonprüfung durch `ui-designer` offen. |
@@ -149,9 +150,9 @@ Screenshots dieses Laufs liegen unter `/tmp/claude-0/-home-user-test/17fd6f3c-de
 | UI-94 | erfüllt | W: `path_screen_test`; U: `path_layout_test` | |
 | UI-95 | erfüllt | U: `path_test`; W: `path_screen_test` | |
 | UI-96 | erfüllt | W: `path_screen_test` | |
-| UI-97 | erfüllt | U: `path_layout_test`; W: `path_screen_test` (320 und 430 dp) | |
+| UI-97 | erfüllt | U: `path_layout_test`; W: `path_screen_test` (320 und 430 dp); **neu (AB-K1):** `path_layout_test` (`leadingExtent`, Brief-Ergänzung 3, 4.4), `path_screen_test` F-2 (ganz oben gescrollt: Marke vollständig sichtbar, nicht unter Kopf oder Nav; Gruppe ab 390 dp, bei 320 dp bewusst darüber, F-11) | |
 | UI-98 | erfüllt | W: `path_screen_test` | |
-| UI-99 | erfüllt | W: `path_screen_test`; M-Kontrast und Glow-Regel `path-outlook`, `path-outlook-hint` | |
+| UI-99 | erfüllt | W: `path_screen_test`; M-Kontrast und Glow-Regel `path-outlook`, `path-outlook-hint`; **neu (AB-K1):** `path_screen_test` F-3/R-AB-2 (Titel bricht bei 320 und 390 dp, 1,5 und 2,0, nur an Wortgrenzen; Schrift auf 1,5 begrenzt), `line_breaks_test` (Selbsttest des Wortgrenzen-Tests) | |
 
 Zusammenfassung: **erfüllt 88 · teilweise 10 · [D-offen] 1 · nicht erfüllt 0** (99 Kriterien). „Teilweise“ sind UI-8, 9, 18, 19, 32, 35, 42, 58, 68 und 89; Ursache ist jeweils der Geräteteil oder die Sichtprüfung, nie ein fehlgeschlagener Test. [D-offen] ist UI-10.
 
@@ -195,10 +196,10 @@ Für Android: Android-SDK/Emulator, `flutter run` bzw. `flutter run --profile`. 
 |---|---|---|
 | A-U4-1 | **Kompakter Zustand des Sheets.** Bleibt über der Tastatur (bzw. im Querformat) weniger als 440 dp Höhe, nimmt das Sheet den ganzen Platz, sein Kopf läuft als erstes Element mit dem Inhalt (wie im Onboarding und im Chat), die Fläche ist opak (`surface-opaque`, kein Blur), die Fußleiste mit „Speichern“ bleibt fest, mit engerem Rand. Ist dabei die **Tastatur sichtbar**, entfällt der Abschnitt „Daten löschen“, bis sie wieder weg ist. | Brief 3.2 verlangt „Kopf scrollt nicht mit“ und „Speichern bleibt sichtbar“. Beides lässt sich bei 320 × 568 mit 300 dp Tastatur nicht halten: Der feste Kopf (Titel, Untertitel) ließe kaum Platz für ein Feld, und bei 200 % Schrift wäre der Lösch-Button allein 224 dp hoch, also höher als der Scrollbereich. Außerdem scheint bei geringer Höhe der Lichtfleck durch die Glasfläche auf den Titel (über 16 %, E-1). Die Matrix prüft das Tastatur-Szenario ohne Ausnahme an allen Viewports und Skalierungen. **Folge:** Auf kleinen Geräten mit Tastatur scrollt der Titel weg und „Schließen“ ist dann nur nach oben scrollend erreichbar (Zurück, Escape und Scrim schließen weiter). Normale Bildschirmhöhen ohne Tastatur und verfügbare Höhen ab 440 dp (Bildschirm minus Tastatur, z. B. 390 × 844 mit Tastatur) sind nicht betroffen. Fokus und Eingabeverbindung des Feldes bleiben beim Wechsel erhalten (Test). |
 | A-U4-2 | **Oberkante des Sheets** höchstens 90 % hoch **und** mindestens 64 dp von der Bildschirmoberkante (`CuraSize.sheetTopClearance`). | Der Titel liegt sonst bei sichtbarer Tastatur im Bereich über 16 % Glow (Text auf Glas ≤ 16 %, E-1). Wirkt auch beim Trainings-Sheet (bei 568 dp 7 dp weniger Höhe). |
-| A-U4-3 | **Lösch-Button ohne Symbol ab Textskalierung 1,5.** | Vier Zeilen Text mit Symbol; ohne Symbol drei. Der Text hat Vorrang. |
+| A-U4-3 | **Dialog-Buttons und Lösch-Button ohne Symbol ab Textskalierung 1,5** (ausgeweitet auf die Dialoge in AB-K1, F-4): im `CuraDialog` ab 1,5 kein Symbol, Seitenrand der `PillButton`s ab 1,5 `s4`, Dialog scrollt ab 1,5 als Ganzes, Titel höchstens 1,5; ein Fehlerhinweis steht dann unter dem Titel. | Vier Zeilen Text mit Symbol; ohne Symbol drei. Der Text hat Vorrang; bei 320 × 568 × 2,0 sonst Fehlertext unsichtbar und Wortbruch (Design-Abnahme F-4). |
 | A-U4-4 | **Datumsauswahl über `showCuraDatePicker`** (`DatePickerDialog` auf der `CuraDialogRoute`) statt `showDatePicker`, für Onboarding und Sheet. | `showDatePicker` blendet mit festen 150 ms ein; bei „Bewegung reduzieren“ gelten höchstens 120 ms (UI-8, UI-64). Die Matrix hatte das bisher nur zufällig nicht berührt. Gleiches Widget, gleiche Grenzen. |
 | A-U4-5 | **Während des Löschens ist „Abbrechen“ ab sichtbarem Fortschrittskreis deaktiviert**; davor bleibt die Fläche unverändert (Tipps ignoriert). | Plan 6.3: Zurück, Escape, Scrim wirkungslos; „Abbrechen“ bricht den laufenden Vorgang nicht ab, also gesperrt. |
 | A-U4-6 | **„Verwerfen“ schließt das Sheet** (die Änderungen gehen mit ihm unter, nichts wird gespeichert). | UI-57 „setzt die Felder zurück, ohne zu speichern“; Schließen ist der Zweck des Dialogs (Schließversuch mit Änderungen). |
 | A-U4-7 | **Keine Blase unter einer Route über Home** (`PathScreen._visit` wartet nicht, sondern entfällt). | Eine unter dem Sheet erscheinende Blase hätte ein drittes Blur-Element gebildet und wäre unbemerkt als gezeigt gezählt worden (UI-47). Sie erscheint beim nächsten Pfad-Besuch. |
-| A-U4-8 | **Neue Matrix-Hilfen:** Kopf und innere Tap-Ziele überdeckter Routen zählen nicht (`headerRect`, `_renderTapRects` mit `isBuriedRoute`); `_tapEveryTarget` liest die Ziele vor jedem Tipp neu; `settle` lässt `loops`-Szenarien in 60 Frames à 50 ms laufen (Skript-Tipps und 300-ms-Kreis). | Alle drei sind Korrekturen der Harness, keine Ausnahmen für einzelne Szenarien. Selbsttests in `matrix_checks_test.dart`. |
+| A-U4-8 | **Korrekturen der Matrix-Harness (U4, geschärft in AB-K1):** (1) Kopf und innere Tap-Ziele überdeckter Routen zählen nicht (`headerRect`, `_renderTapRects` mit `isBuriedRoute`); (2) `settle` lässt `loops`-Szenarien 60 Frames à 50 ms laufen (Skript-Tipps, 300-ms-Kreis); (3) der RM-Durchlauf „jedes Ziel antippen“ (`tapEveryTarget`) baut das Szenario **je Ziel neu auf**; die erste Fassung (U4) las nur die Ziele neu und übersprang still die meisten (Review R-AB-1), jetzt ist ein fehlendes oder außerhalb liegendes Ziel ein harter Befund, und davor laufen zwölf Frames ohne Zeitfortschritt (späte Folgen von Aktionen). Ausnahmen (jeweils eng): `kDismissedOnScroll` nur in Lagen ≠ Ruhelage (Ruhelage und Hit-Test in der Ruhelage hart, R-AB-3); `isTextField` nur für `CuraTextField` mit gemessenem Wert 1,0 bis < 1,1 (R-AB-4); `clipped()` zählt Ziele in einem Scrollbereich ohne Scrollweg als sichtbar (R-AB-6). | Keine Ausnahme für einzelne Szenarien. Selbsttests (konstruierter Verstoß → Befund): `matrix_harness_test.dart` (`tapEveryTarget` inkl. fehlendes Ziel und Animation > 120 ms, `settle` 60 Frames), `matrix_checks_test.dart` (Abschnitt „R-AB“: `kDismissedOnScroll`, Hit-Test in der Ruhelage, `isTextField`, `clipped()` mit zwei Scrollbereichen, `checkTodayGroup`). In U4 waren Selbsttests für diese Teile **nicht** vorhanden; der frühere Eintrag sprach zu Unrecht von Selbsttests. |
 | A-U4-9 | Neuer Token `MotionTokens.busyDelay` (300 ms) und `CuraMotion.busyDelay`. | Statische Regel 2 (keine Zahlen außerhalb `lib/theme/`). |

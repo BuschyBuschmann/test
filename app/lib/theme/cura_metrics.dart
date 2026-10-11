@@ -131,6 +131,13 @@ abstract final class CuraSize {
   // Kopfzeile Pfad (Ergänzung 1, 3.1). Umbruch-Layout, wenn der Textblock
   // links weniger als 150 dp bekäme.
   static const double pathHeaderWrapMinText = 150;
+
+  /// Ab Textskalierung 1,5 bleibt oben nur eine feste schmale Zeile stehen
+  /// („Woche N“ links, „Deine Daten“ rechts): höchstens 64 dp hoch, ihre
+  /// Schrift auf höchstens 1,3 begrenzt. Phase, „Beispielpfad“, Streak und
+  /// Freezes laufen in der Scrollfläche mit.
+  static const double pathBarHeight = 64;
+  static const double pathBarMaxTextScale = 1.3;
   static const double statPillGap = 4;
   static const double statPillPaddingH = 12;
   static const double statPillPaddingV = 6;
@@ -241,6 +248,12 @@ abstract final class CuraSize {
   /// Tastatur) scrollt der ganze Dialog samt Buttons statt nur sein Inhalt;
   /// sonst bliebe für Felder bei eingeblendeter Tastatur kein Platz.
   static const double dialogCompactMaxHeight = 420;
+
+  /// Ab dieser Textskalierung (F-4) scrollt der ganze Dialog samt Buttons
+  /// (`compact`), der Titel skaliert höchstens mit [headerTitleMaxTextScale],
+  /// Dialog-Buttons zeigen kein Symbol mehr und der Seitenrand der
+  /// `PillButton`s sinkt von `s6` auf `s4`.
+  static const double textScaleDialogCompact = 1.5;
   static const double dialogMaxWidth = 400;
   static const double nodeHintMaxWidth = 240;
   static const double nodeHintArrow = 8;

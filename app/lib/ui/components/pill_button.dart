@@ -18,6 +18,20 @@ import 'cura_pressable.dart';
 
 enum PillButtonVariant { primary, neutral, outline }
 
+/// Wird von `CuraDialog` gesetzt: Ab Textskalierung 1,5 zeigen die Buttons des
+/// Dialogs kein Symbol (F-4), damit der Text die Breite bekommt und nicht
+/// mitten im Wort bricht.
+class PillButtonDialogScope extends InheritedWidget {
+  const PillButtonDialogScope({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PillButtonDialogScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(PillButtonDialogScope old) => false;
+}
+
 class PillButton extends StatelessWidget {
   const PillButton({
     super.key,
@@ -59,6 +73,13 @@ class PillButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final TextStyle base = CuraTypography.of(context).button;
+    // Ab 1,5 sinkt der Seitenrand auf `s4`; im Dialog entfällt dort das Symbol.
+    final bool large =
+        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+        CuraSize.textScaleDialogCompact;
+    final IconData? shownIcon = large && PillButtonDialogScope.of(context)
+        ? null
+        : icon;
     return Semantics(
       liveRegion: busy,
       child: CuraPressable(
@@ -113,9 +134,13 @@ class PillButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: CuraComponent.pillIconGap),
-            ] else if (icon != null) ...<Widget>[
+            ] else if (shownIcon != null) ...<Widget>[
               ExcludeSemantics(
-                child: Icon(icon, size: CuraComponent.iconSize, color: content),
+                child: Icon(
+                  shownIcon,
+                  size: CuraComponent.iconSize,
+                  color: content,
+                ),
               ),
               const SizedBox(width: CuraComponent.pillIconGap),
             ],
@@ -134,8 +159,8 @@ class PillButton extends StatelessWidget {
                 minWidth: expand ? double.infinity : CuraSize.touchTarget,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CuraSpace.s6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: large ? CuraSpace.s4 : CuraSpace.s6,
                   vertical: CuraSpace.s4,
                 ),
                 child: Row(

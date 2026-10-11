@@ -35,6 +35,7 @@ import 'package:curaone/ui/components/path_header.dart';
 import 'package:curaone/ui/components/path_node.dart';
 import 'package:curaone/ui/components/path_outlook.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
+import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/overlay_placement.dart' show kOverlayTopLimit;
 import 'package:curaone/ui/path/path_source.dart';
@@ -49,6 +50,7 @@ import '../support/app_harness.dart';
 import '../support/builders.dart';
 import '../support/component_support.dart';
 import '../support/controller_harness.dart';
+import '../support/line_breaks.dart';
 import '../support/pump_app.dart';
 
 // ---------------------------------------------------------------------------
@@ -112,6 +114,24 @@ Finder get _navEntryPfad => find.descendant(
   of: find.byType(FloatingNav),
   matching: find.text(S.navPath),
 );
+
+/// Beschriftungen aller Semantik-Knoten in Lesereihenfolge.
+List<String> _semanticLabels(WidgetTester tester) {
+  final List<String> out = <String>[];
+  void walk(SemanticsNode n) {
+    final String l = n.getSemanticsData().label;
+    if (l.isNotEmpty) out.add(l);
+    n.visitChildren((SemanticsNode c) {
+      walk(c);
+      return true;
+    });
+  }
+
+  walk(
+    tester.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!,
+  );
+  return out;
+}
 
 Rect _viewport(WidgetTester tester) =>
     tester.getRect(find.byKey(ProbeKeys.scroll));
@@ -404,31 +424,120 @@ void main() {
       await _close(tester);
     });
 
-    testWidgets('Kopfzeile steht im festen Kopf (Marker header); ab 1,5 läuft '
-        'sie in der Scrollfläche mit (Marker scroll-header)', (
+    testWidgets('bis 1,3 steht die ganze Kopfzeile im festen Kopf (Marker '
+        'header); ab 1,5 bleibt nur die schmale Zeile fest, der Rest läuft in '
+        'der Scrollfläche mit (Marker scroll-header, F-1)', (
       WidgetTester tester,
     ) async {
       await _pump(tester);
       expect(find.byKey(ProbeKeys.header), findsOneWidget);
       expect(find.byKey(ProbeKeys.scrollHeader), findsNothing);
+      expect(find.byType(PathHeader), findsOneWidget);
+      expect(find.byType(PathHeaderBar), findsNothing);
       await _close(tester);
       await _pump(tester, scale: 2, size: Viewports.small);
-      expect(find.byKey(ProbeKeys.header), findsNothing);
+      expect(find.byKey(ProbeKeys.header), findsOneWidget);
       expect(find.byKey(ProbeKeys.scrollHeader), findsOneWidget);
-      // Sie ist per Scrollen erreichbar: ganz nach oben.
-      final ScrollableState st = tester.state<ScrollableState>(
-        find.descendant(
-          of: find.byKey(ProbeKeys.scroll),
-          matching: find.byType(Scrollable),
-        ),
-      );
-      st.position.jumpTo(0);
-      await tester.pump();
-      final Rect head = tester.getRect(find.byType(PathHeader));
-      expect(head.top, greaterThanOrEqualTo(0));
-      expect(head.bottom, lessThan(568));
+      expect(find.byType(PathHeader), findsNothing);
+      expect(find.byType(PathHeaderBar), findsOneWidget);
+      expect(find.byType(PathHeaderInfo), findsOneWidget);
       await _close(tester);
     });
+
+    for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
+      for (final double scale in <double>[1.5, 2.0]) {
+        testWidgets('F-1: feste Zeile ab 1,5 ≤ 64 dp, „Woche N“ links, Icon '
+            '48 dp rechts, Schrift ≤ 1,3, Fläche bg ohne Blur, Rest scrollt '
+            'mit (${size.width.toInt()} × ${size.height.toInt()} × $scale)', (
+          WidgetTester tester,
+        ) async {
+          final SemanticsHandle h = tester.ensureSemantics();
+          await _pump(tester, scale: scale, size: size);
+          final Finder bar = find.byKey(ProbeKeys.header);
+          Rect barRect() => tester.getRect(bar);
+          expect(barRect().height, lessThanOrEqualTo(64 + 0.01));
+          final Rect title = tester.getRect(find.text('Woche 5'));
+          final Rect icon = tester.getRect(find.byTooltip(S.dataSheetOpen));
+          expect(title.left, lessThan(size.width / 2));
+          expect(icon.size, const Size(48, 48));
+          expect(icon.right, closeTo(size.width - CuraSpace.pageMargin, 0.5));
+          expect(title.right, lessThanOrEqualTo(icon.left));
+          // Schrift der Zeile auf höchstens 1,3 begrenzt.
+          final BuildContext titleContext = tester.element(
+            find.text('Woche 5'),
+          );
+          expect(
+            MediaQuery.textScalerOf(titleContext).scale(10),
+            lessThanOrEqualTo(13 + 0.01),
+          );
+          // Fläche `bg`, kein Blur.
+          final ColoredBox fill = tester.widget<ColoredBox>(
+            find.descendant(of: bar, matching: find.byType(ColoredBox)).first,
+          );
+          expect(fill.color, CuraColors.dark.bg);
+          expect(
+            find.descendant(of: bar, matching: find.byType(BackdropFilter)),
+            findsNothing,
+          );
+          // Phase, Beispielpfad, Streak und Freezes gehören zur Scrollfläche
+          // und nicht zur festen Zeile.
+          for (final String t in <String>[
+            'Phase 2 · Kreuzband',
+            'BEISPIELPFAD',
+          ]) {
+            expect(
+              find.descendant(of: bar, matching: find.text(t)),
+              findsNothing,
+            );
+            expect(
+              find.descendant(
+                of: find.byKey(ProbeKeys.scroll),
+                matching: find.text(t),
+              ),
+              findsOneWidget,
+            );
+          }
+          expect(find.bySemanticsLabel(RegExp('^Streak')), findsNWidgets(2));
+          expect(
+            find.descendant(
+              of: find.byKey(ProbeKeys.scroll),
+              matching: find.byType(StatPill),
+            ),
+            findsNWidgets(2),
+          );
+          // Die Zeile bleibt beim Scrollen stehen, der Rest wandert mit.
+          final Rect before = barRect();
+          final Rect phaseBefore = tester.getRect(
+            find.text('Phase 2 · Kreuzband'),
+          );
+          final ScrollableState st = tester.state<ScrollableState>(
+            find.descendant(
+              of: find.byKey(ProbeKeys.scroll),
+              matching: find.byType(Scrollable),
+            ),
+          );
+          st.position.jumpTo(st.position.pixels + 40);
+          await tester.pump();
+          expect(barRect(), before);
+          expect(
+            tester.getRect(find.text('Phase 2 · Kreuzband')).top,
+            lessThan(phaseBefore.top),
+          );
+          // Lesereihenfolge: Titel, dann „Deine Daten“, dann die Phase.
+          final List<String> order = _semanticLabels(tester);
+          final int iTitle = order.indexWhere((String l) => l == 'Woche 5');
+          final int iData = order.indexOf(S.dataSheetOpen);
+          final int iPhase = order.indexWhere(
+            (String l) => l.contains('Phase 2 · Kreuzband'),
+          );
+          expect(iTitle, isNonNegative, reason: '$order');
+          expect(iData, greaterThan(iTitle), reason: '$order');
+          expect(iPhase, greaterThan(iData), reason: '$order');
+          h.dispose();
+          await _close(tester);
+        });
+      }
+    }
 
     testWidgets('„Deine Daten“ ist der Einstieg und tut bis U4 nichts', (
       WidgetTester tester,
@@ -928,6 +1037,94 @@ void main() {
       await _close(tester);
     });
 
+    group('F-5/R-AB-5: Hinweis bei 320 × 568 × 2,0', () {
+      Future<void> tapAny(WidgetTester tester, String target) async {
+        if (target == 'outlook') {
+          await _tapOutlook(tester);
+        } else {
+          await _tapUnit(tester, target);
+        }
+      }
+
+      for (final String target in <String>[
+        'outlook',
+        'w1-d1',
+        'w3-d2',
+        'w5-d3',
+        'w8-d2',
+        'w12-d1',
+        'boss',
+      ]) {
+        testWidgets('$target: mindestens 3 Zeilen sichtbar, nie höher als '
+            'die freie Fläche, kein Zeitgeber solange der Text nicht ganz '
+            'passt oder darin gescrollt wird', (WidgetTester tester) async {
+          if (target != 'outlook' &&
+              !kSamplePath.any((PathUnit u) => u.id == target)) {
+            return;
+          }
+          await _pump(tester, size: Viewports.small, scale: 2);
+          await tapAny(tester, target);
+          if (_hint.evaluate().isEmpty) return; // z. B. aktuelle Unit
+          final Rect hint = tester.getRect(_hint);
+          final Rect view = _viewport(tester);
+          final Rect cluster = tester.getRect(find.byType(ActionCluster));
+          expect(hint.top, greaterThanOrEqualTo(view.top - 0.5));
+          expect(hint.bottom, lessThanOrEqualTo(568 + 0.5));
+          if (hint.right > cluster.left && hint.left < cluster.right) {
+            expect(hint.bottom, lessThanOrEqualTo(cluster.top - 8 + 0.5));
+          }
+          final NodeHint w = tester.widget<NodeHint>(_hint);
+          final Finder inner = find.descendant(
+            of: _hint,
+            matching: find.byType(SingleChildScrollView),
+          );
+          if (w.maxBodyHeight != null) {
+            expect(inner, findsOneWidget);
+            // Mindestens drei Zeilen (secondary 20 dp je Zeile × 2,0) samt
+            // Innenabstand.
+            expect(
+              w.maxBodyHeight!,
+              greaterThanOrEqualTo(
+                3 * 20 * 2 + 2 * CuraSize.hintPaddingVertical - 0.5,
+              ),
+              reason: 'maxBodyHeight ${w.maxBodyHeight}',
+            );
+            // Nicht ganz sichtbarer Text: der Zeitgeber schließt nicht.
+            await tester.pump(const Duration(seconds: 6));
+            expect(_hint, findsOneWidget, reason: 'kein 5-s-Zeitgeber');
+            // Im Hinweis scrollen hält ihn offen.
+            await tester.drag(inner, const Offset(0, -30));
+            await tester.pump(const Duration(seconds: 6));
+            expect(_hint, findsOneWidget);
+          } else {
+            expect(inner, findsNothing);
+            await tester.pump(const Duration(milliseconds: 5600));
+            await tester.pump();
+            expect(_hint, findsNothing, reason: 'passt ganz: 5 s');
+          }
+          await _close(tester);
+        });
+      }
+
+      testWidgets('Tipp in den Hinweis (Scrollen darin) hält auch einen ganz '
+          'sichtbaren Hinweis nicht dauerhaft, ein Scrollen darin aber '
+          'hält ihn', (WidgetTester tester) async {
+        await _pump(tester);
+        await _tapUnit(tester, 'w3-d2');
+        expect(_hint, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 3000));
+        // Zeigerkontakt im Hinweis: der Zeitgeber ist abgebrochen.
+        final TestGesture g = await tester.startGesture(
+          tester.getRect(_hint).center,
+        );
+        await g.moveBy(const Offset(0, 1));
+        await g.cancel();
+        await tester.pump(const Duration(seconds: 8));
+        expect(_hint, findsOneWidget);
+        await _close(tester);
+      });
+    });
+
     testWidgets('Hinweis schließt nach 5 s', (WidgetTester tester) async {
       await _pump(tester);
       await _tapUnit(tester, 'w3-d2');
@@ -1168,6 +1365,93 @@ void main() {
   group(
     'Ausblick „Prävention & Gesundheitssport“ (Ergänzung 3, UI-90 bis UI-99)',
     () {
+      for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
+        for (final double scale in <double>[1.5, 2]) {
+          testWidgets('F-3/R-AB-2: Titel bricht nur an Wortgrenzen, wird auf '
+              '150 % geklemmt, der Untertitel auch '
+              '(${size.width.toInt()} × ${size.height.toInt()} × $scale)', (
+            WidgetTester tester,
+          ) async {
+            await _pump(tester, size: size, scale: scale);
+            final Finder title = find.text(S.outlookTitle);
+            final List<String> lines = paragraphLines(tester, title);
+            expect(lines.join(), S.outlookTitle);
+            expect(midWordBreaks(lines), isEmpty, reason: '$lines');
+            final List<String> sub = paragraphLines(
+              tester,
+              find.text(S.outlookSubtitle),
+            );
+            expect(midWordBreaks(sub), isEmpty, reason: '$sub');
+            // Der Titel skaliert höchstens mit 1,5.
+            expect(
+              MediaQuery.textScalerOf(tester.element(title)).scale(10),
+              lessThanOrEqualTo(15 + 0.01),
+            );
+            // Kein Text steht über den Rand der Marke hinaus.
+            final Rect o = tester.getRect(_outlook);
+            expect(tester.getRect(title).right, lessThanOrEqualTo(o.right));
+            expect(
+              tester.getRect(find.text(S.outlookSubtitle)).bottom,
+              lessThanOrEqualTo(o.bottom),
+            );
+            await _close(tester);
+          });
+        }
+      }
+
+      for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
+        for (final double scale in <double>[1, 1.5, 2]) {
+          testWidgets('F-2: ganz oben gescrollt steht die Marke vollständig '
+              'sichtbar, nicht unter Kopf, Nav oder Button-Gruppe '
+              '(${size.width.toInt()} × ${size.height.toInt()} × $scale)', (
+            WidgetTester tester,
+          ) async {
+            await _pump(tester, size: size, scale: scale);
+            final ScrollableState st = tester.state<ScrollableState>(
+              find.descendant(
+                of: find.byKey(ProbeKeys.scroll),
+                matching: find.byType(Scrollable),
+              ),
+            );
+            st.position.jumpTo(0);
+            await tester.pump();
+            final Rect o = tester.getRect(_outlook);
+            final Rect view = _viewport(tester);
+            expect(view.contains(o.topLeft), isTrue, reason: '$o in $view');
+            expect(view.contains(o.bottomRight), isTrue, reason: '$o in $view');
+            // Die Leiste selbst (ohne den auslaufenden Verlauf dahinter).
+            final Rect nav = Rect.fromLTWH(
+              0,
+              size.height -
+                  FloatingNav.occupiedHeight(
+                    tester.element(find.byType(FloatingNav)),
+                  ),
+              size.width,
+              CuraSize.navHeight,
+            );
+            expect(o.overlaps(nav), isFalse, reason: 'Marke $o unter Nav $nav');
+            final Rect cluster = ActionCluster.rectOf(
+              _shell(tester).clusterKey,
+            )!;
+            // Auf 320 dp Breite überspannt die Marke (288 dp) die Spalte der
+            // Button-Gruppe; ganz oben (55 %-Regel) liegt die Gruppe dort
+            // über ihr (Design-Abnahme F-11: bewusst). Frei scrollbar bleibt
+            // sie (Matrix: Erreichbarkeit). Ab 390 dp darf die Gruppe die
+            // Marke in keiner Schriftgröße berühren.
+            if (size.width >= 390) {
+              expect(
+                o.overlaps(cluster),
+                isFalse,
+                reason: 'Marke $o unter Gruppe $cluster',
+              );
+            }
+            final Rect header = tester.getRect(find.byKey(ProbeKeys.header));
+            expect(o.top, greaterThanOrEqualTo(header.bottom));
+            await _close(tester);
+          });
+        }
+      }
+
       for (final Size size in Viewports.matrix) {
         testWidgets('UI-90, UI-91, UI-94: Marke mittig, ≤ 300 dp und ≤ Breite '
             '− 32, ≥ 72 dp hoch, Boss darunter mit ≥ 84 dp Abstand '
@@ -1689,9 +1973,10 @@ void main() {
       },
     );
 
-    testWidgets('lange Blase bei 320 × 568 und ×2,0: begrenzt, Text scrollt '
-        'innen, überdeckt die Gruppe nie', (WidgetTester tester) async {
-      await _pump(
+    testWidgets('F-5: lange Blase bei 320 × 568 und ×2,0: der Pfad scrollt '
+        'programmatisch, bis der Text ganz sichtbar ist; die Blase bleibt '
+        'offen und überdeckt die Gruppe nie', (WidgetTester tester) async {
+      final Harness h = await _pump(
         tester,
         size: Viewports.small,
         scale: 2,
@@ -1707,20 +1992,65 @@ void main() {
       final MannyBubble w = tester.widget<MannyBubble>(_bubble);
       final Rect b = tester.getRect(_bubble);
       final Rect g = tester.getRect(find.byType(ActionCluster));
-      expect(w.maxBodyHeight, isNotNull, reason: 'begrenzt');
+      expect(w.maxBodyHeight, isNull, reason: 'nicht begrenzt');
       expect(
         find.descendant(
           of: _bubble,
           matching: find.byType(SingleChildScrollView),
         ),
-        findsOneWidget,
+        findsNothing,
       );
+      // Der ganze Text ist da, ohne innen zu scrollen, und im Bildschirm.
+      final Rect text = tester.getRect(
+        find.descendant(of: _bubble, matching: find.byType(Text)).first,
+      );
+      expect(text.top, greaterThanOrEqualTo(_viewport(tester).top));
       expect(b.bottom, lessThanOrEqualTo(g.top - 8 + 0.5));
-      expect(b.top, greaterThanOrEqualTo(0));
+      expect(b.top, greaterThanOrEqualTo(_viewport(tester).top));
+      // Das programmatische Scrollen schloss die Blase nicht.
+      expect(h.controller.transient.visibleBubble, isNotNull);
+      // Manny bleibt sichtbar und frei von der Gruppe.
+      final Rect manny = _mannyDraw(tester);
+      expect(manny.overlaps(g), isFalse);
+      expect(manny.bottom, lessThanOrEqualTo(568));
       // X bleibt bedienbar.
       await tester.tap(find.byTooltip(S.bubbleClose));
       await tester.pumpAndSettle();
       expect(_bubble, findsNothing);
+      await _close(tester);
+    });
+
+    testWidgets('R-AB-3: Nutzerscrollen (UserScrollNotification) schließt '
+        'Blase und Hinweis, programmatisches Scrollen nicht', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _pump(tester, bubble: true);
+      expect(_bubble, findsOneWidget);
+      final ScrollableState st = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byKey(ProbeKeys.scroll),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      st.position.jumpTo(st.position.pixels - 30);
+      await tester.pump();
+      expect(_bubble, findsOneWidget, reason: 'jumpTo schließt nicht');
+      await Scrollable.ensureVisible(
+        tester.element(_unit('w4-d1')),
+        alignment: 0.5,
+      );
+      await tester.pump();
+      expect(_bubble, findsOneWidget, reason: 'ensureVisible schließt nicht');
+      await tester.drag(find.byKey(ProbeKeys.scroll), const Offset(0, 80));
+      await tester.pumpAndSettle();
+      expect(_bubble, findsNothing, reason: 'Ziehen schließt');
+      expect(h.controller.transient.visibleBubble, isNull);
+      // Hinweis: Ziehen schließt ebenso.
+      await _tapUnit(tester, 'w3-d2');
+      expect(_hint, findsOneWidget);
+      await tester.drag(find.byKey(ProbeKeys.scroll), const Offset(0, 80));
+      await tester.pumpAndSettle();
+      expect(_hint, findsNothing);
       await _close(tester);
     });
 

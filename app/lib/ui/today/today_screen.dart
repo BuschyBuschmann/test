@@ -79,6 +79,12 @@ class _TodayScreenState extends State<TodayScreen> {
   final FocusNode _startFocus = FocusNode(debugLabel: 'Training starten');
   final FocusNode _customFocus = FocusNode(debugLabel: 'Eigene Übung');
 
+  /// Fokusknoten von „Tauschen“ je Übung (nur für den Fokus nach „Entfernen“).
+  final Map<String, FocusNode> _swapFocus = <String, FocusNode>{};
+
+  FocusNode _swapNode(String id) =>
+      _swapFocus.putIfAbsent(id, () => FocusNode(debugLabel: 'Tauschen $id'));
+
   /// Gemessene Höhe der Button-Gruppe (Reihe samt Nachrichten-Button).
   double _groupHeight = 0;
 
@@ -91,6 +97,9 @@ class _TodayScreenState extends State<TodayScreen> {
   void dispose() {
     _startFocus.dispose();
     _customFocus.dispose();
+    for (final FocusNode n in _swapFocus.values) {
+      n.dispose();
+    }
     super.dispose();
   }
 
@@ -117,8 +126,13 @@ class _TodayScreenState extends State<TodayScreen> {
   void _remove(DisplayedExercise exercise) {
     final AppController c = _controller;
     final HomeShellState shell = _shell;
+    final List<DisplayedExercise> before = _currentExercises();
+    final int index = before.indexWhere(
+      (DisplayedExercise e) => e.id == exercise.id,
+    );
     final RemoveResult result = c.removeExercise(exercise.id);
     final RemovalToken? token = result.token;
+    if (token != null) _focusAfterRemove(index);
     if (result.dayChanged) {
       // Der Tag hat gewechselt: kein Rückgängig für einen Eintrag, der auf
       // dem neuen Tag wirkte (Ergänzung 1, 3.4: das Fenster endet).
@@ -136,6 +150,27 @@ class _TodayScreenState extends State<TodayScreen> {
         if (r.dayChanged) unawaited(shell.dayChanged());
       },
     );
+  }
+
+  List<DisplayedExercise> _currentExercises() {
+    final AppState state = _controller.state;
+    return deriveExercises(state.day, state.prefs.timeChoice);
+  }
+
+  /// Fokus nach „Entfernen“ (F-7): Die Karte, die an die Stelle der entfernten
+  /// rückt, übernimmt ihn auf „Tauschen“; fehlt sie oder hat sie kein
+  /// „Tauschen“, geht er auf „+ Eigene Übung“. Der entfernte Knopf ist weg,
+  /// der Fokus fiele sonst an den Anfang der Seite.
+  void _focusAfterRemove(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final List<DisplayedExercise> now = _currentExercises();
+      if (index >= 0 && index < now.length && now[index].canSwap) {
+        _swapNode(now[index].id).requestFocus();
+      } else {
+        _customFocus.requestFocus();
+      }
+    });
   }
 
   /// Zeigt „… Rückgängig“ (8 s). Die Snackbar entscheidet über das Ende des
@@ -264,6 +299,7 @@ class _TodayScreenState extends State<TodayScreen> {
             label: S.exerciseSwap,
             icon: Icons.swap_horiz_rounded,
             semanticLabel: S.exerciseSwapLabel(e.name),
+            focusNode: _swapNode(e.id),
             onPressed: () => _swap(e),
           ),
         CuraChip(

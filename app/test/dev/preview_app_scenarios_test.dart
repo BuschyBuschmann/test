@@ -457,6 +457,37 @@ void main() {
           InMemorySharedPreferencesAsync.empty();
     });
 
+    testWidgets('F-8: data-sheet-bottom — Sheet ans Ende gescrollt, der '
+        'Löschen-Abschnitt ist sichtbar', (WidgetTester tester) async {
+      for (final Size size in <Size>[Viewports.phone, Viewports.small]) {
+        for (final double scale in <double>[1, 2]) {
+          setViewport(tester, size);
+          await tester.pumpWidget(
+            PreviewApp(
+              config: PreviewConfig(
+                scenarioId: 'data-sheet-bottom',
+                textScale: scale,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final Finder del = find.widgetWithText(
+            PillButton,
+            S.dataDeleteButton,
+          );
+          expect(del, findsOneWidget, reason: '$size ×$scale');
+          final Rect r = tester.getRect(del);
+          expect(r.top, greaterThanOrEqualTo(0), reason: '$size ×$scale');
+          expect(
+            r.bottom,
+            lessThanOrEqualTo(size.height),
+            reason: '$size ×$scale',
+          );
+          await tester.pumpWidget(const SizedBox.shrink());
+        }
+      }
+    });
+
     testWidgets('Eingabe überlebt den Neuaufbau (Reload)', (
       WidgetTester tester,
     ) async {

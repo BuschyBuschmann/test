@@ -9,8 +9,12 @@
 //
 // Braucht eine begrenzte Höhe vom Elternelement (die Route stellt sie). Ist sie
 // kleiner als `CuraSize.dialogCompactMaxHeight` (kleines Gerät mit Tastatur,
-// Querformat), scrollt der ganze Dialog samt Buttons: bei fest unten
-// stehenden Buttons bliebe sonst für Eingabefelder kein sichtbarer Platz.
+// Querformat) **oder** die Textskalierung mindestens 1,5, scrollt der ganze
+// Dialog samt Buttons: bei fest unten stehenden Buttons bliebe sonst für
+// Eingabefelder bzw. den Text kein sichtbarer Platz (F-4). Ab 1,5 skaliert der
+// Titel höchstens mit 1,5, die Buttons zeigen kein Symbol, und ein Zusatz
+// (Fehlerhinweis) steht gleich unter dem Titel, damit er ohne Scrollen zu
+// sehen ist.
 import 'dart:ui' show SemanticsRole;
 
 import 'package:flutter/material.dart';
@@ -19,8 +23,9 @@ import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
+import 'pill_button.dart';
 
-class CuraDialog extends StatelessWidget {
+class CuraDialog extends StatefulWidget {
   const CuraDialog({
     super.key,
     required this.title,
@@ -42,6 +47,38 @@ class CuraDialog extends StatelessWidget {
 
   /// Zusatzinhalt unter dem Text (z. B. Fehlerhinweis), scrollt mit.
   final Widget? extra;
+
+  @override
+  State<CuraDialog> createState() => _CuraDialogState();
+}
+
+class _CuraDialogState extends State<CuraDialog> {
+  final ScrollController _scroll = ScrollController();
+
+  String get title => widget.title;
+  String? get message => widget.message;
+  List<Widget> get actions => widget.actions;
+  IconData? get icon => widget.icon;
+  Widget? get extra => widget.extra;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(CuraDialog old) {
+    super.didUpdateWidget(old);
+    // Erscheint ein Zusatz (Fehlerhinweis) und steht der gescrollte Dialog
+    // weiter unten (der Nutzer tippte einen Button am Ende), springt er an den
+    // Anfang, damit der Hinweis ohne Scrollen zu sehen ist (F-4).
+    if (old.extra == null && widget.extra != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,16 +105,29 @@ class CuraDialog extends StatelessWidget {
               padding: const EdgeInsets.all(CuraComponent.dialogPadding),
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints box) {
+                  final bool largeText =
+                      MediaQuery.textScalerOf(context)
+                          .scale(CuraSize.hairline) >=
+                      CuraSize.textScaleDialogCompact;
                   final bool compact =
-                      box.hasBoundedHeight &&
-                      box.maxHeight + CuraComponent.dialogPadding * 2 <
-                          CuraSize.dialogCompactMaxHeight;
-                  final Widget content = _content(context, colors, type);
-                  final Widget buttons = _buttons();
+                      largeText ||
+                      (box.hasBoundedHeight &&
+                          box.maxHeight + CuraComponent.dialogPadding * 2 <
+                              CuraSize.dialogCompactMaxHeight);
+                  final Widget content = _content(
+                    context,
+                    colors,
+                    type,
+                    extraFirst: compact,
+                  );
+                  final Widget buttons = PillButtonDialogScope(
+                    child: _buttons(),
+                  );
                   return SizedBox(
                     width: double.infinity,
                     child: compact
                         ? SingleChildScrollView(
+                            controller: _scroll,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,7 +145,10 @@ class CuraDialog extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
                               Flexible(
-                                child: SingleChildScrollView(child: content),
+                                child: SingleChildScrollView(
+                                  controller: _scroll,
+                                  child: content,
+                                ),
                               ),
                               const SizedBox(
                                 height: CuraComponent.dialogPadding,
@@ -116,8 +169,9 @@ class CuraDialog extends StatelessWidget {
   Widget _content(
     BuildContext context,
     CuraColors colors,
-    CuraTypography type,
-  ) {
+    CuraTypography type, {
+    required bool extraFirst,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,13 +189,21 @@ class CuraDialog extends StatelessWidget {
         Semantics(
           namesRoute: true,
           header: true,
-          child: Text(title, style: type.title.copyWith(color: colors.text1)),
+          // Der Titel skaliert höchstens mit 150 % (F-4, B3).
+          child: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: CuraSize.headerTitleMaxTextScale,
+            child: Text(title, style: type.title.copyWith(color: colors.text1)),
+          ),
         ),
+        if (extra != null && extraFirst) ...<Widget>[
+          const SizedBox(height: CuraComponent.dialogGap),
+          extra!,
+        ],
         if (message != null) ...<Widget>[
           const SizedBox(height: CuraComponent.dialogGap),
           Text(message!, style: type.body.copyWith(color: colors.text1)),
         ],
-        if (extra != null) ...<Widget>[
+        if (extra != null && !extraFirst) ...<Widget>[
           const SizedBox(height: CuraComponent.dialogGap),
           extra!,
         ],
