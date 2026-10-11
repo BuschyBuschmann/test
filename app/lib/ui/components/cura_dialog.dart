@@ -54,6 +54,14 @@ class CuraDialog extends StatefulWidget {
 
 class _CuraDialogState extends State<CuraDialog> {
   final ScrollController _scroll = ScrollController();
+  final FocusNode _extraFocus = FocusNode(
+    debugLabel: 'Dialog-Hinweis',
+    skipTraversal: true,
+  );
+
+  /// Der Dialog scrollt als Ganzes (kompakt): Buttons liegen dann nicht
+  /// zwingend im Bild.
+  bool _compact = false;
 
   String get title => widget.title;
   String? get message => widget.message;
@@ -64,6 +72,7 @@ class _CuraDialogState extends State<CuraDialog> {
   @override
   void dispose() {
     _scroll.dispose();
+    _extraFocus.dispose();
     super.dispose();
   }
 
@@ -72,10 +81,15 @@ class _CuraDialogState extends State<CuraDialog> {
     super.didUpdateWidget(old);
     // Erscheint ein Zusatz (Fehlerhinweis) und steht der gescrollte Dialog
     // weiter unten (der Nutzer tippte einen Button am Ende), springt er an den
-    // Anfang, damit der Hinweis ohne Scrollen zu sehen ist (F-4).
-    if (old.extra == null && widget.extra != null) {
+    // Anfang, damit der Hinweis ohne Scrollen zu sehen ist (F-4). Der Fokus
+    // zog dabei mit dem Button aus dem Bild: Bei einem scrollenden Dialog geht
+    // er auf den Hinweis (Live-Region sagt ihn an); der Button bleibt per Tab
+    // erreichbar (N-3). Passt alles ins Bild, bleibt der Fokus am Button.
+    if (old.extra == null && widget.extra != null && _compact) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+        if (!mounted) return;
+        if (_scroll.hasClients) _scroll.jumpTo(0);
+        _extraFocus.requestFocus();
       });
     }
   }
@@ -114,6 +128,7 @@ class _CuraDialogState extends State<CuraDialog> {
                       (box.hasBoundedHeight &&
                           box.maxHeight + CuraComponent.dialogPadding * 2 <
                               CuraSize.dialogCompactMaxHeight);
+                  _compact = compact;
                   final Widget content = _content(
                     context,
                     colors,
@@ -128,6 +143,10 @@ class _CuraDialogState extends State<CuraDialog> {
                     child: compact
                         ? SingleChildScrollView(
                             controller: _scroll,
+                            // Etwas Rand im Scrollbereich: Fokusring und
+                            // Doppelrand der Buttons werden sonst seitlich
+                            // abgeschnitten (R-1).
+                            padding: const EdgeInsets.all(CuraSpace.s1),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,7 +216,7 @@ class _CuraDialogState extends State<CuraDialog> {
         ),
         if (extra != null && extraFirst) ...<Widget>[
           const SizedBox(height: CuraComponent.dialogGap),
-          extra!,
+          Focus(focusNode: _extraFocus, child: extra!),
         ],
         if (message != null) ...<Widget>[
           const SizedBox(height: CuraComponent.dialogGap),
@@ -205,7 +224,7 @@ class _CuraDialogState extends State<CuraDialog> {
         ],
         if (extra != null && !extraFirst) ...<Widget>[
           const SizedBox(height: CuraComponent.dialogGap),
-          extra!,
+          Focus(focusNode: _extraFocus, child: extra!),
         ],
       ],
     );

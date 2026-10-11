@@ -26,6 +26,7 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../support/app_harness.dart';
+import '../support/line_breaks.dart';
 import '../support/pump_app.dart';
 
 Future<void> _pump(WidgetTester tester, PreviewConfig config) async {
@@ -485,6 +486,41 @@ void main() {
           );
           await tester.pumpWidget(const SizedBox.shrink());
         }
+      }
+    });
+
+    testWidgets('R-1: data-delete-dialog-bottom — Dialog ans Ende gescrollt, '
+        'Buttons bei 2,0 ohne Symbol und ohne Wortbruch', (
+      WidgetTester tester,
+    ) async {
+      for (final Size size in <Size>[Viewports.phone, Viewports.small]) {
+        setViewport(tester, size);
+        await tester.pumpWidget(
+          PreviewApp(
+            config: const PreviewConfig(
+              scenarioId: 'data-delete-dialog-bottom',
+              textScale: 2,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final Finder del = find.widgetWithText(PillButton, S.deleteConfirm);
+        expect(del, findsOneWidget, reason: '$size');
+        final Rect r = tester.getRect(del);
+        expect(r.bottom, lessThanOrEqualTo(size.height), reason: '$size');
+        expect(r.top, greaterThanOrEqualTo(0), reason: '$size');
+        expect(
+          find.descendant(of: del, matching: find.byType(Icon)),
+          findsNothing,
+        );
+        for (final String t in <String>[S.cancel, S.deleteConfirm]) {
+          expect(
+            midWordBreaks(paragraphLines(tester, find.text(t))),
+            isEmpty,
+            reason: '$size $t',
+          );
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
       }
     });
 

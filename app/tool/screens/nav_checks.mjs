@@ -541,6 +541,14 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
   await shot(page, 'daten-sheet');
   const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
   await field.click({ force: true });
+  // Das DOM-Eingabefeld von Flutter-Web ist direkt nach dem Klick noch leer; der
+  // gespeicherte Name erscheint erst später. Aktiv warten, bis das aktive Feld
+  // ihn enthält (sonst Wettlauf: Löschen und Tippen vor dem Eintragen).
+  await page.waitForFunction(
+    () => document.activeElement?.tagName === 'INPUT' && document.activeElement.value.length > 0,
+    null,
+    { timeout: 8000 },
+  );
   // Ctrl+A markiert im Flutter-Web-Feld nicht zuverlässig: ans Ende, alles löschen.
   await page.keyboard.press('End');
   for (let i = 0; i < 12; i++) await page.keyboard.press('Backspace');

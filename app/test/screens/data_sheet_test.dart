@@ -218,6 +218,13 @@ Future<void> _openDelete(WidgetTester tester) async {
   expect(find.byType(DeleteDialog), findsOneWidget);
 }
 
+/// Der Fokus liegt im Button mit diesem Label.
+bool _focusOnButton(String label) =>
+    FocusManager.instance.primaryFocus?.context
+        ?.findAncestorWidgetOfExactType<PillButton>()
+        ?.label ==
+    label;
+
 PillButton _confirmButton(WidgetTester tester) => tester.widget<PillButton>(
   find
       .descendant(
@@ -1078,6 +1085,19 @@ void main() {
         ),
       );
       expect(st.position.pixels, 0);
+      // N-3: der Fokus liegt auf dem Hinweis (Live-Region), nicht auf dem
+      // aus dem Bild gesprungenen Button.
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'Dialog-Hinweis');
+      // „Nochmal versuchen“ bleibt per Tab erreichbar und kommt dabei ins Bild.
+      for (int i = 0; i < 4; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        if (_focusOnButton(S.retry)) break;
+      }
+      expect(_focusOnButton(S.retry), isTrue, reason: 'per Tab erreichbar');
+      await tester.pumpAndSettle();
+      expect(tester.getRect(_confirm).bottom, lessThanOrEqualTo(568 + 0.5));
+      expect(tester.getRect(_confirm).top, greaterThanOrEqualTo(0));
       for (final String t in <String>[S.cancel, S.retry]) {
         final List<String> lines = paragraphLines(tester, find.text(t));
         expect(lines.join(), t);

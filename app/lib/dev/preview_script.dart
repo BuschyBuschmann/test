@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../ui/components/cura_pressable.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
+import '../ui/components/cura_dialog.dart' show CuraDialog;
 import '../ui/home/home_shell.dart';
 import '../ui/routes/cura_sheet_route.dart' show CuraSheetFrame;
 
@@ -28,6 +29,10 @@ const String kPreviewScrollStart = 'preview:scroll-start';
 /// („Deine Daten“) ans Ende (`data-sheet-bottom`: der Löschen-Abschnitt ist
 /// sichtbar).
 const String kPreviewScrollSheetEnd = 'preview:scroll-sheet-end';
+
+/// Eintrag in [PreviewScript.taps]: scrollt den offenen Dialog ans Ende
+/// (`data-delete-dialog-bottom`: Buttons bei großer Schrift sichtbar).
+const String kPreviewScrollDialogEnd = 'preview:scroll-dialog-end';
 
 class PreviewScript extends StatefulWidget {
   const PreviewScript({
@@ -96,8 +101,12 @@ class _PreviewScriptState extends State<PreviewScript> {
         _endJumps = 0;
       }
     } else if (_pending.isNotEmpty &&
-        _pending.first == kPreviewScrollSheetEnd) {
-      if (_scrollSheetToEnd() && ++_endJumps >= _endJumpFrames) {
+        (_pending.first == kPreviewScrollSheetEnd ||
+            _pending.first == kPreviewScrollDialogEnd)) {
+      if (_scrollSheetToEnd(
+            dialog: _pending.first == kPreviewScrollDialogEnd,
+          ) &&
+          ++_endJumps >= _endJumpFrames) {
         _pending.removeAt(0);
         _endJumps = 0;
       }
@@ -183,11 +192,11 @@ class _PreviewScriptState extends State<PreviewScript> {
 
   /// Scrollt den Inhalt des offenen Sheets ans Ende. `false`, solange es noch
   /// nicht im Baum steht oder nichts zu scrollen hat.
-  bool _scrollSheetToEnd() {
+  bool _scrollSheetToEnd({bool dialog = false}) {
     ScrollableState? found;
     void walk(Element e) {
       if (found != null) return;
-      if (e.widget is CuraSheetFrame) {
+      if (dialog ? e.widget is CuraDialog : e.widget is CuraSheetFrame) {
         void inner(Element c) {
           if (found != null) return;
           if (c is StatefulElement && c.state is ScrollableState) {
@@ -206,9 +215,10 @@ class _PreviewScriptState extends State<PreviewScript> {
     context.visitChildElements(walk);
     final ScrollableState? st = found;
     if (st == null) return false;
-    if (!st.position.hasContentDimensions || st.position.maxScrollExtent < 1) {
-      return false;
-    }
+    if (!st.position.hasContentDimensions) return false;
+    // Ein Dialog, der ganz ins Bild passt (Skalierung 1,0), hat nichts zu
+    // scrollen: der Schritt ist dann erledigt.
+    if (st.position.maxScrollExtent < 1) return dialog;
     st.position.jumpTo(st.position.maxScrollExtent);
     return true;
   }

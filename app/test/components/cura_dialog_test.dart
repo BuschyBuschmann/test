@@ -265,6 +265,30 @@ void main() {
       });
     }
 
+    testWidgets('R-1: im scrollenden Dialog liegt ein Innenrand um die '
+        'Buttons (Fokusring wird seitlich nicht abgeschnitten)', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(
+        tester,
+        _dialog(screen: Viewports.small),
+        size: Viewports.small,
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      final Rect view = tester.getRect(
+        find.descendant(
+          of: find.byType(CuraDialog),
+          matching: find.byType(SingleChildScrollView),
+        ),
+      );
+      for (final String t in <String>['Abbrechen', 'Ja, alles löschen']) {
+        final Rect b = tester.getRect(find.widgetWithText(PillButton, t));
+        expect(b.left - view.left, greaterThanOrEqualTo(4 - 0.01), reason: t);
+        expect(view.right - b.right, greaterThanOrEqualTo(4 - 0.01), reason: t);
+      }
+    });
+
     testWidgets('320 × 568 × 2,0: der Zusatz (Fehlerhinweis) steht gleich '
         'unter dem Titel und ist ohne Scrollen sichtbar', (
       WidgetTester tester,

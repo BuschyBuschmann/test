@@ -45,7 +45,11 @@ import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
 import '../ui/messages/example_contacts.dart';
 import 'preview_script.dart'
-    show kPreviewScrollEnd, kPreviewScrollSheetEnd, kPreviewScrollStart;
+    show
+        kPreviewScrollDialogEnd,
+        kPreviewScrollEnd,
+        kPreviewScrollSheetEnd,
+        kPreviewScrollStart;
 import 'preview_texts.dart';
 
 /// Marker für die Prüfungen. Namen mit Präfix `overlay:` zählen als Overlay
@@ -1276,6 +1280,13 @@ AppSeed _dataDiscardDialog(ScenarioEnv env) => AppSeed(
   taps: <String>[..._openData, _otherTypeCard, S.close],
 );
 
+/// Löschdialog ans Ende gescrollt: die Buttons sind sichtbar (R-1; bei 2,0 ohne
+/// Symbol und ohne Wortbruch).
+AppSeed _dataDeleteDialogBottom(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, S.dataDeleteButton, kPreviewScrollDialogEnd],
+);
+
 AppSeed _dataDeleteDialog(ScenarioEnv env) => AppSeed(
   state: _completedState(env),
   taps: <String>[..._openData, S.dataDeleteButton],
@@ -1505,6 +1516,7 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'data-sheet-dirty', app: _dataSheetDirty, expectsPrimary: true),
   Scenario(id: 'data-discard-dialog', app: _dataDiscardDialog),
   Scenario(id: 'data-delete-dialog', app: _dataDeleteDialog),
+  Scenario(id: 'data-delete-dialog-bottom', app: _dataDeleteDialogBottom),
   Scenario(id: 'data-delete-busy', app: _dataDeleteBusy, loops: true),
   Scenario(id: 'data-delete-error', app: _dataDeleteError),
   Scenario(

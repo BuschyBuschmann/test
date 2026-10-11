@@ -87,6 +87,7 @@
     "data-sheet-dirty",
     "data-discard-dialog",
     "data-delete-dialog",
+    "data-delete-dialog-bottom",
     "data-delete-busy",
     "data-delete-error",
     "data-sheet-keyboard",
