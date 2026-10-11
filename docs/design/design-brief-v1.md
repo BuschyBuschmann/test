@@ -493,3 +493,24 @@ Folgen: Farbiger Text und `accent-hi` auf Glas nur bei Alpha ≤ 12 % (`cat-phys
 - Fehler beim Start (StartGate, Daten nicht lesbar oder Plattformfehler beim Laden, bevor ein Pfad angezeigt wird): Text **"Deine Daten konnten nicht geladen werden."**, Button "Nochmal versuchen" und `status-error`-Icon unverändert.
 - Fehler im Pfad-Tab (6.2, Pfad lässt sich bei bekanntem, abgeschlossenem Onboarding nicht aufbauen): behält den **alten Text** "Dein Pfad konnte nicht geladen werden." Begründung: Dort sind die Daten des Nutzers vorhanden, und es ist tatsächlich der Pfad, der fehlt; die Meldung soll genau den Teil benennen, der nicht lädt. Eine einheitliche Formulierung würde dort ungenauer.
 - Gestaltung, Verhalten und Barrierefreiheit (Live-Region, Fokus auf den Button) ändern sich nicht. Der alte Text in 6.2 bleibt stehen und gilt für den Pfad-Tab. Die Ablage in `strings_de.dart` erhält zwei getrennte Texte.
+
+### E-5: Sheet „Deine Daten“ im kompakten Zustand, Höhe, Buttons und Verwerfen (freigegeben 2026-10-11)
+
+**Anlass.** Nutzerabstimmung vom 2026-10-11 zu Ergänzung 1, Abschnitt 3.2 (Sheet „Deine Daten“), und zu UI-57 (Verwerfen).
+
+**Regel.**
+1. **Kompakter Zustand des Sheets „Deine Daten“** (gilt für 3.2 der Ergänzung 1 und hat dort Vorrang vor „Kopf scrollt nicht mit“):
+   - **Auslöser:** Die verfügbare Höhe beträgt weniger als 440 dp. Gemeint ist Bildschirm minus Tastatur, Querformat eingeschlossen.
+   - **Verhalten:**
+     - Das Sheet nimmt den ganzen verfügbaren Platz ein. Oben bleibt der Abstand für Statusleiste und Notch (Safe Area).
+     - Der Kopf scrollt mit.
+     - Die Fläche ist opak (`surface-opaque`), ohne Blur.
+     - „Speichern“ bleibt fest unten sichtbar.
+     - Bei sichtbarer Tastatur entfällt der Abschnitt „Daten löschen“.
+   - **Rückkehr:** Wird die Tastatur geschlossen, kehrt das Sheet in den Normalzustand zurück.
+   - **Begründung:** Nur so bleibt bei 320 × 568 dp, 200 % Schrift und offener Tastatur der Inhalt erreichbar, ohne Ausnahme für ein Szenario. Beim Tippen werden keine Daten gelöscht.
+2. **Sheet-Oberkante:** höchstens 90 % der Bildschirmhöhe und mindestens 64 dp Abstand zur Bildschirmoberkante. Das präzisiert die Höhenangabe „höchstens 90 %“ in Ergänzung 1 (Komponente `DataSheet` und Abschnitt 320 × 568 dp).
+3. **Lösch-Button und Dialog-Buttons ab Textskalierung 1,5 ohne Symbol.** Ausnahme: „Ja, alles löschen“ behält sein Symbol und darf umbrechen.
+4. **„Verwerfen“ (UI-57):** Bestätigtes Verwerfen schließt das Sheet. Es setzt nicht nur die Felder zurück. Der Satz „Verwerfen setzt die Felder zurück, ohne zu speichern“ wird dadurch durch „Verwerfen schließt das Sheet, ohne zu speichern“ ersetzt.
+
+**Vorrang.** E-5 geht im kompakten Zustand und für die genannten Punkte den folgenden Stellen vor, deren Wortlaut unverändert stehen bleibt: Ergänzung 1, 3.2 („Kopf scrollt nicht mit“, „Kopf und Fußleiste bleiben sichtbar“ bei 200 %), UI-48, UI-57, die Komponente `DataSheet` (Höhe, Blur σ = 16 als Ebene E2 entfällt im kompakten Zustand) sowie die Symbolangaben zu „Daten löschen“ und zum Löschdialog (UI-51, UI-66).
