@@ -1,330 +1,408 @@
 # Flutter-Plan Ausschnitt 2 „Fundament“: Patienten-Framework mit Physio-Zugang (ohne KI)
 
-Status: **PLAN ZUR FREIGABE** · v1 · Paket P2 · Autor: `flutter-developer` · Stand 2026-10-11
+Status: **zur Freigabe (nach Review R-P2)** · v1.1 (v1 überarbeitet nach Review R-P2 und Nutzerentscheidungen vom 2026-10-12) · Paket P2-K1 · Autor: `flutter-developer` · Stand 2026-10-12
 
 Verbindliche Grundlagen:
-- `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11), Abschnitt 4 (P-1 bis P-5, A-1 bis A-4, T-1), Abschnitt 7 (Folgen für Ausschnitt 1), Abschnitt 8 (nicht enthalten), Abschnitt 10 (O-1 bis O-7).
-- Nutzerentscheidung: **Backend Supabase in der EU** (Spec 3, Punkt 13; KI-Plan E-13).
-- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v1.2 Abschnitt 9 (Löschkonzept).
+- `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11), Abschnitt 4 (P-1 bis P-5, A-1 bis A-4, T-1), 7, 8, 10.
+- Nutzerentscheidung: **Backend Supabase in der EU** (Spec 3, Punkt 13).
+- **Nutzerentscheidungen 2026-10-12** (Abschnitt 0).
+- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v2.1 (Löschkonzept, Chat-Bindung).
 
-Kontext (gelesen, nicht zur Anforderung umgedeutet): `docs/UEBERGABE.md`, `docs/produkt/curaone-app-pruefung.md`, Code unter `app/lib` (nur lesend).
+Kontext (gelesen, nicht zur Anforderung umgedeutet): `docs/UEBERGABE.md`, `docs/produkt/curaone-app-pruefung.md`, Code unter `app/lib` (nur lesend; Stand HEAD `5a493ed`, parallel laufende Änderungen unter `app/` sind beim Start von F2-3 neu zu lesen).
 
-Kennzeichnung: **B-n** = Annahme dieses Plans, **O-n** = offene Frage (O-1 bis O-7 aus der Spec, ab O-8 neu aus diesem Plan), **R2-n** = Risiko, **X2-n** = externer Schritt, **F2-n** = Arbeitspaket. Alles ist ein **Vorschlag**; Produkt- und Gestaltungsentscheidungen trifft der Nutzer. Gestaltung (Layouts, Texte im Wortlaut, Farben) kommt über Ablauf C vom `ui-designer`; dieser Plan nennt nur **Funktionen und Zustände**.
+Kennzeichnung: **B-n** = Annahme, **O-n** = Frage (O-1 bis O-7 aus der Spec, O-8 bis O-16 aus diesem Plan; Stand: Abschnitt 12), **R2-n** = Risiko, **X2-n** = externer Schritt, **F2-n** = Arbeitspaket, **DB-Tn** = benannter Datenbanktest (Abschnitt 10.2), **[Vorschlag]** = vom Plan festgelegter Wert mit Begründung, änderbar durch den Nutzer. Gestaltung kommt über Ablauf C vom `ui-designer`; dieser Plan nennt **Funktionen und Zustände**.
 
-Hinweis zur Parallelarbeit: Während dieser Plan entsteht, arbeitet ein anderer Agent unter `app/`. Die Umsetzungspakete F2-3 ff. beginnen erst, wenn dieser Schreibbereich frei ist. Der Plan verweist auf den Code-Stand von HEAD `5a493ed`.
+---
+
+## 0. Nutzerentscheidungen (verbindlich)
+
+**2026-10-12, zu Plan v1:**
+- **O-13** Physio-Web im selben Flutter-Projekt, zweiter Einstieg `main_physio.dart` (Variante W-A).
+- **O-4** Pfad aus Physio-Phasen mit geplanten Wochen; aktuelle Phase setzt der Physio; Units werden nur durch Training erledigt; Streak und Freezes bleiben.
+- **O-10** „Heute“ ohne KI: Übungen der aktuellen Phase der Reihe nach, bis die Zeitwahl gefüllt ist; Tauschen aus dem Rest der Phase.
+- **O-9** „Alles löschen“: alle Patientendaten und das Konto; Einträge des Physios bleiben bei der Praxis ohne Verbindung zum Patienten.
+- Übrige Vorschläge (O-1 bis O-3, O-5 bis O-8, O-11, O-12, O-14 bis O-16) gelten als **Annahmen**. Die Warnzeichen-Schwellen (O-2) werden vor dem Bau separat abgefragt.
+
+**2026-10-12, zu Review R-P2:**
+- **N-1** Handywechsel/Neubindung: Der Chat bleibt beim alten Gerät. Ein neuer Code startet ein neues Gespräch, der alte Chat wird gelöscht. Plan, Verlauf und Befinden bleiben. Der Patient wird über jede Neuanmeldung informiert.
+- **N-2** Warnzeichen aus dem Chat (auch Krise/Selbstgefährdung) gehen an den Physio, ohne Chattext (Stufe, Zeitpunkt); die Einwilligung nennt das ausdrücklich, auch für Krisen.
+- **N-3** Ersatzprogramm bei hohem Schmerz: automatisch kürzen nach fester Regel mit Hinweis (KI-Plan v2.1, 4.2).
+- **N-4** Der Physio sieht alle Patienten seiner Praxis (keine Zuordnung Physio–Patient).
+- **N-5** Alle MINOR-, KI-MINOR- und NITPICK-Befunde einarbeiten; nötige Werte schlägt der Plan vor; E-24 bleibt als Annahme/offen gekennzeichnet.
 
 ---
 
 ## 1. Kurzfassung
 
-| Thema | Vorschlag |
+| Thema | Plan |
 |---|---|
-| Backend | Supabase-Projekt in EU-Region (z. B. Frankfurt): Postgres mit Row-Level-Security, Supabase Auth. **Keine Edge Functions in Ausschnitt 2** (alles über Tabellen, RLS und wenige `SECURITY DEFINER`-Funktionen). Storage nur, falls O-5 = „jetzt“ |
-| Datenmodell | 16 Tabellen (Abschnitt 4), alle mit RLS, Grundsatz „verweigern“. Praxis trennt Physios; Patient sieht nur sich selbst; Physio sieht nur Patienten der eigenen Praxis; der Manny-Chat existiert in Ausschnitt 2 noch nicht im Backend |
-| Auth Physio | E-Mail + Passwort, **keine Selbstregistrierung**; Test-Physios legt der Seed an |
-| Auth Patient | Anonyme Supabase-Sitzung **ohne Rechte**, bis sie per `redeem_invitation(code)` an genau einen Patienten gebunden ist. Code einmalig, gehasht gespeichert, mit Ablauf (O-7) und Versuchsbremse |
-| Physio-Web | **Zweiter Einstiegspunkt im selben Flutter-Projekt** (`lib/main_physio.dart`, Code unter `lib/physio/`), nur als Web gebaut. Gemeinsame Modelle, Datenschicht, Tokens und Prüf-Infrastruktur (O-13) |
-| Patienten-App | Start mit Code → Einwilligung → Pfad aus Physio-Phasen; „Heute“ aus dem Plan mit Übungsdetail und Tauschen nur innerhalb der Phase; Befinden melden; Akte (Behandler, Termine, Krankengeschichte); „Alles löschen“ inklusive Backend (KI-Plan v1.2 Abschnitt 9, vorgezogen) |
-| Offline | Lesen aus lokalem Zwischenspeicher (letzter Plan). Schreiben (Training, Befinden, eigene Termine) lokal zuerst, dann über eine persistente **Ausgangswarteschlange** mit idempotenten IDs |
-| Beispielpfad | Bleibt nur in der Prüfumgebung und als Präsentations-Rückfall per Build-Schalter, nicht in der normalen App (O-14) |
-| Testdaten | `dart run tool/seed/seed.dart` legt Testpraxen, Physios, Patienten, Pläne, Akte und Verlauf an bzw. setzt sie zurück; nur für als Test markierte Daten |
-| Neue Pakete | `supabase_flutter` (App und Physio-Web), `app_links` (Einladungslink öffnen), `qr_flutter` (QR im Physio-Web), `supabase` (Seed-Skript, dev) |
-| Verifikation | Bestehende Kette (`analyze`, Unit/Widget, Matrix, Goldens, `shoot.mjs`, `nav_checks.mjs`) mit gefälschten Repositories; **RLS-Tests** als SQL gegen ein lokales Postgres 16 mit Auth-Nachbildung (Supabase-CLI und Docker-Daemon fehlen hier); Ende-zu-Ende gegen lokalen Supabase-Stack, sobald verfügbar |
-| Pakete | F2-0 Entscheidungen, F2-D Gestaltung (Ablauf C), F2-1 Schema+RLS, F2-2 Seed, F2-3 Datenschicht, F2-4a/b Physio-Web, F2-5a/b/c Patienten-App, F2-6 Integration, Reviews (Abschnitt 13) |
+| Backend | Supabase-Projekt in EU-Region: Postgres mit RLS, Supabase Auth. **Keine Edge Functions in Ausschnitt 2**. Storage nicht (O-5 = später) |
+| Rollenmodell | Tabellen und `SECURITY DEFINER`-Funktionen gehören der Migrationsrolle; RLS **ohne `FORCE`** (der Eigentümer umgeht RLS, die API-Rollen nicht). Jede Definer-Funktion prüft Rechte selbst. Supabase-Standardrechte werden ausdrücklich entzogen (Abschnitt 4.1) |
+| Datenmodell | 17 Tabellen (Abschnitt 4.3), alle mit RLS; Praxis trennt Physios; Patient sieht nur sich selbst; jeder Physio sieht alle Patienten seiner Praxis (N-4) |
+| Auth Physio | E-Mail + Passwort, keine Selbstregistrierung |
+| Auth Patient | Anonyme Supabase-Sitzung (Rolle `authenticated`, Claim `is_anonymous`) **ohne Rechte**, bis `redeem_invitation(code)` sie an genau einen Patienten bindet. Code 10 Zeichen Crockford-Base32 (50 Bit), HMAC-gespeichert, Ablauf 14 Tage, Bremsen je Sitzung und global |
+| Neubindung (N-1) | Neuer Code bindet die neue Sitzung; alte Sitzung verliert Zugriff, ihr Auth-Konto wird gelöscht; ab Ausschnitt 3 wird der Chat der alten Identität gelöscht; Hinweis auf beiden Geräten |
+| Physio-Web | zweiter Einstieg im selben Projekt (O-13) |
+| Patienten-App | Start mit Code → Einwilligung (nennt Physio-Sicht inkl. Warnzeichen aus dem Chat, auch bei Krisen, N-2) → Pfad aus Phasen (O-4) → „Heute“ der Reihe nach (O-10) mit Übungsdetail und Tauschen → Befinden → Akte → „Alles löschen“ mit Backend (O-9) |
+| Plan speichern | stabile IDs: Upsert nach ID, nur Entferntes löschen; Verlauf bleibt unberührt |
+| Offline | Lesen aus Zwischenspeicher; Schreiben über persistente Warteschlange; vor dem Löschen wird sie angehalten und geleert |
+| Testdaten | `dart run tool/seed/seed.dart` |
+| Verifikation | bestehende Kette + 41 benannte DB-Tests gegen lokales Postgres 16 mit Supabase-Rollen-Nachbildung; Ende-zu-Ende erst mit lokalem Supabase-Stack |
 
 ---
 
-## 2. Physio-Web-Zugang: Technikvorschlag (O-13)
+## 2. Physio-Web-Zugang (O-13 entschieden: W-A)
 
-| Variante | Beschreibung | Vorteile | Nachteile |
-|---|---|---|---|
-| **W-A (Empfehlung): zweiter Einstiegspunkt im selben Flutter-Projekt** | `app/lib/main_physio.dart`, Code unter `app/lib/physio/`, Build `flutter build web -t lib/main_physio.dart -o build/physio_web` | eine Sprache; gemeinsame reine Logik (`lib/logic/`), Datenmodelle, Repositories und Validierung (z. B. „eigene Übung braucht Name und Beschreibung“ an genau einer Stelle); gemeinsame Tokens; vorhandene Prüfketten (Matrix, statische Regeln, `shoot.mjs`, `nav_checks.mjs`) sofort nutzbar; Dart-Tree-Shaking hält den Physio-Code aus dem Patienten-Build heraus (anderer Einstiegspunkt) | Patienten- und Physio-Code teilen ein Paket → Grenze per statischer Regel nötig; Flutter Web lädt CanvasKit (große erste Ladezeit, für eine Präsentation unkritisch); Formulare und Tabellen in Flutter Web sind weniger „webtypisch“ (Textauswahl, Browser-Autofill nur eingeschränkt) |
-| W-B: eigenes Flutter-Projekt `physio_web/` + gemeinsames Dart-Paket `packages/cura_core/` | saubere Trennung | wie W-A, plus klare Paketgrenze | Umbau von `app/` (Logik und Modelle in ein Paket verschieben) **während** dort parallel gearbeitet wird; doppelte Prüf-Infrastruktur; mehr Aufwand ohne Nutzen für den Prototyp |
-| W-C: eigene Web-Anwendung (z. B. TypeScript/React) | webtypisch | zweite Sprache und Toolchain, doppelte Modelle/Validierung, nicht im Zuständigkeitsbereich `flutter-developer`, eigene Prüfketten |
+Zweiter Einstiegspunkt im selben Flutter-Projekt: `app/lib/main_physio.dart`, Code unter `app/lib/physio/`, Build `flutter build web -t lib/main_physio.dart -o build/physio_web`. Begründung (aus v1): gemeinsame reine Logik, Modelle, Repositories, Validierung und Prüfketten; Tree-Shaking hält den Physio-Code aus dem Patienten-Build. Verworfen: eigenes Projekt mit gemeinsamem Paket (Umbau während Parallelarbeit), eigene Web-App (zweite Sprache).
 
-**Empfehlung W-A.** Spätere Auslagerung nach W-B bleibt möglich, weil die Grenze von Anfang an per Regel erzwungen wird:
-- `lib/physio/**` importiert nichts aus `lib/ui/**` außer `lib/ui/components/**` (falls der Brief Bausteine teilt), `lib/ui/**` importiert nichts aus `lib/physio/**`.
-- `package:supabase_flutter` nur unter `lib/backend/**` und in den beiden `main*.dart`.
-- Physio-Texte in eigener Datei `lib/l10n/strings_physio_de.dart` (Konvention 4 sinngemäß; Vorschlag für `KONVENTIONEN.md`, Abschnitt 16), damit Patienten- und Physio-Pakete nicht dieselbe Textdatei bearbeiten.
+Grenzen per statischer Regel:
+- `lib/physio/**` importiert nichts aus `lib/ui/**` außer `lib/ui/components/**` (falls der Brief Bausteine teilt); `lib/ui/**` nichts aus `lib/physio/**`.
+- `package:supabase_flutter` nur unter `lib/backend/**` und in `main*.dart`.
+- Physio-Texte in `lib/l10n/strings_physio_de.dart`.
 
-**Bereitstellung für die Präsentation:** lokal (`flutter build web …` + statischer Server wie heute in der Prüfumgebung) oder gehostet. Hosting wäre ein weiterer Anbieter bzw. ein externer Schritt (O-16, X2-6).
+Bereitstellung: lokal (Annahme O-16); Hosting nur auf Wunsch (X2-6).
 
 ---
 
-## 3. Projekt- und Ordnerstruktur (Erweiterung von Flutter-Plan v1.3 Abschnitt 3)
+## 3. Projekt- und Ordnerstruktur
 
 ```
 supabase/                                  # Repo-Stamm, Layout der Supabase-CLI
-  config.toml                              # lokaler Stack (Auth: anonyme Anmeldung an, Registrierung aus); ohne Secrets
+  config.toml                              # lokaler Stack (anonyme Anmeldung an, Registrierung aus); ohne Secrets
   migrations/
-    <ts>_01_grundschema.sql                # Tabellen, Typen, Constraints
-    <ts>_02_rls.sql                        # RLS an, Hilfsfunktionen, Policies, Grants
-    <ts>_03_funktionen.sql                 # RPCs (Einladung, Plan speichern, Löschen)
-    <ts>_04_warnzeichen.sql                # Regeltabelle + Trigger auf Befinden (O-2)
+    <ts>_01_rollen_und_rechte.sql          # REVOKE der Standardrechte, Default Privileges, Schema app
+    <ts>_02_grundschema.sql                # Tabellen, Typen, Constraints, Fremdschlüssel
+    <ts>_03_rls.sql                        # RLS an (ohne FORCE), Hilfsfunktionen, Policies, Spalten-Grants
+    <ts>_04_trigger.sql                    # created_by-Setzer, Schreibsperre je Patient, Warnzeichen
+    <ts>_05_funktionen.sql                 # RPCs (Einladung, Plan, Phase, Einwilligung, Löschen)
   tests/
-    auth_shim.sql                          # NUR für Tests ohne Supabase-Stack: Schema auth, auth.uid(), Rollen
-    rls/*.sql                              # RLS- und Funktionstests (Assertions in DO-Blöcken)
-    run_local_pg.sh                        # initdb in Temp-Verzeichnis, Shim + Migrationen + Tests, Abbau
+    shim/supabase_roles.sql                # NUR Tests ohne Supabase-Stack: Rollen, Grants, auth-Schema (10.1)
+    db/T01_*.sql … T40_*.sql               # benannte DB-Tests (10.2)
+    db/race/*.sh                           # Nebenläufigkeitstests mit zwei Verbindungen
+    run_local_pg.sh                        # initdb (Temp), Shim, Migrationen, Tests, Abbau
 app/
-  config/
-    supabase.example.json                  # Platzhalter: SUPABASE_URL, SUPABASE_ANON_KEY, INVITE_LINK_BASE
-    supabase.local.json                    # NICHT eingecheckt (.gitignore); per --dart-define-from-file
+  config/supabase.example.json             # Platzhalter: SUPABASE_URL, SUPABASE_ANON_KEY, INVITE_LINK_BASE
+  config/supabase.local.json               # nicht eingecheckt
   lib/
-    main.dart                              # Patienten-App: + Supabase-Init, Deep-Link-Empfang
-    main_physio.dart                       # NEU: Physio-Web
-    main_preview.dart                      # Prüfumgebung Patient: gefälschte Repositories, kein Netz
-    main_physio_preview.dart               # NEU: Prüfumgebung Physio-Web, gefälschte Repositories
-    logic/                                 # rein Dart (Konvention 3)
-      framework.dart                       # NEU: Patient, Plan, Phase, PlanItem, Exercise, Treater, Appointment, HistoryEntry
-      wellbeing.dart                       # NEU: Befindensmeldung, Skalen (O-3)
-      invite_code.dart                     # NEU: Format, Normalisierung (Groß/Klein, Leerzeichen, Bindestriche)
-      plan_today.dart                      # NEU: Heute aus Plan + Zeitwahl (O-10), Tausch-Kandidaten
-      path_from_phases.dart                # NEU: Pfad aus Physio-Phasen (O-4); path_generator.dart bleibt für den Beispielpfad
-      outbox.dart                          # NEU: Ausgangswarteschlange (Einträge, Zusammenfassen, Undo)
-      plan_validation.dart                 # NEU: Pflichtfelder eigener Übung, Grenzenbereiche (Physio-Web und Tests)
-    data/
-      framework_repository.dart            # NEU: Schnittstellen (lesen/schreiben), keine Supabase-Typen
-      framework_cache.dart                 # NEU: letzter Stand lokal (Schlüssel curaone.framework.v1)
-      outbox_store.dart                    # NEU: Schlüssel curaone.outbox.v1
-      account_deleter.dart                 # NEU: Backend-Löschung vor den lokalen Löschern (KI-Plan v1.2, 9)
-    backend/                               # NEU: einzige Stelle mit supabase_flutter
-      supabase_config.dart                 # liest --dart-define, Fehlerzustand bei fehlender Konfiguration
-      supabase_patient_repository.dart
-      supabase_physio_repository.dart
-      outbox_sender.dart                   # sendet Warteschlange bei Start/Resume/Verbindung
-    ui/
-      start/                               # + Code-Eingabe, Einladungslink, „Zugang über deinen Physio“
-      onboarding/                          # Einwilligung neu (A-1), Name/Verletzung/Datum entfallen im Einladungsweg
-      today/exercise_detail_sheet.dart     # NEU (A-2)
-      wellbeing/                           # NEU (A-3)
-      record/                              # NEU Akte (A-4)
-    physio/                                # NEU Physio-Web (P-1 … P-5)
-      physio_app.dart, login/, patients/, invite/, plan_editor/, record/, history/
-    l10n/strings_physio_de.dart            # NEU (Vorschlag, siehe 2)
-    dev/                                   # + Fake-Repositories, neue Szenarien (Patient und Physio)
-  tool/
-    seed/seed.dart                         # NEU T-1
-    seed/testdaten.json                    # NEU: Umfang nach O-6, Katalog nach O-1
-    screens/                               # shoot.mjs, nav_checks.mjs: + Physio-Szenarien und Abläufe
+    main.dart, main_physio.dart, main_preview.dart, main_physio_preview.dart
+    logic/   framework.dart, wellbeing.dart, invite_code.dart, plan_today.dart, exercise_duration.dart,
+             path_from_phases.dart, outbox.dart, plan_validation.dart
+    data/    framework_repository.dart, framework_cache.dart, outbox_store.dart, account_deleter.dart
+    backend/ supabase_config.dart, supabase_patient_repository.dart, supabase_physio_repository.dart,
+             outbox_sender.dart, backend_errors.dart
+    ui/      start/ (Code, Link, Hinweise), onboarding/ (Einwilligung), today/exercise_detail_sheet.dart,
+             wellbeing/, record/
+    physio/  physio_app.dart, login/, patients/, invite/, plan_editor/, record/, history/
+    l10n/strings_physio_de.dart
+    dev/     Fake-Repositories, Szenarien Patient und Physio
+  tool/seed/seed.dart, tool/seed/testdaten.json
+  tool/screens/  shoot.mjs, nav_checks.mjs (+ Physio)
 ```
 
-`.gitignore` (Repo-Stamm bzw. `app/`) ergänzt um `app/config/supabase.local.json`, `supabase/.temp/`, `supabase/.branches/`, `.env*`.
+`.gitignore` ergänzt um `app/config/supabase.local.json`, `supabase/.temp/`, `supabase/.branches/`, `.env*`.
 
 ---
 
-## 4. Datenmodell (Postgres, Schema `public`)
+## 4. Backend
 
-Grundsätze:
-- Alle Tabellen `ENABLE ROW LEVEL SECURITY` und `FORCE ROW LEVEL SECURITY`; Rolle `anon` erhält **keine** Rechte auf Tabellen; `authenticated` nur die per Policy freigegebenen Operationen. Ohne passende Policy: kein Zugriff.
-- Primärschlüssel `uuid`. Schreibvorgänge der App, die über die Warteschlange laufen, erzeugen die ID **auf dem Gerät** (idempotentes `insert … on conflict (id) do nothing`).
-- `created_at`/`updated_at` als `timestamptz`; Kalendertage als `date` (vom Gerät in Ortszeit berechnet, wie `LocalDay`).
-- Test-Kennzeichen `is_test` an `practices`; Seed und Reset berühren **nur** Daten unter `is_test = true`.
+### 4.1 Rollen- und Rechtemodell (M-1, M-2, M-3)
 
-| Tabelle | Wichtige Spalten | Schreibt | Liest |
+Supabase-Rollen (laut Supabase-Doku; Attribute im echten Stack **zu bestätigen**, X2-8): `anon` (ohne Anmeldung), `authenticated` (jede angemeldete Sitzung, **auch anonyme**; Unterscheidung über JWT-Claim `is_anonymous`), `service_role` (`BYPASSRLS`, nur Seed), Migrationsrolle `postgres` (Eigentümer).
+
+Festlegungen:
+1. **Eigentümer:** Alle Tabellen, Sichten und Funktionen in `public` und `app` gehören der Migrationsrolle. RLS wird mit `ENABLE ROW LEVEL SECURITY` eingeschaltet, **nicht** mit `FORCE` (v1 korrigiert): Mit `FORCE` und einem Eigentümer ohne `BYPASSRLS` sehen `SECURITY DEFINER`-Funktionen 0 Zeilen (im Review mit Postgres 16 belegt). Die API-Rollen sind nie Eigentümer, für sie gilt RLS immer.
+2. **Standardrechte entziehen:** Supabase vergibt standardmäßig Tabellenrechte an `anon` und `authenticated` und `EXECUTE` an `PUBLIC`. Migration 01:
+   - `REVOKE ALL ON ALL TABLES/SEQUENCES IN SCHEMA public FROM anon, authenticated;`
+   - `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public, app FROM PUBLIC, anon, authenticated;`
+   - `ALTER DEFAULT PRIVILEGES … REVOKE …` für künftige Objekte (gleiche Liste).
+   - Danach **einzeln** `GRANT` nur der benötigten Operationen an `authenticated` (Spalte „Recht“ in 4.3) und `EXECUTE` nur auf die RPCs in 4.4.
+   - Schema `app` (Hilfsfunktionen) ohne `USAGE` für `anon`; `authenticated` erhält `USAGE` nur, weil Policies die Hilfsfunktionen aufrufen, und `EXECUTE` nur auf diese Hilfsfunktionen.
+3. **Keine Sichten über geschützte Tabellen** ohne `security_invoker = true`. Die Einladungs-Sicht aus v1 entfällt; der Physio liest `invitations` direkt mit RLS-Policy und **Spalten-Grant ohne `code_hmac`** (M-2).
+4. **Jede `SECURITY DEFINER`-Funktion:** `SET search_path = ''`, voll qualifizierte Namen, prüft als Erstes Aufrufer und Rolle (anonym/gebunden/Physio) und die Zugehörigkeit (Praxis, Patient) selbst – RLS gilt in ihr nicht.
+5. **Hilfsfunktionen** (Definer, `STABLE`): `app.uid()` (= `auth.uid()`), `app.is_anonymous()` (Claim `is_anonymous`, fehlend = `false`), `app.current_physio_practice()`, `app.current_patient_id()` (gebunden **und** `status = 'active'`), `app.physio_can_see_patient(p)`.
+6. **Seed** nutzt `service_role` (nur lokal bzw. X2-4), nie die App.
+
+### 4.2 Auth-Nachbildung für Tests: siehe 10.1.
+
+### 4.3 Tabellen
+
+Grundsätze: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange mit Geräte-IDs (`insert … on conflict (id) do nothing`); `timestamptz`; Kalendertage `date`; Test-Kennzeichen `practices.is_test`.
+
+| Tabelle | Wichtige Spalten | Recht für `authenticated` (über RLS) | Schreibpfad sonst |
 |---|---|---|---|
-| `practices` | `id`, `name`, `is_test` | Seed | eigene Physios |
-| `physios` | `id` = `auth.users.id`, `practice_id`, `display_name` | Seed | Physios derselben Praxis |
-| `patients` | `id`, `practice_id`, `first_name`, `last_name`, `injury_label`, `reference_date` (Verletzungs- oder OP-Datum für „Woche N“, B-3), `auth_user_id` (unique, null bis Einlösung), `status` (`invited` · `active` · `access_deleted`), `current_phase_id` | Physio (Stammdaten), Funktionen (Bindung, Status) | Physio der Praxis; Patient nur die eigene Zeile |
-| `invitations` | `id`, `patient_id`, `code_hash` (SHA-256 eines Codes mit hoher Entropie), `expires_at` (O-7), `redeemed_at`, `revoked_at`, `failed_attempts` | nur Funktionen | Physio der Praxis (ohne Hash, über View) |
-| `exercises` | `id`, `practice_id` (null = CuraOne-Katalog), `name` (Pflicht), `description` (Pflicht), `is_example` (O-1), `created_by` | Seed (Katalog), Physio (eigene der Praxis) | Physio: Katalog + eigene Praxis; Patient: nur Übungen im eigenen Plan |
-| `plans` | `id`, `patient_id` (unique), `version` (int, für Konfliktprüfung), `updated_at`, `updated_by` | Funktion `save_plan` | Physio der Praxis, Patient (eigener) |
-| `phases` | `id`, `plan_id`, `position`, `title`, `planned_weeks` (nur bei O-4 Variante A) | `save_plan` | wie `plans` |
-| `plan_items` (Freigabe mit Grenzen) | `id`, `plan_id`, `phase_id`, `exercise_id`, `position`, `sets`, `reps`, `duration_min`, `load_note` (Belastungshinweis) | `save_plan` | wie `plans` |
-| `treaters` (Behandler) | `id`, `patient_id`, `role` (`physio` · `arzt` · `sonstige`), `name`, `phone`, `email`, `address`, `note` | Physio | Physio der Praxis, Patient |
-| `appointments` (Termine) | `id`, `patient_id`, `treater_id` (optional), `starts_at`, `title`, `location`, `created_by_role` (`physio` · `patient`), `created_by` | Physio (eigene Einträge), Patient (eigene Einträge) | beide; Ändern/Löschen nur, wer angelegt hat (A-4) |
-| `history_entries` (Krankengeschichte) | `id`, `patient_id`, `kind` (`injury` · `surgery` · `past_therapy` · `current_treatment` · `treatment_option`), `title`, `occurred_on` (optional), `note` | Physio | Physio der Praxis, Patient (lesend, B-4) |
-| `training_sessions` (Verlauf) | `id` (Gerät), `patient_id`, `local_day`, `logged_at`, `phase_id`, `plan_version`, `items` (`jsonb`: Momentaufnahme `plan_item_id`, Name, Sätze, Wdh., Dauer, `custom`) | Patient (Warteschlange) | Patient, Physio der Praxis |
-| `wellbeing_reports` (Befinden) | `id` (Gerät), `patient_id`, `local_day`, `reported_at`, `pain`, `swelling`, `mood` (Skalen O-3, als `CHECK`) | Patient (Warteschlange) | Patient, Physio der Praxis |
-| `warning_rules` | `id`, `version`, `rule` (`jsonb`: Feld, Vergleich, Schwelle), `active`, `is_provisional` | Migration/Seed | nur Funktionen |
-| `warning_signs` (Warnzeichen) | `id`, `patient_id`, `created_at`, `source` (`wellbeing`; ab Ausschnitt 3 `chat`), `level`, `reason_code`, `wellbeing_report_id`, `seen_at` (O-11) | Trigger (nicht der Client) | Physio der Praxis; Patient nicht (B-5) |
-| `consents` | `id`, `patient_id`, `kind` (`physio_sharing`), `version`, `accepted_at`, `revoked_at` | Patient (über Funktion beim Einlösen bzw. danach) | Patient, Physio der Praxis (nur ob/wann) |
-| `documents` + Storage-Bucket | nur wenn O-5 = „Ausschnitt 2“ | Patient | Patient, Physio der Praxis |
+| `practices` | `id`, `name`, `is_test` | SELECT (Physio eigene Praxis) | Seed |
+| `physios` | `id` → `auth.users` (`ON DELETE CASCADE`), `practice_id`, `display_name` | SELECT (gleiche Praxis) | Seed |
+| `patients` | `id`, `practice_id`, `first_name`, `last_name`, `injury_label`, `reference_date`, `auth_user_id` → `auth.users` (**`ON DELETE SET NULL`**, unique), `status` (`invited` · `active` · `deleting` · `access_deleted`), `current_phase_id` → `phases` (`ON DELETE SET NULL`), `bound_at` | SELECT (Physio der Praxis; Patient eigene Zeile); UPDATE der Stammdatenspalten (Physio, Spalten-Grant) | RPCs (Bindung, Status, Phase) |
+| `invitations` | `id`, `patient_id`, `code_hmac`, `expires_at`, `redeemed_at`, `redeemed_by`, `revoked_at`, `failed_attempts` | SELECT ohne `code_hmac` (Physio der Praxis) | RPCs |
+| `redeem_attempts` | `id`, `uid`, `at`, `ok` | – | `redeem_invitation` |
+| `exercises` | `id`, `practice_id` (null = Katalog), `name`, `description` (beide `CHECK` nicht leer), `is_example`, `created_by` | SELECT (Physio: Katalog + Praxis; Patient: nur Übungen im eigenen Plan); INSERT/UPDATE eigene Praxis (Physio); DELETE nur ungenutzt | Seed (Katalog) |
+| `plans` | `id`, `patient_id` (unique), `version`, `updated_at`, `updated_by` | SELECT | `save_plan` |
+| `phases` | `id`, `plan_id`, `position`, `title`, `planned_weeks` (`CHECK 1–52`) | SELECT | `save_plan` |
+| `plan_items` | `id`, `plan_id`, `phase_id` (`ON DELETE CASCADE` innerhalb des Plans), `exercise_id` (`ON DELETE RESTRICT`), `position`, `sets`, `reps`, `duration_min` (je `null` oder `CHECK > 0`), `load_note` | SELECT | `save_plan` |
+| `treaters` | `id`, `patient_id`, `role`, `name`, `phone`, `email`, `address`, `note` | SELECT (beide); INSERT/UPDATE/DELETE (Physio) | – |
+| `appointments` | `id`, `patient_id`, `treater_id` (`ON DELETE SET NULL`), `starts_at`, `title`, `location`, `created_by_role`, `created_by` | SELECT (beide); INSERT/UPDATE/DELETE nur eigene (`created_by = app.uid()`) | – |
+| `history_entries` | `id`, `patient_id`, `kind`, `title`, `occurred_on`, `note` | SELECT (beide); INSERT/UPDATE/DELETE (Physio) | – |
+| `training_sessions` | `id` (Gerät), `patient_id`, `local_day`, `logged_at`, `phase_id` (**`ON DELETE SET NULL`**), `plan_version`, `items` (`jsonb`-Momentaufnahme, **kein** Fremdschlüssel auf `plan_items`) | SELECT (beide); INSERT, DELETE eigene (Patient, Rückgängig) | – |
+| `wellbeing_reports` | `id` (Gerät), `patient_id`, `local_day`, `reported_at`, `pain` 0–10, `swelling` 0–3, `mood` 1–5 | SELECT (beide); **kein** direktes INSERT/UPDATE/DELETE (m-5) | `report_wellbeing` (B-15), `delete_my_data` |
+| `warning_rules` | `id`, `version`, `rule jsonb`, `active`, `is_provisional` | – | Migration/Seed |
+| `warning_signs` | `id`, `patient_id`, `created_at`, `source` (`wellbeing`; ab Ausschnitt 3 `chat`), `layer` (`trigger`; ab Ausschnitt 3 `device`/`server`/`model`), `level`, `reason_code`, `wellbeing_report_id`, `client_message_id` (Ausschnitt 3), `seen_at`; **keine Textspalte** | SELECT (Physio der Praxis); **kein INSERT** | Trigger (Ausschnitt 2); RPC/Funktionen aus KI-Plan v2.1 4.3 (Ausschnitt 3) |
+| `consents` | `id`, `patient_id`, `kind`, `version`, `accepted_at`, `revoked_at` | SELECT (beide) | `accept_consent` |
+| `account_events` | `id`, `patient_id`, `kind` (`bound`, `rebound`), `at` | SELECT (Patient) | `redeem_invitation` (N-1) |
 
-**Nicht im Backend in Ausschnitt 2:** Streak, Freezes, Manny-Anlässe, Feier, Tagesänderungen (bleiben im lokalen `AppState` wie bisher, O-4), Manny-Chat (Ausschnitt 3, KI-Plan v2).
+**Trigger (Migration 04):**
+- `app.set_created_by()` – `BEFORE INSERT` auf `appointments`, `exercises`: setzt `created_by = app.uid()` und `created_by_role` aus der Rolle (Physio/Patient); Client-Werte werden überschrieben (m-3).
+- `app.lock_patient_for_write()` – `BEFORE INSERT/UPDATE/DELETE` auf allen vom Patienten beschriebenen Tabellen (`training_sessions`, `wellbeing_reports`, `appointments`, `consents`): `SELECT … FROM patients WHERE id = NEW.patient_id AND status = 'active' FOR SHARE`; keine Zeile → Fehler `42501`. Serialisiert gegen `delete_my_data` (M-4).
+- `app.raise_warning_signs()` – `AFTER INSERT` auf `wellbeing_reports`, `SECURITY DEFINER`, `SET search_path = ''`, wertet aktive `warning_rules` aus (O-2) (m-5).
 
-**Constraints, die die Akzeptanzkriterien stützen:**
-- `exercises`: `CHECK (length(trim(name)) > 0 AND length(trim(description)) > 0)` (P-3 AK 2, zweite Sicherung neben der Formularprüfung).
-- `plan_items.phase_id` gehört zum selben `plan_id` (zusammengesetzter Fremdschlüssel).
-- `plan_items.exercise_id` ist Katalog oder Übung derselben Praxis (Prüfung in `save_plan`).
-- `invitations`: höchstens eine nicht eingelöste, nicht widerrufene Einladung je Patient (partieller Unique-Index).
-- `patients.auth_user_id` unique → „ein Code, genau ein Patient“ (P-2 AK 2).
+### 4.4 Funktionen (RPC)
 
-### 4.1 RLS-Hilfsfunktionen und Policies
+Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLIC, anon`, `GRANT EXECUTE … TO authenticated`; erste Anweisung prüft den Aufrufer, Fehler `42501`.
 
-Hilfsfunktionen (`SECURITY DEFINER`, `STABLE`, `SET search_path = ''`, Eigentümer ohne Login):
-- `app.current_physio_practice()` → `practice_id` des angemeldeten Physios oder `null`.
-- `app.current_patient_id()` → `patients.id` mit `auth_user_id = auth.uid()` und `status = 'active'` oder `null`.
-- `app.physio_can_see_patient(p uuid)` → Patient gehört zur Praxis des Physios.
-
-Policies (Muster, je Tabelle ausformuliert in `<ts>_02_rls.sql`):
-- **Physio:** `using (app.physio_can_see_patient(patient_id))` für Lesen; Schreiben nur auf den Tabellen aus der Spalte „Schreibt“.
-- **Patient:** `using (patient_id = app.current_patient_id())`; Insert nur mit `with check (patient_id = app.current_patient_id())`; bei `appointments` Update/Delete zusätzlich `created_by = auth.uid()`.
-- **Anonyme, nicht gebundene Sitzung:** `app.current_patient_id()` ist `null` → keine Zeile sichtbar, kein Schreiben möglich; einziger erlaubter Aufruf ist `redeem_invitation`.
-- Physio-Policies verwenden nie `auth.uid()` eines Patienten; Patienten-Policies nie die Praxis. Spalten, die der Patient nicht sehen soll, liegen nicht in seiner Zeile (Warnzeichen getrennt, Einladungs-Hash nie lesbar).
-
-### 4.2 Funktionen (RPC, `SECURITY DEFINER`, Eingaben geprüft)
-
-| Funktion | Aufrufer | Wirkung |
+| Funktion | Erlaubter Aufrufer (selbst geprüft) | Wirkung |
 |---|---|---|
-| `create_patient(first_name, last_name, injury_label, reference_date)` | Physio | legt Patient in der eigenen Praxis an, erzeugt Einladung; **liefert Klartext-Code einmalig** zurück (gespeichert wird nur der Hash) |
-| `regenerate_invitation(patient_id)` | Physio | widerruft offene Einladung, erzeugt neue (nur bei O-8 = ja; sonst entfällt) |
-| `redeem_invitation(code)` | anonyme Sitzung | normalisiert Code, prüft Hash, Ablauf, Widerruf, „bereits eingelöst“; bindet `auth.uid()` an den Patienten, setzt `status = 'active'`. Ergebnis als Code: `ok` · `invalid` · `already_used` · `expired` · `too_many_attempts`. Versuchsbremse je Sitzung und je Code (B-6) |
-| `accept_consent(kind, version)` | Patient | speichert Einwilligung (A-1) |
-| `save_plan(patient_id, expected_version, plan jsonb)` | Physio | ersetzt Phasen und Positionen **atomar**, prüft Pflichtfelder, Wertebereiche und Praxiszugehörigkeit; bei abweichender Version Fehler `conflict` (zwei Physios gleichzeitig); erhöht `version` |
-| `set_current_phase(patient_id, phase_id)` | Physio | aktuelle Phase setzen (O-4) |
-| `mark_warnings_seen(patient_id)` | Physio | setzt `seen_at` (O-11) |
-| `delete_my_data()` | Patient | löscht die vom Patienten erzeugten Daten (Umfang O-9), löst die Bindung, setzt `status = 'access_deleted'`, löscht das anonyme Auth-Konto (B-7). Idempotent |
+| `create_patient(first_name, last_name, injury_label, reference_date)` | Physio (nicht anonym, `physios`-Zeile) | Patient in eigener Praxis + Einladung; liefert Klartext-Code einmalig |
+| `regenerate_invitation(patient_id)` | Physio derselben Praxis | widerruft offene Einladung, erzeugt neue (O-8) |
+| `redeem_invitation(code)` | **anonyme** Sitzung (`is_anonymous = true`), **kein** Physio, **nicht bereits gebunden** (M-3) | Bremsen prüfen (4.5), Code normalisieren, HMAC vergleichen, Ablauf/Widerruf/eingelöst prüfen. Patient `invited` → binden. Patient `active` (Neubindung, N-1) → alte Identität lösen, `app.on_rebind(old_uid)` (Ausschnitt 3: Chat der alten Identität löschen), altes Auth-Konto löschen, `account_events.rebound`. Ergebnis `ok` · `ok_rebound` · `invalid` · `already_used` · `expired` · `too_many_attempts` · `not_allowed` |
+| `accept_consent(kind, version)` | gebundener Patient | Einwilligung speichern |
+| `report_wellbeing(id, local_day, pain, swelling, mood)` | gebundener, aktiver Patient | idempotenter Insert (Geräte-ID) mit Schreibsperre wie 4.3; liefert nur `warning_raised boolean` zurück, keine Regel- oder Warnzeichendaten (B-15, O-12) |
+| `save_plan(patient_id, expected_version, plan jsonb)` | Physio derselben Praxis | siehe 4.6 |
+| `set_current_phase(patient_id, phase_id)` | Physio derselben Praxis | Phase muss zum Plan des Patienten gehören |
+| `mark_warnings_seen(patient_id)` | Physio derselben Praxis | `seen_at` setzen (O-11) |
+| `delete_my_data()` | gebundener Patient; ungebundene anonyme Sitzung → `already_deleted` | siehe 4.7 |
 
-Warnzeichen entstehen **serverseitig** per Trigger `after insert on wellbeing_reports` anhand aktiver `warning_rules` (O-2). Der Client kann keine Warnzeichen anlegen oder unterdrücken.
+### 4.5 Einladungscode (m-2) [Vorschlag]
+
+| Punkt | Festlegung | Begründung |
+|---|---|---|
+| Alphabet | Crockford-Base32: `0–9`, `A–Z` ohne `I L O U` (32 Zeichen) | keine verwechselbaren Zeichen, 5 Bit je Zeichen |
+| Länge | 10 Zeichen, Anzeige `XXXXX-XXXXX` | **50 Bit** (≈ 1,1 · 10¹⁵ Codes); auch bei 1000 gültigen Codes Trefferchance je Versuch ≈ 10⁻¹² |
+| Normalisierung | Großschreibung; Leerzeichen und Bindestriche entfernen; `O→0`, `I`/`L→1` | Tippfehler beim Abschreiben |
+| Erzeugung | `gen_random_bytes` (pgcrypto) in der Funktion | kryptografischer Zufall |
+| Speicherung | `HMAC-SHA256(pepper, code)`; Pepper in einer Tabelle `app.secrets` ohne Rechte für API-Rollen, Wert per externem Schritt (X2-11), lokal per Testwert | Datenbank-Abzug allein verrät keine Codes |
+| Bremse je Sitzung | 5 Fehlversuche je 15 Minuten | Tippfehler erlaubt, Durchprobieren nicht |
+| Bremse global | 200 Fehlversuche je Stunde über alle Sitzungen → danach `too_many_attempts` für alle bis Fensterende | schützt gegen viele anonyme Sitzungen; bei 50 Bit praktisch kein Durchprobieren möglich; Nachteil: absichtliche Sperre aller Einlösungen (für den Prototyp hingenommen) |
+| Bremse je IP | Supabase-Ratenbegrenzung für anonyme Anmeldungen (Wert im Projekt prüfen) und optional Captcha (X2-2) | die Datenbank sieht die IP nicht zuverlässig |
+| Ablauf | 14 Tage (O-7, Annahme) | |
+
+### 4.6 Plan speichern mit stabilen IDs (M-5)
+
+- Das Physio-Web vergibt IDs für neue Phasen und Positionen auf dem Client; bestehende behalten ihre ID.
+- `save_plan`: in einer Transaktion, `SELECT … FROM plans WHERE id = … FOR UPDATE`, Version prüfen (`conflict`), dann
+  1. Phasen: Upsert nach `id`; Phasen, die im Payload fehlen, löschen (ihre `plan_items` per `CASCADE`);
+  2. Positionen: Upsert nach `id`; fehlende löschen;
+  3. `current_phase_id` aus dem Payload setzen; Pflicht, sobald Phasen existieren, und muss eine Phase dieses Plans sein → sonst Fehler `current_phase_required`;
+  4. Prüfungen: Übung ist Katalog oder eigene Praxis; Wertebereiche; Pflichtfelder eigener Übungen (Constraint);
+  5. `version + 1`.
+- **Verlauf bleibt unberührt:** `training_sessions` hat keinen Fremdschlüssel auf `plan_items` (Momentaufnahme in `items`); `phase_id` wird beim Löschen einer Phase `NULL`.
+- App: Tagesänderungen (`removed`, `swaps`) verweisen auf `plan_items.id`; entfallene IDs werden verworfen (B-10).
+- Tests DB-T20 bis DB-T24.
+
+### 4.7 Löschen (O-9, M-4, m-6)
+
+`delete_my_data()`:
+1. Aufrufer prüfen; nicht gebunden und anonym → `already_deleted` (idempotent; die App wertet das als Erfolg).
+2. `SELECT … FROM patients WHERE auth_user_id = app.uid() FOR UPDATE` → wartet auf laufende Schreibvorgänge (die `FOR SHARE` halten) und blockiert neue.
+3. Löscht vom Patienten erzeugte Daten: `training_sessions`, `wellbeing_reports`, `warning_signs` des Patienten, eigene `appointments`, `consents`, `account_events` (ab Ausschnitt 3 auch Chat-Tabellen, KI-Plan v2.1, 8).
+4. Bleibt bei der Praxis (O-9): Patientenzeile (Stammdaten), Plan, Behandler, Krankengeschichte, Physio-Termine; `auth_user_id = NULL`, `status = 'access_deleted'`, offene Einladungen widerrufen.
+5. Löscht das Auth-Konto `auth.users` des Aufrufers (B-7; Ausweg Edge Function, R2-12).
+6. Ein Schreibvorgang, der auf die Sperre gewartet hat, findet danach `status <> 'active'` und scheitert mit `42501` (DB-T31).
+
+`deleting` wird in Ausschnitt 2 nicht sichtbar (eine Transaktion); der Wert existiert im Typ für Ausschnitt 3, wenn Edge Functions lange Antworten streamen (KI-Plan v2.1, 8).
 
 ---
 
 ## 5. Auth und Zugang
 
 ### 5.1 Physio (P-1)
-- Supabase Auth mit E-Mail und Passwort. Öffentliche Registrierung **aus**; Konten entstehen nur über den Seed (Admin-Schnittstelle mit Service-Schlüssel, lokal) bzw. später über einen eigenen Ablauf.
-- Zustände Web: Anmelden (Laden), falsche Zugangsdaten (verständliche Meldung, kein Zugang; P-1 AK 2), keine Verbindung, Sitzung abgelaufen → zurück zur Anmeldung, Konto ohne `physios`-Zeile → „Kein Physio-Zugang“ und Abmelden.
-- Abmelden jederzeit.
+E-Mail und Passwort, keine Selbstregistrierung. Zustände: Laden, falsche Zugangsdaten (verständliche Meldung, kein Zugang), keine Verbindung, Sitzung abgelaufen, Konto ohne Physio-Zeile („Kein Physio-Zugang“, Abmelden). Abmelden jederzeit. Jeder Physio sieht alle Patienten seiner Praxis (N-4).
 
 ### 5.2 Patient (A-1)
-Ablauf:
-1. Start ohne Bindung → Startbildschirm „Zugang über deinen Physio“ mit Code-Feld (A-1 AK 2). Kein anderer Weg in die App (Ausnahme: Präsentationsmodus O-14).
-2. „Weiter“: anonyme Anmeldung (falls noch keine Sitzung), dann `redeem_invitation(code)`.
-3. Ergebnis `ok` → Einwilligung (A-1 AK 3: Physio sieht Verlauf, Befinden und Warnzeichen, nicht den Manny-Chat; Wortlaut über den `ui-designer`/Nutzer) → `accept_consent` → Pfad mit dem Plan des Physios (A-1 AK 1).
-4. Fehler: `invalid`, `already_used` (P-2 AK 2: „mit Hinweis abgelehnt“), `expired`, `too_many_attempts`, keine Verbindung, Server nicht konfiguriert. Je Fall ein eigener Text (Gestaltung F2-D).
+1. Start ohne Bindung → Startbildschirm „Zugang über deinen Physio“ mit Code-Feld. Kein anderer Weg (Ausnahme Präsentationsmodus, O-14).
+2. „Weiter“: anonyme Anmeldung (falls keine Sitzung), dann `redeem_invitation`.
+3. `ok` → Einwilligung → Pfad. `ok_rebound` → Hinweis „Neu angemeldet: Auf deinem bisherigen Gerät ist der Zugang beendet, dein Manny-Gespräch beginnt neu“ (Wortlaut F2-D; Chat-Teil erst ab Ausschnitt 3) → Einwilligung → Pfad.
+4. Fehler je Ergebniscode mit eigenem Text; `already_used` mit Hinweis (P-2 AK 2).
 
-**Einladungslink und QR (P-2 AK 1):**
-- Mobil: eigenes URL-Schema `curaone://einladung?code=<CODE>` (keine eigene Domain nötig). Paket `app_links` empfängt den Link beim Kaltstart und bei laufender App; der Code wird ins Feld übernommen und **nicht** automatisch eingelöst, bevor der Nutzer bestätigt (B-8).
-- Web (Prüfumgebung bzw. Präsentation im Browser): `<INVITE_LINK_BASE>/?einladung=<CODE>`.
-- Ein https-App-Link (Android App Links/iOS Universal Links) bräuchte eine Domain mit Verifizierungsdateien (X2-7); für den Prototyp nicht empfohlen.
-- QR-Code im Physio-Web enthält den Link (Paket `qr_flutter`). Die Patienten-App scannt selbst nichts (Kamera-App öffnet den Link) → kein Kamera-Paket.
+**Einwilligung (A-1 AK 3, N-2):** nennt ausdrücklich, dass der Physio Verlauf, Befinden und Warnzeichen sieht – **auch Warnzeichen aus dem Manny-Chat, einschließlich Hinweisen auf eine Krise, nur mit Stufe und Zeitpunkt, ohne Chattext** – und den Manny-Chat selbst nicht. Wortlaut F2-D/Nutzer. Versionsnummer `physio_sharing-1`.
 
-**Gerätewechsel/Neuinstallation:** Die anonyme Sitzung ist an das Gerät gebunden; ein benutzter Code gilt nicht noch einmal. Vorschlag O-8: Physio erzeugt einen neuen Code; Einlösen bindet den Patienten an die neue Sitzung, die alte verliert den Zugriff.
+**Neuanmeldung, altes Gerät (N-1):** Die alte Sitzung erhält beim nächsten Aufruf `401`/`42501`; die Sitzungserneuerung scheitert, weil das Konto gelöscht ist → App zeigt „Du wurdest auf einem anderen Gerät angemeldet“, löscht lokale Daten, Startbildschirm (B-11).
 
-**Missbrauchsschutz:** Ungebundene anonyme Sitzungen sehen nichts. Codes mit hoher Entropie (Vorschlag: 10 Zeichen aus einem Alphabet ohne verwechselbare Zeichen, angezeigt in Zweiergruppen), Versuchsbremse in `redeem_invitation`. Optional Captcha bei anonymer Anmeldung (Supabase-Einstellung, X2-2), für die Präsentation nicht nötig.
+**Link und QR (m-9) [Vorschlag]:**
+- Inhalt des QR-Codes = Einladungslink. Mit gesetztem `INVITE_LINK_BASE` (Präsentation im Browser, Annahme O-16): `<INVITE_LINK_BASE>/?einladung=XXXXX-XXXXX`. Ohne: `curaone://einladung?code=XXXXX-XXXXX` (App auf dem Gerät).
+- Das Physio-Web zeigt Code, Link und QR (P-2 AK 1); eine Konfiguration, kein Umschalter in der Oberfläche.
+- Der Link füllt das Code-Feld, eingelöst wird erst nach Bestätigung (B-8). Paket `app_links` für das URL-Schema.
 
 ---
 
 ## 6. Patienten-App: Umbau des ersten Ausschnitts
 
-Bestehende Nähte werden genutzt: `PathSource`/`TodaySource` (`prepare()` mit Laden/Fehler, Kommentar „Das spätere Physio-Framework tritt hier an“), `StateStore`, `DataEraser`-Liste, `MannyTextSource`, `MannyContext`.
+Nähte: `PathSource`/`TodaySource.prepare()`, `StateStore`, `DataEraser`-Liste, `MannyTextSource`, `MannyContext`.
 
 ### 6.1 Zustandsdokument und Migration
-- `curaone.state.v1` erhält Schema 2: neuer Abschnitt `account {patientId, boundAt}`; `onboarding.name/injuryType/injuryOther/injuryDate` werden im Einladungsweg nicht mehr befüllt (Name, Verletzung, Datum kommen aus `patients` bzw. der Akte; Spec 7).
-- Migration 1 → 2: vorhandene Dokumente ohne `account` → Startbildschirm mit Code (A-1 AK 2). Nach dem Einlösen startet der lokale Fortschritt neu (Streak, Pfad), damit kein Beispiel-Fortschritt in einen echten Plan gerät (B-9).
-- Neue Schlüssel `curaone.framework.v1` (Zwischenspeicher) und `curaone.outbox.v1` (Warteschlange), beide in `kAllStorageKeys`; Merkzeichen `curaone.deletion.v1` aus KI-Plan v1.2 Abschnitt 9.
+Schema 2: Abschnitt `account {patientId, boundAt}`; neue Schlüssel `curaone.framework.v1`, `curaone.outbox.v1`, `curaone.deletion.v1` in `kAllStorageKeys`. Migration 1 → 2: ohne `account` → Startbildschirm. Nach dem Einlösen startet der lokale Fortschritt neu (B-9). Fixture `state_v2.json`.
 
 ### 6.2 Laden und Zwischenspeicher
-- Beim Start, beim Fortsetzen und **beim Öffnen von „Heute“** lädt die App Plan, aktuelle Phase, Übungen, Akte (P-3 AK 3: „beim nächsten Öffnen von Heute“). Umsetzung über `TodaySource.prepare()`/`PathSource.prepare()`.
-- Erfolg → Zwischenspeicher aktualisieren. Fehler/offline → letzter Stand aus dem Zwischenspeicher mit Hinweis „nicht aktuell“ (Gestaltung F2-D); ohne Zwischenspeicher → Fehlerzustand mit „Nochmal versuchen“ (wie bisher).
-- Ändert sich die Planversion während des Tages, verfallen Tagesänderungen (`removed`, `swaps`), die auf nicht mehr vorhandene Positionen zeigen; `done` bleibt (B-10).
-- Patient mit Status `access_deleted` oder gelöster Bindung → zurück zum Startbildschirm, lokale Daten werden gelöscht (B-11).
+Laden bei Start, Fortsetzen und **Öffnen von „Heute“** (P-3 AK 3). Fehler/offline → Zwischenspeicher mit Hinweis „nicht aktuell“; ohne Zwischenspeicher → Fehlerzustand mit „Nochmal versuchen“. Status `access_deleted`/gelöste Bindung → lokale Daten löschen, Startbildschirm (B-11).
 
-### 6.3 Pfad aus Physio-Phasen (A-1 AK 1, O-4)
-- Neue reine Funktion `buildPathFromPhases(phases, currentPhaseId, completedUnitIds, …)` in `lib/logic/path_from_phases.dart`; `path_generator.dart` bleibt unverändert für den Beispielpfad.
-- Kopfzeile „Woche N“ aus `reference_date`; „Phase P · <Titel der Physio-Phase>“.
-- Label „Beispielpfad“ entfällt im echten Plan (UI-25 gilt nur noch im Beispielmodus; Brief-Änderung in F2-D).
-- Streak, Freezes, Feier, Manny-Anlässe unverändert (Vorschlag O-4).
-- Der gesperrte Ausblick „Prävention & Gesundheitssport“ bleibt als Darstellungselement (O-4 bestätigen).
+### 6.3 Pfad aus Physio-Phasen (O-4 entschieden; Regel vollständig, m-7)
+Reine Funktion `buildPathFromPhases(phases, currentPhaseId, completedUnitIds)` in `lib/logic/path_from_phases.dart`; `path_generator.dart` bleibt für den Beispielpfad.
 
-### 6.4 „Heute“ aus dem Plan (A-2)
-- Übungsliste nach Regel O-10 aus den Positionen der **aktuellen Phase**; Anzeige: Name, Sätze × Wiederholungen bzw. Dauer.
-- **Übungsdetail** (A-2 AK 1): jede Übung antippbar → Sheet mit Beschreibung, Sätzen, Wiederholungen, Dauer, Belastungshinweis des Physios. Zustände: Standard, Beschreibung lang (scrollt), Katalog-Beispiel gekennzeichnet (O-1).
-- **Tauschen** (A-2 AK 2): Kandidaten = Positionen der aktuellen Phase, die heute nicht in der Liste stehen (`swapCandidates`). Keine Kandidaten → Tauschen nicht angeboten (Gestaltung F2-D). Nie Übungen anderer Phasen oder aus dem Katalog.
-- „Eigene Übung“ des Patienten: O-15.
-- **Termine** aus `appointments` statt Platzhalter-Pool; „Beispiel“-Kennzeichnung entfällt.
-- „Training eintragen“: lokal wie bisher (Streak, Pfad, Rückgängig) **plus** Warteschlangeneintrag `training_sessions` mit Momentaufnahme der Liste. Rückgängig innerhalb des Fensters entfernt den Eintrag aus der Warteschlange bzw. reiht ein Löschen ein.
+1. **Aufbau:** Phasen in Physio-Reihenfolge. Je Phase `planned_weeks` Wochen; je Woche 3 Trainingstage und 1 Wochenziel (wie im ersten Ausschnitt); am Ende jeder Phase ein Phasen-Abschluss; nach der letzten Phase Boss „Return to Sport“, darüber der Ausblick (unverändert).
+2. **IDs:** `<phaseId>-w<n>-d<k>`, `<phaseId>-w<n>-goal`, `<phaseId>-end`, `boss` – an die stabile Phasen-ID gebunden (4.6).
+3. **Erledigt** ausschließlich über `completedUnitIds` (lokal). Kein Datumsautomatismus mehr (Grenze K-1 entfällt).
+4. **Aktuelle Unit** = erste nicht erledigte Unit **der aktuellen Phase** in Reihenfolge. „Training eintragen“ erledigt genau diese Unit.
+5. **Aktuelle Phase vollständig erledigt:** keine aktuelle Unit; Manny sitzt auf der letzten erledigten Unit der Phase; Eintragen zählt nur für Streak und Verlauf, bis der Physio weiterschaltet.
+6. **Physio schaltet vor:** Units früherer Phasen, die nicht erledigt sind, bekommen den Anzeigestatus „ausgelassen“ (nicht erledigt, nicht antippbar; Gestaltung F2-D); aktuelle Unit = erste offene Unit der neuen Phase.
+7. **Physio schaltet zurück:** Erledigtes bleibt erledigt; aktuelle Unit = erste offene Unit der nun aktuellen Phase (oder Regel 5); Units späterer Phasen sind „gesperrt“.
+8. **Phasen später als die aktuelle:** gesperrt. Boss immer gesperrt.
+9. **Planänderung:** Units entfernter Phasen/Wochen fallen weg, ihre IDs in `completedUnitIds` werden ignoriert; neue Wochen erscheinen offen.
+10. **Kopfzeile:** „Woche N“ = Kalenderwoche seit `reference_date` (Begrenzung 1 … Summe `planned_weeks`), „Phase P · <Titel>“ mit P = Position der aktuellen Phase. Ohne Phasen: Leerzustand „Dein Physio stellt deinen Plan noch zusammen“ (Wortlaut F2-D).
+11. Streak, Freezes, Feier, Manny-Anlässe unverändert. Label „Beispielpfad“ nur im Beispielmodus.
 
-### 6.5 Befinden melden (A-3)
-- Eingabe Schmerz, Schwellung, Stimmung nach O-3; Einstieg und Häufigkeit nach O-3 (Gestaltung F2-D).
-- Speichern lokal + Warteschlange → `wellbeing_reports`; der Trigger erzeugt ggf. ein Warnzeichen (O-2).
-- Zustände: leer, ausgefüllt, gesendet, „wird gesendet, sobald Verbindung besteht“, Fehler (dauerhaft abgelehnt, z. B. Bindung gelöst).
-- Hinweis an den Patienten bei Warnzeichen: O-12.
+Unit-Tests: Aufbau und IDs für 1/3 Phasen mit 1/4/12 Wochen; Eintragen erledigt die aktuelle Unit; Ende der Phase (Regel 5); Vorschalten mit offenen Units (Regel 6); Zurückschalten (Regel 7); Plan verkürzt/verlängert (Regel 9); Kopfzeile bei Datum heute, +27, +200 Tage und in der Zukunft; leerer Plan; Boss nie aktuell.
+
+### 6.4 „Heute“ aus dem Plan (O-10 entschieden; A-2)
+- **Dauer je Position (m-8) [Vorschlag]**, Funktion `estimateMinutes` in `lib/logic/exercise_duration.dart`, gleiche Regel im Physio-Web (Anzeige) und im KI-Plan (S8b):
+  - `duration_min` gesetzt → dieser Wert;
+  - sonst `sets` und `reps` gesetzt → `aufrunden((sets × reps × 4 s + (sets − 1) × 60 s) / 60)`, mindestens 1;
+  - sonst nur `sets` → `sets × 1 Minute`; sonst 5 Minuten.
+  - Begründung: 4 s je Wiederholung und 60 s Satzpause sind übliche Richtwerte für ruhige Kräftigungsübungen; das Physio-Web zeigt die Schätzung neben der Position, der Physio kann jederzeit eine Dauer eintragen.
+- **Liste:** Positionen der aktuellen Phase in Physio-Reihenfolge, so lange aufnehmen, wie die Summe ≤ Zeitwahl (10/20/30) bleibt; ist schon die erste Position länger, wird nur sie gezeigt (mindestens eine Übung). Überschrift „ca. N Min“ aus der Summe.
+- **Tauschen** (A-2 AK 2): Kandidaten = übrige Positionen der aktuellen Phase, die heute nicht in der Liste stehen; keine → Tauschen nicht angeboten.
+- **Übungsdetail** (A-2 AK 1): Beschreibung, Sätze, Wiederholungen, Dauer (gesetzt oder „ca.“ geschätzt), Belastungshinweis; Katalog-Beispiel gekennzeichnet (O-1).
+- „Eigene Übung“ des Patienten entfällt (O-15, Annahme).
+- Termine aus `appointments`.
+- „Training eintragen“: lokal wie bisher + Warteschlange `training_sessions` mit Momentaufnahme.
+
+### 6.5 Befinden (A-3)
+Schmerz 0–10, Schwellung 0–3, Stimmung 1–5 (O-3, Annahme); lokal + Warteschlange; Warnzeichen per Trigger (O-2, Schwellen werden separat abgefragt); fester Hinweis an den Patienten bei Treffer (O-12, Annahme): Die App kennt die Schwellen nicht selbst, sondern liest nach dem Senden, ob ein Warnzeichen entstand (Rückgabe der Insert-Funktion `report_wellbeing` – siehe B-15) – offline erscheint der Hinweis nach dem Senden.
 
 ### 6.6 Akte (A-4)
-- Lesend: Behandler (Rolle, Name, Kontakt), Termine (vom Physio und eigene), Krankengeschichte (B-4).
-- Eigene Termine anlegen, ändern, löschen; vom Physio Eingetragenes nur lesen (A-4 AK 1; doppelt gesichert durch RLS).
-- Dokumente nur bei O-5 = „Ausschnitt 2“.
-- Zustände: Laden, leer je Bereich, Fehler, offline (Zwischenspeicher), Speichern läuft, Speichern fehlgeschlagen.
-- „Deine Daten“: Profilfelder Name/Verletzung/Datum werden zur Leseansicht (kommen aus der Akte); Bearbeiten entfällt im Einladungsweg (Gestaltung F2-D).
+Lesend Behandler, Termine, Krankengeschichte (B-4); eigene Termine anlegen/ändern/löschen; Physio-Einträge nur lesen (RLS, DB-T15). Dokumente später (O-5). „Deine Daten“: Profil wird Leseansicht.
 
-### 6.7 „Alles löschen“ mit Backend (Spec 7; KI-Plan v1.2 Abschnitt 9)
-- Vorgezogen aus dem KI-Plan: `AccountDeleter` vor den lokalen Löschern, Merkzeichen `curaone.deletion.v1`, Fehlerregeln „sicher nicht gelöscht“ / „unklar“ / „lokaler Fehler nach Backend-Löschung“, Snackbar nur nach vollständigem Erfolg.
-- Backend-Teil: `delete_my_data()` (Umfang O-9). Danach lokal: Zustand, Zwischenspeicher, Warteschlange, Sitzung abmelden, zuletzt Merkzeichen.
-- Offline: kein „nur lokal löschen“, klare Fehlermeldung (Vorschlag wie KI-Plan E-24).
-- Nach dem Löschen: Startbildschirm mit Code (nicht mehr Onboarding Schritt 1).
+### 6.7 „Alles löschen“ mit Backend (O-9; M-4)
+Reihenfolge in der App:
+1. Sperre wie bisher (Bedienung gesperrt, Schreibschlange des lokalen Speichers leeren).
+2. **`OutboxSender.pauseAndDrain()`**: keine neuen Sendungen starten, **laufende HTTP-Anfragen abwarten** (Zeitlimit; danach gelten sie als unklar, der Server-Lock schützt trotzdem).
+3. Merkzeichen `curaone.deletion.v1 = requested`.
+4. `delete_my_data()`; `ok` oder `already_deleted` = Erfolg.
+5. Lokal: Zustand, Zwischenspeicher, **Warteschlange verwerfen**, Abmelden, zuletzt Merkzeichen.
+Fehlerregeln aus KI-Plan v1.2 Abschnitt 9 (sicher nicht gelöscht / unklar / lokaler Fehler). Nach Abbruch läuft der Sender wieder an. Offline: kein „nur lokal löschen“ (**E-24 bleibt Annahme/offen**, N-5).
 
-### 6.8 Ausgangswarteschlange (B-12)
-- `Outbox` (rein Dart): Einträge `{id, kind, payload, createdAt, attempts}`; Arten `training_insert`, `training_delete`, `wellbeing_insert`, `appointment_upsert`, `appointment_delete`.
-- Senden bei Start, Fortsetzen, nach jedem neuen Eintrag; Reihenfolge erhalten; idempotent über Geräte-IDs; dauerhafte Fehler (RLS-Ablehnung) → Eintrag verwerfen und Zustand „Bindung prüfen“.
-- Löschen leert die Warteschlange erst **nach** erfolgreicher Backend-Löschung.
+### 6.8 Ausgangswarteschlange (m-4)
+Einträge `{id, kind, payload, createdAt, attempts}`; Arten `training_insert`, `training_delete`, `wellbeing_insert`, `appointment_upsert`, `appointment_delete`; Reihenfolge erhalten; Senden bei Start, Fortsetzen, neuem Eintrag.
 
-### 6.9 Beispielpfad und Präsentationsmodus (O-14)
-Vorschlag: Der Beispielpfad bleibt in `main_preview.dart`/Szenarien (Prüfinfrastruktur braucht ihn) und als Build-Schalter `--dart-define=CURAONE_DEMO=true` für eine Präsentation ohne Backend. In der normalen App gibt es ohne Code keinen Zugang (A-1 AK 2). Damit erledigt sich der Befund „andere Verletzungstypen zeigen denselben Kreuzband-Pfad“ (App-Prüfung) im echten Weg.
+Fehlerbehandlung (`backend_errors.dart`):
+| Antwort | Behandlung |
+|---|---|
+| Netz, Zeitüberschreitung, 5xx | später erneut, steigende Wartezeit |
+| 401 / abgelaufenes JWT | **erst Sitzung erneuern**, dann erneut; scheitert die Erneuerung, weil das Konto nicht mehr existiert → gelöste Bindung (6.2) |
+| `23505` (Schlüssel existiert) | Erfolg (idempotent) |
+| `42501` (RLS/Rechte) | **dauerhaft**: Eintrag verwerfen, Bindung prüfen |
+| andere 4xx | dauerhaft, Eintrag verwerfen, Debug-Log |
+
+### 6.9 Beispielpfad (O-14, Annahme)
+Nur Prüfumgebung und Build-Schalter `--dart-define=CURAONE_DEMO=true`.
 
 ### 6.10 Manny ohne KI
-Platzhaltertexte bleiben (KS-1). `MannyContext` bezieht Vorname, Verletzung, Phase künftig aus dem Framework statt aus dem Onboarding; Feldschema bleibt kompatibel zum KI-Plan.
+Platzhaltertexte bleiben; `MannyContext` aus dem Framework.
 
 ---
 
-## 7. Physio-Web: Funktionen und Zustände (Gestaltung über Ablauf C)
+## 7. Physio-Web: Funktionen und Zustände
 
 | Bereich | Funktionen | Zustände |
 |---|---|---|
-| Anmeldung (P-1) | E-Mail, Passwort, Anmelden, Abmelden | leer, Laden, falsche Zugangsdaten, keine Verbindung, Sitzung abgelaufen, kein Physio-Konto |
-| Patientenliste (P-1, P-5) | Liste der Patienten **der eigenen Praxis**: Name, Phase, letzte Aktivität, Status (eingeladen/aktiv/Zugang gelöscht), **Warnzeichen-Markierung**; Patient anlegen | Laden, leer, Fehler, mit Warnzeichen |
-| Patient anlegen + Einladen (P-2) | Vorname, Nachname, Verletzung/OP-Bezeichnung, Bezugsdatum; danach Anzeige **Code, Link, QR**; Code/Link kopieren; ggf. neuen Code erzeugen (O-8) | Formular leer/ungültig, Speichern läuft, Fehler, Einladung angezeigt, Code eingelöst, Code abgelaufen |
-| Plan (P-3) | Phasen anlegen/umbenennen/ordnen/löschen, aktuelle Phase setzen; Übungen aus **Katalog** (Suche/Liste) und **eigene Übungen** hinzufügen; je Position Sätze, Wiederholungen, Dauer, Belastungshinweis, Phase; ordnen, entfernen; Speichern | Laden, leer, ungespeicherte Änderungen (Verlassen-Warnung), Validierungsfehler mit **Nennung des fehlenden Felds** (P-3 AK 2), Speichern läuft, Konflikt (inzwischen geändert), gespeichert |
-| Eigene Übung (P-3) | Name (Pflicht), Beschreibung (Pflicht); bearbeiten; Löschen nur, wenn in keinem Plan verwendet (B-13) | wie oben |
-| Akte (P-4) | Behandler (Physio, Arzt, sonstige) mit Rolle, Kontakt; Termine; Krankengeschichte (Verletzungen, OP, frühere Therapien, aktuelle Behandlungen, Behandlungsmöglichkeiten): anlegen, ändern, löschen; eigene Termine des Patienten sichtbar, nicht änderbar | Laden, leer je Bereich, Fehler, Speichern, Löschen bestätigen |
-| Verlauf (P-5) | je Tag erledigte Übungen und gemeldetes Befinden; Liste der Warnzeichen mit Grund; ältere Tage nachladen | Laden, leer, Fehler, Warnzeichen ungesehen/gesehen (O-11) |
-| Manny-Chat | **nirgends** (P-5 AK 3); keine Tabelle, kein Menüpunkt, kein Datenpfad | – |
+| Anmeldung | E-Mail, Passwort, Anmelden, Abmelden | leer, Laden, falsche Daten, offline, Sitzung abgelaufen, kein Physio-Konto |
+| Patientenliste | **alle** Patienten der Praxis (N-4): Name, Phase, letzte Aktivität, Status, Warnzeichen-Markierung; anlegen | Laden, leer, Fehler, mit Warnzeichen |
+| Anlegen + Einladen | Stammdaten; Code, Link, QR; kopieren; neuen Code erzeugen (O-8) mit Hinweis „bisheriges Gerät verliert den Zugang“ | Formular ungültig, Speichern, Fehler, angezeigt, eingelöst, abgelaufen |
+| Plan | Phasen anlegen/umbenennen/ordnen/löschen, **geplante Wochen**, aktuelle Phase setzen; Katalog- und eigene Übungen; je Position Sätze, Wdh., Dauer (mit geschätzter Dauer, m-8), Belastungshinweis, Phase; ordnen, entfernen; Speichern | Laden, leer, ungespeichert, Validierungsfehler mit Feldnennung, „aktuelle Phase fehlt“, Speichern, Konflikt, gespeichert |
+| Eigene Übung | Name, Beschreibung (Pflicht); bearbeiten; löschen nur ungenutzt (B-13) | wie oben |
+| Akte | Behandler, Termine, Krankengeschichte: CRUD; Patienten-Termine lesend | Laden, leer, Fehler, Speichern, Löschen bestätigen |
+| Verlauf | je Tag Übungen und Befinden; Warnzeichen mit Grund und Stufe (ab Ausschnitt 3 auch aus dem Chat, ohne Text) | Laden, leer, Fehler, ungesehen/gesehen |
+| Manny-Chat | nirgends | – |
 
-Zielgeräte: Desktop-Browser (Vorschlag Prüf-Viewports 1280×800 und 1024×768; schmale Breite nur, wenn der Brief es verlangt). Physio-Texte in `strings_physio_de.dart`; Ton und Begriffe (z. B. „Patient“, der in der Patienten-App per Wortliste verboten ist) legt der Brief fest → die statische Regel 10 gilt nur für `strings_de.dart`.
+Desktop-Viewports 1280×800, 1024×768.
 
 ---
 
 ## 8. Testdaten-Seed und Reset (T-1)
-
-- Befehl (im Verzeichnis `app/`): `dart run tool/seed/seed.dart --target local|remote [--confirm-remote]`.
-- Liest `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` **nur aus der Umgebung**; bricht ab, wenn sie fehlen. Gegen eine nicht-lokale URL nur mit `--confirm-remote` (jede Ausführung remote ist ein externer Schritt X2-4).
-- Ablauf: (1) alle Praxen mit `is_test = true` samt abhängiger Daten löschen; Test-Auth-Konten (Kennung über E-Mail-Domain `@test.curaone.invalid` bzw. gespeicherte Seed-Kennung) löschen; (2) Katalogübungen (O-1) anlegen bzw. aktualisieren; (3) Praxen, Physio-Konten (bestätigt, Passwort aus `CURAONE_SEED_PASSWORD` oder erzeugt und ausgegeben), Patienten, Pläne mit Phasen, Akte, Verlauf und Befinden der letzten Tage, mindestens ein Warnzeichen; (4) Einladungscodes erzeugen und **auf der Konsole ausgeben** (nicht in Dateien schreiben).
-- Inhalt aus `tool/seed/testdaten.json`, Umfang nach O-6.
-- Test: Seed zweimal hintereinander gegen den lokalen Stack → gleicher Endzustand (Anzahlen), keine Nicht-Test-Daten berührt (eine Kontrollpraxis mit `is_test = false` bleibt unverändert).
-- Ohne lokalen Supabase-Stack nicht ausführbar → bis dahin „unverifiziert“.
+`dart run tool/seed/seed.dart --target local|remote [--confirm-remote]`; `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` nur aus der Umgebung. Löscht nur `is_test`-Praxen und Test-Konten (`@test.curaone.invalid`), legt Katalog (O-1), 2 Praxen, Physios, Patienten, Pläne mit stabilen IDs, Akte, 14 Tage Verlauf und Befinden, ein Warnzeichen an (O-6, Annahme); gibt Codes nur auf der Konsole aus. Test: zweimal hintereinander → gleicher Endzustand; Kontrollpraxis mit `is_test = false` unverändert (DB-T40, braucht Stack).
 
 ---
 
 ## 9. Pakete (pub.dev)
-
-| Paket | Wo | Zweck | Begründung |
-|---|---|---|---|
-| `supabase_flutter` | `dependencies` | Auth (anonym, E-Mail), Datenbankzugriff, Sitzung speichern | offizieller Flutter-Client des gewählten Backends |
-| `app_links` | `dependencies` | Einladungslink beim Kaltstart und bei laufender App empfangen | A-1 AK 1 („oder Öffnen des Links“); Flutter-Bordmittel decken Kaltstart und laufende App nicht einheitlich ab |
-| `qr_flutter` | `dependencies` (nur Physio-Web nutzt es; Tree-Shaking entfernt es aus dem Patienten-Build) | QR-Code aus dem Link zeichnen | P-2 AK 1 |
-| `supabase` | `dev_dependencies` | Seed-Skript auf der Dart-VM (Admin-Aufrufe mit Service-Schlüssel) | gleiche Sprache wie die App, kein `package.json` nötig |
-
-Versionen werden beim Hinzufügen per `flutter pub add` bestimmt und im Paketbericht genannt; Lizenz und Pflegezustand prüft F2-3. Bewusst **nicht**: State-Management-Pakete (Bordmittel reichen weiter), `go_router` (Navigator 1.0 bleibt; Physio-Web mit eigener schlanker Routen-Tabelle), Kamera-/Scanner-Pakete, `http` (kommt erst mit dem KI-Ausschnitt).
+`supabase_flutter`, `app_links`, `qr_flutter`; `supabase` (dev, Seed). Versionen beim Hinzufügen bestimmt, Lizenz/Pflege prüft F2-3. Bewusst nicht: State-Management-Pakete, `go_router`, Kamera, `http`.
 
 ---
 
 ## 10. Teststrategie
 
-Bestehende Infrastruktur wird weiterverwendet (Flutter-Plan 12; `KONVENTIONEN.md` Regel 5).
+### 10.1 Supabase-Rollen-Nachbildung für Tests (M-3)
+`supabase/tests/shim/supabase_roles.sql` bildet nach, was die Policies und Funktionen brauchen:
+- Rollen `anon`, `authenticated` (beide `NOLOGIN`, ohne `BYPASSRLS`), `service_role` (`NOLOGIN BYPASSRLS`), `authenticator` (`LOGIN NOINHERIT`, darf in die drei wechseln), Eigentümer `postgres`.
+- **Standard-Grants wie Supabase:** `GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role`; `GRANT ALL ON ALL TABLES/SEQUENCES/FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role` sowie `ALTER DEFAULT PRIVILEGES` gleichlautend; `EXECUTE` für `PUBLIC` bleibt Postgres-Standard. Damit prüfen die Tests, dass Migration 01 diese Rechte wirklich entzieht.
+- Schema `auth` mit `auth.users(id, email, is_anonymous)`, `auth.uid()` und `auth.jwt()` aus `current_setting('request.jwt.claims', true)`.
+- Sitzungen im Test: `SET ROLE authenticated; SET request.jwt.claims = '{"sub":"…","role":"authenticated","is_anonymous":true}'` (anonym) bzw. `false` (Physio/gebundener Patient); `SET ROLE anon` ohne `sub`.
+- Hinweis: Nachbildung, nicht Supabase. Rollenattribute, GoTrue, PostgREST-Fehlercodes und das Löschen in `auth.users` (B-7) werden in F2-6 gegen den echten Stack bestätigt (X2-8).
 
-| Ebene | Inhalt | Werkzeug | Hier ausführbar? |
-|---|---|---|---|
-| U (Logik) | `invite_code`, `plan_today` (Regel O-10, Tausch-Kandidaten nur aktuelle Phase), `path_from_phases`, `outbox` (Reihenfolge, Undo, Idempotenz), `plan_validation` (fehlendes Feld wird benannt), Migration Schema 1 → 2 mit Fixture `state_v2.json`, Warteschlange beim Löschen | `flutter test` | ja |
-| W (Widget) | Startbildschirm (alle Fehlercodes), Einwilligung, Übungsdetail, Tauschen, Befinden, Akte (eigene vs. Physio-Termine), Löschen mit Backend (sicher/unklar/lokaler Fehler), offline mit Zwischenspeicher; Physio: Anmeldung, Liste mit Warnzeichen, Anlegen + Einladung, Plan-Editor inkl. Validierung und Konflikt, Akte, Verlauf | `flutter test`, **gefälschte Repositories** (`FakePatientRepository`, `FakePhysioRepository`) | ja |
-| C (statisch) | bestehende Regeln 1–16 + neu: Grenze Patient/Physio (2), `supabase_flutter` nur in `lib/backend/**`, kein `service_role`/Schlüsselmuster in `lib/` und `tool/` (außer Umgebungsvariablen-Namen im Seed), keine Chat-Begriffe/Tabellen in `lib/physio/**`, `lib/logic/**` weiter ohne Flutter | `test/static/code_rules_test.dart` | ja |
-| M (Matrix) | neue Patienten-Szenarien (`start-code-*`, `consent-physio`, `today-plan`, `today-plan-detail`, `wellbeing-*`, `record-*`, `delete-backend-*`, `offline-cache`) in allen Stufen; Physio-Szenarien mit Desktop-Viewports in M-Layout und M-Kontrast (Werte des Physio-Briefs) | `flutter test --tags matrix` | ja |
-| G (Golden) | Auswahl nach Freigabe durch Nutzer wie bisher | `--tags golden` | ja |
-| S (Screens) | `scenarios.json` + neue Physio-Liste; `shoot.mjs` erhält einen zweiten Build (`main_physio_preview.dart`) | Playwright/Chromium | ja |
-| N (Abläufe) | `nav_checks.mjs`: Code eingeben → Fehler „bereits benutzt“ → gültiger Code → Einwilligung → Pfad; Link mit `?einladung=` füllt das Feld; Heute → Detail → Tauschen; Befinden; Akte eigener Termin; Löschen → Startbildschirm. Physio: Anmelden → Liste → Anlegen → Code/QR sichtbar → Plan speichern mit fehlender Beschreibung (Fehlermeldung nennt Feld) | Preview-Builds mit gefälschten Repositories (`live=1` behält localStorage) | ja |
-| DB (RLS) | je Tabelle und Rolle: Physio Praxis A sieht keine Daten Praxis B (P-1 AK 1); Patient sieht nur sich; ungebundene anonyme Sitzung sieht nichts; Patient kann Physio-Termine/Behandler/Krankengeschichte nicht ändern (A-4); Warnzeichen nur per Trigger; Code doppelt einlösen → `already_used`; abgelaufen → `expired`; Versuchsbremse; `save_plan` mit fremder Übung/fehlenden Feldern/alter Version → Fehler; `delete_my_data` idempotent | SQL-Tests gegen lokales Postgres 16 mit `auth_shim.sql` (`/usr/lib/postgresql/16/bin` vorhanden) | **ja, mit Einschränkung**: Shim ≠ echter Supabase-Stack (GoTrue, PostgREST-Grants, anonyme Anmeldung) |
-| E2E | Physio legt an → Patient löst ein → Plan ändern → „Heute“ zeigt Änderung (P-3 AK 3) → Befinden erscheint beim Physio (A-3) → Warnzeichen in Liste (P-5) → Löschen | Integrationstest (Tag `integration`) gegen lokalen Supabase-Stack | **nein**: Supabase-CLI fehlt, Docker-Daemon läuft nicht (X2-8) |
+### 10.2 Benannte DB-Tests
+Jede Sicherheitsaussage dieses Plans hat genau einen Test (Datei `supabase/tests/db/<ID>_<name>.sql`).
 
-Laufzeiten der Matrix steigen; F2-3 misst sie und meldet sie im Paketbericht.
+| ID | Name | Aussage |
+|---|---|---|
+| DB-T01 | `defaults_revoked` | `anon` und `authenticated` haben nach den Migrationen keine Tabellenrechte außer den in 4.3 genannten; `EXECUTE` nur auf Funktionen aus 4.4/4.1 |
+| DB-T02 | `no_force_rls_definer_sees_rows` | Definer-Funktionen sehen Zeilen (kein `FORCE`); API-Rollen unterliegen RLS |
+| DB-T03 | `anon_role_sees_nothing` | Rolle `anon`: jede Tabelle 0 Zeilen bzw. `permission denied`, jede RPC verweigert |
+| DB-T04 | `unbound_anonymous_sees_nothing` | anonyme, ungebundene Sitzung: alle Tabellen 0 Zeilen |
+| DB-T05 | `unbound_anonymous_rpc_denied` | anonyme, ungebundene Sitzung: jede RPC außer `redeem_invitation`/`delete_my_data` → `42501` (je RPC ein Fall) |
+| DB-T06 | `physio_practice_isolation` | Physio Praxis A sieht 0 Zeilen Praxis B in jeder Tabelle (P-1 AK 1) |
+| DB-T07 | `physio_sees_all_practice_patients` | Physio sieht alle Patienten seiner Praxis, auch von Kollegen angelegte (N-4) |
+| DB-T08 | `patient_sees_only_self` | gebundener Patient sieht nur eigene Zeilen |
+| DB-T09 | `invitation_hash_not_readable` | `code_hmac` für keine API-Rolle lesbar; keine Sicht über `invitations` ohne `security_invoker` (M-2) |
+| DB-T10 | `invitation_cross_practice` | Physio B liest keine Einladung Praxis A |
+| DB-T11 | `redeem_requires_anonymous` | `redeem_invitation` als Physio oder nicht-anonyme Sitzung → `not_allowed` (M-3) |
+| DB-T12 | `redeem_already_bound` | bereits gebundene Sitzung → `not_allowed` |
+| DB-T13 | `redeem_results` | `ok`, `already_used`, `expired`, `invalid`, widerrufen → `invalid` |
+| DB-T14 | `redeem_throttle` | 6. Fehlversuch je Sitzung in 15 Min → `too_many_attempts`; globale Schwelle greift |
+| DB-T15 | `patient_cannot_modify_physio_entries` | Patient kann Behandler, Krankengeschichte, Physio-Termine, Plan nicht ändern (A-4) |
+| DB-T16 | `created_by_server_side` | gefälschtes `created_by`/`created_by_role` wird überschrieben (m-3) |
+| DB-T17 | `own_appointments_only` | Patient ändert/löscht nur eigene Termine; Physio nur eigene |
+| DB-T18 | `exercise_requires_name_description` | eigene Übung ohne Name bzw. Beschreibung → Constraint-Fehler (P-3 AK 2) |
+| DB-T19 | `exercise_cross_practice` | Physio nutzt keine Übung einer fremden Praxis in `save_plan` |
+| DB-T20 | `save_plan_stable_ids` | unveränderte Positionen behalten ID; nur Entferntes gelöscht (M-5) |
+| DB-T21 | `save_plan_keeps_history` | Plan speichern (inkl. Löschen einer Phase) lässt `training_sessions` unverändert; `phase_id` → `NULL` (M-5) |
+| DB-T22 | `save_plan_current_phase` | aktuelle Phase entfernt ohne Ersatz → `current_phase_required` |
+| DB-T23 | `save_plan_version_conflict` | alte Version → `conflict` |
+| DB-T24 | `save_plan_cross_practice` | Physio Praxis B speichert Plan Praxis A → `42501` |
+| DB-T25 | `warning_only_by_trigger` | `authenticated` kann nicht in `warning_signs` schreiben; Trigger erzeugt Zeile nach Regel |
+| DB-T26 | `warning_trigger_definer_search_path` | Trigger-Funktion ist Definer mit `search_path = ''`; Schatten-Objekt im Suchpfad wirkt nicht (m-5) |
+| DB-T27 | `wellbeing_append_only` | Patient kann `wellbeing_reports` nicht ändern oder löschen (m-5) |
+| DB-T28 | `patient_no_warning_read` | Patient liest keine `warning_signs` (B-5) |
+| DB-T29 | `delete_my_data_scope` | löscht Patienten-Daten; Physio-Einträge bleiben; `status = access_deleted`, `auth_user_id = NULL` (O-9) |
+| DB-T30 | `delete_my_data_idempotent` | zweiter Aufruf bzw. ungebundene Sitzung → `already_deleted` (m-6) |
+| DB-T31 | `race_delete_vs_insert` | Verbindung A hält `delete_my_data` offen, B schreibt Training → B wartet und scheitert mit `42501`; danach keine Patientenzeile in `training_sessions` (M-4; Shell-Test mit zwei Verbindungen) |
+| DB-T32 | `auth_user_delete_set_null` | Löschen in `auth.users` setzt `patients.auth_user_id = NULL` (m-6) |
+| DB-T33 | `rebind_detaches_old_identity` | `ok_rebound`: alte Identität sieht 0 Zeilen, ihr Auth-Konto ist weg, `account_events.rebound` existiert (N-1) |
+| DB-T34 | `rebind_keeps_history` | Plan, Verlauf, Befinden bleiben nach Neubindung sichtbar für die neue Identität (N-1) |
+| DB-T35 | `rebind_hook_called` | `app.on_rebind(old_uid)` wird aufgerufen (Ausschnitt 3 löscht dort den Chat; KI-Plan DB-K03) |
+| DB-T36 | `inactive_patient_blocked` | Patient mit Status `access_deleted`/`deleting` kann nicht schreiben |
+| DB-T37 | `rpc_execute_grants` | jede RPC: kein `EXECUTE` für `PUBLIC`/`anon`; Aufruferprüfung als erste Anweisung (je RPC Fall „falsche Rolle“) |
+| DB-T38 | `definer_functions_search_path` | alle Definer-Funktionen haben `search_path = ''` (Katalogabfrage) |
+| DB-T39 | `set_current_phase_foreign_phase` | Phase eines anderen Plans → Fehler |
+| DB-T40 | `seed_idempotent_only_test_data` | Seed zweimal → gleicher Zustand; Nicht-Test-Praxis unverändert (braucht Supabase-Stack) |
+| DB-T41 | `report_wellbeing_scope` | `report_wellbeing`: nur gebundener, aktiver Patient; `patient_id` aus der Sitzung; wiederholte ID idempotent; Rückgabe enthält nur `warning_raised` |
+
+DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (hier ausführbar); DB-T11/12/33/40 zusätzlich gegen den echten Stack in F2-6.
+
+### 10.3 Übrige Ebenen
+
+| Ebene | Inhalt |
+|---|---|
+| U | `invite_code` (Normalisierung, Alphabet), `exercise_duration` (alle Zweige), `plan_today` (Füllregel, mindestens eine, Tausch-Kandidaten), `path_from_phases` (6.3), `outbox` (Reihenfolge, Undo, Fehlerklassen 6.8, `pauseAndDrain`), `plan_validation`, Migration 1 → 2 |
+| W | Startbildschirm (alle Ergebniscodes inkl. `ok_rebound`), altes Gerät nach Neubindung, Einwilligung (Text wörtlich inkl. N-2), Übungsdetail, Tauschen, Befinden inkl. Hinweis, Akte, Löschen (Sender angehalten vor Backend-Aufruf; sicher/unklar/lokaler Fehler), offline; Physio-Web alle Bereiche aus 7 |
+| C | Regeln 1–16 + Grenze Patient/Physio, `supabase_flutter` nur `lib/backend/**`, keine Schlüsselmuster, keine Chat-Begriffe in `lib/physio/**` |
+| M, G, S, N | wie v1: neue Szenarien in Matrix, Goldens nach Freigabe, `shoot.mjs` mit zweitem Build, `nav_checks.mjs` mit Abläufen Patient und Physio (Fake-Repositories) |
+| E2E | gegen lokalen Supabase-Stack (F2-6, nach X2-8) |
 
 ---
 
@@ -332,103 +410,93 @@ Laufzeiten der Matrix steigen; F2-3 misst sie und meldet sie im Paketbericht.
 
 | AK | Umsetzung | Prüfung |
 |---|---|---|
-| P-1 AK 1 (Liste, keine fremden Praxen) | Anmeldung 5.1, Liste 7, RLS 4.1 | DB (zwei Praxen), W, N |
-| P-1 AK 2 (falsche Daten → Meldung, kein Zugang) | 5.1 | W (Fake-Fehler), E2E |
-| P-2 AK 1 (Code, Link, QR) | `create_patient`, 7 | W, S, N |
-| P-2 AK 2 (Code genau ein Patient; benutzter Code abgelehnt mit Hinweis) | Unique `auth_user_id`, Hash, `redeem_invitation` → `already_used`; Startbildschirm 5.2 | DB, W, N |
-| P-3 AK 1 (Katalog + eigene, Felder je Übung) | Plan-Editor 7, `save_plan` | W, DB |
-| P-3 AK 2 (eigene Übung: Name + Beschreibung Pflicht, Feld genannt) | `plan_validation.dart`, Formular, `CHECK` | U, W, DB |
-| P-3 AK 3 (Patient sieht Änderung beim nächsten Öffnen von Heute) | Laden in `TodaySource.prepare()` 6.2 | W (Fake: neue Version), E2E |
-| P-4 AK (Akte anlegen/ändern/löschen) | 7 „Akte“, RLS | W, DB |
-| P-5 AK 1 (je Tag Übungen und Befinden) | Verlauf 7, `training_sessions`, `wellbeing_reports` | W, DB, E2E |
-| P-5 AK 2 (Warnzeichen in Liste markiert) | Trigger 4, Liste 7, Regeln O-2, Dauer O-11 | DB, W, E2E |
-| P-5 AK 3 (Chat nirgends sichtbar) | kein Chat im Backend; statische Regel; im KI-Ausschnitt RLS-Test „Physio sieht 0 Zeilen“ | C; DB-Test in Ausschnitt 3 |
-| A-1 AK 1 (Code oder Link + Einwilligung → Plan statt Beispielpfad) | 5.2, 6.3 | W, N, E2E |
-| A-1 AK 2 (ohne Code kein Weiterkommen; Erklärung) | Startbildschirm 5.2, Migration 6.1 | W, N |
-| A-1 AK 3 (Einwilligung nennt Physio-Sicht, nicht Chat) | Einwilligung 5.2, Text aus Brief | W (Text wörtlich) |
-| A-2 AK 1 (Übung antippbar, Beschreibung und Grenzen) | 6.4 | W, M, S |
-| A-2 AK 2 (Tauschen nur aktuelle Phase) | `swapCandidates` 6.4 | U, W |
-| A-3 AK (Schmerz, Schwellung, Stimmung; erscheint beim Physio) | 6.5, O-3 | U, W, DB, E2E |
-| A-4 AK 1 (sehen, eigene Termine, Physio-Einträge nicht änderbar) | 6.6, RLS | W, DB |
-| A-4 AK 2 (Dokumente nur bei O-5) | abhängig von O-5 | – |
-| T-1 AK (ein Befehl, Neuanlage/Reset, Umfang) | 8, O-6 | Seed-Test lokal (E2E-Umgebung) |
+| P-1 AK 1 | 5.1, 7, 4.1 | DB-T06, DB-T07, W, N |
+| P-1 AK 2 | 5.1 | W, E2E |
+| P-2 AK 1 | `create_patient`, 5.2, 7 | W, S, N |
+| P-2 AK 2 | unique `auth_user_id`, `redeem_invitation` | DB-T13, W, N |
+| P-3 AK 1 | 7, 4.6 | W, DB-T20 |
+| P-3 AK 2 | `plan_validation`, Constraint | U, W, DB-T18 |
+| P-3 AK 3 | 6.2 | W, E2E |
+| P-4 AK | 7, 4.3 | W, DB-T15 |
+| P-5 AK 1 | 7 | W, DB-T08, E2E |
+| P-5 AK 2 | Trigger 4.3, O-2, O-11 | DB-T25, W, E2E |
+| P-5 AK 3 | kein Chat im Backend (Ausschnitt 2); ab Ausschnitt 3 KI-Plan DB-K01 | C |
+| A-1 AK 1 | 5.2, 6.3 | W, N, E2E |
+| A-1 AK 2 | 5.2, 6.1 | W, N, DB-T04 |
+| A-1 AK 3 | Einwilligung 5.2 (N-2) | W |
+| A-2 AK 1 | 6.4 | W, M, S |
+| A-2 AK 2 | 6.4 | U, W |
+| A-3 AK | 6.5 | U, W, DB-T27, E2E |
+| A-4 AK 1 | 6.6 | W, DB-T15, DB-T17 |
+| A-4 AK 2 | O-5 später | – |
+| T-1 AK | 8 | DB-T40 |
 
 ---
 
-## 12. Offene Fragen mit Vorschlag
+## 12. Fragen: Stand
 
-### 12.1 Aus der Spezifikation
-
-| Nr. | Vorschlag | Auswirkung |
+| Nr. | Stand | Inhalt |
 |---|---|---|
-| **O-1** Katalog-Inhalte | Beispieltexte von uns, sichtbar gekennzeichnet („Beispiel“, `is_example`), Ausgangspunkt die vorhandenen Platzhalter-Übungen aus `placeholder_pools.dart` mit kurzer Beschreibung; Ton prüft der `ui-designer`, Freigabe der Nutzer. Fachperson später | Kennzeichnung im Übungsdetail und im Physio-Katalog; Katalog-Datei im Seed; keine Aussage als „geprüft“ |
-| **O-2** Warnzeichen | Für Ausschnitt 2 nur Befinden-Regeln als **gekennzeichnete Startliste** (`is_provisional`), z. B. Schmerz ab einer Schwelle, deutlicher Schmerzanstieg zur letzten Meldung, Schwellung höchste Stufe. Konkrete Schwellen setzt der Nutzer (Vorschlag zur Diskussion: Schmerz ≥ 7 von 10; Anstieg ≥ 3; Schwellung „stark“). Schlüsselwörter im Chat kommen mit Ausschnitt 3 (KI-Plan v2) | Regeltabelle statt fester Werte im Code; Änderung ohne App-Update; Physio-Liste markiert nach diesen Regeln |
-| **O-3** Befinden | Schmerz 0–10 (numerische Skala), Schwellung 4 Stufen (keine, leicht, mittel, stark), Stimmung 5 Stufen. Häufigkeit: jederzeit möglich, einmal täglich angeboten (Einstieg z. B. auf „Heute“ bzw. nach „Training eintragen“; Gestaltung F2-D). Keine Push-Erinnerung (Spec 8) | `CHECK`-Bereiche, Datenmodell, Gestaltung; Grundlage für O-2 und Manny (Ausschnitt 3) |
-| **O-4** Streak, Freezes, Pfad | **Variante A (Empfehlung):** Streak/Freezes/Feier unverändert. Pfad-Abschnitte = Physio-Phasen in Reihenfolge, Länge je Phase aus „geplante Wochen“ (neues Feld beim Physio), Units je Woche wie bisher; **aktuelle Phase setzt der Physio**; Units werden nur durch Training erledigt, nicht durch das Kalenderdatum (löst Grenze K-1). **Variante B:** Pfad zeigt je Phase eine feste Zahl Trainings-Units ohne Wochen. Ausblick bleibt | neues Feld `planned_weeks`, neuer Generator, sichtbare Änderung des Pfads (Brief-Ergänzung nötig); Phasenwechsel nur durch Physio |
-| **O-5** Dokumente | **Später** (nicht Ausschnitt 2) | ohne Storage-Bucket, ohne Dateiauswahl-Paket; A-4 AK 2 entfällt in Ausschnitt 2 |
-| **O-6** Testdaten-Umfang | 2 Praxen (die zweite zeigt die Trennung P-1); Praxis A: 2 Physios, 4 Patienten (Phase 1, Phase 2, Phase 3 mit Warnzeichen, 1 nur eingeladen); Praxis B: 1 Physio, 1 Patient. Je Plan 3 Phasen mit 4–6 Übungen; Verlauf und Befinden der letzten 14 Tage für die aktiven Patienten | Seed-Datei; Präsentationsdrehbuch |
-| **O-7** Gültigkeit Code | 14 Tage, einmalig; nach Ablauf neuer Code durch Physio (O-8). Seed-Codes gelten bis zum nächsten Reset | `expires_at`; Fehlerfall „abgelaufen“ |
+| O-1 | Annahme | gekennzeichnete Beispieltexte auf Basis der Platzhalter-Übungen |
+| O-2 | **offen, vor dem Bau separat abfragen** | Befinden-Regeln als gekennzeichnete Startliste; Schwellen setzt der Nutzer (Diskussionsstand: Schmerz ≥ 7, Anstieg ≥ 3, Schwellung „stark“). Chat-Warnzeichen kommen mit Ausschnitt 3 |
+| O-3 | Annahme | Schmerz 0–10, Schwellung 0–3, Stimmung 1–5; täglich angeboten, kein Push |
+| O-4 | **entschieden** | 6.3 |
+| O-5 | Annahme | später |
+| O-6 | Annahme | 2 Praxen, 5 Patienten, je 3 Phasen, 14 Tage Verlauf |
+| O-7 | Annahme | 14 Tage, einmalig |
+| O-8 | Annahme, präzisiert durch N-1 | neuer Code; Neubindung nach 4.4 |
+| O-9 | **entschieden** | 4.7 |
+| O-10 | **entschieden** | 6.4 |
+| O-11 | Annahme | `seen_at` beim Öffnen der Patientenansicht |
+| O-12 | Annahme | fester Hinweis bei Warnzeichen aus Befinden; Wortlaut vom Nutzer (wie KI-Plan E-17) |
+| O-13 | **entschieden** | 2 |
+| O-14 | Annahme | 6.9 |
+| O-15 | Annahme | „Eigene Übung“ des Patienten entfällt |
+| O-16 | Annahme | Patienten-App im Browser, Physio-Web lokal; QR nach 5.2 |
+| E-24 | **Annahme/offen** (N-5) | Löschen offline: kein „nur lokal“ |
 
-### 12.2 Neu aus diesem Plan
-
-| Nr. | Frage | Vorschlag | Auswirkung |
-|---|---|---|---|
-| **O-8** | Gerätewechsel/verlorener Code: darf der Physio einen neuen Code erzeugen? | ja, alte Bindung wird gelöst | eine Funktion + ein Knopf im Physio-Web |
-| **O-9** | Was löscht „Alles löschen“ des Patienten im Backend? | alles, was der Patient erzeugt hat (Verlauf, Befinden, Warnzeichen daraus, eigene Termine, Einwilligungen, Konto) + Bindung; Einträge des Physios (Plan, Akte, Patientenzeile) bleiben bei der Praxis, Status „Zugang gelöscht“ | Löschfunktion, Physio-Ansicht; Datenschutzfrage für echte Daten später |
-| **O-10** | Wie entsteht „Heute“ ohne KI? | Übungen der aktuellen Phase in Physio-Reihenfolge, bis die Zeitwahl (10/20/30) gefüllt ist (mindestens eine); Tauschen bietet die übrigen Übungen der Phase. Alternative: alle Übungen der Phase, Zeitwahl entfällt bis Ausschnitt 3 (dann gäbe es keine Tausch-Kandidaten) | bestimmt Logik, Gestaltung und A-2 AK 2 |
-| **O-11** | Wie lange bleibt ein Warnzeichen in der Liste markiert? | bis der Physio die Patientenansicht geöffnet hat (`seen_at` automatisch). Alternative: ausdrückliches „Gesehen“ | Funktion `mark_warnings_seen`, Gestaltung |
-| **O-12** | Bekommt der Patient bei einer Befindensmeldung, die als Warnzeichen gilt, einen festen Hinweis (z. B. Physio kontaktieren)? | ja, fester Text, Wortlaut vom Nutzer/Fachleuten freigegeben (wie KI-Plan E-17) | Zustand im Befinden-Ablauf; ohne Entscheidung kein Hinweis |
-| **O-13** | Technik Physio-Web | W-A (Abschnitt 2) | Projektstruktur, Paketschnitt |
-| **O-14** | Beispielpfad | nur Prüfumgebung + Build-Schalter für Präsentation ohne Backend; entfällt in der normalen App | 6.9 |
-| **O-15** | Bleibt „Eigene Übung“ für Patienten in „Heute“? | entfernen (Spec 3.1: Plan und Übungen pflegt der Physio). Alternative: behalten, im Verlauf als „eigene“ gekennzeichnet | sichtbare Änderung an „Heute“, Verlauf |
-| **O-16** | Wo laufen die Apps in der Präsentation? | Patienten-App als Web-Build im Browser (wie Prüfumgebung) oder Android-Build auf dem Rechner des Nutzers (hier kein Android-SDK/Xcode); Physio-Web lokal. Hosting nur bei Bedarf | Deep-Link-Variante, externe Schritte X2-6/X2-7 |
-
-**Blockierend vor Freigabe des Plans:** O-13, O-4, O-10, O-9. **Vor dem jeweiligen Paket zu klären** (Vorschlag als Annahme übernehmbar): O-1, O-2 (Schwellen), O-3, O-6, O-7, O-8, O-11, O-12, O-14, O-15, O-16. O-5: Empfehlung „später“.
+**Neue offene Punkte aus dieser Überarbeitung:** siehe Rückmeldung; im Plan als [Vorschlag] markiert: Code-Parameter (4.5), Dauer-Schätzregel (6.4), QR-Inhalt (5.2), Status „ausgelassen“ (6.3 Regel 6), Rückgabe Warnzeichen an die App (B-15).
 
 ---
 
 ## 13. Arbeitspakete
 
-| Paket | Inhalt | Rolle | Abhängigkeit | Ergebnis/Abnahme |
-|---|---|---|---|---|
-| **F2-0** | Entscheidungen O-1 … O-16 | Nutzer/Orchestrator | – | Antworten im Paket F2-1 |
-| **F2-D** | Gestaltung über Ablauf C: (a) Patienten-App-Ergänzung (Startbildschirm mit Code und Fehlern, Einwilligung, Übungsdetail, Tauschen, Befinden, Akte, Deine Daten lesend, Löschen mit Backend, offline/nicht aktuell, Pfad aus Phasen ohne Beispiel-Label); (b) Physio-Web Grunddesign + Brief | `ui-designer` | F2-0 | Briefe freigegeben |
-| **F2-1** | Supabase-Schema, RLS, Funktionen, Warnzeichen-Trigger, `config.toml`, Auth-Shim, RLS-Tests am lokalen Postgres | `flutter-developer` | F2-0 (O-2, O-3, O-4, O-7, O-8, O-9) | alle DB-Tests grün |
-| **F2-1R** | Review Sicherheit (RLS, `SECURITY DEFINER`, Einladung, Löschen) | `reviewer` | F2-1 | keine BLOCKER/MAJOR |
-| **F2-2** | Seed/Reset + `testdaten.json` + Katalog | `flutter-developer` | F2-1, O-1, O-6 | Seed-Test lokal (sobald Stack da) |
-| **F2-3** | Datenschicht App: Pakete, Konfiguration, `lib/logic`-Modelle und Ableitungen, Repositories (Schnittstellen, Supabase, Fakes), Zwischenspeicher, Warteschlange, Migration Schema 2, `AccountDeleter`; Unit-Tests; statische Regeln | `flutter-developer` | F2-1 | U/C grün, `analyze` 0 |
-| **F2-4a** | Physio-Web I: Einstieg, Anmeldung, Patientenliste, Anlegen + Einladung (Code/Link/QR), Preview + Szenarien | `flutter-developer` | F2-D(b), F2-3 | W/M/S/N für diese Teile |
-| **F2-4b** | Physio-Web II: Plan-Editor, eigene Übungen, Akte, Verlauf, Warnzeichen | `flutter-developer` | F2-4a | W/M/S/N |
-| **F2-5a** | Patienten-App I: Start/Code/Link, Einwilligung, Migration, Löschen mit Backend, Präsentationsmodus | `flutter-developer` | F2-D(a), F2-3 | W/M/S/N |
-| **F2-5b** | Patienten-App II: Pfad aus Phasen, „Heute“ aus Plan, Übungsdetail, Tauschen, Termine, Training → Warteschlange | `flutter-developer` | F2-5a | W/M/S/N |
-| **F2-5c** | Patienten-App III: Befinden, Akte, Deine Daten lesend | `flutter-developer` | F2-5b | W/M/S/N |
-| **F2-6** | Integration Ende-zu-Ende gegen lokalen Supabase-Stack inkl. Seed; Kriterienbericht P-1 … T-1 | `flutter-developer` | alle, X2-8 | E2E grün oder als unverifiziert gemeldet |
-| **F2-R** | Gesamtreview + Design-Abnahme | `reviewer`, `ui-designer` | F2-6 | Freigabe |
+| Paket | Inhalt | Rolle | Abhängigkeit |
+|---|---|---|---|
+| F2-0 | O-2-Schwellen abfragen; [Vorschlag]-Werte bestätigen | Nutzer/Orchestrator | – |
+| F2-D | Ablauf C: Patienten-Ergänzung (Start, Neuanmeldung-Hinweise beider Geräte, Einwilligung mit N-2, Übungsdetail, Tauschen, Befinden + Hinweis, Akte, Löschen, offline, Pfad mit „ausgelassen“ und Leerzustand) und Physio-Web | `ui-designer` | – |
+| F2-1 | Migrationen 01–05, Nachbildung, DB-T01 bis DB-T39 | `flutter-developer` | F2-0 |
+| F2-1R | Sicherheitsreview Rollen, RLS, Definer, Einladung, Löschen, Neubindung | `reviewer` | F2-1 |
+| F2-2 | Seed + Testdaten | `flutter-developer` | F2-1 |
+| F2-3 | Datenschicht App, Logik, Warteschlange, Migration, `AccountDeleter`; U/C | `flutter-developer` | F2-1 |
+| F2-4a/b | Physio-Web I (Anmeldung, Liste, Anlegen/Einladen) / II (Plan, Akte, Verlauf) | `flutter-developer` | F2-D, F2-3 |
+| F2-5a/b/c | Patienten-App I (Start, Neubindung, Einwilligung, Löschen, Demo) / II (Pfad, Heute) / III (Befinden, Akte) | `flutter-developer` | F2-D, F2-3 |
+| F2-6 | E2E gegen lokalen Supabase-Stack, DB-T11/12/33/40 dort, Kriterienbericht | `flutter-developer` | alle, X2-8 |
+| F2-R | Gesamtreview + Design-Abnahme | `reviewer`, `ui-designer` | F2-6 |
 
-Reihenfolge: F2-0 → (F2-D parallel zu F2-1/F2-1R/F2-2/F2-3, da getrennte Schreibbereiche: Docs vs. `supabase/`+`app/`) → F2-4a → F2-4b → F2-5a → F2-5b → F2-5c → F2-6 → F2-R. Physio- und Patienten-Pakete **nicht parallel**: gemeinsame Dateien `pubspec.yaml`, `lib/dev/scenarios.dart`, `tool/screens/scenarios.json`, Matrix-Harness. Parallel nur, wenn Szenario-Register und Textdateien vorher getrennt sind (dann F2-4 ∥ F2-5 möglich). Physio-Web zuerst, weil die Patienten-App echte Pläne zum Prüfen braucht und die Präsentation mit dem Anlegen beginnt.
-
-Größe: Ausschnitt 2 ist deutlich größer als ein Paket des ersten Ausschnitts (zwei Oberflächen + Backend). Zwischenstand-Rückmeldungen sind je Paket zulässig.
+Reihenfolge wie v1: F2-0 → (F2-D ∥ F2-1 → F2-1R → F2-2/F2-3) → F2-4a → F2-4b → F2-5a → F2-5b → F2-5c → F2-6 → F2-R; Physio- und Patienten-Pakete nacheinander (gemeinsame Dateien).
 
 ---
 
-## 14. Externe Schritte (nur benannt, nichts ausgeführt; jeweils einzeln zur Freigabe)
+## 14. Externe Schritte (nur benannt; jeweils einzeln zur Freigabe)
 
 | Nr. | Schritt | Zweck | Risiko |
 |---|---|---|---|
-| X2-1 | Supabase-Konto/Organisation und **Projekt in EU-Region** anlegen (Konsole); Tarif wählen | Backend | Kosten; im kostenlosen Tarif können inaktive Projekte pausiert werden (vor der Präsentation prüfen) |
-| X2-2 | Auth-Einstellungen: E-Mail/Passwort an, **öffentliche Registrierung aus**, **anonyme Anmeldung an**, ggf. Captcha; erlaubte Redirect-URLs | Zugang | falsche Einstellung öffnet Registrierung |
-| X2-3 | Migrationen ausrollen: `supabase link --project-ref <ref>`, dann `supabase db push` – erst nach grünen RLS-Tests und Review F2-1R | Schema live | fehlerhafte Policies legen Daten offen |
-| X2-4 | Seed gegen das entfernte Projekt: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… dart run tool/seed/seed.dart --target remote --confirm-remote` (Werte nur in der Shell) | Testdaten | löscht/überschreibt Testdaten; Service-Schlüssel darf nie ins Repo |
-| X2-5 | Werte in `app/config/supabase.local.json` eintragen (nicht eingecheckt) | App-Konfiguration | – |
-| X2-6 | Hosting Physio-Web bzw. Patienten-Web (nur bei O-16 = gehostet), Anbieter/Region festlegen | Präsentation | weiterer Anbieter, Datenschutz |
-| X2-7 | Domain + App-Links/Universal Links (nur falls https-Einladungslinks gewünscht) | Deep Links | Aufwand, Domain nötig |
-| X2-8 | Lokale Werkzeuge in der Entwicklungsumgebung: Supabase-CLI installieren, Docker-Daemon starten (für lokalen Stack, Seed-Test, E2E) | Verifikation | Installationen in der Umgebung |
-| X2-9 | Android-/iOS-Build auf einem Rechner des Nutzers (nur bei O-16 = Gerät) | Präsentation auf Handy | Signatur, Toolchain |
-| X2-10 | AV-Vertrag mit Supabase, Datenschutz-Konzept | Voraussetzung für echte Daten | **nicht** nötig, solange nur Testdaten (Spec 13) |
+| X2-1 | Supabase-Projekt in EU-Region anlegen | Backend | Kosten; Pausieren im kostenlosen Tarif |
+| X2-2 | Auth: E-Mail/Passwort an, Registrierung aus, anonyme Anmeldung an, Ratenbegrenzung prüfen, optional Captcha | Zugang | offene Registrierung bei Fehlkonfiguration |
+| X2-3 | `supabase link --project-ref <ref>`, `supabase db push` – nach DB-Tests und F2-1R | Schema live | offene Daten bei Fehlern |
+| X2-4 | Seed remote (`… --target remote --confirm-remote`, Schlüssel nur in der Shell) | Testdaten | löscht Testdaten |
+| X2-5 | `app/config/supabase.local.json` füllen | Konfiguration | – |
+| X2-6 | Hosting Physio-/Patienten-Web (nur auf Wunsch) | Präsentation | weiterer Anbieter |
+| X2-7 | Domain + App-Links (nur bei https-Links) | Deep Links | Domain nötig |
+| X2-8 | **Werkzeuginstallation** in der Entwicklungsumgebung: Supabase-CLI, Docker-Daemon starten | lokaler Stack, E2E, DB-T40 | Installation in der Umgebung |
+| X2-9 | Android-/iOS-Build beim Nutzer (nur bei Gerät) | Präsentation | Signatur |
+| X2-10 | AV-Vertrag, Datenschutz-Konzept | echte Daten | nicht nötig bei Testdaten |
+| X2-11 | Pepper für die Code-HMAC im Projekt setzen (`app.secrets`, per SQL-Konsole oder Supabase Vault; nie im Repo) | Code-Speicherung | Verlust → offene Codes ungültig, neu erzeugen |
 
-Befehle sind vor Ausführung gegen die aktuelle Supabase-CLI-Dokumentation zu prüfen.
+Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 
-**Vom Nutzer einzutragende Werte (ohne Werte):** `SUPABASE_URL`, öffentlicher Client-Schlüssel (`SUPABASE_ANON_KEY` bzw. Nachfolger), `SUPABASE_SERVICE_ROLE_KEY` (nur Shell, nur Seed), Projekt-Referenz, `CURAONE_SEED_PASSWORD` (optional), `INVITE_LINK_BASE` (Web-Basis-URL für Einladungslinks).
+**Vom Nutzer einzutragende Werte (ohne Werte):** `SUPABASE_URL`, öffentlicher Client-Schlüssel, `SUPABASE_SERVICE_ROLE_KEY` (nur Shell), Projekt-Referenz, `CURAONE_SEED_PASSWORD` (optional), `INVITE_LINK_BASE`, Pepper (X2-11).
 
 ---
 
@@ -436,46 +504,81 @@ Befehle sind vor Ausführung gegen die aktuelle Supabase-CLI-Dokumentation zu pr
 
 | Nr. | Risiko | Umgang |
 |---|---|---|
-| R2-1 | RLS-Fehler legen Gesundheitsdaten offen | Grundsatz verweigern, Hilfsfunktionen zentral, Tests je Tabelle und Rolle, Sicherheitsreview vor X2-3, nur Testdaten |
-| R2-2 | Testumgebung ohne echten Supabase-Stack (Shim weicht ab) | DB-Tests am Shim früh, E2E-Paket F2-6 nach X2-8; bis dahin als unverifiziert melden |
-| R2-3 | Massenhaft anonyme Konten | ungebundene Sitzungen ohne Rechte; Versuchsbremse; optional Captcha |
-| R2-4 | Umfang: zwei Oberflächen + Backend | Pakete klein schneiden, Physio-Web schlank (Spec 12), keine Zusatzfunktionen |
-| R2-5 | Gestaltung blockiert UI-Pakete | F2-D früh starten; Backend-/Datenpakete laufen unabhängig |
-| R2-6 | Warteschlange: Doppel- oder Verlust-Einträge | Geräte-IDs, idempotente Inserts, Unit-Tests für Undo/Neustart/Löschen |
-| R2-7 | Flutter Web als Formular-Oberfläche (Autofill, Textauswahl, Ladezeit) | für Präsentation vertretbar; Befund im Review; Wechsel zu W-B/W-C später möglich |
-| R2-8 | Präsentation hängt vom Netz/Backend ab | Präsentationsmodus ohne Backend (O-14), Zwischenspeicher |
-| R2-9 | Pausiertes Projekt im kostenlosen Tarif | vor Termin prüfen (X2-1) |
-| R2-10 | Konflikte mit dem parallel arbeitenden Agenten unter `app/` | Umsetzung erst nach dessen Abschluss |
-| R2-11 | Katalog wirkt „geprüft“ | Kennzeichnung „Beispiel“ überall (O-1) |
-| R2-12 | Löschen des anonymen Auth-Kontos per Datenbankfunktion in Supabase nicht erlaubt | B-7 im lokalen Stack prüfen; Ausweg Edge Function `delete-account` mit Service-Schlüssel als Secret (KI-Plan v1.2) |
+| R2-1 | RLS-/Rechtefehler | Rollenmodell 4.1, DB-T01 bis DB-T39, F2-1R vor X2-3 |
+| R2-2 | Nachbildung ≠ Supabase | 10.1; Bestätigung in F2-6 |
+| R2-3 | Massenhaft anonyme Konten | ohne Rechte; Bremsen 4.5; Captcha optional |
+| R2-4 | Umfang | kleine Pakete |
+| R2-5 | Gestaltung blockiert UI | F2-D früh |
+| R2-6 | Warteschlange: doppelt/verloren | Geräte-IDs, Fehlerklassen 6.8, Tests |
+| R2-7 | Flutter Web als Formular-Oberfläche | für Präsentation vertretbar |
+| R2-8 | Präsentation offline | Demo-Modus, Zwischenspeicher |
+| R2-9 | Pausiertes Projekt | vor Termin prüfen |
+| R2-10 | Parallelarbeit unter `app/` | Start erst danach |
+| R2-11 | Katalog wirkt geprüft | Kennzeichnung |
+| R2-12 | `auth.users` aus Definer-Funktion nicht löschbar | B-7 in F2-6; Ausweg Edge Function |
+| R2-13 | Physio löst selbst einen neuen Code ein und wird „Patient“ | sieht danach nur Plan/Verlauf (sieht er ohnehin); Chat der alten Identität wird gelöscht (N-1), der Patient bemerkt den Zugangsverlust; Ereignis `account_events` |
+| R2-14 | Globale Einlöse-Bremse als Sperre für alle missbraucht | für Prototyp hingenommen; Wert anpassbar |
+| R2-15 | Wartende Schreibvorgänge beim Löschen (Sperre) verlängern Antwortzeiten | Transaktionen kurz; Zeitlimit in der App |
 
 ---
 
 ## 16. Annahmen
 
-| Nr. | Annahme | Auswirkung |
-|---|---|---|
-| B-1 | Ausschnitt 2 enthält keine KI und keine Edge Functions | Backend nur DB/Auth |
-| B-2 | Physio-Web nur Deutsch, Desktop-Browser | Viewports, Texte |
-| B-3 | „Woche N“ bezieht sich auf ein Bezugsdatum (Verletzung bzw. OP) in den Patienten-Stammdaten | Feld `reference_date` |
-| B-4 | Der Patient darf seine Krankengeschichte lesen | Policy, Akte-Ansicht |
-| B-5 | Der Patient sieht die Tabelle Warnzeichen nicht (nur den Hinweis nach O-12) | Policy |
-| B-6 | Versuchsbremse: begrenzte Fehlversuche je Sitzung und je Code in einem Zeitfenster; konkrete Werte im Paket F2-1 als Konstante, vom Nutzer bestätigt | Sicherheit |
-| B-7 | Das anonyme Auth-Konto lässt sich aus `delete_my_data()` löschen | sonst Edge Function (R2-12) |
-| B-8 | Ein geöffneter Link füllt das Code-Feld; Einlösen erst nach Bestätigung durch den Nutzer | Gestaltung F2-D |
-| B-9 | Nach dem Einlösen beginnt der lokale Fortschritt neu | Migration |
-| B-10 | Planänderung am selben Tag verwirft Tagesänderungen an entfallenen Positionen, `done` bleibt | Logik |
-| B-11 | Gelöste Bindung/gelöschter Zugang → lokale Daten weg, Startbildschirm | Ablauf |
-| B-12 | Schreiben über die Warteschlange (lokal zuerst) statt Sperren bei fehlender Verbindung | Umgang offline; Alternative „nur online“ ist einfacher, sperrt aber Training offline |
-| B-13 | Eigene Übungen sind je Praxis wiederverwendbar; Änderung wirkt in allen Plänen; Löschen nur ungenutzt | Datenmodell |
-| B-14 | Streak und Pfad-Fortschritt bleiben lokal; Neuinstallation setzt sie zurück | Prototyp-Grenze |
+| Nr. | Annahme |
+|---|---|
+| B-1 | keine KI, keine Edge Functions in Ausschnitt 2 |
+| B-2 | Physio-Web Deutsch, Desktop |
+| B-3 | „Woche N“ aus `reference_date` |
+| B-4 | Patient liest Krankengeschichte |
+| B-5 | Patient sieht `warning_signs` nicht |
+| B-7 | `delete_my_data()` darf `auth.users` des Aufrufers löschen |
+| B-8 | Link füllt Feld, Einlösen nach Bestätigung |
+| B-9 | lokaler Fortschritt startet nach dem Einlösen neu |
+| B-10 | entfallene Positions-IDs verwerfen Tagesänderungen, `done` bleibt |
+| B-11 | gelöste Bindung → lokale Daten weg, Startbildschirm |
+| B-12 | Schreiben über Warteschlange |
+| B-13 | eigene Übungen je Praxis wiederverwendbar |
+| B-14 | Streak und Pfad-Fortschritt lokal |
+| B-15 | Befinden wird über die RPC `report_wellbeing` statt direktem Insert gesendet, damit die App erfährt, ob ein Warnzeichen entstand (für O-12), ohne `warning_signs` lesen zu dürfen (DB-T41, DB-T27, DB-T31, DB-T36) |
+
+(B-6 aus v1 ist durch 4.5 ersetzt.)
 
 ---
 
-## 17. Vorschläge für `KONVENTIONEN.md` (nur auf Nutzerwunsch eintragen)
+## 17. Vorschläge für `KONVENTIONEN.md` (nur auf Nutzerwunsch)
+1. Physio-Texte in `strings_physio_de.dart`.
+2. `supabase_flutter` nur unter `lib/backend/**` und `main*.dart`.
+3. Importgrenze `lib/physio/**` ↔ `lib/ui/**`.
+4. Jede Tabelle mit RLS; jede Sicherheitsaussage mit benanntem DB-Test; Definer-Funktionen mit `search_path = ''` und eigener Rechteprüfung.
+5. Keine Schlüssel in Dateien.
 
-1. Physio-Web-Texte in `lib/l10n/strings_physio_de.dart`; Konvention 4 gilt sinngemäß.
-2. `package:supabase_flutter` nur unter `lib/backend/**` und in `main*.dart`.
-3. `lib/physio/**` und `lib/ui/**` importieren sich nicht gegenseitig (Ausnahme: geteilte Bausteine unter `lib/ui/components/**`, falls der Brief sie teilt).
-4. Jede Tabelle hat RLS; jede neue Policy hat einen SQL-Test unter `supabase/tests/rls/`.
-5. Keine Schlüssel in Dateien; Konfiguration per `--dart-define-from-file` aus nicht eingecheckter Datei, Seed nur mit Umgebungsvariablen.
+---
+
+## 18. Änderungsprotokoll v1 → v1.1 (Review R-P2, Nutzerentscheidungen 2026-10-12)
+
+| Befund / Entscheidung | Abschnitt |
+|---|---|
+| M-1 FORCE RLS / Definer-Eigentümer | 4.1 (1, 4, 5); DB-T02, DB-T38 |
+| M-2 Sicht über `invitations`, Default-Grants, `EXECUTE PUBLIC` | 4.1 (2, 3), 4.3 (`invitations`), 4.4; DB-T01, DB-T05, DB-T09, DB-T37 |
+| M-3 anonyme Sitzung = `authenticated` + `is_anonymous`; Shim; `redeem_invitation` Aufruferprüfung | 4.1, 4.4, 10.1; DB-T11, DB-T12 |
+| M-4 Wettrennen Löschen/Warteschlange | 4.3 (Trigger `lock_patient_for_write`), 4.7, 6.7 (`pauseAndDrain`); DB-T31, DB-T36 |
+| M-5 `save_plan` IDs/Fremdschlüssel | 4.3 (FK-Verhalten), 4.6; DB-T20 bis DB-T23 |
+| M-6 Neubindung lässt Physio den Chat lesen | 4.4 (`redeem_invitation` Neubindung, `app.on_rebind`), 5.2, R2-13; DB-T33 bis DB-T35; KI-Plan v2.1 4.4 |
+| m-1 Stand Entscheidungen 2026-10-12 | 0, 12 |
+| m-2 Code, Entropie, Bremsen, HMAC | 4.5, X2-11; DB-T14 |
+| m-3 `created_by` serverseitig | 4.3 (Trigger); DB-T16 |
+| m-4 Warteschlange 401/42501 | 6.8 |
+| m-5 Trigger Definer, `search_path`, Befinden unveränderlich | 4.3; DB-T26, DB-T27 |
+| m-6 `auth_user_id` `SET NULL`, Idempotenz | 4.3, 4.7; DB-T30, DB-T32 |
+| m-7 Pfadregel vollständig | 6.3 |
+| m-8 Dauer-Schätzregel | 6.4, 7 |
+| m-9 QR-Inhalt | 5.2 |
+| K-m3 Status `deleting` | 4.3, 4.7 |
+| K-m6 Werkzeuginstallation | X2-8 |
+| N-1 Neubindung | 0, 4.4, 5.2; DB-T33 bis DB-T35 |
+| N-2 Chat-Warnzeichen inkl. Krise an Physio, Einwilligung | 0, 5.2, 7 |
+| N-3 Ersatzprogramm bei Schmerz | 0; KI-Plan v2.1 4.2 |
+| N-4 alle Patienten der Praxis | 0, 5.1, 7; DB-T07 |
+| N-5 Werte vorgeschlagen, E-24 offen | 4.5, 6.4, 5.2, 6.7, 12 |
+| O-4, O-9, O-10, O-13 entschieden | 0, 6.3, 4.7, 6.4, 2 |
+| Neu | B-15, R2-13 bis R2-15, X2-11, Tabellen `redeem_attempts`, `account_events` |
