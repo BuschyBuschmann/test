@@ -68,6 +68,13 @@ Laut Umsetzer zusätzlich:
   - Ausnahmen nur eng gefasst und mit Selbsttest (Blase/Hint beim Scrollen, bekannte Messeigenheit von Textfeldern).
 - Commits: nur auf Nutzerauftrag; Zwischensicherungen nach jedem verifizierten Paket sind freigegeben.
 
+## Stand 2026-10-12 (Abend) – hier morgen weitermachen
+
+- **Präsentationsstand** (Commit `24a5473`) läuft als Web-App unter https://claude.ai/artifact/FXu41SBezf8FjQr8Gw3R28. Er enthält „Schnelle Klarheit“: Hinweis bei anderen Verletzungen, „Training eintragen“, Erklärung von Freeze/Streak, Datenschutz-Link. Geprüft: analyze 0, 1094 Tests, 14 Goldens, 907 Matrix.
+- **Offen bei „Schnelle Klarheit“** (Korrekturrunde SK-1-K1, gestoppt vor Beginn): Live-Region `InfoNote`, Hinweis bei 320×568 sichtbar machen, Chip-Hint bei 200 %, Wortbruch „Datenschutzerklärung“, Hint-Anker nach Größenänderung, Fokusring der Chips. Nutzerwahl: Play-Symbol zurück, Untertitel „Ich trainiere selbst und trage es ein“. Befunde: Scratchpad `sk1-befunde.md`. Diese Notizen liegen nur im Scratchpad, nicht im Repo; die Punkte stehen deshalb vollständig hier.
+- **Neu und freigegeben:** `docs/produkt/curaone-spezifikation-manny-gehirn.md`, `docs/produkt/curaone-app-pruefung.md`, `docs/plan/flutter-plan-ausschnitt-2.md` v1.2, `docs/plan/ki-plan-v2.md` v2.2.
+- **Vor dem Bau von Ausschnitt 2 abfragen:** Warnzeichen-Schwellen (O-2), E-28, E-7, E-15, E-27, E-30, E-31.
+
 ## Offene Punkte
 
 1. **Geräteprüfung durch den Nutzer:** `docs/plan/kriterienbericht-v1.md` Abschnitt 5 (D-1 bis D-14). Dazu gehören TalkBack/VoiceOver, Systemschalter für Bewegung und Kontrast, echte Tastatur, Safe Area, Android-Zurück und Blur-Optik.
