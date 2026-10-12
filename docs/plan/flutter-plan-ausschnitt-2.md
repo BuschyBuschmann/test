@@ -1,16 +1,16 @@
 # Flutter-Plan Ausschnitt 2 „Fundament“: Patienten-Framework mit Physio-Zugang (ohne KI)
 
-Status: **zur Freigabe (nach Review R-P2)** · v1.1 (v1 überarbeitet nach Review R-P2 und Nutzerentscheidungen vom 2026-10-12) · Paket P2-K1 · Autor: `flutter-developer` · Stand 2026-10-12
+Status: **FREIGEGEBEN (2026-10-12) mit Nutzerentscheidungen; Prüfung am Code in F2-1R** · v1.2 (v1.1 nach Re-Review R-P2-RR und Nutzerentscheidungen Runde 2; v1.1 nach Review R-P2) · Paket P2-K2 · Autor: `flutter-developer` · Stand 2026-10-12
 
 Verbindliche Grundlagen:
 - `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11), Abschnitt 4 (P-1 bis P-5, A-1 bis A-4, T-1), 7, 8, 10.
 - Nutzerentscheidung: **Backend Supabase in der EU** (Spec 3, Punkt 13).
 - **Nutzerentscheidungen 2026-10-12** (Abschnitt 0).
-- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v2.1 (Löschkonzept, Chat-Bindung).
+- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v2.2 (Löschkonzept, Chat-Bindung).
 
 Kontext (gelesen, nicht zur Anforderung umgedeutet): `docs/UEBERGABE.md`, `docs/produkt/curaone-app-pruefung.md`, Code unter `app/lib` (nur lesend; Stand HEAD `5a493ed`, parallel laufende Änderungen unter `app/` sind beim Start von F2-3 neu zu lesen).
 
-Kennzeichnung: **B-n** = Annahme, **O-n** = Frage (O-1 bis O-7 aus der Spec, O-8 bis O-16 aus diesem Plan; Stand: Abschnitt 12), **R2-n** = Risiko, **X2-n** = externer Schritt, **F2-n** = Arbeitspaket, **DB-Tn** = benannter Datenbanktest (Abschnitt 10.2), **[Vorschlag]** = vom Plan festgelegter Wert mit Begründung, änderbar durch den Nutzer. Gestaltung kommt über Ablauf C vom `ui-designer`; dieser Plan nennt **Funktionen und Zustände**.
+Kennzeichnung: **B-n** = Annahme, **O-n** = Frage (O-1 bis O-7 aus der Spec, O-8 bis O-16 aus diesem Plan; Stand: Abschnitt 12), **R2-n** = Risiko, **X2-n** = externer Schritt, **F2-n** = Arbeitspaket, **DB-Tn** = benannter Datenbanktest (Abschnitt 10.2), **[entschieden]** = vom Plan vorgeschlagener, vom Nutzer am 2026-10-12 bestätigter Wert; **[Vorschlag]** = noch nicht bestätigter Wert; **[vor F2-1 zu entscheiden]** = blockierender offener Wert. Gestaltung kommt über Ablauf C vom `ui-designer`; dieser Plan nennt **Funktionen und Zustände**.
 
 ---
 
@@ -26,9 +26,16 @@ Kennzeichnung: **B-n** = Annahme, **O-n** = Frage (O-1 bis O-7 aus der Spec, O-8
 **2026-10-12, zu Review R-P2:**
 - **N-1** Handywechsel/Neubindung: Der Chat bleibt beim alten Gerät. Ein neuer Code startet ein neues Gespräch, der alte Chat wird gelöscht. Plan, Verlauf und Befinden bleiben. Der Patient wird über jede Neuanmeldung informiert.
 - **N-2** Warnzeichen aus dem Chat (auch Krise/Selbstgefährdung) gehen an den Physio, ohne Chattext (Stufe, Zeitpunkt); die Einwilligung nennt das ausdrücklich, auch für Krisen.
-- **N-3** Ersatzprogramm bei hohem Schmerz: automatisch kürzen nach fester Regel mit Hinweis (KI-Plan v2.1, 4.2).
+- **N-3** Ersatzprogramm bei hohem Schmerz: automatisch kürzen nach fester Regel mit Hinweis (KI-Plan v2.2, 4.2).
 - **N-4** Der Physio sieht alle Patienten seiner Praxis (keine Zuordnung Physio–Patient).
 - **N-5** Alle MINOR-, KI-MINOR- und NITPICK-Befunde einarbeiten; nötige Werte schlägt der Plan vor; E-24 bleibt als Annahme/offen gekennzeichnet.
+
+**2026-10-12, Runde 2 (Re-Review R-P2-RR):**
+- **N-6** Keine globale Einlöse-Bremse; nur je Sitzung (5 Fehlversuche je 15 Minuten); Hauptschutz ist die Entropie des Codes.
+- **N-7** Bestätigt: Code 10 Zeichen Crockford-Base32 mit HMAC und Pepper (4.5); Dauer-Schätzregel 4 s je Wiederholung + 60 s je Satzpause (6.4); Kürzungsregel E-36 und Zahlenverbot E-37 (KI-Plan v2.2).
+- **N-8** NEU-1 bis NEU-8 und NITPICKs einarbeiten; danach freigegeben, Prüfung am Code in F2-1R.
+
+**Vor F2-1 bzw. KI-1/KI-2 zu entscheiden (blockierend):** O-2 Warnzeichen-Schwellen; KI-Plan E-7, E-15, E-27, E-28, E-30, E-31.
 
 ---
 
@@ -40,14 +47,14 @@ Kennzeichnung: **B-n** = Annahme, **O-n** = Frage (O-1 bis O-7 aus der Spec, O-8
 | Rollenmodell | Tabellen und `SECURITY DEFINER`-Funktionen gehören der Migrationsrolle; RLS **ohne `FORCE`** (der Eigentümer umgeht RLS, die API-Rollen nicht). Jede Definer-Funktion prüft Rechte selbst. Supabase-Standardrechte werden ausdrücklich entzogen (Abschnitt 4.1) |
 | Datenmodell | 17 Tabellen (Abschnitt 4.3), alle mit RLS; Praxis trennt Physios; Patient sieht nur sich selbst; jeder Physio sieht alle Patienten seiner Praxis (N-4) |
 | Auth Physio | E-Mail + Passwort, keine Selbstregistrierung |
-| Auth Patient | Anonyme Supabase-Sitzung (Rolle `authenticated`, Claim `is_anonymous`) **ohne Rechte**, bis `redeem_invitation(code)` sie an genau einen Patienten bindet. Code 10 Zeichen Crockford-Base32 (50 Bit), HMAC-gespeichert, Ablauf 14 Tage, Bremsen je Sitzung und global |
+| Auth Patient | Anonyme Supabase-Sitzung (Rolle `authenticated`, Claim `is_anonymous`) **ohne Rechte**, bis `redeem_invitation(code)` sie an genau einen Patienten bindet. Code 10 Zeichen Crockford-Base32 (50 Bit), HMAC-gespeichert, Ablauf 14 Tage, Bremse nur je Sitzung (N-6) |
 | Neubindung (N-1) | Neuer Code bindet die neue Sitzung; alte Sitzung verliert Zugriff, ihr Auth-Konto wird gelöscht; ab Ausschnitt 3 wird der Chat der alten Identität gelöscht; Hinweis auf beiden Geräten |
 | Physio-Web | zweiter Einstieg im selben Projekt (O-13) |
 | Patienten-App | Start mit Code → Einwilligung (nennt Physio-Sicht inkl. Warnzeichen aus dem Chat, auch bei Krisen, N-2) → Pfad aus Phasen (O-4) → „Heute“ der Reihe nach (O-10) mit Übungsdetail und Tauschen → Befinden → Akte → „Alles löschen“ mit Backend (O-9) |
 | Plan speichern | stabile IDs: Upsert nach ID, nur Entferntes löschen; Verlauf bleibt unberührt |
 | Offline | Lesen aus Zwischenspeicher; Schreiben über persistente Warteschlange; vor dem Löschen wird sie angehalten und geleert |
 | Testdaten | `dart run tool/seed/seed.dart` |
-| Verifikation | bestehende Kette + 41 benannte DB-Tests gegen lokales Postgres 16 mit Supabase-Rollen-Nachbildung; Ende-zu-Ende erst mit lokalem Supabase-Stack |
+| Verifikation | bestehende Kette + 47 benannte DB-Tests gegen lokales Postgres 16 mit Supabase-Rollen-Nachbildung; Ende-zu-Ende erst mit lokalem Supabase-Stack |
 
 ---
 
@@ -133,8 +140,8 @@ Grundsätze: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange mit Geräte-I
 | `practices` | `id`, `name`, `is_test` | SELECT (Physio eigene Praxis) | Seed |
 | `physios` | `id` → `auth.users` (`ON DELETE CASCADE`), `practice_id`, `display_name` | SELECT (gleiche Praxis) | Seed |
 | `patients` | `id`, `practice_id`, `first_name`, `last_name`, `injury_label`, `reference_date`, `auth_user_id` → `auth.users` (**`ON DELETE SET NULL`**, unique), `status` (`invited` · `active` · `deleting` · `access_deleted`), `current_phase_id` → `phases` (`ON DELETE SET NULL`), `bound_at` | SELECT (Physio der Praxis; Patient eigene Zeile); UPDATE der Stammdatenspalten (Physio, Spalten-Grant) | RPCs (Bindung, Status, Phase) |
-| `invitations` | `id`, `patient_id`, `code_hmac`, `expires_at`, `redeemed_at`, `redeemed_by`, `revoked_at`, `failed_attempts` | SELECT ohne `code_hmac` (Physio der Praxis) | RPCs |
-| `redeem_attempts` | `id`, `uid`, `at`, `ok` | – | `redeem_invitation` |
+| `invitations` | `id`, `patient_id`, `code_hmac`, `expires_at`, `redeemed_at`, `redeemed_by`, `revoked_at`, `failed_attempts` | SELECT nur über Spalten-Grant `(id, patient_id, expires_at, redeemed_at, revoked_at, failed_attempts)` (Physio der Praxis); `select=*` scheitert daher, das Repository nennt die Spalten ausdrücklich | RPCs |
+| `redeem_attempts` | `id`, `uid`, `at`, `ok` | – | `redeem_invitation`; löscht bei jedem Aufruf Zeilen älter als 24 Stunden (NITPICK; DB-T47) |
 | `exercises` | `id`, `practice_id` (null = Katalog), `name`, `description` (beide `CHECK` nicht leer), `is_example`, `created_by` | SELECT (Physio: Katalog + Praxis; Patient: nur Übungen im eigenen Plan); INSERT/UPDATE eigene Praxis (Physio); DELETE nur ungenutzt | Seed (Katalog) |
 | `plans` | `id`, `patient_id` (unique), `version`, `updated_at`, `updated_by` | SELECT | `save_plan` |
 | `phases` | `id`, `plan_id`, `position`, `title`, `planned_weeks` (`CHECK 1–52`) | SELECT | `save_plan` |
@@ -145,13 +152,18 @@ Grundsätze: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange mit Geräte-I
 | `training_sessions` | `id` (Gerät), `patient_id`, `local_day`, `logged_at`, `phase_id` (**`ON DELETE SET NULL`**), `plan_version`, `items` (`jsonb`-Momentaufnahme, **kein** Fremdschlüssel auf `plan_items`) | SELECT (beide); INSERT, DELETE eigene (Patient, Rückgängig) | – |
 | `wellbeing_reports` | `id` (Gerät), `patient_id`, `local_day`, `reported_at`, `pain` 0–10, `swelling` 0–3, `mood` 1–5 | SELECT (beide); **kein** direktes INSERT/UPDATE/DELETE (m-5) | `report_wellbeing` (B-15), `delete_my_data` |
 | `warning_rules` | `id`, `version`, `rule jsonb`, `active`, `is_provisional` | – | Migration/Seed |
-| `warning_signs` | `id`, `patient_id`, `created_at`, `source` (`wellbeing`; ab Ausschnitt 3 `chat`), `layer` (`trigger`; ab Ausschnitt 3 `device`/`server`/`model`), `level`, `reason_code`, `wellbeing_report_id`, `client_message_id` (Ausschnitt 3), `seen_at`; **keine Textspalte** | SELECT (Physio der Praxis); **kein INSERT** | Trigger (Ausschnitt 2); RPC/Funktionen aus KI-Plan v2.1 4.3 (Ausschnitt 3) |
+| `warning_signs` | `id`, `patient_id`, `created_at`, `source` (`wellbeing`; ab Ausschnitt 3 `chat`), `layer` (`trigger`; ab Ausschnitt 3 `device`/`server`/`model`), `level`, `reason_code`, `wellbeing_report_id`, `client_message_id` (Ausschnitt 3), `seen_at`; **keine Textspalte** | SELECT (Physio der Praxis); **kein INSERT** | Trigger (Ausschnitt 2); RPC/Funktionen aus KI-Plan v2.2 4.3 (Ausschnitt 3) |
 | `consents` | `id`, `patient_id`, `kind`, `version`, `accepted_at`, `revoked_at` | SELECT (beide) | `accept_consent` |
 | `account_events` | `id`, `patient_id`, `kind` (`bound`, `rebound`), `at` | SELECT (Patient) | `redeem_invitation` (N-1) |
 
 **Trigger (Migration 04):**
 - `app.set_created_by()` – `BEFORE INSERT` auf `appointments`, `exercises`: setzt `created_by = app.uid()` und `created_by_role` aus der Rolle (Physio/Patient); Client-Werte werden überschrieben (m-3).
-- `app.lock_patient_for_write()` – `BEFORE INSERT/UPDATE/DELETE` auf allen vom Patienten beschriebenen Tabellen (`training_sessions`, `wellbeing_reports`, `appointments`, `consents`): `SELECT … FROM patients WHERE id = NEW.patient_id AND status = 'active' FOR SHARE`; keine Zeile → Fehler `42501`. Serialisiert gegen `delete_my_data` (M-4).
+- `app.lock_patient_for_write()` – `BEFORE INSERT/UPDATE/DELETE` auf `training_sessions`, `wellbeing_reports`, `appointments`, `consents`, `warning_signs` (ab Ausschnitt 3 auch Chat-Tabellen, KI-Plan v2.2, 8; NEU-3). **`SECURITY DEFINER`, `SET search_path = ''`** (NEU-1: als Invoker verlangte `FOR SHARE` eine UPDATE-Berechtigung, ein aktiver Patient konnte nicht schreiben).
+  - Zeile: bei INSERT/UPDATE `NEW`, bei **DELETE `OLD`** (NEU-1); `patient_id` daraus.
+  - **Gilt nur für Schreibvorgänge im Namen des Patienten** (NEU-2): ausgenommen sind Physio-Sitzungen (`app.current_physio_practice() IS NOT NULL`) und der Seed (`service_role`, erkennbar an `auth.role()` bzw. `current_user`). Edge Functions ab Ausschnitt 3 schreiben im Namen des Patienten und unterliegen der Sperre (KI-Plan v2.2, 8).
+  - Prüfung: `SELECT 1 FROM public.patients WHERE id = <patient_id> AND status = <erlaubt> FOR SHARE`; keine Zeile → `42501`. Erlaubt ist bei INSERT/UPDATE nur `active`, bei DELETE `active` oder `deleting` (damit die Löschung ab Ausschnitt 3 nach dem Setzen von `deleting` die eigenen Daten entfernen kann, KI-Plan v2.2, 8).
+  - Damit pflegt der Physio Akte und Termine auch für Patienten mit Status `invited` oder `access_deleted`; der Seed schreibt ohne Bindung.
+  - Serialisiert gegen `delete_my_data` (M-4): Die Löschfunktion hält `FOR UPDATE` auf derselben Zeile; ihre eigenen Löschungen laufen in derselben Transaktion, solange der Status noch `active` ist (4.7, Reihenfolge).
 - `app.raise_warning_signs()` – `AFTER INSERT` auf `wellbeing_reports`, `SECURITY DEFINER`, `SET search_path = ''`, wertet aktive `warning_rules` aus (O-2) (m-5).
 
 ### 4.4 Funktionen (RPC)
@@ -164,13 +176,13 @@ Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLI
 | `regenerate_invitation(patient_id)` | Physio derselben Praxis | widerruft offene Einladung, erzeugt neue (O-8) |
 | `redeem_invitation(code)` | **anonyme** Sitzung (`is_anonymous = true`), **kein** Physio, **nicht bereits gebunden** (M-3) | Bremsen prüfen (4.5), Code normalisieren, HMAC vergleichen, Ablauf/Widerruf/eingelöst prüfen. Patient `invited` → binden. Patient `active` (Neubindung, N-1) → alte Identität lösen, `app.on_rebind(old_uid)` (Ausschnitt 3: Chat der alten Identität löschen), altes Auth-Konto löschen, `account_events.rebound`. Ergebnis `ok` · `ok_rebound` · `invalid` · `already_used` · `expired` · `too_many_attempts` · `not_allowed` |
 | `accept_consent(kind, version)` | gebundener Patient | Einwilligung speichern |
-| `report_wellbeing(id, local_day, pain, swelling, mood)` | gebundener, aktiver Patient | idempotenter Insert (Geräte-ID) mit Schreibsperre wie 4.3; liefert nur `warning_raised boolean` zurück, keine Regel- oder Warnzeichendaten (B-15, O-12) |
+| `report_wellbeing(id, local_day, pain, swelling, mood)` | gebundener, aktiver Patient | idempotenter Insert (Geräte-ID) mit Schreibsperre wie 4.3; liefert nur `warning_raised boolean`. `warning_raised` wird **immer** aus vorhandenen `warning_signs` mit `wellbeing_report_id = id` ermittelt, auch bei Wiederholung derselben ID (NEU-7) (B-15, O-12) |
 | `save_plan(patient_id, expected_version, plan jsonb)` | Physio derselben Praxis | siehe 4.6 |
 | `set_current_phase(patient_id, phase_id)` | Physio derselben Praxis | Phase muss zum Plan des Patienten gehören |
 | `mark_warnings_seen(patient_id)` | Physio derselben Praxis | `seen_at` setzen (O-11) |
 | `delete_my_data()` | gebundener Patient; ungebundene anonyme Sitzung → `already_deleted` | siehe 4.7 |
 
-### 4.5 Einladungscode (m-2) [Vorschlag]
+### 4.5 Einladungscode (m-2) [entschieden, N-6/N-7]
 
 | Punkt | Festlegung | Begründung |
 |---|---|---|
@@ -180,7 +192,7 @@ Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLI
 | Erzeugung | `gen_random_bytes` (pgcrypto) in der Funktion | kryptografischer Zufall |
 | Speicherung | `HMAC-SHA256(pepper, code)`; Pepper in einer Tabelle `app.secrets` ohne Rechte für API-Rollen, Wert per externem Schritt (X2-11), lokal per Testwert | Datenbank-Abzug allein verrät keine Codes |
 | Bremse je Sitzung | 5 Fehlversuche je 15 Minuten | Tippfehler erlaubt, Durchprobieren nicht |
-| Bremse global | 200 Fehlversuche je Stunde über alle Sitzungen → danach `too_many_attempts` für alle bis Fensterende | schützt gegen viele anonyme Sitzungen; bei 50 Bit praktisch kein Durchprobieren möglich; Nachteil: absichtliche Sperre aller Einlösungen (für den Prototyp hingenommen) |
+| Bremse global | **keine** (N-6) | Hauptschutz ist die Entropie: selbst bei 10⁶ Fehlversuchen über viele Sitzungen und 1000 gültigen Codes liegt die Trefferchance bei ≈ 10⁻⁶; eine globale Bremse ließe sich zum Sperren aller Einlösungen missbrauchen |
 | Bremse je IP | Supabase-Ratenbegrenzung für anonyme Anmeldungen (Wert im Projekt prüfen) und optional Captcha (X2-2) | die Datenbank sieht die IP nicht zuverlässig |
 | Ablauf | 14 Tage (O-7, Annahme) | |
 
@@ -191,23 +203,23 @@ Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLI
   1. Phasen: Upsert nach `id`; Phasen, die im Payload fehlen, löschen (ihre `plan_items` per `CASCADE`);
   2. Positionen: Upsert nach `id`; fehlende löschen;
   3. `current_phase_id` aus dem Payload setzen; Pflicht, sobald Phasen existieren, und muss eine Phase dieses Plans sein → sonst Fehler `current_phase_required`;
-  4. Prüfungen: Übung ist Katalog oder eigene Praxis; Wertebereiche; Pflichtfelder eigener Übungen (Constraint);
+  4. Prüfungen: **jede Phasen- und Positions-ID im Payload gehört zu diesem Plan oder existiert noch nirgends** – eine ID eines anderen Plans → Fehler `foreign_id` (NEU-5; DB-T46); Übung ist Katalog oder eigene Praxis; Wertebereiche; Pflichtfelder eigener Übungen (Constraint);
   5. `version + 1`.
 - **Verlauf bleibt unberührt:** `training_sessions` hat keinen Fremdschlüssel auf `plan_items` (Momentaufnahme in `items`); `phase_id` wird beim Löschen einer Phase `NULL`.
 - App: Tagesänderungen (`removed`, `swaps`) verweisen auf `plan_items.id`; entfallene IDs werden verworfen (B-10).
-- Tests DB-T20 bis DB-T24.
+- Tests DB-T20 bis DB-T24, DB-T46.
 
 ### 4.7 Löschen (O-9, M-4, m-6)
 
 `delete_my_data()`:
 1. Aufrufer prüfen; nicht gebunden und anonym → `already_deleted` (idempotent; die App wertet das als Erfolg).
 2. `SELECT … FROM patients WHERE auth_user_id = app.uid() FOR UPDATE` → wartet auf laufende Schreibvorgänge (die `FOR SHARE` halten) und blockiert neue.
-3. Löscht vom Patienten erzeugte Daten: `training_sessions`, `wellbeing_reports`, `warning_signs` des Patienten, eigene `appointments`, `consents`, `account_events` (ab Ausschnitt 3 auch Chat-Tabellen, KI-Plan v2.1, 8).
-4. Bleibt bei der Praxis (O-9): Patientenzeile (Stammdaten), Plan, Behandler, Krankengeschichte, Physio-Termine; `auth_user_id = NULL`, `status = 'access_deleted'`, offene Einladungen widerrufen.
+3. Löscht – solange der Status noch `active` ist, damit die Schreibsperre in derselben Transaktion greift (NEU-1) – vom Patienten erzeugte Daten: `training_sessions`, `wellbeing_reports`, `warning_signs` des Patienten, eigene `appointments`, `consents`, `account_events` (ab Ausschnitt 3 auch Chat-Tabellen, KI-Plan v2.2, 8).
+4. Bleibt bei der Praxis (O-9): Patientenzeile (Stammdaten), Plan, Behandler, Krankengeschichte, Physio-Termine; **erst danach** `auth_user_id = NULL`, `status = 'access_deleted'`, offene Einladungen widerrufen. Der Physio kann diese Daten weiter pflegen (NEU-2; DB-T44).
 5. Löscht das Auth-Konto `auth.users` des Aufrufers (B-7; Ausweg Edge Function, R2-12).
 6. Ein Schreibvorgang, der auf die Sperre gewartet hat, findet danach `status <> 'active'` und scheitert mit `42501` (DB-T31).
 
-`deleting` wird in Ausschnitt 2 nicht sichtbar (eine Transaktion); der Wert existiert im Typ für Ausschnitt 3, wenn Edge Functions lange Antworten streamen (KI-Plan v2.1, 8).
+`deleting` wird in Ausschnitt 2 nicht sichtbar (eine Transaktion); der Wert existiert im Typ für Ausschnitt 3, wenn Edge Functions lange Antworten streamen (KI-Plan v2.2, 8).
 
 ---
 
@@ -248,7 +260,7 @@ Reine Funktion `buildPathFromPhases(phases, currentPhaseId, completedUnitIds)` i
 
 1. **Aufbau:** Phasen in Physio-Reihenfolge. Je Phase `planned_weeks` Wochen; je Woche 3 Trainingstage und 1 Wochenziel (wie im ersten Ausschnitt); am Ende jeder Phase ein Phasen-Abschluss; nach der letzten Phase Boss „Return to Sport“, darüber der Ausblick (unverändert).
 2. **IDs:** `<phaseId>-w<n>-d<k>`, `<phaseId>-w<n>-goal`, `<phaseId>-end`, `boss` – an die stabile Phasen-ID gebunden (4.6).
-3. **Erledigt** ausschließlich über `completedUnitIds` (lokal). Kein Datumsautomatismus mehr (Grenze K-1 entfällt).
+3. **Erledigt** ausschließlich über `completedUnitIds` (lokal). Kein Datumsautomatismus mehr: Der Teil der Grenze K-1, nach dem Units allein durch das Kalenderdatum erledigt wurden, entfällt. Bestehen bleibt, dass die Kopfzeile „Woche N“ die Kalenderwoche seit `reference_date` zeigt und daher von der Lage der aktuellen Unit abweichen kann (NITPICK).
 4. **Aktuelle Unit** = erste nicht erledigte Unit **der aktuellen Phase** in Reihenfolge. „Training eintragen“ erledigt genau diese Unit.
 5. **Aktuelle Phase vollständig erledigt:** keine aktuelle Unit; Manny sitzt auf der letzten erledigten Unit der Phase; Eintragen zählt nur für Streak und Verlauf, bis der Physio weiterschaltet.
 6. **Physio schaltet vor:** Units früherer Phasen, die nicht erledigt sind, bekommen den Anzeigestatus „ausgelassen“ (nicht erledigt, nicht antippbar; Gestaltung F2-D); aktuelle Unit = erste offene Unit der neuen Phase.
@@ -261,7 +273,7 @@ Reine Funktion `buildPathFromPhases(phases, currentPhaseId, completedUnitIds)` i
 Unit-Tests: Aufbau und IDs für 1/3 Phasen mit 1/4/12 Wochen; Eintragen erledigt die aktuelle Unit; Ende der Phase (Regel 5); Vorschalten mit offenen Units (Regel 6); Zurückschalten (Regel 7); Plan verkürzt/verlängert (Regel 9); Kopfzeile bei Datum heute, +27, +200 Tage und in der Zukunft; leerer Plan; Boss nie aktuell.
 
 ### 6.4 „Heute“ aus dem Plan (O-10 entschieden; A-2)
-- **Dauer je Position (m-8) [Vorschlag]**, Funktion `estimateMinutes` in `lib/logic/exercise_duration.dart`, gleiche Regel im Physio-Web (Anzeige) und im KI-Plan (S8b):
+- **Dauer je Position (m-8) [entschieden, N-7]**, Funktion `estimateMinutes` in `lib/logic/exercise_duration.dart`, gleiche Regel im Physio-Web (Anzeige) und im KI-Plan (S8b):
   - `duration_min` gesetzt → dieser Wert;
   - sonst `sets` und `reps` gesetzt → `aufrunden((sets × reps × 4 s + (sets − 1) × 60 s) / 60)`, mindestens 1;
   - sonst nur `sets` → `sets × 1 Minute`; sonst 5 Minuten.
@@ -363,7 +375,7 @@ Jede Sicherheitsaussage dieses Plans hat genau einen Test (Datei `supabase/tests
 | DB-T11 | `redeem_requires_anonymous` | `redeem_invitation` als Physio oder nicht-anonyme Sitzung → `not_allowed` (M-3) |
 | DB-T12 | `redeem_already_bound` | bereits gebundene Sitzung → `not_allowed` |
 | DB-T13 | `redeem_results` | `ok`, `already_used`, `expired`, `invalid`, widerrufen → `invalid` |
-| DB-T14 | `redeem_throttle` | 6. Fehlversuch je Sitzung in 15 Min → `too_many_attempts`; globale Schwelle greift |
+| DB-T14 | `redeem_throttle` | 6. Fehlversuch je Sitzung in 15 Min → `too_many_attempts`; eine **andere** Sitzung ist davon nicht betroffen (keine globale Bremse, N-6) |
 | DB-T15 | `patient_cannot_modify_physio_entries` | Patient kann Behandler, Krankengeschichte, Physio-Termine, Plan nicht ändern (A-4) |
 | DB-T16 | `created_by_server_side` | gefälschtes `created_by`/`created_by_role` wird überschrieben (m-3) |
 | DB-T17 | `own_appointments_only` | Patient ändert/löscht nur eigene Termine; Physio nur eigene |
@@ -390,9 +402,15 @@ Jede Sicherheitsaussage dieses Plans hat genau einen Test (Datei `supabase/tests
 | DB-T38 | `definer_functions_search_path` | alle Definer-Funktionen haben `search_path = ''` (Katalogabfrage) |
 | DB-T39 | `set_current_phase_foreign_phase` | Phase eines anderen Plans → Fehler |
 | DB-T40 | `seed_idempotent_only_test_data` | Seed zweimal → gleicher Zustand; Nicht-Test-Praxis unverändert (braucht Supabase-Stack) |
-| DB-T41 | `report_wellbeing_scope` | `report_wellbeing`: nur gebundener, aktiver Patient; `patient_id` aus der Sitzung; wiederholte ID idempotent; Rückgabe enthält nur `warning_raised` |
+| DB-T41 | `report_wellbeing_scope` | `report_wellbeing`: nur gebundener, aktiver Patient; `patient_id` aus der Sitzung; wiederholte ID idempotent und liefert **dasselbe** `warning_raised` wie der erste Aufruf (NEU-7); Rückgabe enthält nur `warning_raised` |
+| DB-T42 | `active_patient_writes_and_undoes` | aktiver Patient (Rolle `authenticated`, ohne UPDATE-Recht auf `patients`) legt Training, Befinden, eigenen Termin an und löscht Training (Rückgängig) und Termin – alles erfolgreich (NEU-1) |
+| DB-T43 | `delete_my_data_with_data` | `delete_my_data` mit vorhandenen Trainings, Befinden, Warnzeichen, Terminen, Einwilligungen läuft ohne Fehler durch; danach Zustand wie DB-T29 (NEU-1) |
+| DB-T44 | `physio_maintains_record_invited_and_deleted` | Physio legt/ändert/löscht Behandler, Krankengeschichte, Termine für Patienten mit Status `invited` und `access_deleted` (NEU-2) |
+| DB-T45 | `seed_writes_without_binding` | `service_role` schreibt Verlauf, Befinden, Termine für ungebundene Patienten (NEU-2; Seed) |
+| DB-T46 | `save_plan_foreign_ids` | Payload mit Phasen- bzw. Positions-ID eines anderen Plans → `foreign_id`, nichts geändert (NEU-5) |
+| DB-T47 | `redeem_attempts_cleanup` | Einträge älter als 24 h werden beim nächsten Aufruf entfernt (NITPICK) |
 
-DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (hier ausführbar); DB-T11/12/33/40 zusätzlich gegen den echten Stack in F2-6.
+DB-T01 bis DB-T39 und DB-T41 bis DB-T47 laufen gegen lokales Postgres 16 mit Nachbildung (hier ausführbar); **DB-T01, DB-T11, DB-T12, DB-T33, DB-T37, DB-T40, DB-T45** zusätzlich gegen den echten Stack in F2-6 (NEU-6: Standardrechte und `EXECUTE`-Grants von Supabase sind nur dort sicher bestätigt).
 
 ### 10.3 Übrige Ebenen
 
@@ -438,7 +456,7 @@ DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (h
 | Nr. | Stand | Inhalt |
 |---|---|---|
 | O-1 | Annahme | gekennzeichnete Beispieltexte auf Basis der Platzhalter-Übungen |
-| O-2 | **offen, vor dem Bau separat abfragen** | Befinden-Regeln als gekennzeichnete Startliste; Schwellen setzt der Nutzer (Diskussionsstand: Schmerz ≥ 7, Anstieg ≥ 3, Schwellung „stark“). Chat-Warnzeichen kommen mit Ausschnitt 3 |
+| O-2 | **[vor F2-1 zu entscheiden]** | Befinden-Regeln als gekennzeichnete Startliste; Schwellen setzt der Nutzer (Diskussionsstand: Schmerz ≥ 7, Anstieg ≥ 3, Schwellung „stark“). Chat-Warnzeichen kommen mit Ausschnitt 3 |
 | O-3 | Annahme | Schmerz 0–10, Schwellung 0–3, Stimmung 1–5; täglich angeboten, kein Push |
 | O-4 | **entschieden** | 6.3 |
 | O-5 | Annahme | später |
@@ -455,7 +473,7 @@ DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (h
 | O-16 | Annahme | Patienten-App im Browser, Physio-Web lokal; QR nach 5.2 |
 | E-24 | **Annahme/offen** (N-5) | Löschen offline: kein „nur lokal“ |
 
-**Neue offene Punkte aus dieser Überarbeitung:** siehe Rückmeldung; im Plan als [Vorschlag] markiert: Code-Parameter (4.5), Dauer-Schätzregel (6.4), QR-Inhalt (5.2), Status „ausgelassen“ (6.3 Regel 6), Rückgabe Warnzeichen an die App (B-15).
+**Entschieden (N-7):** Code-Parameter (4.5), Dauer-Schätzregel (6.4). **Weiter [Vorschlag], nicht blockierend:** QR-Inhalt (5.2), Status „ausgelassen“ (6.3 Regel 6, Gestaltung F2-D). **[vor F2-1 zu entscheiden]:** O-2.
 
 ---
 
@@ -463,7 +481,7 @@ DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (h
 
 | Paket | Inhalt | Rolle | Abhängigkeit |
 |---|---|---|---|
-| F2-0 | O-2-Schwellen abfragen; [Vorschlag]-Werte bestätigen | Nutzer/Orchestrator | – |
+| F2-0 | O-2-Schwellen entscheiden (blockierend vor F2-1) | Nutzer/Orchestrator | – |
 | F2-D | Ablauf C: Patienten-Ergänzung (Start, Neuanmeldung-Hinweise beider Geräte, Einwilligung mit N-2, Übungsdetail, Tauschen, Befinden + Hinweis, Akte, Löschen, offline, Pfad mit „ausgelassen“ und Leerzustand) und Physio-Web | `ui-designer` | – |
 | F2-1 | Migrationen 01–05, Nachbildung, DB-T01 bis DB-T39 | `flutter-developer` | F2-0 |
 | F2-1R | Sicherheitsreview Rollen, RLS, Definer, Einladung, Löschen, Neubindung | `reviewer` | F2-1 |
@@ -471,7 +489,7 @@ DB-T01 bis DB-T39 und DB-T41 laufen gegen lokales Postgres 16 mit Nachbildung (h
 | F2-3 | Datenschicht App, Logik, Warteschlange, Migration, `AccountDeleter`; U/C | `flutter-developer` | F2-1 |
 | F2-4a/b | Physio-Web I (Anmeldung, Liste, Anlegen/Einladen) / II (Plan, Akte, Verlauf) | `flutter-developer` | F2-D, F2-3 |
 | F2-5a/b/c | Patienten-App I (Start, Neubindung, Einwilligung, Löschen, Demo) / II (Pfad, Heute) / III (Befinden, Akte) | `flutter-developer` | F2-D, F2-3 |
-| F2-6 | E2E gegen lokalen Supabase-Stack, DB-T11/12/33/40 dort, Kriterienbericht | `flutter-developer` | alle, X2-8 |
+| F2-6 | E2E gegen lokalen Supabase-Stack, DB-T01/11/12/33/37/40/45 dort, Kriterienbericht | `flutter-developer` | alle, X2-8 |
 | F2-R | Gesamtreview + Design-Abnahme | `reviewer`, `ui-designer` | F2-6 |
 
 Reihenfolge wie v1: F2-0 → (F2-D ∥ F2-1 → F2-1R → F2-2/F2-3) → F2-4a → F2-4b → F2-5a → F2-5b → F2-5c → F2-6 → F2-R; Physio- und Patienten-Pakete nacheinander (gemeinsame Dateien).
@@ -517,7 +535,7 @@ Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 | R2-11 | Katalog wirkt geprüft | Kennzeichnung |
 | R2-12 | `auth.users` aus Definer-Funktion nicht löschbar | B-7 in F2-6; Ausweg Edge Function |
 | R2-13 | Physio löst selbst einen neuen Code ein und wird „Patient“ | sieht danach nur Plan/Verlauf (sieht er ohnehin); Chat der alten Identität wird gelöscht (N-1), der Patient bemerkt den Zugangsverlust; Ereignis `account_events` |
-| R2-14 | Globale Einlöse-Bremse als Sperre für alle missbraucht | für Prototyp hingenommen; Wert anpassbar |
+| R2-14 | Durchprobieren von Codes über viele anonyme Sitzungen | keine globale Bremse (N-6); Schutz durch 50 Bit Entropie, Bremse je Sitzung, Ratenbegrenzung anonymer Anmeldungen und optional Captcha (X2-2) |
 | R2-15 | Wartende Schreibvorgänge beim Löschen (Sperre) verlängern Antwortzeiten | Transaktionen kurz; Zeitlimit in der App |
 
 ---
@@ -582,3 +600,24 @@ Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 | N-5 Werte vorgeschlagen, E-24 offen | 4.5, 6.4, 5.2, 6.7, 12 |
 | O-4, O-9, O-10, O-13 entschieden | 0, 6.3, 4.7, 6.4, 2 |
 | Neu | B-15, R2-13 bis R2-15, X2-11, Tabellen `redeem_attempts`, `account_events` |
+
+### Änderungsprotokoll v1.1 → v1.2 (Re-Review R-P2-RR, Nutzerentscheidungen Runde 2)
+
+| Befund / Entscheidung | Abschnitt |
+|---|---|
+| NEU-1 Lock-Trigger Definer, `OLD` bei DELETE | 4.3 (Trigger), 4.7 (Reihenfolge); DB-T42, DB-T43 |
+| NEU-2 Sperre nur für Patienten-Schreibvorgänge; Physio und Seed pflegen Akte | 4.3, 4.7 Punkt 4; DB-T44, DB-T45 |
+| NEU-3 Warnzeichen und Chat-Tabellen in der Sperre | 4.3; KI-Plan v2.2, 8 (DB-K10 mit zwei Verbindungen) |
+| NEU-4 Freitextprüfung | KI-Plan v2.2, 4.7 |
+| NEU-5 fremde IDs in `save_plan` | 4.6 Punkt 4; DB-T46 |
+| NEU-6 DB-T01/T37 gegen echten Stack | 10.2 (Absatz unter der Tabelle), 13 F2-6 |
+| NEU-7 `warning_raised` bei Wiederholung | 4.4 `report_wellbeing`; DB-T41 |
+| NEU-8 Kürzungsregel ohne Sätze, S8b bei Schmerz | KI-Plan v2.2, 4.2.1 Regel 7, 4.2.3 |
+| NITPICK K-1 zu stark | 6.3 Regel 3 |
+| NITPICK `redeem_attempts` Bereinigung | 4.3; DB-T47 |
+| NITPICK `invitations` `select=*` | 4.3 |
+| NITPICK E-25 | KI-Plan v2.2, 13 |
+| N-6 keine globale Bremse | 0, 1, 4.5, R2-14; DB-T14 |
+| N-7 Werte bestätigt | 0, 4.5, 6.4, 12 |
+| N-8 Freigabe, Prüfung in F2-1R | Status, 0 |
+| Blockierende offene Werte markiert | 0, 12, 13 F2-0 |

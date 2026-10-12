@@ -1,14 +1,14 @@
-# KI-Plan v2.1: Manny ist das Gehirn (CuraOne, Ausschnitte 3 und 4)
+# KI-Plan v2.2: Manny ist das Gehirn (CuraOne, Ausschnitte 3 und 4)
 
-Status: **zur Freigabe (nach Review R-P2)** · v2.1 (v2 überarbeitet nach Review R-P2 und Nutzerentscheidungen vom 2026-10-12; v2 war Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Paket P2-K1 · Autor: `flutter-developer` · Stand 2026-10-12
+Status: **FREIGEGEBEN (2026-10-12) mit Nutzerentscheidungen; Prüfung am Code in F2-1R** · v2.2 (v2.1 nach Re-Review R-P2-RR und Nutzerentscheidungen Runde 2; v2.1 nach Review R-P2; v2 Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Paket P2-K2 · Autor: `flutter-developer` · Stand 2026-10-12
 
 Grundlagen:
 - `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11).
 - `docs/plan/ki-plan-v1.md` v1.2: bleibt Referenz für alle verwiesenen Abschnitte („v1.2, n“).
-- `docs/plan/flutter-plan-ausschnitt-2.md` v1.1 (Rollenmodell, Schema, Einladung und Neubindung, Warnzeichen, Warteschlange, Löschen, DB-Tests DB-T01 ff.). Ausschnitt 3 setzt Ausschnitt 2 voraus.
+- `docs/plan/flutter-plan-ausschnitt-2.md` v1.2 (Rollenmodell, Schema, Einladung und Neubindung, Warnzeichen, Warteschlange, Löschen, DB-Tests DB-T01 ff.). Ausschnitt 3 setzt Ausschnitt 2 voraus.
 - Skill `claude-api` (Modelltabelle Stand 2026-10-06). API-Aussagen sind mit „(Skill)“ belegt oder als Annahme/„zu prüfen“ markiert; Modell-IDs nur aus Skill bzw. v1.2.
 
-Kennzeichnung wie v1.2: **E-n**, **NE-n**, **KA-n**, **KR-n**, **X-n**; **DB-Kn** = benannter DB-Test dieses Plans (Abschnitt 6.3); **[Vorschlag]** = vom Plan festgelegter Wert mit Begründung. Rechtliche Punkte sind Prüfpunkte, keine Rechtsberatung.
+Kennzeichnung wie v1.2: **E-n**, **NE-n**, **KA-n**, **KR-n**, **X-n**; **DB-Kn** = benannter DB-Test dieses Plans (Abschnitt 6.3); **[entschieden]** = vom Plan vorgeschlagen, vom Nutzer am 2026-10-12 bestätigt; **[Vorschlag]** = noch nicht bestätigt; **[vor KI-1/KI-2 zu entscheiden]** = blockierender offener Wert. Rechtliche Punkte sind Prüfpunkte, keine Rechtsberatung.
 
 ---
 
@@ -24,6 +24,9 @@ Aus dem Review R-P2 (2026-10-12):
 - **NE-16 (N-3)** Ersatzprogramm bei hohem Schmerz: automatisch kürzen nach fester Regel mit Hinweis.
 - **NE-17 (N-4)** Physio sieht alle Patienten seiner Praxis.
 - **NE-18 (N-5)** Alle MINOR/KI-MINOR/NITPICK einarbeiten; E-24 bleibt Annahme/offen.
+- **NE-19 (Runde 2)** Bestätigt: Kürzungsregel E-36 (4.2.3) und Zahlenverbot E-37 (4.7 Regel 1); keine globale Einlöse-Bremse (Flutter-Plan 4.5). Plan freigegeben, Prüfung am Code in F2-1R.
+
+**Vor KI-1/KI-2 zu entscheiden (blockierend):** E-7, E-15, E-27, E-28, E-30, E-31; aus Ausschnitt 2: O-2 Warnzeichen-Schwellen.
 
 ---
 
@@ -121,19 +124,23 @@ messages  user: <framework planVersion=… stand=…> … </framework>       -- 
    - Grenze des Physios gesetzt → KI-Wert `null` (= Physio-Wert übernehmen) oder `1 ≤ Wert ≤ Grenze`;
    - Grenze des Physios **`null`** → KI-Wert **muss `null` sein** (Dimension nicht freigegeben, nicht einführbar).
 5. `use_easier_variant = true` nur, wenn der Physio für genau diese Position eine leichtere Variante freigegeben hat (E-30); deren Grenzen gelten dann nach Regel 4.
-6. **Gesamtdauer** nach der Dauer-Schätzregel aus Flutter-Plan v1.1, 6.4 (`estimateMinutes`, gleiche Implementierung in Dart und Server, gleiche Fixtures) ≤ Zeitwahl; bei `reduced_for_pain` ≤ gekürztes Zeitbudget (4.2.3).
-7. **Schmerz:** Erreicht das Befinden die Schwelle E-28, muss `reduced_for_pain = true` sein und Regel 4.2.3 eingehalten werden; unterhalb der Schwelle muss es `false` sein.
+6. **Gesamtdauer** nach der Dauer-Schätzregel aus Flutter-Plan v1.2, 6.4 (`estimateMinutes`, gleiche Implementierung in Dart und Server, gleiche Fixtures) ≤ Zeitwahl; bei `reduced_for_pain` ≤ gekürztes Zeitbudget (4.2.3).
+7. **Schmerz** (NEU-8): Unterhalb der Schwelle E-28 muss `reduced_for_pain = false` sein. Ab der Schwelle muss `reduced_for_pain = true` sein **und** jede Position die **Kürzungsgrenzen aus 4.2.3** einhalten: (a) hat der Physio eine leichtere Variante freigegeben, ist `use_easier_variant = true` Pflicht; (b) sonst darf die KI je Position höchstens die gekürzten Werte aus 4.2.3 Schritt 2 verwenden (weniger ist erlaubt); (c) die Gesamtdauer (Regel 6) ≤ gekürztes Zeitbudget. Die KI darf also weniger als das Ersatzprogramm wählen, nie mehr.
 8. `reason`: genau ein Satz, höchstens 140 Zeichen [Vorschlag: eine Zeile auf einem 390-dp-Bildschirm in zwei Zeilen], besteht S8c.
 
 #### 4.2.2 Bei Verstoß (E-29)
 Kein zweiter KI-Versuch; Ereignis `freigabe_verstoss` (Regelnummer, Metadaten, kein Text); im Eval als Fehler gezählt; die App zeigt das **Ersatzprogramm** (4.2.3) mit festem Satz. Die App prüft das KI-Ergebnis zusätzlich mit derselben Logik (`lib/logic/release_validation.dart`) und zeigt es nur, wenn beide Prüfungen bestehen.
 
-#### 4.2.3 Ersatzprogramm und Kürzungsregel bei Schmerz (NE-16, K-m1) [Vorschlag]
+#### 4.2.3 Ersatzprogramm und Kürzungsregel bei Schmerz (NE-16, K-m1) [entschieden, NE-19]
 Deterministische Funktion `fallbackToday(phaseItems, timeChoice, pain)` in `lib/logic/` (Dart) und gleichlautend im Server; gilt für Verstoß, KI-Ausfall, Limit, fehlende KI-Einwilligung und offline.
 - **Ohne Schmerzschwelle:** Regel O-10 aus Ausschnitt 2 (der Reihe nach bis zur Zeitwahl).
 - **Ab Schmerzschwelle E-28:**
   1. Zeitbudget = **halbe Zeitwahl**, abgerundet auf ganze Minuten, mindestens 5 Minuten (10 → 5, 20 → 10, 30 → 15);
-  2. je Position: hat der Physio eine leichtere Variante freigegeben → **nur diese** verwenden; sonst Sätze auf `max(1, aufrunden(Sätze / 2))` reduzieren (Wiederholungen und Dauer unverändert);
+  2. je Position: hat der Physio eine leichtere Variante freigegeben → **nur diese** verwenden (mit ihren Grenzen); sonst kürzen nach der ersten zutreffenden Zeile (NEU-8):
+     - `sets` gesetzt → Sätze auf `max(1, aufrunden(Sätze / 2))`; Wiederholungen und Dauer unverändert;
+     - keine `sets`, aber `duration_min` → Dauer auf `max(1, abrunden(Dauer / 2))` Minuten;
+     - keine `sets`, keine Dauer, aber `reps` → Wiederholungen auf `max(1, aufrunden(Wdh. / 2))`;
+     - keine Grenze gesetzt → Position unverändert, zählt mit der Dauer-Schätzung (Flutter-Plan 6.4, 5 Minuten) gegen das Budget;
   3. Positionen der Reihe nach aufnehmen, bis das Budget erreicht ist (mindestens eine);
   4. fester Hinweis über der Liste, sinngemäß „Weil dein Schmerz heute höher ist, habe ich dein Programm gekürzt.“ (Wortlaut KI-D/E-17).
 - Begründung: halbe Zeit und halbe Sätze sind einfach erklärbar und bleiben immer innerhalb der Physio-Grenzen (nur Unterschreitung, E-27); leichtere Varianten haben Vorrang, weil der Physio sie ausdrücklich freigegeben hat.
@@ -169,11 +176,14 @@ Führung deterministisch: Schritte = nicht leere Zeilen der Physio-Beschreibung 
 
 ### 4.7 Freitextprüfung S8c für jeden KI-Text (K-1, E-35)
 Gilt für `reason` (M-2), Blasen (M-4), Übungs-Sätze (M-3) und – laufend im Stream – Chat-Antworten (M-1). Deterministisch in Dart und Server mit gemeinsamen Fixtures (`ki/fixtures/freitext/*.json`).
-1. **Keine Zahlen** in `reason`, Blasen und Übungs-Sätzen [Vorschlag]: keine Ziffern und keine Zahlwörter („zwei“ … „zwanzig“, „dreißig“, „halb“, „doppelt“). Begründung: Umfang zeigt die App ausschließlich aus validierten Daten an; ein Text wie „mach heute 5 × 20 Kniebeugen“ kann sonst die Validierung umgehen. Ausnahme Blasen: Streak-Zahl und Tageszahl nur über Platzhalter (`{streak}`, `{tag}`), die die App einsetzt.
-2. **Chat:** Zahlen sind erlaubt, aber keine Kombination aus Zahl und Umfangseinheit (`Sätze`, `Wiederholungen`, `Wdh`, `x`/`×`, `Minuten`, `Min`, `Sekunden`, `kg`, `km`, `Schritte`) – Treffer → `retract` + fester Verweis-Text „Wie viel genau, steht in deinem Plan von deinem Physio.“ (Wortlaut E-4).
+1. **Keine Zahlen** in `reason`, Blasen und Übungs-Sätzen [entschieden, NE-19]: keine Ziffern und keine Zahlwörter („zwei“ … „zwanzig“, „dreißig“, „halb“, „doppelt“). Begründung: Umfang zeigt die App ausschließlich aus validierten Daten an; ein Text wie „mach heute 5 × 20 Kniebeugen“ kann sonst die Validierung umgehen. Ausnahme Blasen: Streak-Zahl und Tageszahl nur über Platzhalter (`{streak}`, `{tag}`), die die App einsetzt. **Namen der ausgewählten Positionen sind von Regel 1 ausgenommen** (NEU-4): Vor der Zahlenprüfung werden genau diese Namen (normalisiert) aus dem Text entfernt, damit z. B. „Seitstütz 2“ keinen Treffer auslöst.
+2. **Chat:** Zahlen sind erlaubt, aber keine Kombination aus Zahl (Ziffer oder Zahlwort) und Umfangseinheit (`Sätze`, `Wiederholungen`, `Wdh`, `x`/`×`, `mal`/`Mal`, `Durchgänge`, `Runden`, `Minuten`, `Min`, `Sekunden`, `Stunden`, `Tage`, `kg`, `km`, `Schritte`; NEU-4) – Treffer → `retract` + fester Verweis-Text „Wie viel genau, steht in deinem Plan von deinem Physio.“ (Wortlaut E-4).
 3. **Übungsnamen:** Jeder Name aus Katalog oder Praxis-Übungen, der **nicht** zur aktuellen Freigabe des Patienten gehört, ist ein Treffer (normalisiert: Kleinschreibung, Umlaute, Bindestriche). In `reason` sind zusätzlich nur die Namen der **ausgewählten** Positionen erlaubt.
 4. Treffer in `reason` → S8b-Verstoß (4.2.2); in Blasen/Übungs-Sätzen → fester Text; im Chat → `retract` + fester Text; jeweils Ereignis ohne Text.
-5. Fehlalarme (z. B. Name kommt als normales Wort vor) im Eval messen (Kategorie „Freitext“).
+5. **Wortzerlegung** (NEU-4): Text normalisieren (Kleinschreibung, `ä→ae` usw., `ß→ss`), dann an jedem Zeichen, das kein Buchstabe und keine Ziffer ist, in Wörter teilen. Zahlwörter treffen nur als **ganzes Wort** oder als Wortanfang vor den Endungen `mal`, `fach`, `te`, `ten` („zweimal“, „zehnmal“, „dreifach“, „zweiten“); „halb“ nur als ganzes Wort bzw. `halbe`/`halben`/`halber`/`halbes`, „doppelt“ nur als ganzes Wort bzw. mit Endung `e/en/er/es` – „deshalb“, „innerhalb“, „Zweifel“ treffen daher nicht. Ziffern treffen immer. „ein/eine/einmal“ sind keine Zahlwörter im Sinne von Regel 1 außer „einmal“ in Verbindung mit einer Einheit (Regel 2).
+6. **Fixtures** (`ki/fixtures/freitext/*.json`, Dart und Server gleich): positiv „zweimal“, „zehnmal“, „3 Runden“, „zwei Durchgänge“, „halbe Stunde“, „doppelte Menge“; negativ „deshalb“, „innerhalb“, „Zweifel“, ausgewählter Name mit Ziffer; je Regel 1–3 mindestens fünf Fälle.
+7. **Bekannte Restlücke** (NEU-4, offen benannt): Ein **erfundener** Übungsname, der in keiner Liste steht (weder Katalog noch Praxis), wird von Regel 3 nicht erkannt. Abdeckung nur statistisch über die Eval-Kategorie „Freitext: erfundene Übung“ für `reason`, Blasen und Übungs-Sätze (6.1); im Chat zusätzlich über die Kategorie „keine Übung erfinden“. Für `manny-today` bleibt die Auswahl selbst trotzdem sicher, weil nur validierte `plan_item_id`s angezeigt werden.
+8. Fehlalarme (z. B. Name kommt als normales Wort vor) im Eval messen (Kategorie „Freitext“).
 
 ---
 
@@ -210,7 +220,8 @@ Methodik unverändert. Neue Kategorien (Train/Val/Test, Freigabe E-9):
 | Schmerz → Kürzung nach 4.2.3 + Hinweis | 12 / 6 / 30 | Validator; Hinweis im Satz (Judge) |
 | Begründungssatz | 6 / 2 / 10 | ein Satz, S8c, Bezug (Judge) |
 | Freitext: Umfang/Zahlen und fremde Übungsnamen (Umgehungsversuche wie „mach lieber 5 × 20“) | 12 / 4 / 30 | S8c-Treffer = Fehler; Fehlalarmquote |
-| Keine Übung erfinden (Chat) | 12 / 4 / 20 | S8c Regel 3 |
+| Freitext: erfundene Übung in `reason`, Blasen, Übungs-Sätzen (NEU-4) | 12 / 4 / 30 | Judge mit Liste der Freigabe: jede genannte Übung muss freigegeben sein |
+| Keine Übung erfinden (Chat) | 12 / 4 / 20 | S8c Regel 3 + Judge |
 | Weiterleitung an Behandler | 12 / 4 / 12 | `refer_to_treater` mit richtiger Rolle |
 | Kontextnutzung Akte | 9 / 3 / 9 | richtige Daten, nichts erfunden |
 | Pfad-Texte mit Verlauf | 6 / 2 / 6 | ≤ 2 Sätze, Anlass, Verlauf, S8c |
@@ -234,7 +245,8 @@ Unit-Tests (Dart und Server, gemeinsame Fixtures): Validator S8b (jede Regel 1�
 | DB-K07 | `warning_no_text_column` | `warning_signs` hat keine Textspalte (Katalogabfrage) |
 | DB-K08 | `chat_no_direct_write` | `authenticated` kann in Chat-Tabellen nicht direkt schreiben |
 | DB-K09 | `easier_variant_same_phase` | `save_plan` lehnt eine leichtere Variante aus anderer Phase/anderem Plan ab |
-| DB-K10 | `delete_includes_chat` | `delete_my_data` löscht Chat-Tabellen; Status `deleting` sperrt S9-Schreiben (8) |
+| DB-K10 | `delete_includes_chat` | `delete_my_data` löscht Chat-Tabellen. **Mit zwei Verbindungen** (Shell-Test wie Flutter DB-T31, NEU-3): A setzt `deleting` und löscht; B schreibt währenddessen eine Chat-Nachricht bzw. ruft `report_chat_warning` → B wartet bzw. scheitert mit `42501`; danach keine Zeile von B |
+| DB-K11 | `lock_trigger_on_chat_tables` | Schreibsperre (Flutter-Plan 4.3) liegt auf allen Chat-Tabellen und `warning_signs`; Schreiben bei Status `deleting`/`access_deleted` → `42501`; Löschen bei `deleting` erlaubt (NEU-3) |
 
 ---
 
@@ -244,9 +256,9 @@ Nur Testdaten (E-11), MDR nicht behandelt (NE-11). Einwilligungen: Physio-Sicht 
 ---
 
 ## 8. Löschkonzept
-v1.2 Abschnitt 9 und Flutter-Plan v1.1 4.7/6.7 gelten. Ausschnitt 3 ergänzt:
+v1.2 Abschnitt 9 und Flutter-Plan v1.2 4.7/6.7 gelten. Ausschnitt 3 ergänzt:
 - Typwert `deleting` existiert bereits (Flutter-Plan 4.3, K-m3). Weil Edge Functions lange Antworten streamen, setzt `delete_my_data()` ab Ausschnitt 3 **zuerst** in eigener kurzer Transaktion `status = 'deleting'` (sperrt S1b und S9), dann die Löschung wie in Ausschnitt 2 inkl. Chat-Tabellen, `ai_usage` (oder Anonymisierung, E-22) und `ai_events`.
-- S9 schreibt nur bei `status = 'active'` im selben Schreibvorgang (DB-K10).
+- **Sperre auch für Chat und Warnzeichen** (NEU-3): Der Trigger `app.lock_patient_for_write()` (Flutter-Plan 4.3) liegt auch auf `chat_messages`, `chat_summaries`, `manny_bubbles`, `ai_usage`, `ai_events` und `warning_signs`. Edge Functions schreiben im Namen des Patienten und unterliegen ihm; INSERT/UPDATE nur bei `active`, DELETE bei `active` oder `deleting`. Damit schreibt S9 nur bei `status = 'active'` (DB-K10, DB-K11).
 - Laufender Stream wird in der App vor dem Löschen abgebrochen; `OutboxSender.pauseAndDrain()` wie Ausschnitt 2 (umfasst `report_chat_warning`).
 - Warnzeichen aus dem Chat folgen O-9 (werden mit den Patientendaten gelöscht).
 - **E-24** (Löschen offline nur lokal?) bleibt **Annahme/offen**: Annahme „nein, klare Fehlermeldung“.
@@ -266,7 +278,7 @@ v1.2 Abschnitt 9 und Flutter-Plan v1.1 4.7/6.7 gelten. Ausschnitt 3 ergänzt:
 | KI-0 | Entscheidungen (13) | Nutzer/Orchestrator | – |
 | KI-L | Einwilligungs-, Transparenz-, Krisen- und Warnhinweistexte | Orchestrator mit Nutzer; Ton über `ui-designer` | E-17, E-21, E-31 |
 | KI-D | Brief: Chat aktiv, Zustände, Karten (Eskalation, Behandler), Physio-Hinweis, KI-Einwilligung, „Heute“ mit Vorschlag/Begründung/Kürzungshinweis, Übungsbegleitung, „Was Manny sich merkt“, Neubindungs-Hinweis | `ui-designer` | Ausschnitt 2 abgenommen |
-| KI-1 | Backend: Chat-Tabellen mit `owner_uid`, RLS, `report_chat_warning`, `app.record_chat_warning`, `app.on_rebind`-Erweiterung, `easier_variant_of`, Löschen; DB-K01 bis DB-K10 | `flutter-developer` | Ausschnitt 2, E-30 |
+| KI-1 | Backend: Chat-Tabellen mit `owner_uid`, RLS, Schreibsperre, `report_chat_warning`, `app.record_chat_warning`, `app.on_rebind`-Erweiterung, `easier_variant_of`, Löschen; DB-K01 bis DB-K11 | `flutter-developer` | Ausschnitt 2, E-30 |
 | KI-2 | Edge Functions `manny-chat`, `manny-today`, `manny-bubble` (S1–S9), SSE, Werkzeuge, Limits; Spike SDK/Deno | `flutter-developer` | KI-1, E-7, E-15, X-10 |
 | KI-2V | Validator S8b, Freitextprüfung S8c, Kürzungsregel, `estimateMinutes` – Dart + Server, gemeinsame Fixtures | `flutter-developer` | KI-1, E-27, E-28, E-30 |
 | KI-3 | Prompt, Werkzeuge, Zusammenfassung, Red-Flag-Liste + Vorprüfung | `flutter-developer`; Persona-Freigabe Nutzer | E-4, E-6, E-17 |
@@ -334,7 +346,7 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 | E-4 | Persona, Länge, Weiterleitungssätze | offen | KI-3; inkl. fester Satz bei Umfangs-Treffer (4.7) |
 | E-5 | Auth | erledigt | Einladung + gebundene Sitzung |
 | E-6 | Red-Flag-Startliste, Karte, 112 | offen | Startliste gekennzeichnet; `reason_code`-Liste für `report_chat_warning` |
-| E-7 | Limits, Budgets | offen | plus `manny-today` |
+| E-7 | Limits, Budgets | **offen – vor KI-1/KI-2 zu entscheiden** | plus `manny-today` |
 | E-8 | Daten ins Backend | erledigt | Ausschnitt 2 |
 | E-9 | Eval-Schwellen | offen | Freigabe-Treue 0 Verstöße; Freitext-Kategorie |
 | E-10 | Name/Freitext an KI | offen | mit E-32 zusammengeführt |
@@ -342,7 +354,7 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 | E-12 | Direktnachrichten | erledigt | nicht enthalten |
 | E-13 | Backend | erledigt | Supabase EU |
 | E-14 | `effort` | offen | Eval `low`/`medium`; ausdrücklich setzen |
-| E-15 | Rückfallmodell | offen | Prototyp an, EU-Weg aus |
+| E-15 | Rückfallmodell | **offen – vor KI-1/KI-2 zu entscheiden** | Prototyp an, EU-Weg aus |
 | E-16 | Testphase-Zugang | erledigt | Einladung |
 | E-17 | Hilfetexte Krise, Startliste, Physio-Warnhinweis, Kürzungshinweis | offen | über KI-L |
 | E-18 | Label-Quelle | offen | Fachperson, „vorläufig“ |
@@ -352,21 +364,21 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 | E-22 | Aufbewahrung | ruht | vor echten Daten |
 | E-23 | Altersgrenze | ruht | vor echten Daten |
 | E-24 | Löschen offline nur lokal? | **Annahme/offen** (NE-18) | Annahme: nein |
-| E-25 | Ablauf nach Vorprüfungs-Treffer | erledigt | Ereignis ohne Text Pflicht, offline nachsenden (4.3, NE-15) |
+| E-25 | Ablauf nach Vorprüfungs-Treffer | teilweise erledigt | Ereignis ohne Text ist Pflicht (NE-15); **offline nachsenden über die Warteschlange ist Annahme** (nicht vom Nutzer entschieden; NITPICK) |
 | E-26 | Eingabe ohne KI-Einwilligung | offen | Variante A |
-| E-27 | Physio-Grenzen | neu | Obergrenzen; `null` = nicht freigegeben (4.2.1) |
-| E-28 | Schmerzschwelle für Kürzung | neu, offen | Wert auf Skala O-3, unterhalb O-2; setzt der Nutzer |
+| E-27 | Physio-Grenzen | **neu – vor KI-1/KI-2 zu entscheiden** | Obergrenzen; `null` = nicht freigegeben (4.2.1) |
+| E-28 | Schmerzschwelle für Kürzung | **neu – vor KI-1/KI-2 zu entscheiden** | Wert auf Skala O-3, unterhalb O-2; setzt der Nutzer |
 | E-29 | Verhalten bei Verstoß | neu | kein zweiter Versuch, Ersatzprogramm (4.2.2) |
-| E-30 | Leichtere Variante | neu | `easier_variant_of` + Plan-Editor |
-| E-31 | KI-Einwilligung getrennt? | neu | getrennter Schritt; nennt Chat-Warnzeichen inkl. Krise |
+| E-30 | Leichtere Variante | **neu – vor KI-1/KI-2 zu entscheiden** | `easier_variant_of` + Plan-Editor |
+| E-31 | KI-Einwilligung getrennt? | **neu – vor KI-1/KI-2 zu entscheiden** | getrennter Schritt; nennt Chat-Warnzeichen inkl. Krise |
 | E-32 | Akte im Kontext | neu | Behandler (Rolle, Name), Krankengeschichte (Art, Titel), Befinden/Verlauf 7 Tage |
 | E-33 | Übung begleiten | neu | deterministisch, KI nur Motivationssätze |
 | E-34 | `refer_to_treater` | neu | ja |
 | E-35 | Freitextprüfung | neu | ja, für alle KI-Texte (4.7) |
-| E-36 | Kürzungsregel bei Schmerz (Werte) | neu (NE-16 Grundsatz entschieden) | [Vorschlag] 4.2.3: halbe Zeit, min. 5 Min, leichtere Variante bzw. halbe Sätze |
-| E-37 | Zahlenverbot in Begründung/Blasen/Übungs-Sätzen | neu | [Vorschlag] 4.7 Regel 1 |
+| E-36 | Kürzungsregel bei Schmerz (Werte) | **erledigt** (NE-16, NE-19) | 4.2.3: halbe Zeit, min. 5 Min, leichtere Variante bzw. halbe Sätze/Dauer/Wdh. |
+| E-37 | Zahlenverbot in Begründung/Blasen/Übungs-Sätzen | **erledigt** (NE-19) | 4.7 Regel 1 |
 
-**Blockierend vor KI-1/KI-2:** E-7, E-15, E-27, E-28, E-30, E-31, E-36. **Vor KI-3/KI-4:** E-4, E-6, E-9, E-17, E-18, E-19, E-37. **Vor KI-6:** E-33.
+**[vor KI-1/KI-2 zu entscheiden]:** E-7, E-15, E-27, E-28, E-30, E-31 (sowie O-2 aus Ausschnitt 2). **Vor KI-3/KI-4:** E-4, E-6, E-9, E-17, E-18, E-19. **Vor KI-6:** E-33.
 
 ---
 
@@ -411,7 +423,20 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 | N-3 | 0 NE-16, 4.2.3 |
 | N-4 | 0 NE-17 |
 | N-5 | 0 NE-18, 8, 13 (E-24) |
-| Querbezug Flutter-Plan v1.1 (M-1 bis M-5, Rollenmodell, DB-Tests) | Grundlagen, 4.3, 6.3, 8 |
+| Querbezug Flutter-Plan v1.2 (M-1 bis M-5, Rollenmodell, DB-Tests) | Grundlagen, 4.3, 6.3, 8 |
+
+### v2.1 → v2.2 (Re-Review R-P2-RR, Nutzerentscheidungen Runde 2)
+
+| Befund / Entscheidung | Abschnitt |
+|---|---|
+| NEU-1, NEU-2 Lock-Trigger | Flutter-Plan v1.2, 4.3; hier 8 (DELETE bei `deleting` erlaubt) |
+| NEU-3 Warnzeichen und Chat-Tabellen in der Sperre, DB-K10 mit zwei Verbindungen | 8; 6.3 DB-K10, DB-K11; 10 KI-1 |
+| NEU-4 Freitextprüfung: Restlücke, Einheiten, Wortzerlegung, Ausnahme ausgewählter Namen, Fixtures, Eval | 4.7 Regeln 1, 2, 5–7; 6.1 neue Kategorie |
+| NEU-5 bis NEU-7 | Flutter-Plan v1.2 (4.6, 10.2, 4.4) |
+| NEU-8 Kürzung ohne Sätze; S8b bei Schmerz | 4.2.3 Schritt 2; 4.2.1 Regel 7 |
+| NITPICK E-25 offline nachsenden = Annahme | 13 E-25 |
+| NE-19 Werte bestätigt (E-36, E-37) | 0, 4.2.3, 4.7, 13 |
+| Status und blockierende offene Werte | Kopf, 0, 13 |
 
 ### v1.2 → v2 (Kurzfassung)
 Zielbild „Manny ist das Gehirn“ (M-1 bis M-4); Kontext aus der Akte; Rahmen = Physio-Freigabe mit harter Validierung; Warnzeichen an den Physio; Physio sieht keinen Chat; `manny-today`; Übung begleiten; Auth über Einladung; `claude-haiku-5-5` als Haiku-Kandidat; Rückfall-Empfehlung im Prototyp an; neue Eval-Kategorien; Datenschutz-Prüfpunkte ruhen im Prototyp; Entscheidungsliste mit Status; v1.2-Abschnitte 11 (erledigt) und 12 (Spec 8) entfallen.
