@@ -1,7 +1,8 @@
 // Schritt 3: Verletzungstyp (Brief 6.1, UI-14). Vier `ChoiceCard`s,
 // Einfachauswahl; bei „Anderes“ erscheint ein optionales Textfeld („Was ist
 // passiert?“), „Weiter“ ist trotzdem aktiv. Auswahl und Freitext werden sofort
-// gespeichert.
+// gespeichert. Bei allen Typen außer Kreuzband erscheint der Hinweis, dass es
+// noch keinen eigenen Pfad gibt (Beispielpfad).
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -11,6 +12,7 @@ import '../../state/app_scope.dart';
 import '../../theme/cura_metrics.dart';
 import '../components/choice_card.dart';
 import '../components/cura_text_field.dart';
+import '../components/info_note.dart';
 
 class Step3Injury extends StatefulWidget {
   const Step3Injury({super.key, required this.prompt});
@@ -76,6 +78,12 @@ class _Step3InjuryState extends State<Step3Injury> {
             textInputAction: TextInputAction.done,
             onChanged: c.setInjuryOther,
           ),
+        // Nur der Kreuzband-Pfad ist ausgearbeitet; bei den anderen Typen steht
+        // der Beispielpfad (ehrlicher Hinweis, SK-1).
+        if (selected != null && selected != InjuryType.acl) ...<Widget>[
+          const SizedBox(height: CuraSpace.s2),
+          const InfoNote(text: S.injuryNoOwnPath, announce: true),
+        ],
       ],
     );
   }

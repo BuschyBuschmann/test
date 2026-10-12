@@ -150,7 +150,7 @@ class _PreviewScriptState extends State<PreviewScript> {
         found = w.onPressed;
         return;
       }
-      // Primärbuttons tragen ihr Label als Text („Training starten“).
+      // Primärbuttons tragen ihr Label als Text („Training eintragen“).
       if (w is PillButton && w.label == label && w.onPressed != null) {
         found = w.onPressed;
         return;

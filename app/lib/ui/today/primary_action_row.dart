@@ -1,5 +1,5 @@
 // `PrimaryActionRow` (Ergänzung 2, Abschnitt 2 und 3.1, Plan 4.6): die feste
-// Primärbutton-Reihe des Tabs Heute. „Training starten“ (Primär) bzw. „Heute
+// Primärbutton-Reihe des Tabs Heute. „Training eintragen“ (Primär) bzw. „Heute
 // erledigt“ (deaktiviert, mit Haken) teilt sich die Reihe mit dem
 // Manny-Button: Breite des Primärbuttons = verfügbare Breite − 8 − 56 (bei
 // 320 dp genau 224 dp, 96 dp nach Seitenrändern), Höhe 56 dp, unten bündig.
@@ -11,7 +11,7 @@
 // einer Spalte rechts neben dem Primärbutton, nicht über der ganzen Reihe. So
 // folgt der Nachrichten-Button dem Manny-Button auch im Umbruchszustand.
 //
-// Fokusreihenfolge (Ergänzung 2, 4): Nachrichten-Button, „Training starten“,
+// Fokusreihenfolge (Ergänzung 2, 4): Nachrichten-Button, „Training eintragen“,
 // Manny-Button, danach die Nav.
 import 'package:flutter/material.dart';
 
@@ -25,14 +25,14 @@ import '../home/home_shell.dart';
 
 /// Zustand des Primärbuttons (Brief 6.3).
 enum TrainingButtonState {
-  /// „Training starten“, bedienbar.
+  /// „Training eintragen“, bedienbar.
   start,
 
   /// „Heute erledigt“ mit Haken, nicht bedienbar (Erledigt gewinnt auch bei
   /// leerer Liste, B-6).
   done,
 
-  /// „Training starten“, deaktiviert (leere Liste).
+  /// „Training eintragen“, deaktiviert (leere Liste).
   disabled,
 }
 
@@ -62,8 +62,10 @@ class PrimaryActionRow extends StatelessWidget {
     final CuraColors colors = CuraColors.of(context);
     final Widget button = PillButton(
       key: ProbeKeys.primary,
-      label: done ? S.trainingDone : S.startTraining,
-      icon: done ? Icons.check_rounded : Icons.play_arrow_rounded,
+      label: done ? S.trainingDone : S.trainingLog,
+      // Ohne Symbol im Start-Zustand: das Play-Zeichen versprach einen Start,
+      // und „Training eintragen“ passt mit Symbol nicht mehr in 224 dp (UI-73).
+      icon: done ? Icons.check_rounded : null,
       onPressed: state == TrainingButtonState.start ? onStart : null,
       focusNode: startFocusNode,
     );

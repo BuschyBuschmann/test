@@ -84,7 +84,7 @@ abstract final class S {
   /// Kurznamen der Verletzungstypen für die Kopfzeile (A-13).
   static const String injuryShortAcl = 'Kreuzband';
   static const String injuryShortAnkle = 'Sprunggelenk';
-  static const String injuryShortMuscle = 'Muskelfaser';
+  static const String injuryShortMuscle = 'Muskelfaserriss';
   static const String injuryShortOther = 'Reha';
 
   /// Bezeichnungen der Units (Screenreader, Hinweise).
@@ -139,6 +139,12 @@ abstract final class S {
   /// „Streak-Freezes: 2“
   static String freezesLabel(int n) => 'Streak-Freezes: $n';
 
+  /// Erklärungen zu den Chips der Kopfzeile (Tipp auf Freeze bzw. Streak).
+  static const String hintFreeze =
+      'Ein Freeze rettet deinen Streak an einem verpassten Tag.';
+  static const String hintStreak =
+      'Dein Streak zählt die Tage in Folge mit Training.';
+
   /// Einstieg ins Sheet „Deine Daten“ (Tooltip und Label des Icons).
   static const String dataSheetOpen = 'Deine Daten';
 
@@ -155,6 +161,15 @@ abstract final class S {
   static const String dataRecomputeNote =
       'Ändern sich Verletzung oder Datum, werden Woche, Phase und Pfad neu '
       'berechnet. Dein Streak bleibt.';
+
+  /// Hinweis bei Verletzungen ohne eigenen Pfad (Onboarding Schritt 3 und
+  /// „Deine Daten“): die App zeigt vorerst den Beispielpfad.
+  static const String injuryNoOwnPath =
+      'Für diese Verletzung gibt es noch keinen eigenen Pfad. Du siehst '
+      'einen Beispielpfad.';
+
+  /// Eintrag zur Datenschutzerklärung in „Deine Daten“.
+  static const String dataPrivacyEntry = 'Datenschutzerklärung';
   static const String dataDeleteLabel = 'Daten löschen';
   static const String dataDeleteText =
       'Löscht alles auf diesem Gerät und nimmt deine Einwilligung zurück. '
@@ -462,7 +477,6 @@ abstract final class S {
   static const String customAdd = 'Eigene Übung';
   static const String customAddLabel = 'Eigene Übung hinzufügen';
 
-  static const String startTraining = 'Training starten';
   static const String trainingDone = 'Heute erledigt';
 
   /// Trainings-Sheet „Wie willst du trainieren?“ (Brief 6.3, Spec 2).
@@ -474,7 +488,14 @@ abstract final class S {
   static const String modeSoon = 'Folgt';
   static String modeDisabledLabel(String title) =>
       '$title, folgt, noch nicht verfügbar';
+
+  /// Hauptbutton auf Heute. Solange nur der Modus „Manuell“ geht, heißt er, was
+  /// er tut: das Training eintragen (öffnet das Sheet zur Bestätigung).
   static const String trainingLog = 'Training eintragen';
+
+  /// Bestätigung im Sheet (anderer Wortlaut als der Hauptbutton, damit beide
+  /// nicht dasselbe heißen).
+  static const String trainingSheetConfirm = 'Eintragen';
 
   /// Snackbars mit Rückgängig (Ergänzung 1, 3.3; Brief 6.3).
   static const String loggedSnackbar = 'Eingetragen.';

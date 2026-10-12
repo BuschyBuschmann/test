@@ -250,7 +250,7 @@ class HomeShellState extends State<HomeShell> {
   }
 
   /// Folgen eines Tageswechsels in der UI (Plan 4.6). Auch von den Heute-Screens
-  /// zu rufen, wenn eine Aktion (z. B. „Training eintragen“ über Mitternacht)
+  /// zu rufen, wenn eine Aktion (z. B. „Eintragen“ im Sheet über Mitternacht)
   /// den Wechsel ausgelöst hat.
   Future<void> dayChanged() async {
     _controller.transient.endUndoWindow();
@@ -416,7 +416,7 @@ class HomeShellState extends State<HomeShell> {
   static const double _focusOrderContent = 2;
   static const double focusOrderCluster = 3;
 
-  /// Heute (Ergänzung 2, 4): Nachrichten-Button (3), „Training starten“,
+  /// Heute (Ergänzung 2, 4): Nachrichten-Button (3), „Training eintragen“,
   /// Manny-Button, dann die Nav.
   static const double focusOrderStart = 3.1;
   static const double focusOrderManny = 3.2;

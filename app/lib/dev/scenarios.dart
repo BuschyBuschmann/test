@@ -18,6 +18,7 @@ import '../logic/manny_state.dart';
 import '../logic/path_generator.dart';
 import '../logic/path_model.dart';
 import '../logic/placeholder_pools.dart';
+import '../logic/plural.dart';
 import '../logic/streak.dart';
 import '../logic/injury_type.dart';
 import '../theme/cura_colors.dart';
@@ -743,6 +744,17 @@ AppSeed _obInjuryAcl(ScenarioEnv env) => AppSeed(
   ),
 );
 
+/// Muskelfaserriss gewählt: der Hinweis „noch keinen eigenen Pfad“ (SK-1).
+AppSeed _obInjuryMuscle(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    step: 2,
+    name: PreviewTexts.nameValue,
+    type: InjuryType.muscle,
+    consent: true,
+  ),
+);
+
 AppState _otherInjury(ScenarioEnv env) => _onboardingState(
   env,
   step: 2,
@@ -994,6 +1006,28 @@ AppSeed _pathHintDone(ScenarioEnv env) => AppSeed(
   taps: <String>[_unitLabel('w4-d3', UnitStatus.done)],
 );
 
+/// Tipp auf den Chip „Freeze“: „Ein Freeze rettet deinen Streak an einem
+/// verpassten Tag.“ (SK-1). Ab Skalierung 1,5 steht der Chip in der mitlaufenden
+/// Kopfzeile ganz oben im Pfad: der Pfad scrollt zuerst ganz nach oben (bei
+/// kleiner Schrift ändert das am Chip nichts).
+AppSeed _pathStatHintFreeze(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  taps: <String>[
+    kPreviewScrollStart,
+    S.freezesLabel(const StreakState().freezes),
+  ],
+);
+
+/// Tipp auf den Chip „Streak“: „Dein Streak zählt die Tage in Folge mit
+/// Training.“ (SK-1).
+AppSeed _pathStatHintStreak(ScenarioEnv env) => AppSeed(
+  state: _pathState(env, streak: _streakActive(env)),
+  taps: <String>[
+    kPreviewScrollStart,
+    S.streakLabel(tage(_streakActive(env).count)),
+  ],
+);
+
 AppSeed _pathWeek1(ScenarioEnv env) =>
     AppSeed(state: _pathState(env, daysSinceInjury: 0));
 
@@ -1197,7 +1231,7 @@ AppSeed _todaySnackbarRemoved(ScenarioEnv env) => AppSeed(
 /// „Eingetragen. Rückgängig“ (echter Weg: Sheet, „Training eintragen“).
 AppSeed _todaySnackbarLogged(ScenarioEnv env) => AppSeed(
   state: _todayState(env),
-  taps: const <String>[S.navToday, S.startTraining, S.trainingLog],
+  taps: const <String>[S.navToday, S.trainingLog, S.trainingSheetConfirm],
 );
 
 /// Snackbar über der Gruppe bei bis ans Ende gescrollter Liste.
@@ -1208,7 +1242,7 @@ AppSeed _todaySnackbarCluster(ScenarioEnv env) => AppSeed(
 
 AppSeed _todayModeSheet(ScenarioEnv env) => AppSeed(
   state: _todayState(env),
-  taps: const <String>[S.navToday, S.startTraining],
+  taps: const <String>[S.navToday, S.trainingLog],
 );
 
 AppSeed _todayCustomDialog(ScenarioEnv env) => AppSeed(
@@ -1267,6 +1301,33 @@ AppSeed _dataSheetOther(ScenarioEnv env) => AppSeed(
   ),
   taps: _openData,
 );
+
+/// Gespeichert: Muskelfaserriss. Der Hinweis „noch keinen eigenen Pfad“ steht
+/// unter den Karten, die Kopfzeile darunter zeigt den vollen Kurznamen (SK-1).
+AppSeed _dataSheetMuscle(ScenarioEnv env) => AppSeed(
+  state: _completedState(env).copyWith(
+    onboarding: _completedState(env).onboarding
+        .copyWith(injuryType: InjuryType.muscle),
+  ),
+  taps: <String>[..._openData, kPreviewScrollSheetEnd],
+);
+
+/// Link „Datenschutzerklärung“ ganz unten im Sheet: öffnet die
+/// Platzhalterseite (SK-1).
+AppSeed _dataPrivacy(ScenarioEnv env) => AppSeed(
+  state: _completedState(env),
+  taps: <String>[..._openData, kPreviewScrollSheetEnd, S.dataPrivacyEntry],
+);
+
+/// Pfad bei Muskelfaserriss ohne Sheet: Kopfzeile mit vollem Kurznamen.
+AppSeed _pathMuscle(ScenarioEnv env) {
+  final AppState base = _pathState(env, streak: _streakActive(env));
+  return AppSeed(
+    state: base.copyWith(
+      onboarding: base.onboarding.copyWith(injuryType: InjuryType.muscle),
+    ),
+  );
+}
 
 /// Entwurf geändert: „Speichern“ ist aktiv.
 AppSeed _dataSheetDirty(ScenarioEnv env) => AppSeed(
@@ -1379,6 +1440,12 @@ final List<Scenario> kScenarios = <Scenario>[
     expectsHeader: true,
   ),
   Scenario(
+    id: 'ob3-muscle',
+    app: _obInjuryMuscle,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
     id: 'ob3-other-keyboard',
     app: _obInjuryOtherKeyboard,
     keyboard: true,
@@ -1449,6 +1516,9 @@ final List<Scenario> kScenarios = <Scenario>[
   _pathScenario('path-hint-done', _pathHintDone),
   _pathScenario('path-week1', _pathWeek1),
   _pathScenario('path-end', _pathEnd),
+  _pathScenario('path-stat-hint-freeze', _pathStatHintFreeze),
+  _pathScenario('path-stat-hint-streak', _pathStatHintStreak),
+  _pathScenario('path-muscle', _pathMuscle),
   _pathScenario('path-outlook', _pathOutlook),
   _pathScenario('path-outlook-hint', _pathOutlookHint),
   _pathScenario('path-header-wrap', _pathActive, fixedTextScale: 1.2),
@@ -1480,7 +1550,7 @@ final List<Scenario> kScenarios = <Scenario>[
   _todayScenario('today-empty-done', _todayEmptyDone),
   _todayScenario('today-cluster', _todayCluster),
   _todayScenario('today-done-cluster', _todayDoneCluster),
-  // Umbruchszustand: „Training starten“ bricht um (UI-71, UI-73).
+  // Umbruchszustand: „Training eintragen“ bricht um (UI-71, UI-73).
   _todayScenario('today-wrap', _todayStandard, fixedTextScale: 1.5),
   _todayScenario('today-snackbar-removed', _todaySnackbarRemoved),
   _todayScenario('today-snackbar-logged', _todaySnackbarLogged),
@@ -1513,6 +1583,12 @@ final List<Scenario> kScenarios = <Scenario>[
   ),
   Scenario(id: 'path-sheet-open', app: _pathSheetOpen, expectsPrimary: true),
   Scenario(id: 'data-sheet-other', app: _dataSheetOther, expectsPrimary: true),
+  Scenario(
+    id: 'data-sheet-muscle',
+    app: _dataSheetMuscle,
+    expectsPrimary: true,
+  ),
+  Scenario(id: 'data-privacy', app: _dataPrivacy, expectsHeader: true),
   Scenario(id: 'data-sheet-dirty', app: _dataSheetDirty, expectsPrimary: true),
   Scenario(id: 'data-discard-dialog', app: _dataDiscardDialog),
   Scenario(id: 'data-delete-dialog', app: _dataDeleteDialog),

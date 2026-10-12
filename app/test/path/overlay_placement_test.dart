@@ -517,4 +517,62 @@ void main() {
       },
     );
   });
+
+  group('Hinweis an einem Chip der Kopfzeile (SK-1)', () {
+    const Size phone = Size(390, 844);
+
+    test('steht unter dem Chip, Pfeil an seiner Mitte, 16 dp Seitenrand', () {
+      final Rect chip = const Rect.fromLTWH(220, 40, 64, 36);
+      final HintPlacement p = placeAnchoredHint(
+        anchor: chip,
+        bounds: phone,
+        bottomLimit: 600,
+        measure: _hintOf(240, 60),
+      );
+      expect(p.arrow, HintArrow.up);
+      expect(p.rect.top, chip.bottom);
+      expect(p.rect.left, greaterThanOrEqualTo(16));
+      expect(p.rect.right, lessThanOrEqualTo(390 - 16));
+      expect(p.rect.left + p.arrowCenter, closeTo(chip.center.dx, 0.01));
+      expect(p.limited, isFalse);
+    });
+
+    test('Chip links außen: Hinweis bleibt im Rand, Pfeil bleibt am Chip', () {
+      final Rect chip = const Rect.fromLTWH(16, 40, 64, 36);
+      final HintPlacement p = placeAnchoredHint(
+        anchor: chip,
+        bounds: phone,
+        bottomLimit: 600,
+        measure: _hintOf(240, 60),
+      );
+      expect(p.rect.left, 16);
+      expect(p.rect.left + p.arrowCenter, closeTo(chip.center.dx, 0.01));
+    });
+
+    test('kein Platz darunter: darüber', () {
+      final Rect chip = const Rect.fromLTWH(100, 400, 64, 36);
+      final HintPlacement p = placeAnchoredHint(
+        anchor: chip,
+        bounds: phone,
+        bottomLimit: 450,
+        measure: _hintOf(240, 60),
+      );
+      expect(p.arrow, HintArrow.down);
+      expect(p.rect.bottom, chip.top);
+    });
+
+    test('weder darüber noch darunter genug Platz: begrenzt, Text scrollt '
+        'innen, nie über die Grenze', () {
+      final Rect chip = const Rect.fromLTWH(100, 60, 64, 36);
+      final HintPlacement p = placeAnchoredHint(
+        anchor: chip,
+        bounds: const Size(320, 568),
+        bottomLimit: 160,
+        measure: _hintOf(240, 200),
+      );
+      expect(p.limited, isTrue);
+      expect(p.rect.bottom, lessThanOrEqualTo(160 + 0.01));
+      expect(p.rect.top, greaterThanOrEqualTo(0));
+    });
+  });
 }

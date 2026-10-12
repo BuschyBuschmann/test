@@ -290,6 +290,47 @@ void main() {
     });
   });
 
+  group('Hinweis „noch keinen eigenen Pfad“ (SK-1)', () {
+    testWidgets('Sprunggelenk, Muskelfaserriss und Anderes zeigen den Hinweis, '
+        'Kreuzband nicht; Hinweis ist eine Live-Region', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle sem = tester.ensureSemantics();
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      await _advanceTo(tester, 2);
+      expect(
+        find.text(S.injuryNoOwnPath),
+        findsNothing,
+        reason: 'nichts gewählt',
+      );
+      expect(
+        S.injuryNoOwnPath,
+        'Für diese Verletzung gibt es noch keinen eigenen Pfad. Du siehst '
+        'einen Beispielpfad.',
+      );
+      for (final String title in <String>[
+        S.injuryAnkle,
+        S.injuryMuscle,
+        S.injuryOther,
+      ]) {
+        await tester.tap(find.text(title));
+        await tester.pumpAndSettle();
+        expect(find.text(S.injuryNoOwnPath), findsOneWidget, reason: title);
+        expect(
+          tester.getSemantics(find.text(S.injuryNoOwnPath)).label,
+          S.injuryNoOwnPath,
+          reason: title,
+        );
+      }
+      await tester.tap(find.text(S.injuryAcl));
+      await tester.pumpAndSettle();
+      expect(find.text(S.injuryNoOwnPath), findsNothing);
+      sem.dispose();
+      await disposeApp(tester);
+    });
+  });
+
   group('Fortsetzen und Zurück (UI-16, N-13)', () {
     testWidgets('jede Eingabe sofort gespeichert; Neustart setzt fort', (
       WidgetTester tester,

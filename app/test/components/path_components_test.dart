@@ -625,7 +625,7 @@ void main() {
       final Map<InjuryType, String> names = <InjuryType, String>{
         InjuryType.acl: 'Kreuzband',
         InjuryType.ankle: 'Sprunggelenk',
-        InjuryType.muscle: 'Muskelfaser',
+        InjuryType.muscle: 'Muskelfaserriss',
         InjuryType.other: 'Reha',
       };
       for (final InjuryType t in InjuryType.values) {

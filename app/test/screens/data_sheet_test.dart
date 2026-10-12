@@ -38,6 +38,7 @@ import 'package:curaone/ui/data_sheet/delete_error_notice.dart';
 import 'package:curaone/ui/data_sheet/discard_dialog.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/onboarding/onboarding_flow.dart';
+import 'package:curaone/ui/onboarding/privacy_placeholder_page.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -694,6 +695,92 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  group('Hinweis „noch keinen eigenen Pfad“ und Datenschutz (SK-1)', () {
+    testWidgets('Der Hinweis folgt der Auswahl im Entwurf: bei Kreuzband weg, '
+        'sonst da', (WidgetTester tester) async {
+      await _pumpPath(tester);
+      await _openSheet(tester);
+      expect(find.text(S.injuryNoOwnPath), findsNothing);
+      for (final String title in <String>[
+        S.injuryAnkle,
+        S.injuryMuscle,
+        S.injuryOther,
+      ]) {
+        await _tapIn(tester, _card(title));
+        expect(find.text(S.injuryNoOwnPath), findsOneWidget, reason: title);
+      }
+      await _tapIn(tester, _card(S.injuryAcl));
+      expect(find.text(S.injuryNoOwnPath), findsNothing);
+      await disposeApp(tester);
+    });
+
+    testWidgets(
+      'Gespeichert als Muskelfaserriss: Hinweis beim Öffnen, Kopfzeile '
+      'zeigt den vollen Namen',
+      (WidgetTester tester) async {
+        await _pumpPath(
+          tester,
+          tweak: (AppState s) => s.copyWith(
+            onboarding: s.onboarding.copyWith(injuryType: InjuryType.muscle),
+          ),
+        );
+        expect(find.text('Phase 2 · Muskelfaserriss'), findsOneWidget);
+        await _openSheet(tester);
+        expect(find.text(S.injuryNoOwnPath), findsOneWidget);
+        await disposeApp(tester);
+      },
+    );
+
+    testWidgets('Der Link „Datenschutzerklärung“ öffnet die Platzhalterseite '
+        'über dem Sheet; der Entwurf bleibt, der Fokus kehrt zurück', (
+      WidgetTester tester,
+    ) async {
+      await _pumpPath(tester);
+      await _openSheet(tester);
+      await _makeDirty(tester);
+      final Finder link = find.bySemanticsLabel(S.dataPrivacyEntry);
+      await tester.ensureVisible(find.text(S.dataPrivacyEntry));
+      await tester.pumpAndSettle();
+      final Rect r = tester.getRect(find.text(S.dataPrivacyEntry));
+      expect(r.height, greaterThan(0));
+      await tester.tap(find.text(S.dataPrivacyEntry));
+      await tester.pumpAndSettle();
+      expect(find.byType(PrivacyPlaceholderPage), findsOneWidget);
+      expect(find.text(S.privacyPlaceholderBody), findsOneWidget);
+      await tester.tap(find.byTooltip(S.back));
+      await tester.pumpAndSettle();
+      expect(find.byType(PrivacyPlaceholderPage), findsNothing);
+      expect(_sheet, findsOneWidget);
+      expect(_saveEnabled(tester), isTrue, reason: 'Entwurf bleibt');
+      expect(link, findsWidgets);
+      final BuildContext? ctx = FocusManager.instance.primaryFocus?.context;
+      expect(ctx, isNotNull);
+      expect(
+        ctx!.findAncestorWidgetOfExactType<CuraPressable>()?.semanticLabel,
+        S.dataPrivacyEntry,
+      );
+      await disposeApp(tester);
+    });
+
+    testWidgets(
+      'Datenschutz-Link: Hit-Area ≥ 48 dp, Semantik als Schaltfläche',
+      (WidgetTester tester) async {
+        final SemanticsHandle sem = tester.ensureSemantics();
+        await _pumpPath(tester);
+        await _openSheet(tester);
+        await tester.ensureVisible(find.text(S.dataPrivacyEntry));
+        await tester.pumpAndSettle();
+        final SemanticsNode node = tester.getSemantics(
+          find.bySemanticsLabel(S.dataPrivacyEntry),
+        );
+        expect(node.flagsCollection.isButton, isTrue);
+        expect(node.rect.height, greaterThanOrEqualTo(48));
+        sem.dispose();
+        await disposeApp(tester);
+      },
+    );
+  });
+
   group('Änderungen verwerfen (UI-57)', () {
     Future<void> expectDiscardFor(
       WidgetTester tester,
@@ -1264,6 +1351,13 @@ void main() {
         await tester.tapAt(r.center);
         await _settle(tester);
         expect(find.byType(MannyChatScreen), findsNothing);
+        // Die Stelle der Gruppe kann im Sheet auf einen echten Button fallen
+        // (z. B. „Alle Daten löschen“): ein dadurch geöffneter Dialog wird
+        // geschlossen, hier zählt nur, dass nie der Chat aufgeht.
+        if (find.byType(DeleteDialog).evaluate().isNotEmpty) {
+          await tester.tap(_cancel);
+          await _settle(tester);
+        }
       }
 
       // Auch unter dem Dialog.

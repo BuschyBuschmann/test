@@ -18,6 +18,7 @@ import 'package:curaone/ui/components/chat_composer.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
+import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/opaque_surface.dart';
@@ -242,7 +243,8 @@ void main() {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.pump();
           final String kind;
-          if (_focusInside(find.byType(HeaderIconButton))) {
+          if (_focusInside(find.byType(HeaderIconButton)) ||
+              _focusInside(find.byType(StatPill))) {
             kind = 'header';
           } else if (_focusInside(find.byType(PathOutlook))) {
             kind = 'outlook';

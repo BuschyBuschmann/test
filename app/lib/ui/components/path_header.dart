@@ -7,14 +7,17 @@
 // wenn der Textblock links weniger als 150 dp bekäme (320 dp oder große
 // Schrift), **Umbruch** (Zeile 1: Textblock und Icon; Zeile 2, 8 dp tiefer:
 // beide Pillen linksbündig, dürfen selbst umbrechen). Es wird nichts
-// abgeschnitten oder überlagert. Die Pillen sind reine Information und kein
-// Tap-Ziel (B-8).
+// abgeschnitten oder überlagert. Die Pillen sind Schaltflächen (SK-1): ein
+// Tipp erklärt Freeze bzw. Streak (`NodeHint`, vom `PathScreen` gezeigt), Hit-
+// Area mindestens 48 dp.
 //
 // Ab Textskalierung 1,5 teilt sich der Kopf (F-1): [PathHeaderBar] bleibt als
 // feste schmale Zeile stehen (höchstens 64 dp, „Woche N“ links, „Deine Daten“
 // rechts, Schrift auf höchstens 1,3 begrenzt, Fläche `bg`, kein Blur); der Rest
 // ([PathHeaderInfo]: Phase, „Beispielpfad“, Freezes, Streak) läuft in der
-// Scrollfläche mit.
+// Scrollfläche mit. Die Pillen stehen also nie in der festen Zeile (die bliebe
+// sonst nicht bei 64 dp); sie sind dort in der Scrollfläche genauso antippbar,
+// und ihr Hinweis schließt beim Scrollen wie jeder `NodeHint`.
 //
 // Streak-Zustände: aktiv (Flamme `accent-hi`), eingefroren (Flamme
 // `streak-freeze` plus das Wort „eingefroren“), Reset (Zahl 0, Flamme
@@ -99,10 +102,16 @@ class PathHeaderInfo extends StatelessWidget {
     super.key,
     required this.phaseLine,
     required this.streak,
+    this.onFreezeTap,
+    this.onStreakTap,
   });
 
   final String phaseLine;
   final StreakView streak;
+
+  /// Tipp auf die Pillen (Rechteck der Pille, global).
+  final ValueChanged<Rect>? onFreezeTap;
+  final ValueChanged<Rect>? onStreakTap;
 
   @override
   Widget build(BuildContext context) {
@@ -128,14 +137,10 @@ class PathHeaderInfo extends StatelessWidget {
             ),
             const CuraLabel(S.samplePathLabel, header: false),
             const SizedBox(height: CuraSpace.s2),
-            Wrap(
-              spacing: CuraSize.statPillGap,
-              runSpacing: CuraSize.statPillGap,
-              children: <Widget>[
-                _freezePillFor(context, streak),
-                _streakPillFor(context, streak),
-              ],
-            ),
+            _pillWrap(<Widget>[
+              _freezePillFor(context, streak, onFreezeTap),
+              _streakPillFor(context, streak, onStreakTap),
+            ], tappable: onFreezeTap != null || onStreakTap != null),
           ],
         ),
       ),
@@ -143,7 +148,28 @@ class PathHeaderInfo extends StatelessWidget {
   }
 }
 
-StatPill _freezePillFor(BuildContext context, StreakView streak) {
+/// Pillen in Zeilen, die umbrechen dürfen. Antippbare Pillen haben schmalere
+/// Boxen als ihre sichtbare Form ([StatPill.hitInset]): die Lücken wachsen
+/// entsprechend (sichtbar bleiben 4 dp), und der Block rückt um das Maß ein,
+/// damit die sichtbare Kante am Seitenrand steht. Zwischen den Zeilen liegen
+/// die Ziele 8 dp auseinander.
+Widget _pillWrap(List<Widget> pills, {required bool tappable}) {
+  final double inset = tappable ? StatPill.hitInset : 0;
+  return Padding(
+    padding: EdgeInsets.only(left: inset),
+    child: Wrap(
+      spacing: tappable ? StatPill.boxGap : CuraSize.statPillGap,
+      runSpacing: tappable ? CuraSize.minTargetGap : CuraSize.statPillGap,
+      children: pills,
+    ),
+  );
+}
+
+StatPill _freezePillFor(
+  BuildContext context,
+  StreakView streak,
+  ValueChanged<Rect>? onPressed,
+) {
   final CuraColors colors = CuraColors.of(context);
   return StatPill(
     icon: Icons.ac_unit_rounded,
@@ -151,10 +177,15 @@ StatPill _freezePillFor(BuildContext context, StreakView streak) {
     value: '${streak.freezes}',
     valueColor: colors.streakFreeze,
     semanticLabel: S.freezesLabel(streak.freezes),
+    onPressed: onPressed,
   );
 }
 
-StatPill _streakPillFor(BuildContext context, StreakView streak) {
+StatPill _streakPillFor(
+  BuildContext context,
+  StreakView streak,
+  ValueChanged<Rect>? onPressed,
+) {
   final CuraColors colors = CuraColors.of(context);
   final bool frozen = streak.display == StreakDisplay.frozen;
   final Color flame = switch (streak.display) {
@@ -171,6 +202,7 @@ StatPill _streakPillFor(BuildContext context, StreakView streak) {
     semanticLabel: frozen
         ? S.streakFrozenLabel(tage(streak.count))
         : S.streakLabel(tage(streak.count)),
+    onPressed: onPressed,
   );
 }
 
@@ -182,6 +214,8 @@ class PathHeader extends StatelessWidget {
     required this.streak,
     required this.onOpenData,
     this.dataFocusNode,
+    this.onFreezeTap,
+    this.onStreakTap,
   });
 
   final int week;
@@ -189,6 +223,11 @@ class PathHeader extends StatelessWidget {
   /// „Phase 2 · Kreuzband“
   final String phaseLine;
   final StreakView streak;
+
+  /// Tipp auf die Pillen (Rechteck der Pille, global): erklärt Freeze bzw.
+  /// Streak. `null` = reine Anzeige.
+  final ValueChanged<Rect>? onFreezeTap;
+  final ValueChanged<Rect>? onStreakTap;
 
   /// Einstieg „Deine Daten“ (öffnet das Sheet).
   final VoidCallback onOpenData;
@@ -221,15 +260,18 @@ class PathHeader extends StatelessWidget {
     );
   }
 
-  StatPill _freezePill(BuildContext context) => _freezePillFor(context, streak);
+  StatPill _freezePill(BuildContext context) =>
+      _freezePillFor(context, streak, onFreezeTap);
 
-  StatPill _streakPill(BuildContext context) => _streakPillFor(context, streak);
+  StatPill _streakPill(BuildContext context) =>
+      _streakPillFor(context, streak, onStreakTap);
 
   @override
   Widget build(BuildContext context) {
     final StatPill freeze = _freezePill(context);
     final StatPill streakPill = _streakPill(context);
     final Widget data = _dataButton(onOpenData, dataFocusNode);
+    final bool tappable = onFreezeTap != null || onStreakTap != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         CuraSpace.pageMargin,
@@ -251,15 +293,22 @@ class PathHeader extends StatelessWidget {
           final double left =
               box.maxWidth - pills - CuraSize.touchTarget - CuraSpace.s2;
           if (left >= CuraSize.pathHeaderWrapMinText) {
+            // Mit antippbaren Pillen sind die Boxen je Seite um `hitInset`
+            // schmaler als die sichtbaren Pillen; die Lücken wachsen um
+            // dasselbe Maß, damit die sichtbaren Abstände (4 dp) und Lagen
+            // bleiben und die Ziele 8 dp und mehr auseinander liegen.
+            final double inset = tappable ? StatPill.hitInset : 0;
             return Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 Expanded(child: _textBlock(context)),
-                const SizedBox(width: CuraSpace.s2),
+                SizedBox(width: CuraSpace.s2 + inset),
                 freeze,
-                const SizedBox(width: CuraSize.statPillGap),
+                SizedBox(
+                  width: tappable ? StatPill.boxGap : CuraSize.statPillGap,
+                ),
                 streakPill,
-                const SizedBox(width: CuraSize.statPillGap),
+                SizedBox(width: CuraSize.statPillGap + inset),
                 data,
               ],
             );
@@ -276,11 +325,7 @@ class PathHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: CuraSpace.s2),
-              Wrap(
-                spacing: CuraSize.statPillGap,
-                runSpacing: CuraSize.statPillGap,
-                children: <Widget>[freeze, streakPill],
-              ),
+              _pillWrap(<Widget>[freeze, streakPill], tappable: tappable),
             ],
           );
         },

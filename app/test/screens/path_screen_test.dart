@@ -34,6 +34,7 @@ import 'package:curaone/ui/components/node_hint.dart';
 import 'package:curaone/ui/components/path_header.dart';
 import 'package:curaone/ui/components/path_node.dart';
 import 'package:curaone/ui/components/path_outlook.dart';
+import 'package:curaone/ui/components/opaque_surface.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
 import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/home/home_shell.dart';
@@ -1173,8 +1174,9 @@ void main() {
       'Units: sichtbarer Fokus, Enter und Leertaste lösen aus (UI-63)',
       (WidgetTester tester) async {
         await _pump(tester);
-        // Zum ersten Unit-Fokus tabben (Kopf: „Deine Daten“, dann Units).
-        for (int i = 0; i < 3; i++) {
+        // Zum ersten Unit-Fokus tabben (Kopf: Freeze, Streak, „Deine Daten“,
+        // dann Units).
+        for (int i = 0; i < 5; i++) {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.pump();
         }
@@ -1699,7 +1701,8 @@ void main() {
         (WidgetTester tester) async {
           await _pump(tester);
           final List<String> order = <String>[];
-          for (int i = 0; i < 4; i++) {
+          // Kopf: Freeze, Streak, „Deine Daten“; dann Marke, Boss, Phasen-Ende.
+          for (int i = 0; i < 6; i++) {
             await tester.sendKeyEvent(LogicalKeyboardKey.tab);
             await tester.pump();
             final BuildContext ctx =
@@ -1884,6 +1887,215 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(_hint, findsNothing);
+      await _close(tester);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  group('Chips Freeze und Streak erklären sich (SK-1)', () {
+    Finder chip(String label) => find.bySemanticsLabel(label);
+    // Ab ×1,5 laufen die Chips in der Scrollfläche mit (F-1): zum Antippen ganz
+    // nach oben scrollen.
+    Future<void> toTop(WidgetTester tester) async {
+      final ScrollableState st = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byKey(ProbeKeys.scroll),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      st.position.jumpTo(st.position.minScrollExtent);
+      await tester.pump();
+    }
+
+    const String freeze = 'Streak-Freezes: 2';
+    const String streak = 'Streak: 12 Tage';
+
+    Future<Harness> pumpWithStreak(
+      WidgetTester tester, {
+      Size size = Viewports.phone,
+      double scale = 1,
+      bool screenReader = false,
+    }) => _pump(
+      tester,
+      size: size,
+      scale: scale,
+      screenReader: screenReader,
+      tweak: _tweak(
+        (AppState s) => s.copyWith(
+          streak: StreakState(
+            count: 12,
+            lastTrainingDay: kToday.addDays(-1),
+            evaluatedThrough: kToday.addDays(-1),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('Freeze: Tipp zeigt den NodeHint unter dem Chip, ohne '
+        'Tabwechsel; Tipp irgendwo schließt', (WidgetTester tester) async {
+      await pumpWithStreak(tester);
+      // Die sichtbare Pille (die Hit-Area ist höher).
+      final Rect pill = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(StatPill).first,
+              matching: find.byType(OpaqueSurface),
+            )
+            .first,
+      );
+      await tester.tap(find.byType(StatPill).first);
+      await tester.pumpAndSettle();
+      expect(_hint, findsOneWidget);
+      expect(find.text(S.hintFreeze), findsOneWidget);
+      expect(
+        S.hintFreeze,
+        'Ein Freeze rettet deinen Streak an einem verpassten Tag.',
+      );
+      final Rect hint = tester.getRect(_hint);
+      expect(hint.top, greaterThanOrEqualTo(pill.bottom - 0.5));
+      expect(hint.left, greaterThanOrEqualTo(16));
+      expect(hint.right, lessThanOrEqualTo(390 - 16));
+      expect(_shell(tester).activeTab, HomeTab.path);
+      await tester.tapAt(const Offset(200, 500));
+      await tester.pumpAndSettle();
+      expect(_hint, findsNothing);
+      await _close(tester);
+    });
+
+    testWidgets('Streak: Tipp zeigt „Dein Streak zählt die Tage in Folge mit '
+        'Training.“; ein neuer Chip ersetzt den Hinweis', (
+      WidgetTester tester,
+    ) async {
+      await pumpWithStreak(tester);
+      await tester.tap(find.byType(StatPill).last);
+      await tester.pumpAndSettle();
+      expect(find.text(S.hintStreak), findsOneWidget);
+      expect(S.hintStreak, 'Dein Streak zählt die Tage in Folge mit Training.');
+      await tester.tap(find.byType(StatPill).first);
+      await tester.pumpAndSettle();
+      expect(_hint, findsOneWidget);
+      expect(find.text(S.hintFreeze), findsOneWidget);
+      expect(find.text(S.hintStreak), findsNothing);
+      await _close(tester);
+    });
+
+    testWidgets('Hit-Area ≥ 48 dp, Semantik als Schaltfläche, Enter und '
+        'Leertaste lösen aus, Fokusring sichtbar', (WidgetTester tester) async {
+      final SemanticsHandle sem = tester.ensureSemantics();
+      await pumpWithStreak(tester);
+      for (final String label in <String>[freeze, streak]) {
+        final SemanticsNode node = tester.getSemantics(chip(label));
+        expect(node.flagsCollection.isButton, isTrue, reason: label);
+        expect(node.rect.height, greaterThanOrEqualTo(48), reason: label);
+        expect(node.rect.width, greaterThanOrEqualTo(48), reason: label);
+      }
+      // Tab: Freeze, Streak, „Deine Daten“.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus!.context!
+            .findAncestorWidgetOfExactType<StatPill>()
+            ?.semanticLabel,
+        freeze,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text(S.hintFreeze), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(_hint, findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(find.text(S.hintStreak), findsOneWidget);
+      sem.dispose();
+      await _close(tester);
+    });
+
+    testWidgets('Hinweis schließt beim Scrollen, bei Tabwechsel und nach 5 s; '
+        'bei Screenreader nicht automatisch', (WidgetTester tester) async {
+      await pumpWithStreak(tester);
+      await tester.tap(find.byType(StatPill).first);
+      await tester.pumpAndSettle();
+      expect(_hint, findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+      expect(_hint, findsNothing, reason: 'nach 5 s');
+      await _close(tester);
+
+      await pumpWithStreak(tester, screenReader: true);
+      await tester.tap(find.byType(StatPill).first);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 12));
+      expect(_hint, findsOneWidget, reason: 'Screenreader: bleibt');
+      _shell(tester).selectTab(HomeTab.today);
+      await tester.pumpAndSettle();
+      expect(_hint, findsNothing, reason: 'Tabwechsel');
+      await _close(tester);
+    });
+
+    testWidgets('Hinweis ist opak ohne Blur und schließt eine Manny-Blase', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _pump(tester, bubble: true);
+      expect(h.controller.transient.visibleBubble, isNotNull);
+      await tester.tap(find.byType(StatPill).first);
+      await tester.pumpAndSettle();
+      expect(h.controller.transient.visibleBubble, isNull);
+      expect(_hint, findsOneWidget);
+      expect(backdropCount(tester), 1, reason: 'nur die Nav');
+      await _close(tester);
+    });
+
+    for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
+      for (final double scale in <double>[1, 1.5, 2]) {
+        testWidgets('${size.width.toInt()} dp, ×$scale: beide Chips antippbar, '
+            'Hinweis im Bild, mit 16 dp Rand, über der Gruppe', (
+          WidgetTester tester,
+        ) async {
+          await pumpWithStreak(tester, size: size, scale: scale);
+          if (scale >= 1.5) await toTop(tester);
+          for (final Finder pill in <Finder>[
+            find.byType(StatPill).first,
+            find.byType(StatPill).last,
+          ]) {
+            await tester.tap(pill);
+            await tester.pumpAndSettle();
+            expect(_hint, findsOneWidget);
+            final Rect hint = tester.getRect(_hint);
+            final Rect cluster = tester.getRect(find.byType(ActionCluster));
+            expect(hint.left, greaterThanOrEqualTo(16 - 0.5));
+            expect(hint.right, lessThanOrEqualTo(size.width - 16 + 0.5));
+            expect(hint.top, greaterThanOrEqualTo(0));
+            if (scale >= 1.5) {
+              // Die feste schmale Zeile mit „Deine Daten“ bleibt frei.
+              final Rect bar = tester.getRect(find.byKey(ProbeKeys.header));
+              expect(hint.top, greaterThanOrEqualTo(bar.bottom - 0.5));
+            }
+            expect(hint.bottom, lessThanOrEqualTo(cluster.top - 16 + 0.5));
+            await tester.tapAt(const Offset(2, 2));
+            await tester.pumpAndSettle();
+          }
+          await _close(tester);
+        });
+      }
+    }
+
+    testWidgets('Ab ×1,5 steht keine Pille in der festen Zeile; sie sind in '
+        'der Scrollfläche antippbar', (WidgetTester tester) async {
+      await pumpWithStreak(tester, size: Viewports.small, scale: 2);
+      final Finder bar = find.byKey(ProbeKeys.header);
+      expect(
+        find.descendant(of: bar, matching: find.byType(StatPill)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(ProbeKeys.scrollHeader),
+          matching: find.byType(StatPill),
+        ),
+        findsNWidgets(2),
+      );
       await _close(tester);
     });
   });

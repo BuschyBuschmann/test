@@ -98,6 +98,17 @@ class _PathScreenState extends State<PathScreen> {
   Rect? _cluster;
   final GlobalKey _viewportKey = GlobalKey();
 
+  /// Die ganze Seite (Kopfzeile und Sichtfläche): Bezug des Hinweises an den
+  /// Chips der Kopfzeile, die oberhalb der Sichtfläche stehen.
+  final GlobalKey _rootKey = GlobalKey();
+
+  /// Die feste Kopfzeile (Untergrenze für den Hinweis an den Chips).
+  final GlobalKey _headerKey = GlobalKey();
+
+  /// Rechteck des angetippten Chips (global) und die zugehörige Platzierung.
+  Rect? _statAnchor;
+  Object? _statKey;
+
   /// Höhe der Kopfzeile, wenn sie in der Scrollfläche mitläuft (sonst 0).
   double _headerH = 0;
 
@@ -312,6 +323,17 @@ class _PathScreenState extends State<PathScreen> {
       _scrollBy(plan.scrollOffsetDelta);
     }
     _transient.showHint(kPathOutlookHintId);
+  }
+
+  /// Tipp auf den Chip Freeze bzw. Streak: kurze Erklärung als `NodeHint` unter
+  /// dem Chip (SK-1). Eine Manny-Blase schließt, der Tab bleibt. Der Hinweis
+  /// schließt wie jeder andere (Tipp irgendwo, Scrollen, Escape/Zurück,
+  /// Tabwechsel, nach 5 s, bei aktivem Screenreader nicht automatisch).
+  void _onStatPressed(String id, Rect anchor) {
+    HomeShellScope.of(context).closeBubble();
+    _statAnchor = anchor;
+    _statKey = null;
+    _transient.showHint(id);
   }
 
   void _onMannyTap() {
@@ -605,6 +627,8 @@ class _PathScreenState extends State<PathScreen> {
               streak: streak,
               onOpenData: shell.openDataSheet,
               dataFocusNode: shell.dataButtonFocus,
+              onFreezeTap: (Rect r) => _onStatPressed(kStatFreezeHintId, r),
+              onStreakTap: (Rect r) => _onStatPressed(kStatStreakHintId, r),
             ),
     );
     if (!headerScrolls && _headerH != 0) _headerH = 0;
@@ -612,26 +636,129 @@ class _PathScreenState extends State<PathScreen> {
       onDismiss: _dismissOverlays,
       child: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
+          key: _rootKey,
+          fit: StackFit.expand,
           children: <Widget>[
-            KeyedSubtree(key: ProbeKeys.header, child: header),
-            Expanded(
-              child: _viewportArea(
-                context,
-                progress,
-                scrollHeader: headerScrolls
-                    ? PathHeaderInfo(
-                        phaseLine: phaseLine(
-                          progress.phase,
-                          state.onboarding.injuryType,
-                        ),
-                        streak: streak,
-                      )
-                    : null,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                KeyedSubtree(
+                  key: ProbeKeys.header,
+                  child: KeyedSubtree(key: _headerKey, child: header),
+                ),
+                Expanded(
+                  child: _viewportArea(
+                    context,
+                    progress,
+                    scrollHeader: headerScrolls
+                        ? PathHeaderInfo(
+                            phaseLine: phaseLine(
+                              progress.phase,
+                              state.onboarding.injuryType,
+                            ),
+                            streak: streak,
+                            onFreezeTap: (Rect r) =>
+                                _onStatPressed(kStatFreezeHintId, r),
+                            onStreakTap: (Rect r) =>
+                                _onStatPressed(kStatStreakHintId, r),
+                          )
+                        : null,
+                  ),
+                ),
+              ],
             ),
+            ?_statHintOverlay(context),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Hinweis an einem Chip der Kopfzeile (Freeze, Streak), über der ganzen
+  /// Seite: der Chip steht oberhalb der Sichtfläche, der Hinweis ragt in sie.
+  Widget? _statHintOverlay(BuildContext context) {
+    final String? id = _transient.hintUnitId;
+    final String? text = switch (id) {
+      kStatFreezeHintId => S.hintFreeze,
+      kStatStreakHintId => S.hintStreak,
+      _ => null,
+    };
+    final Rect? anchorGlobal = _statAnchor;
+    if (text == null) {
+      _statKey = null;
+      return null;
+    }
+    final RenderObject? root = _rootKey.currentContext?.findRenderObject();
+    if (anchorGlobal == null || root is! RenderBox || !root.attached) {
+      return null;
+    }
+    final Size bounds = root.size;
+    final Rect anchor =
+        root.globalToLocal(anchorGlobal.topLeft) & anchorGlobal.size;
+    final HomeShellState shell = HomeShellScope.of(context);
+    final Rect? clusterGlobal = ActionCluster.rectOf(shell.clusterKey);
+    final Rect? cluster = clusterGlobal == null
+        ? null
+        : root.globalToLocal(clusterGlobal.topLeft) & clusterGlobal.size;
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    // Die feste Kopfzeile (mit „Deine Daten“) bleibt frei: der Hinweis steht
+    // darunter, nie darüber (sonst überdeckte er ein Bedienelement).
+    final RenderObject? header = _headerKey.currentContext?.findRenderObject();
+    final double topLimit = header is RenderBox && header.attached
+        ? root
+              .globalToLocal(
+                header.localToGlobal(Offset(0, header.size.height)),
+              )
+              .dy
+        : 0;
+    final Object key = (id, bounds, anchor, cluster, scaler, topLimit);
+    if (_statKey != key) {
+      _statKey = key;
+      _hintKey = null;
+      final CuraTypography type = CuraTypography.of(context);
+      _hintPlan = placeAnchoredHint(
+        anchor: anchor,
+        bounds: bounds,
+        topLimit: topLimit,
+        // Über der freien Zone der Button-Gruppe (Gruppe plus Seitenrand) und
+        // über der Nav.
+        bottomLimit: math.min(
+          cluster == null ? bounds.height : cluster.top - CuraSpace.pageMargin,
+          bounds.height - FloatingNav.occupiedHeight(context),
+        ),
+        measure: (double maxWidth) =>
+            _hintBodySize(text, maxWidth, type, scaler),
+        // Mindestens drei Zeilen Text samt Innenabstand (wie bei Unit-Hinweisen).
+        minBodyHeight:
+            _measureText('A\nA\nA', type.secondary, 1000, scaler).height +
+            2 * CuraSize.hintPaddingVertical,
+      );
+    }
+    final HintPlacement plan = _hintPlan!;
+    final bool anchorBottom = plan.arrow == HintArrow.down;
+    return Positioned(
+      left: plan.rect.left,
+      top: anchorBottom ? null : plan.rect.top,
+      bottom: anchorBottom ? bounds.height - plan.rect.bottom : null,
+      width: plan.rect.width,
+      child: KeyedSubtree(
+        key: ProbeKeys.hint,
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _holdHint(),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification n) {
+              _holdHint();
+              return false;
+            },
+            child: NodeHint(
+              text: text,
+              arrow: plan.arrow,
+              arrowCenter: plan.arrowCenter,
+              maxBodyHeight: plan.maxBodyHeight,
+            ),
+          ),
         ),
       ),
     );

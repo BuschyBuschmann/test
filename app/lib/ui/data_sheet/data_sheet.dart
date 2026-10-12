@@ -19,6 +19,8 @@
 //   `lib/logic/profile.dart`); der Pfad wird neu berechnet und ohne Puls auf die
 //   aktuelle Unit zentriert.
 // - „Alle Daten löschen und neu starten“ öffnet den `DeleteDialog`.
+// - Ganz unten steht der Link „Datenschutzerklärung“ (SK-1): er öffnet die
+//   Platzhalterseite aus dem Onboarding über dem Sheet; der Entwurf bleibt.
 // - Öffnen/Schließen und Fokusrückgabe an das Icon in der Pfad-Kopfzeile
 //   übernimmt `HomeShellState.openDataSheet`.
 import 'package:flutter/material.dart';
@@ -39,10 +41,13 @@ import '../components/cura_label.dart';
 import '../components/cura_text_field.dart';
 import '../components/date_card.dart';
 import '../components/header_icon_button.dart';
+import '../components/info_note.dart';
 import '../components/pill_button.dart';
 import '../components/probe_keys.dart';
 import '../onboarding/step4_date.dart' show DatePickerRange;
+import '../routes/app_routes.dart';
 import '../routes/cura_sheet_route.dart';
+import '../components/cura_pressable.dart';
 import '../routes/cura_date_picker.dart';
 import '../routes/route_focus.dart';
 import 'delete_dialog.dart';
@@ -71,6 +76,7 @@ class _DataSheetState extends State<DataSheet> {
   late final TextEditingController _other;
   final FocusNode _dateFocus = FocusNode(debugLabel: 'Datum');
   final FocusNode _deleteFocus = FocusNode(debugLabel: 'Alle Daten löschen');
+  final FocusNode _privacyFocus = FocusNode(debugLabel: 'Datenschutzerklärung');
   bool _discardOpen = false;
 
   AppController get _controller =>
@@ -90,6 +96,7 @@ class _DataSheetState extends State<DataSheet> {
     _other.dispose();
     _dateFocus.dispose();
     _deleteFocus.dispose();
+    _privacyFocus.dispose();
     super.dispose();
   }
 
@@ -145,6 +152,17 @@ class _DataSheetState extends State<DataSheet> {
       Navigator.of(context),
       DeleteDialog.route(context),
       trigger: _deleteFocus,
+    );
+  }
+
+  /// Öffnet die Datenschutz-Platzhalterseite aus dem Onboarding. Das Sheet
+  /// bleibt darunter offen, der Entwurf bleibt erhalten; der Fokus kehrt an den
+  /// Eintrag zurück.
+  Future<void> _openPrivacy() {
+    return pushReturningFocus<void>(
+      Navigator.of(context),
+      AppRoutes.privacy(context),
+      trigger: _privacyFocus,
     );
   }
 
@@ -274,6 +292,11 @@ class _DataSheetState extends State<DataSheet> {
                       onChanged: (String v) =>
                           _update(_draft.copyWith(injuryOther: v)),
                     ),
+                  if (_draft.injuryType != null &&
+                      _draft.injuryType != InjuryType.acl) ...<Widget>[
+                    const SizedBox(height: CuraSpace.s2),
+                    const InfoNote(text: S.injuryNoOwnPath, announce: true),
+                  ],
                   const SizedBox(height: CuraSpace.s6),
                   const CuraLabel(S.dataDateLabel),
                   const SizedBox(height: CuraSpace.s2),
@@ -336,6 +359,37 @@ class _DataSheetState extends State<DataSheet> {
                           onPressed: _openDelete,
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: CuraSpace.s4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: CuraPressable(
+                      onPressed: _openPrivacy,
+                      semanticLabel: S.dataPrivacyEntry,
+                      focusNode: _privacyFocus,
+                      ringRadius: CuraRadius.chipInner,
+                      builder: (BuildContext context, bool pressed) {
+                        final Color color = pressed
+                            ? colors.text1
+                            : colors.accentHi;
+                        return ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: CuraSize.touchTarget,
+                          ),
+                          child: Center(
+                            widthFactor: 1,
+                            child: Text(
+                              S.dataPrivacyEntry,
+                              style: type.bodyStrong.copyWith(
+                                color: color,
+                                decoration: TextDecoration.underline,
+                                decorationColor: color,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

@@ -19,6 +19,11 @@ const bool kPathOutlookShown = true;
 /// `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`).
 const String kPathOutlookHintId = 'outlook';
 
+/// Kennungen der Hinweise an den Chips der Pfad-Kopfzeile (SK-1). Sie teilen
+/// sich mit den Unit-Hinweisen den einen Hinweis-Platz (höchstens einer).
+const String kStatFreezeHintId = 'stat-freeze';
+const String kStatStreakHintId = 'stat-streak';
+
 const int kPathWeeks = 12;
 const int kWeeksPerPhase = 4;
 const int kTrainingDaysPerWeek = 3;

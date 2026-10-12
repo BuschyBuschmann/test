@@ -12,6 +12,7 @@ import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/node_hint.dart';
 import 'package:curaone/ui/components/path_header.dart';
+import 'package:curaone/ui/components/opaque_surface.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
 import 'package:curaone/ui/components/stat_pill.dart';
@@ -85,6 +86,26 @@ void main() {
     await _pump(tester, const PreviewConfig(scenarioId: 'ob3-acl'));
     expect(find.text('Schritt 3 von 4'), findsOneWidget);
     expect(find.text(S.onboardingStep3('Jakob')), findsOneWidget);
+  });
+
+  testWidgets('ob3-muscle: Hinweis „noch keinen eigenen Pfad“ steht', (
+    WidgetTester tester,
+  ) async {
+    await _pump(tester, const PreviewConfig(scenarioId: 'ob3-muscle'));
+    expect(find.text('Schritt 3 von 4'), findsOneWidget);
+    expect(find.text(S.injuryNoOwnPath), findsOneWidget);
+    await disposeApp(tester);
+  });
+
+  testWidgets('data-sheet-muscle / data-privacy: Hinweis im Sheet, Link '
+      'öffnet die Platzhalterseite', (WidgetTester tester) async {
+    await _pump(tester, const PreviewConfig(scenarioId: 'data-sheet-muscle'));
+    expect(find.text(S.injuryNoOwnPath), findsOneWidget);
+    expect(find.text('Phase 2 · Muskelfaserriss'), findsOneWidget);
+    await disposeApp(tester);
+    await _pump(tester, const PreviewConfig(scenarioId: 'data-privacy'));
+    expect(find.text(S.privacyPlaceholderBody), findsOneWidget);
+    await disposeApp(tester);
   });
 
   testWidgets('Tastatur-Szenario blendet die Platzhalterfläche ein', (
@@ -226,6 +247,27 @@ void main() {
       expect(find.text(S.hintDone), findsOneWidget);
     });
 
+    testWidgets('path-stat-hint-freeze / -streak: die Erklärung steht', (
+      WidgetTester tester,
+    ) async {
+      await path(tester, 'path-stat-hint-freeze');
+      expect(hint, findsOneWidget);
+      expect(find.text(S.hintFreeze), findsOneWidget);
+      await disposeApp(tester);
+      await path(tester, 'path-stat-hint-streak');
+      expect(hint, findsOneWidget);
+      expect(find.text(S.hintStreak), findsOneWidget);
+      await disposeApp(tester);
+    });
+
+    testWidgets('path-muscle: Kopfzeile zeigt den vollen Namen', (
+      WidgetTester tester,
+    ) async {
+      await path(tester, 'path-muscle');
+      expect(find.text('Phase 2 · Muskelfaserriss'), findsOneWidget);
+      await disposeApp(tester);
+    });
+
     testWidgets('path-week1 und path-end: Woche 1, Endfall mit Manny auf dem '
         'letzten Phasen-Abschluss', (WidgetTester tester) async {
       await path(tester, 'path-week1');
@@ -257,7 +299,17 @@ void main() {
         greaterThan(icon.center.dy),
         reason: 'Pillen in Zeile 2',
       );
-      expect(pill.left, 16);
+      // Die sichtbare Pille steht am Seitenrand; die Hit-Area ist je Seite 4 dp
+      // schmaler (SK-1).
+      final Rect visible = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(StatPill).first,
+              matching: find.byType(OpaqueSurface),
+            )
+            .first,
+      );
+      expect(visible.left, 16);
     });
 
     testWidgets('path-cluster-bubble: Pfad ganz unten, Blase vorhanden und '
@@ -360,7 +412,7 @@ void main() {
           tester.widget<PillButton>(find.byKey(ProbeKeys.primary));
       await today(tester, 'today-empty');
       expect(find.text(S.emptyExercises), findsOneWidget);
-      expect(primary().label, S.startTraining);
+      expect(primary().label, S.trainingLog);
       expect(primary().onPressed, isNull);
       await disposeApp(tester);
       await today(tester, 'today-done');

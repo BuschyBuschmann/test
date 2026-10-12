@@ -79,7 +79,7 @@ const button = (page, name) =>
   page
     .locator('flt-semantics[role="button"]', {
       hasText:
-        name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' || name === 'Schließen'
+        name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' || name === 'Schließen' || name === 'Eintragen'
           ? new RegExp(`^${name}$`)
           : name,
     })
@@ -442,20 +442,20 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
 {
   const { ctx, page } = await openHeute('2026-10-07T12:00:00+02:00');
   check('Heute: Datum, Zeitwahl und Übungen (Wdh. und Dauer)', (await seen(page, 'Mittwoch, 7. Oktober')) && (await seen(page, 'Kniebeuge am Stuhl, 3 mal 12 Wiederholungen, 6 Minuten')) && (await seen(page, 'Beispieltermin, Physio, Physiotherapie, Praxis Müller, 17:00 Uhr')));
-  check('Heute: Button-Gruppe (Manny, Nachrichten) und „Training starten“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0 && (await button(page, 'Training starten').count()) > 0);
+  check('Heute: Button-Gruppe (Manny, Nachrichten) und „Training eintragen“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0 && (await button(page, 'Training eintragen').count()) > 0);
   await shot(page, 'heute-standard');
-  await click(page, 'Training starten');
-  check('Training starten öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trage es nachher ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
+  await click(page, 'Training eintragen');
+  check('Training eintragen öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trage es nachher ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
   check('Sheet offen: Button-Gruppe ist aus der Semantik (nicht bedienbar)', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0);
   await shot(page, 'heute-sheet');
-  await click(page, 'Training eintragen');
+  await click(page, 'Eintragen');
   check('Eintragen: Sheet zu, „Heute erledigt“, Snackbar „Eingetragen.“ mit Rückgängig (UI-37)', (await seen(page, 'Eingetragen.')) && (await seen(page, 'Heute erledigt')) && (await gone(page, 'Wie willst du trainieren?')));
   await shot(page, 'heute-eingetragen');
   await click(page, 'Eintrag rückgängig machen');
-  check('Rückgängig: „Training starten“ wieder da, Snackbar weg (UI-38)', (await seen(page, 'Training starten')) && (await gone(page, 'Eingetragen.')));
+  check('Rückgängig: „Training eintragen“ wieder da, Snackbar weg (UI-38)', (await seen(page, 'Training eintragen')) && (await gone(page, 'Eingetragen.')));
   // Erneut eintragen, auf den Pfad: Fenster endet, die Feier folgt.
-  await click(page, 'Training starten');
   await click(page, 'Training eintragen');
+  await click(page, 'Eintragen');
   await seen(page, 'Eingetragen.');
   await click(page, 'Pfad');
   check('Heute → Pfad: Feier-Blase „Das war Tag 13.“ erst nach dem Fenster (UI-40)', await seen(page, 'Stark, Jakob. Das war Tag 13.'));
@@ -494,12 +494,12 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
 // 7c. Tageswechsel über Mitternacht bei offenem Trainings-Sheet --------------------
 {
   const { ctx, page } = await openHeute('2026-10-07T23:59:40+02:00');
-  await click(page, 'Training starten');
+  await click(page, 'Training eintragen');
   await seen(page, 'Wie willst du trainieren?');
   await page.clock.runFor(30000); // 30 s: über Mitternacht
   await page.waitForTimeout(300);
-  await click(page, 'Training eintragen');
-  check('Über Mitternacht: Sheet zu, Snackbar „Neuer Tag, neues Programm.“, neues Datum, frisches Programm', (await seen(page, 'Neuer Tag, neues Programm.', 10000)) && (await seen(page, 'Donnerstag, 8. Oktober')) && (await seen(page, 'Training starten')) && (await gone(page, 'Wie willst du trainieren?')));
+  await click(page, 'Eintragen');
+  check('Über Mitternacht: Sheet zu, Snackbar „Neuer Tag, neues Programm.“, neues Datum, frisches Programm', (await seen(page, 'Neuer Tag, neues Programm.', 10000)) && (await seen(page, 'Donnerstag, 8. Oktober')) && (await seen(page, 'Training eintragen')) && (await gone(page, 'Wie willst du trainieren?')));
   check('Über Mitternacht: kein „Rückgängig“ (der Wechsel beendet das Fenster)', (await button(page, 'Eintrag rückgängig machen').count()) === 0);
   await shot(page, 'heute-mitternacht');
   await click(page, 'Pfad');
@@ -617,6 +617,32 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
     !stayed || ((await seen(page, 'Schritt 1 von 4', 1500)) && (await button(page, 'Deine Daten').count()) === 0),
     stayed ? 'bleibt bei Schritt 1' : 'verlässt die Seite wie die App-Schließen-Taste',
   );
+  await ctx.close();
+}
+
+// 8d. Chips erklären sich; Hinweis bei anderen Verletzungstypen; Datenschutz (SK-1)
+{
+  const { ctx, page } = await openPfadMitDaten();
+  check('Pfad: Freeze- und Streak-Chip sind Schaltflächen', (await button(page, 'Streak-Freezes: 2').count()) > 0 && (await button(page, 'Streak:').count()) > 0);
+  await click(page, 'Streak-Freezes: 2');
+  check('Tipp auf Freeze: „Ein Freeze rettet deinen Streak an einem verpassten Tag.“', await seen(page, 'Ein Freeze rettet deinen Streak an einem verpassten Tag.'));
+  await shot(page, 'pfad-hinweis-freeze');
+  await click(page, 'Streak:');
+  check('Tipp auf Streak: „Dein Streak zählt die Tage in Folge mit Training.“ ersetzt den Freeze-Hinweis', (await seen(page, 'Dein Streak zählt die Tage in Folge mit Training.')) && (await gone(page, 'Ein Freeze rettet deinen Streak an einem verpassten Tag.')));
+  await shot(page, 'pfad-hinweis-streak');
+  await page.keyboard.press('Escape');
+  check('Escape schließt den Hinweis', await gone(page, 'Dein Streak zählt die Tage in Folge mit Training.'));
+  await click(page, 'Deine Daten');
+  await seen(page, 'Alles bleibt auf diesem Gerät');
+  check('Kreuzband: kein Hinweis „noch keinen eigenen Pfad“', (await page.getByText('Für diese Verletzung gibt es noch keinen eigenen Pfad', { exact: false }).count()) === 0);
+  await click(page, 'Muskelfaserriss, Auswahl, nicht ausgewählt');
+  check('Muskelfaserriss gewählt: Hinweis „noch keinen eigenen Pfad … Beispielpfad“', await seen(page, 'Für diese Verletzung gibt es noch keinen eigenen Pfad. Du siehst einen Beispielpfad.'));
+  await shot(page, 'daten-hinweis-pfad');
+  await click(page, 'Datenschutzerklärung');
+  check('„Datenschutzerklärung“ in Deine Daten öffnet die Platzhalterseite', await seen(page, 'Platzhalter. Hier steht später die Datenschutzerklärung.'));
+  await shot(page, 'daten-datenschutz');
+  await click(page, 'Zurück');
+  check('Zurück: Sheet mit dem Entwurf bleibt', (await gone(page, 'Platzhalter. Hier steht später die Datenschutzerklärung.')) && (await seen(page, 'Muskelfaserriss, Auswahl, ausgewählt')));
   await ctx.close();
 }
 

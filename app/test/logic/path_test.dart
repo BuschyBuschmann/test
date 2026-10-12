@@ -282,7 +282,7 @@ void main() {
     test('Kurznamen und Phasenzeile für alle Typen', () {
       expect(injuryShortName(InjuryType.acl), 'Kreuzband');
       expect(injuryShortName(InjuryType.ankle), 'Sprunggelenk');
-      expect(injuryShortName(InjuryType.muscle), 'Muskelfaser');
+      expect(injuryShortName(InjuryType.muscle), 'Muskelfaserriss');
       expect(injuryShortName(InjuryType.other), 'Reha');
       expect(injuryShortName(null), 'Reha');
       expect(phaseLine(2, InjuryType.acl), 'Phase 2 · Kreuzband');

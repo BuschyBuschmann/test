@@ -376,3 +376,68 @@ HintPlacement placeHint({
     scrollOffsetDelta: scroll,
   );
 }
+
+/// Lage des Hinweises an einem Chip der Kopfzeile (Freeze, Streak; SK-1).
+///
+/// [anchor] ist das Rechteck des Chips in den Koordinaten von [bounds] (der
+/// ganzen Pfad-Seite, nicht der Scrollfläche: der Chip steht oberhalb von ihr).
+/// Der Hinweis steht **unter** dem Chip (der Chip sitzt oben, darunter ist
+/// Platz), sonst darüber, sonst auf die freie Fläche begrenzt mit innerem
+/// Scrollen ([minBodyHeight]: so viel Text soll darunter mindestens zu sehen
+/// sein). [bottomLimit] ist die Unterkante, bis zu der er reichen darf
+/// (Oberkante der Button-Gruppe bzw. der Nav, abzüglich Abstand). Seitlich
+/// bleiben mindestens 16 dp Rand; der Pfeil bleibt am Chip.
+HintPlacement placeAnchoredHint({
+  required Rect anchor,
+  required Size bounds,
+  required double bottomLimit,
+  required HintMeasure measure,
+  double topLimit = 0,
+  double minBodyHeight = CuraSize.touchTarget,
+}) {
+  const double margin = CuraSpace.pageMargin;
+  const double arrow = CuraSize.nodeHintArrow;
+  final double fullW = math.min(
+    CuraSize.nodeHintMaxWidth,
+    bounds.width - 2 * margin,
+  );
+  final Size b = measure(fullW);
+  final double w = b.width;
+  final double left = (anchor.center.dx - w / 2).clamp(
+    margin,
+    math.max(margin, bounds.width - margin - w),
+  );
+  final double arrowCenter = anchor.center.dx - left;
+  final double h = b.height + arrow;
+  if (anchor.bottom + h <= bottomLimit + 0.01) {
+    return HintPlacement(
+      arrow: HintArrow.up,
+      rect: Rect.fromLTWH(left, anchor.bottom, w, h),
+      arrowCenter: arrowCenter,
+    );
+  }
+  if (anchor.top - h >= topLimit - 0.01) {
+    return HintPlacement(
+      arrow: HintArrow.down,
+      rect: Rect.fromLTWH(left, anchor.top - h, w, h),
+      arrowCenter: arrowCenter,
+    );
+  }
+  final double roomBelow = bottomLimit - anchor.bottom - arrow;
+  final double roomAbove = anchor.top - topLimit - arrow;
+  // Darunter, solange mindestens [minBodyHeight] (drei Zeilen) Platz ist: der
+  // Hinweis soll nicht Titel und Kopf überdecken, wenn er darunter lesbar bleibt.
+  final bool below =
+      roomBelow >= math.min(minBodyHeight, b.height) || roomBelow >= roomAbove;
+  final double bodyMax = math.max(0.0, below ? roomBelow : roomAbove);
+  final double bodyH = math.min(b.height, bodyMax);
+  final double limitedH = bodyH + arrow;
+  return HintPlacement(
+    arrow: below ? HintArrow.up : HintArrow.down,
+    rect: below
+        ? Rect.fromLTWH(left, anchor.bottom, w, limitedH)
+        : Rect.fromLTWH(left, anchor.top - limitedH, w, limitedH),
+    arrowCenter: arrowCenter,
+    maxBodyHeight: bodyH < b.height ? bodyH : null,
+  );
+}

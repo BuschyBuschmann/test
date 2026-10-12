@@ -6,7 +6,7 @@
 //   · CA. N MIN (Übungskarten mit Tauschen/Entfernen, Leerkarte „Heute noch
 //   nichts geplant.“) und „+ Eigene Übung“.
 // - Fest über der Nav (nur im Standard-Zustand, A-43): die Primärbutton-Reihe
-//   („Training starten“ / „Heute erledigt“ + Manny-Button) und der
+//   („Training eintragen“ / „Heute erledigt“ + Manny-Button) und der
 //   Nachrichten-Button 8 dp über der Oberkante des Manny-Buttons
 //   (`PrimaryActionRow`). Die Scroll-Reserve am Listenende ist aus der
 //   **gemessenen** Höhe der Gruppe gerechnet (Gruppe + Nav samt Abstand +
@@ -14,8 +14,8 @@
 //   über der Gruppe (`HomeShellState.todayGroupHeight`). Solange eine Snackbar
 //   steht, kommt ihre gemessene Höhe samt 12 dp dazu (`snackbarHeight`), damit
 //   sie den letzten Eintrag nie überdeckt.
-// - „Training starten“ öffnet das Sheet „Wie willst du trainieren?“; es merkt
-//   sich beim Öffnen den Tag (`openedDay`). „Training eintragen“ trägt für
+// - „Training eintragen“ öffnet das Sheet „Wie willst du trainieren?“; es merkt
+//   sich beim Öffnen den Tag (`openedDay`). „Eintragen“ im Sheet trägt für
 //   diesen Tag ein (auch über Mitternacht, N-11), schließt das Sheet und zeigt
 //   „Eingetragen. Rückgängig“ (8 s). „Entfernen“ zeigt „Entfernt. Rückgängig“.
 //   Nach jeder Aktion, die einen Tageswechsel ausgelöst hat, übernimmt
@@ -76,7 +76,7 @@ class TodayScreen extends StatefulWidget {
 }
 
 class _TodayScreenState extends State<TodayScreen> {
-  final FocusNode _startFocus = FocusNode(debugLabel: 'Training starten');
+  final FocusNode _startFocus = FocusNode(debugLabel: 'Training eintragen');
   final FocusNode _customFocus = FocusNode(debugLabel: 'Eigene Übung');
 
   /// Fokusknoten von „Tauschen“ je Übung (nur für den Fokus nach „Entfernen“).
@@ -203,7 +203,7 @@ class _TodayScreenState extends State<TodayScreen> {
   Future<void> _startTraining() async {
     final HomeShellState shell = _shell;
     // Der Tag, den der Nutzer sieht (Plan 7.5): auf ihn trägt das Sheet ein,
-    // auch wenn bis zum Tipp auf „Training eintragen“ Mitternacht vergeht.
+    // auch wenn bis zum Tipp auf „Eintragen“ Mitternacht vergeht.
     final LocalDay openedDay = _controller.state.day.dayKey;
     bool handled = false;
     final Route<void> route = TrainingModeSheet.route(

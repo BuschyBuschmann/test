@@ -78,8 +78,8 @@ Future<void> _tap(WidgetTester tester, Finder f) async {
 }
 
 Future<void> _startAndLog(WidgetTester tester) async {
-  await _tap(tester, find.text(S.startTraining));
   await _tap(tester, find.text(S.trainingLog));
+  await _tap(tester, find.text(S.trainingSheetConfirm));
 }
 
 Rect _rectOf(WidgetTester tester, Finder f) => tester.getRect(f.first);
@@ -373,7 +373,7 @@ void main() {
         final PillButton button = tester.widget<PillButton>(
           find.byKey(ProbeKeys.primary),
         );
-        expect(button.label, S.startTraining);
+        expect(button.label, S.trainingLog);
         expect(button.onPressed, isNull);
         // Eintragen ist nicht möglich.
         await tester.tap(find.byKey(ProbeKeys.primary), warnIfMissed: false);
@@ -416,7 +416,7 @@ void main() {
         );
         expect(find.text(S.trainingDone), findsOneWidget);
         expect(find.byIcon(Icons.check_rounded), findsOneWidget);
-        expect(find.text(S.startTraining), findsNothing);
+        expect(find.text(S.trainingLog), findsNothing);
         await _tap(tester, _inCard('ex-kniebeuge', S.exerciseSwap));
         expect(find.text(S.exSquatAlt1), findsOneWidget);
         await _tap(tester, find.text('30 Min'));
@@ -454,7 +454,7 @@ void main() {
       expect(find.bySemanticsLabel(S.loading), findsOneWidget);
       expect(find.byType(MessagesButton), findsNothing);
       expect(find.byType(MannyChatButton), findsNothing);
-      expect(find.text(S.startTraining), findsNothing);
+      expect(find.text(S.trainingLog), findsNothing);
       expect(find.byType(FloatingNav), findsOneWidget);
       handle.dispose();
       await disposeApp(tester);
@@ -484,14 +484,14 @@ void main() {
       'Sheet: drei Modi, nur Manuell aktiv, „Folgt“ bei Passiv und Aktiv',
       (WidgetTester tester) async {
         await _today(tester);
-        await _tap(tester, find.text(S.startTraining));
+        await _tap(tester, find.text(S.trainingLog));
         expect(find.text(S.trainingSheetTitle), findsOneWidget);
         expect(find.text(S.modeManual), findsOneWidget);
         expect(find.text(S.modeManualHint), findsOneWidget);
         expect(find.text(S.modePassive), findsOneWidget);
         expect(find.text(S.modeActive), findsOneWidget);
         expect(find.text(S.modeSoon), findsNWidgets(2));
-        expect(find.text(S.trainingLog), findsOneWidget);
+        expect(find.text(S.trainingSheetConfirm), findsOneWidget);
         // Passiv und Aktiv sind keine Fokusziele.
         expect(
           find.ancestor(
@@ -573,7 +573,7 @@ void main() {
         expect(h.state.path.completedUnitIds, unitsBefore);
         expect(h.state.day.done, isFalse);
         expect(h.state.celebration, isNull);
-        expect(find.text(S.startTraining), findsOneWidget);
+        expect(find.text(S.trainingLog), findsOneWidget);
         expect(find.byType(CuraSnackbar), findsNothing);
         expect(
           tester.takeAnnouncements().map((a) => a.message),
@@ -678,9 +678,9 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _today(tester);
-      await _tap(tester, find.text(S.startTraining));
-      await tester.tap(find.text(S.trainingLog));
-      await tester.tap(find.text(S.trainingLog), warnIfMissed: false);
+      await _tap(tester, find.text(S.trainingLog));
+      await tester.tap(find.text(S.trainingSheetConfirm));
+      await tester.tap(find.text(S.trainingSheetConfirm), warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(h.state.streak.count, 1);
       expect(h.state.path.completedUnitIds, hasLength(1));
@@ -693,10 +693,10 @@ void main() {
       WidgetTester tester,
     ) async {
       await _today(tester);
-      await _tap(tester, find.text(S.startTraining));
+      await _tap(tester, find.text(S.trainingLog));
       await tester.tap(find.byTooltip(S.close));
       await tester.pumpAndSettle();
-      expect(_focusedLabel(), S.startTraining);
+      expect(_focusedLabel(), S.trainingLog);
       await disposeApp(tester);
     });
   });
@@ -709,12 +709,12 @@ void main() {
           tester,
           now: DateTime(2026, 10, 7, 23, 59),
         );
-        await _tap(tester, find.text(S.startTraining));
+        await _tap(tester, find.text(S.trainingLog));
         expect(find.text(S.trainingSheetTitle), findsOneWidget);
         h.clock.set(DateTime(2026, 10, 8, 0, 1));
         tester.takeAnnouncements();
 
-        await tester.tap(find.text(S.trainingLog));
+        await tester.tap(find.text(S.trainingSheetConfirm));
         await tester.pumpAndSettle();
 
         // Zählt für den Vortag; heute ist nicht verpasst, Programm frisch.
@@ -727,7 +727,7 @@ void main() {
         expect(h.controller.transient.undoWindowOpen, isFalse);
         // Sheet zu, Snackbar „Neuer Tag“ ohne Rückgängig, Ansage.
         expect(find.text(S.trainingSheetTitle), findsNothing);
-        expect(find.text(S.startTraining), findsOneWidget);
+        expect(find.text(S.trainingLog), findsOneWidget);
         expect(find.text('Donnerstag, 8. Oktober'), findsOneWidget);
         expect(find.text(S.newDaySnackbar), findsOneWidget);
         expect(find.text(S.undo), findsNothing);
@@ -744,7 +744,7 @@ void main() {
       'Sheet offen, Tageswechsel, dazu offener Chat: Sheet zu, keine Snackbar',
       (WidgetTester tester) async {
         final Harness h = await _today(tester);
-        await _tap(tester, find.text(S.startTraining));
+        await _tap(tester, find.text(S.trainingLog));
         expect(find.text(S.trainingSheetTitle), findsOneWidget);
         unawaited(_shell(tester).openChat());
         await tester.pumpAndSettle();
@@ -953,8 +953,8 @@ void main() {
         }
         int at(String l) => order.indexOf(l);
         expect(at(S.messagesButton), greaterThan(at(S.customAddLabel)));
-        expect(at(S.startTraining), greaterThan(at(S.messagesButton)));
-        expect(at(S.mannyChatOpen), greaterThan(at(S.startTraining)));
+        expect(at(S.trainingLog), greaterThan(at(S.messagesButton)));
+        expect(at(S.mannyChatOpen), greaterThan(at(S.trainingLog)));
         expect(at(S.navPath), greaterThan(at(S.mannyChatOpen)));
         // Zeitwahl und Aktionen der Liste stehen vor „Eigene Übung“.
         expect(
@@ -978,11 +978,11 @@ void main() {
             tapTargets(tester).map((TapTarget t) => t.label).toList();
         expect(labels(), contains(S.mannyChatOpen));
         expect(labels(), contains(S.messagesButton));
-        await _tap(tester, find.text(S.startTraining));
+        await _tap(tester, find.text(S.trainingLog));
         expect(labels(), isNot(contains(S.mannyChatOpen)));
         expect(labels(), isNot(contains(S.messagesButton)));
         expect(labels(), isNot(contains(S.navPath)));
-        expect(labels(), contains(S.trainingLog));
+        expect(labels(), contains(S.trainingSheetConfirm));
         for (int i = 0; i < 12; i++) {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.pump();
@@ -991,7 +991,7 @@ void main() {
             S.messagesButton,
             S.navPath,
             S.navToday,
-            S.startTraining,
+            S.trainingLog,
           ], isNot(contains(_focusedLabel())));
         }
         handle.dispose();

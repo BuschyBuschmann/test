@@ -1,9 +1,14 @@
 // `TrainingModeSheet` (Brief 6.3, Spec 2, Plan 4.4): „Wie willst du
 // trainieren?“ mit den drei Modi. Im ersten Ausschnitt ist nur **Manuell**
 // aktiv („Ich trage es nachher ein“); Passiv und Aktiv sind sichtbar, aber
-// deaktiviert mit dem Zusatz „Folgt“. Die Fußleiste „Training eintragen“
+// deaktiviert mit dem Zusatz „Folgt“. Die Fußleiste „Eintragen“
 // bestätigt den Modus Manuell. Die Feedback-Abfrage gehört nicht in den
 // Ausschnitt.
+//
+// Entscheidung SK-1: Das Sheet bleibt als Bestätigungsschritt. Der Hauptbutton
+// auf Heute heißt „Training eintragen“, das Sheet fragt mit „Eintragen“ nach
+// (kein zweiter, gleichnamiger Button). Es schützt vor einem Fehltipp, weil das
+// Rückgängig nur 8 s dauert, und zeigt, dass Passiv und Aktiv folgen.
 //
 // Aufbau: `CuraSheetFrame` (E2, fester Kopf mit Titel und „Schließen“,
 // scrollender Mittelteil, feste Fußleiste). Die Route öffnet [TodayScreen]
@@ -26,7 +31,7 @@ import '../routes/cura_sheet_route.dart';
 class TrainingModeSheet extends StatelessWidget {
   const TrainingModeSheet({super.key, required this.onLog});
 
-  /// „Training eintragen“.
+  /// „Eintragen“.
   final VoidCallback onLog;
 
   /// Die Sheet-Route; [onLog] bekommt den Kontext der Route (zum Schließen).
@@ -107,7 +112,7 @@ class TrainingModeSheet extends StatelessWidget {
       ),
       footer: PillButton(
         key: ProbeKeys.primary,
-        label: S.trainingLog,
+        label: S.trainingSheetConfirm,
         onPressed: onLog,
       ),
     );
