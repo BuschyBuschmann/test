@@ -46,3 +46,31 @@ Mockups: `mockups/v2-ansatz2-pfad.png` und `mockups/v2-ansatz2-leiste.png` (Quel
 1. [blockierend für Manny und 3D-Objekte] Wer zeichnet bzw. liefert die finalen Illustrationen, und mit welchen Rechten? Das Sticker-Bild ist nur Inspiration und wurde nirgends übernommen.
 2. Sonnenbrille als Markenzeichen: gut, oder soll Manny auch ohne Brille der Standard sein (Brille nur zu Feier und Sport)? Bei Schmerz und Trost wäre eine Brille unpassend, deshalb würde sie dort abgesetzt.
 3. Ist die Dämmerungs-Welt (Pfirsich/Rauchgrau, Hügel) die richtige Atmosphäre, oder soll es eher Eis/Schnee-Blau (passend zum Pinguin) oder neutral Grau-Orange wie im Inspirationsbild sein?
+
+---
+
+# Ansatz 3: Tageszeiten-Welt
+
+Mockups: `mockups/v2-ansatz3-morgen.png`, `-mittag.png`, `-abend.png`, `-nacht.png` und Übersicht `mockups/v2-ansatz3-tageszeiten.png`. Gleiche Komposition (Sonne bzw. Mond, drei Ebenen, Licht), nur Farbe und Licht wechseln. Abend ist die bisherige Dämmerung. Die Ebenen gehen jetzt fließend ineinander über: keine Konturen, jede Ebene läuft nach unten in Transparenz aus, mehr Weichzeichnung nach hinten, Dunstbänder zwischen den Ebenen. Quelle und Kontrastberechnung: `mockups/v2-src/gen3.py`, `kontraste3.json`.
+
+**Tageszeit-Regel (Vorschlag).** Nach Gerätezeit: Morgen 5–10, Mittag 10–17, Abend 17–21, Nacht 21–5 Uhr. Die Welt blendet an den Grenzen über 30 Minuten weich zu der nächsten Phase über (Verlauf der Farbwerte), kein Umspringen. Der Wechsel passiert nur beim Öffnen des Screens und im Hintergrund, nie sichtbar während einer Eingabe. Bei „Bewegung reduzieren“ wird nur beim Öffnen umgestellt. Bleibt offen, ob jahreszeitliche Sonnenzeiten gewünscht sind (Annahme: nein, feste Zeiten).
+
+**Lesbarkeit je Variante** (WCAG-Verhältnis, Worst Case gerechnet; Text muss ≥ 4,5 haben):
+
+| Variante | Kopf-Karte, weißer Text (über reinem Weiß / über echtem Himmel) | Label-Chip | Leiste Ruhe (Schwarz/Orange/Weiß darunter) | Leiste Aktiv |
+|---|---|---|---|---|
+| Morgen | 5.2 (6.6) | 8.6 | 10.1 | 14.4 |
+| Mittag | 4.6 (6.4) | 9.1 | 10.1 | 14.4 |
+| Abend | 5.3 (7.2) | 8.6 | 10.1 | 14.4 |
+| Nacht | 4.8 (18.6) | 7.0 | 9.5 | 13.8 |
+
+Regeln dahinter: Kopf-Karte ist Milchglas mit 66 % (Tag) bzw. 58 % (Nacht) dunkler Tönung. Die Leiste hat unter sich immer einen Schleier in der Bodenfarbe (70 %), Label und Symbole nutzen die Primärfarbe der Variante (Tinte bei Tag, Cremeweiß bei Nacht). Nacht-Leiste ist dunkles Glas (45 % Ruhe, 82 % Aktiv). Orange Aktiv-Pille trägt immer dunkle Tinte (6,5:1). Nicht gemessen: Text im Kopf-Karte-Sekundärton und über echtem Bild, siehe Prüfung im Brief.
+
+**Verhältnis zum hellen/dunklen Thema.** Vorschlag: Die Tageszeit bestimmt **nur die Welt** (Hintergrund, Licht, Glasfarbe von Kopf-Karte und Leiste). Die Inhaltsflächen (Karten in Heute, Chats, Profil) folgen dem Systemthema hell/dunkel. Nacht ist also nicht automatisch dunkel und umgekehrt: Wer nachts im Hellen-Modus ist, sieht auf Heute helle Karten und auf dem Pfad die Nacht-Welt. Grund: Systemthema ist eine bewusste Nutzerwahl und Barrierefreiheit (z. B. Hell wegen Sehschwäche), die Welt ist Atmosphäre. Gilt für den Pfad und Screens mit Welt-Hintergrund; Heute, Chats, Profil bekommen nur einen ruhigen Schleier der Welt oben.
+
+**Bedienungshilfen.** In „Darstellung“ lässt sich ein fester Look wählen: Automatisch (Tageszeit), Morgen, Mittag, Abend oder Nacht. Bei „Transparenz reduzieren“ und hohem Kontrast gelten die Regeln aus Ansatz 2 und v1 unverändert: Karte, Leiste, Chips und Sheets opak, kein Blur; die Welt wird zu einem ruhigen Verlauf ohne Textur, Dunst und Sterne. Bei „Bewegung reduzieren“ keine Überblendung zwischen den Phasen.
+
+## Rückfragen (Ansatz 3)
+1. Sind die Zeitgrenzen (5/10/17/21 Uhr, 30 Minuten Überblendung) so gut, oder soll die Welt sich nur nach der Sonne am Wohnort richten?
+2. Tageszeit nur für die Welt, Inhaltsflächen nach System hell/dunkel: einverstanden? Alternative: Nacht schaltet die ganze App dunkel.
+3. [blockierend für Manny und 3D-Objekte, unverändert] Wer liefert die finalen Illustrationen und mit welchen Rechten?
