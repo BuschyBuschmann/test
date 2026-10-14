@@ -1,6 +1,6 @@
 # Design-Brief v2, Ergänzung 1: Manny mit finalen Grafiken und Look-Wahl
 
-Status: **BRIEF ZUR FREIGABE** · Stand 2026-10-14 · Paket K-M1 · Grundlage: Nutzerauftrag „Bitte nehme diese beiden Designs für manny. Man soll am Anfang wählen können zwischen mit und ohne Brille.“
+Status: **FREIGEGEBEN (2026-10-14)** · Stand 2026-10-14 · Paket K-M1 · Grundlage: Nutzerauftrag „Bitte nehme diese beiden Designs für manny. Man soll am Anfang wählen können zwischen mit und ohne Brille.“
 
 **Wirkung:** Diese Ergänzung **ersetzt Abschnitt 6 „Manny“ von `design-brief-v2.md` vollständig** (Stilregeln, Umsetzung, Verwendung, Posentabelle) und das Kriterium **V2-56**. Ergänzt werden Onboarding-Schritt „Wie soll Manny aussehen?“, Profil-Zeile „Manny-Look“, Kriterien V2-65 bis V2-75 und Migrationshinweise. Alles andere in Brief v2 gilt unverändert. Orientierung: `mockups/v2-manny-wahl.png` (Onboarding-Schritt, Abend-Welt) und `mockups/v2-heute.png` (Manny-Knopf mit Variante „mit Brille“ in der Welt). Die übrigen `mockups/v2-*.png` zeigen noch die alte Platzhalter-Skizze und gelten nur für Layout, nicht für Manny.
 
@@ -130,9 +130,9 @@ Neue Zeile in der Profil-Liste (Brief 7.6), **direkt über „Darstellung“**: 
 - Der Nutzer verantwortet die Nutzungsrechte; Dateien im Repo: `quelle/*.webp` (Originale) und die Ableitungen.
 
 ## Offene Entscheidungen
-1. **[nicht blockierend]** Nachweis der Rechte im Repo (z. B. ein Satz in `docs/design/manny/` zu Urheber und Entstehung)? Falls die Bilder mit einem KI-Bildwerkzeug entstanden sind: Nutzungsbedingungen für kommerzielle Nutzung und Store-Angaben prüfen. *Annahme bis zur Klärung:* kein Nachweis nötig für den Prototyp.
+1. **[nicht blockierend]** Nachweis der Rechte im Repo (z. B. ein Satz in `docs/design/manny/` zu Urheber und Entstehung)? Falls die Bilder mit einem KI-Bildwerkzeug entstanden sind: Nutzungsbedingungen für kommerzielle Nutzung und Store-Angaben prüfen. **Entschieden (2026-10-14):** Bilder vom Nutzer selbst gezeichnet bzw. gekauft, Rechte liegen vor; kein KI-Werkzeug, kein weiterer Prüfpunkt.
 2. **[nicht blockierend]** Weitere Posen später (Ziel/Fahne, Training, Denken, Schlafen, Erinnerung)? *Annahme:* nein, Fallback `normal`. *Auswirkung:* nur die Zuordnungstabelle und Dateien ändern sich.
-3. **[nicht blockierend]** Traurig mit Träne bei Schmerzmeldung: gewünscht oder zu dramatisch? *Annahme:* ja, Trösten = `traurig` (Nutzerentscheidung).
+3. **[nicht blockierend]** Traurig mit Träne bei Schmerzmeldung: gewünscht oder zu dramatisch? **Entschieden (2026-10-14):** ja, Traurig mit Träne.
 4. **[nicht blockierend]** Halo in Nacht gewünscht, oder soll Manny in Nacht grundsätzlich nur auf Scheibe/Karte stehen? *Annahme:* Halo (6.4).
 5. **[nicht blockierend]** Soll Bestandsnutzern nach dem Update einmalig der Wechsel angeboten werden (Hinweis im Profil)? *Annahme:* nein.
 
