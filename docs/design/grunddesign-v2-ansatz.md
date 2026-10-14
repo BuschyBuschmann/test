@@ -89,8 +89,8 @@ Bilder: `mockups/v2-manny-sticker.png` (groß, Standard, Feier, Trösten, Kopf a
 - Posen aus Runde 1 bleiben gültig (Begrüßung, Feier, Erinnerung, Chat, Training, Trösten), je Pose eine feste Illustration, Bewegung im Code. Trösten: Brille ab (in der Hand), Augen sichtbar, Flügel auf der Brust, Brille nur wieder aufsetzen, wenn die Situation entspannt ist.
 
 **Abgrenzung zur Vorlage (Etsy-Sticker, nur Inspiration, nichts übernommen).** Die Vorlage gibt nur die allgemeine Stil-Idee vor: Pinguin, dunkle Kontur, flache Farben, Sonnenbrille. Eigen sind:
-- Aufrechte, symmetrische Birnenform mit rundem Kopf (die Vorlage ist schräg geneigt und eiförmig).
-- Kein weißer Gesichtsbereich, der Bauch läuft spitz unter dem Schnabel zusammen, anderer Bauchumriss und Schattenverlauf.
+- (Runde 5, auf Wunsch näher an der Vorlage) Kopf und Körper sind zwei klar getrennte Formen: breiter runder Kopf mit abgesetzter Halslinie, darunter ein breiter birnenförmiger Körper, leicht schräg (-4 Grad) und lässig; lange seitliche Flügel, breite gespreizte Füße, abgesetzter cremefarbener Gesichtsbereich. Eigen bleiben Proportionen, Umrisse und Details.
+- Eigener Bauchumriss und Schattenverlauf, eigene Kopfform ohne Nachzeichnen.
 - **Stirnband in Akzentorange** als Reha-Markenzeichen (Vorlage: keines), Brillengläser in einem eigenen Rechteckschnitt mit Bügeln.
 - Dreizehige, runde Füße und eigene Flügelform. Alle Formen sind frei im Code gezeichnet, es wurde nichts durchgepaust oder aus der Vorlage übernommen.
 - Grenze: Mit Sonnenbrille bleibt die Grundidee (Pinguin mit Sonnenbrille im Stil eines Stickers) naheliegend. Rechtlich geprüft ist das nicht (keine Rechtsberatung); die endgültige Figur sollte der Zeichner eigenständig entwerfen.
