@@ -1,6 +1,6 @@
 # Flutter-Plan Ausschnitt 2 „Fundament“: Patienten-Framework, Training, Check-ups und Physio-Bereich (ohne KI)
 
-Status: **PLAN ZUR FREIGABE** · v2.2 (v1.2 FREIGEGEBEN 2026-10-12 → v2.0 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.1 nach Review S3-3, Nutzerentscheidungen N-14 und Manny-Entscheidung N-15 → v2.2 nach Re-Review S3-RR und Nutzerentscheidungen N-16) · Pakete S3-1, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
+Status: **FREIGEGEBEN (2026-10-14, mit Auflagen N-17)** · v2.2 (v1.2 FREIGEGEBEN 2026-10-12 → v2.0 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.1 nach Review S3-3, Nutzerentscheidungen N-14 und Manny-Entscheidung N-15 → v2.2 nach Re-Review S3-RR und Nutzerentscheidungen N-16) · Pakete S3-1, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
 
 ## Änderungsprotokoll v2.1 → v2.2 (Paket S3-K2, Re-Review S3-RR und Nutzerentscheidungen N-16)
 
@@ -77,6 +77,11 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
   - **Vorschau vorbereiteter Übungen bestätigt:** Der Patient liest Übungen (und ab L8 deren Bilder) aktiver **und** vorbereiteter Positionen seines aktuellen Plans über die API (6.7 Nr. 2, 6.11).
   - **Zählweise je Verletzung:** Stimmungskette (O-2b) und Anstiegsregel (Vortag) zählen **je Verletzung**; mit einer neuen Verletzung beginnt die Zählung neu, der Vortag einer anderen Verletzung zählt nicht (6.9).
   - **Zusammenfassen:** Entstehen durch einen verspäteten Check-up mehrere Stimmungs-Warnzeichen auf einmal, bleibt es je Tag ein Warnzeichen; der Physio bekommt für diesen Eingang **eine gemeinsame Meldung** (6.9, 6.12, 9).
+- **N-17 Freigabe v2.2 mit Auflagen (2026-10-14, nach Re-Review S3-RR2):**
+  - **O-44 entschieden:** Bei Neubindung auf einem neuen Gerät **gewinnt der Look aus dem Konto** (B-36 wird Entscheidung).
+  - **Auflage MINOR-G (vor F2-6a / L5):** Tages-Check-ups (und Fragen/Notizen, soweit tagesbezogen) werden der Verletzung zugeordnet, die an ihrem `local_day` aktiv war (`injuries.started_on`/`closed_on`), nicht der beim Eingang aktiven; B-32 entsprechend anpassen. Test: Check-up mit `local_day` vor dem Verletzungswechsel, nach `start_new_injury` eingegangen (DB-T57, DB-T61, DB-T77).
+  - **Auflage NIT-1 (in L2):** Kein Leserecht des Physios auf `patients.manny_look`.
+  - **Auflage NIT-2 (in L3):** Dauerhaft ungültige zurückgestellte Warteschlangen-Einträge werden dem Patienten dezent angezeigt („Ein Eintrag konnte nicht gesendet werden“).
 
 **Blockierende offene Punkte (Stand v2.2; vollständig in Abschnitt 14):**
 
@@ -85,7 +90,7 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
 | Brief-Ergänzung F2-D2 (Screens, die Brief v2 nicht gestaltet, und Brief-Folgen aus N-14, 3.7) | L3, L5, L6, L7 (jeweils der passende Teil) |
 | E-7, E-15, E-27, E-31 | nur Ausschnitt 3 (KI-Plan) |
 | E-30 leichtere Variante | nicht blockierend für Ausschnitt 2 (ohne Entscheidung bietet „Schmerz melden“ nur den Abbruch); Schema-Entscheidung **vor L2 empfohlen** |
-| O-44 Manny-Look bei Neubindung auf neuem Gerät: Konto-Wert oder im Code-Start gewählter Wert? | L3 (Annahme B-36: Konto-Wert gewinnt) |
+| O-44 Manny-Look bei Neubindung auf neuem Gerät | **entschieden (N-17):** Konto-Wert gewinnt |
 
 O-17, O-18, O-19, O-2 (inkl. O-2a, O-2b) und E-28 blockieren nichts mehr (N-14); O-41, O-42, O-43 sind entschieden (N-16).
 

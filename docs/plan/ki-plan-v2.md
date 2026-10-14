@@ -1,6 +1,6 @@
 # KI-Plan v2.5: Manny ist das Gehirn, dazu die Physio-KI (CuraOne, Ausschnitte 3 und 4)
 
-Status: **PLAN ZUR FREIGABE** · v2.5 (v2.2 FREIGEGEBEN 2026-10-12 → v2.3 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.4 nach Review S3-3 und Nutzerentscheidungen N-14 → v2.5 nach Re-Review S3-RR und Nutzerentscheidungen N-16; v2.2 nach Re-Review R-P2-RR; v2.1 nach Review R-P2; v2 Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Pakete S3-2, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
+Status: **FREIGEGEBEN (2026-10-14)** · v2.5 (v2.2 FREIGEGEBEN 2026-10-12 → v2.3 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.4 nach Review S3-3 und Nutzerentscheidungen N-14 → v2.5 nach Re-Review S3-RR und Nutzerentscheidungen N-16; v2.2 nach Re-Review R-P2-RR; v2.1 nach Review R-P2; v2 Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Pakete S3-2, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
 
 ## Änderungsprotokoll v2.4 → v2.5 (Paket S3-K2)
 

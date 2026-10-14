@@ -41,12 +41,12 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
 - [ ] Für jedes Thema: Entscheidungen festhalten, Priorität (Ausschnitt 2 / 3 / 4 / später) festlegen und dem Nutzer zur Freigabe vorlegen.
 
 ## Schritt 3: Dokumente aktualisieren
-- [ ] Die Spezifikation `docs/produkt/curaone-spezifikation-manny-gehirn.md` ergänzen bzw. eine neue Spezifikation schreiben, mit Nutzergeschichten und prüfbaren Akzeptanzkriterien. Der Nutzer gibt frei.
-- [ ] Prüfen, was sich am freigegebenen Plan Ausschnitt 2 (v1.2) und am KI-Plan (v2.2) ändert. Ändern sie sich, gilt: Überarbeitung durch den `flutter-developer` (opus), Review durch den `reviewer` (opus), dann Freigabe durch den Nutzer.
+- [x] Die Spezifikation `docs/produkt/curaone-spezifikation-manny-gehirn.md` ergänzen bzw. eine neue Spezifikation schreiben, mit Nutzergeschichten und prüfbaren Akzeptanzkriterien. Der Nutzer gibt frei.
+- [x] Prüfen, was sich am freigegebenen Plan Ausschnitt 2 (v1.2) und am KI-Plan (v2.2) ändert. Ändern sie sich, gilt: Überarbeitung durch den `flutter-developer` (opus), Review durch den `reviewer` (opus), dann Freigabe durch den Nutzer.
 - [ ] Neue Oberflächen (Physio-Bereich, Training, Check-up, ggf. Feed) laufen über Ablauf C: Grunddesign, Freigabe, Design-Brief und noch einmal Freigabe durch den `ui-designer`.
 
 ## Schritt 4: Offene Werte vor dem Bau von Ausschnitt 2 abfragen
-- [ ] Warnzeichen-Schwellen beim Befinden (O-2), Schmerzschwelle für die Kürzung (E-28).
+- [x] Warnzeichen-Schwellen beim Befinden (O-2), Schmerzschwelle für die Kürzung (E-28).
 - [ ] KI-Grenzwerte und -Entscheidungen E-7, E-15, E-27, E-30, E-31. Sie werden erst für den KI-Ausschnitt gebraucht.
 
 ## Schritt 5: Bau Ausschnitt 2 starten (erst nach den Schritten 1–4)
@@ -62,6 +62,13 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
 - 2d → `docs/produkt/curaone-feed.md` (stufenweise ab Ausschnitt 4)
 - Präsentations-Feedback: modern und jung, „Instagram × Duolingo für Gesundheit“
 - 2e → `docs/design/grunddesign-v2.md` (Manny A „Lässig“) und `docs/design/design-brief-v2.md`, beide FREIGEGEBEN 2026-10-14
+
+## Ergebnisse Schritt 3/4 (2026-10-14)
+- Spezifikation nicht separat überarbeitet: die freigegebenen Produktdokumente (Training/Check-up, Physio-Bereich, Feed) enthalten Nutzergeschichten und prüfbare Kriterien; die Pläne verweisen darauf.
+- `docs/plan/flutter-plan-ausschnitt-2.md` v2.2 und `docs/plan/ki-plan-v2.md` v2.5 FREIGEGEBEN (Review + 2 Re-Reviews, Auflagen N-17).
+- Manny: Nutzer-Grafiken mit/ohne Brille, `docs/design/design-brief-v2-ergaenzung-1.md` FREIGEGEBEN.
+- Schritt 4 teilweise: O-2/O-2a/O-2b, E-28, O-17, O-18, O-19 entschieden (N-14). Offen nur noch KI-Werte E-7, E-15, E-27, E-30, E-31 (erst Ausschnitt 3; E-30 vor L2 empfohlen).
+- Vor L3/L5/L6/L7: Brief-Ergänzung F2-D2 (ui-designer) mit Nutzerfreigabe.
 
 ## Hinweise
 - Was erledigt ist, wird hier abgehakt und in `docs/UEBERGABE.md` nachgetragen.
