@@ -61,16 +61,24 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
 - **N-11** Design-Brief v2 freigegeben; Smileys im Prototyp als Emoji; Thema-Override System/Hell/Dunkel im Profil; „Transparenz reduzieren“ als App-Schalter plus Hoher Kontrast (kein iOS-Plattformaufruf).
 - **N-12** Reihenfolge: **Das Redesign (Umbau aller bestehenden Screens und Goldens auf Brief v2 inkl. neuer Leiste/Navigation, Tageszeit-Welt, Manny-Platzhalterbilder) ist die erste Lieferung von Ausschnitt 2**; danach entstehen alle neuen Screens direkt im neuen Look.
 - **N-13** Physio-KI (PB-5) erst in Ausschnitt 3 (KI-Plan v2.3); Feed erst ab Ausschnitt 4.
+- **N-14 Offene Werte entschieden (2026-10-14, nach Plan v2.0; noch in die betroffenen Abschnitte einzuarbeiten):**
+  - **O-17:** „Zeit“ einer Übung = **Dauer je Satz in Sekunden** (`duration_sec`).
+  - **O-18:** Schwellung **bleibt** als 6. Frage im Tages-Check-up (0–3).
+  - **O-19:** Einschränkungen als **Skala keine / leicht / deutlich / stark** (ein Wert, keine Bereichsliste).
+  - **O-2:** Warnzeichen bei **Schmerz ≥ 7**, **Anstieg ≥ 3** gegenüber dem letzten Check-up, **Schwellung „stark“** (3 von 3).
+  - **O-2a:** „Sehr schlechte Stimmung“ = Smiley **1 oder 2** (Skala 1–5, 1 = sehr schlecht).
+  - **O-2b:** Ab dem 5. Tag in Folge mit sehr schlechter Stimmung bekommt der Physio **an jedem weiteren solchen Tag erneut** eine Nachricht (die bisherige Annahme „eine Nachricht je Kette“ entfällt). Zählweise bei Tagen ohne Check-up: weiter offen, Annahme bleibt „Lücke unterbricht“.
+  - **E-28:** Kürzung des Tagesprogramms **ab Schmerz 6** (liegt unter der Warnschwelle 7).
 
 **Blockierende offene Werte (Stand; vollständig in Abschnitt 14):**
 
 | Wert | blockiert |
 |---|---|
-| O-17 Einheit und Schätzregel für „Zeit“ einer Übung | L2 (Schema `plan_items`/`exercises`) |
-| O-2 Warnzeichen-Schwellen inkl. O-2a „sehr schlechte Stimmung“ und O-2b Zählregel der 5 Tage | L5 |
-| E-28 Schmerzschwelle für die Kürzung | L5 (Kürzung) |
-| O-18 Schwellung im Tages-Check-up | L5 |
-| O-19 Auswahlliste „Einschränkungen“ | L5 |
+| O-17 Einheit und Schätzregel für „Zeit“ einer Übung | L2 (Schema `plan_items`/`exercises`) – **entschieden (N-14)** |
+| O-2 Warnzeichen-Schwellen inkl. O-2a „sehr schlechte Stimmung“ und O-2b Zählregel der 5 Tage | L5 – **entschieden (N-14)** |
+| E-28 Schmerzschwelle für die Kürzung | L5 (Kürzung) – **entschieden (N-14)** |
+| O-18 Schwellung im Tages-Check-up | L5 – **entschieden (N-14)** |
+| O-19 Auswahlliste „Einschränkungen“ | L5 – **entschieden (N-14)** |
 | Brief-Ergänzung F2-D2 (Screens, die Brief v2 nicht gestaltet) | L3, L5, L6, L7 (jeweils der passende Teil) |
 | E-7, E-15, E-27, E-31 | nur Ausschnitt 3 (KI-Plan) |
 | E-30 leichtere Variante | nicht blockierend für Ausschnitt 2 (ohne Entscheidung bietet „Schmerz melden“ nur den Abbruch); Schema-Entscheidung **vor L2 empfohlen** |
