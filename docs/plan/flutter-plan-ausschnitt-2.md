@@ -81,6 +81,7 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
   - **O-44 entschieden:** Bei Neubindung auf einem neuen Gerät **gewinnt der Look aus dem Konto** (B-36 wird Entscheidung).
   - **Auflage MINOR-G (vor F2-6a / L5):** Tages-Check-ups (und Fragen/Notizen, soweit tagesbezogen) werden der Verletzung zugeordnet, die an ihrem `local_day` aktiv war (`injuries.started_on`/`closed_on`), nicht der beim Eingang aktiven; B-32 entsprechend anpassen. Test: Check-up mit `local_day` vor dem Verletzungswechsel, nach `start_new_injury` eingegangen (DB-T57, DB-T61, DB-T77).
   - **Auflage NIT-1 (in L2):** Kein Leserecht des Physios auf `patients.manny_look`.
+  - **E-30 entschieden:** Der Physio kann je Planposition optional eine **leichtere Variante** hinterlegen (`plan_items.easier_variant_of`, gleiche Phase, Prüfung in `save_plan`); „Schmerz melden“ in der Session bietet sie an, sonst nur Abbruch. Schema in L2, Plan-Editor in L6, Session in L4.
   - **Auflage NIT-2 (in L3):** Dauerhaft ungültige zurückgestellte Warteschlangen-Einträge werden dem Patienten dezent angezeigt („Ein Eintrag konnte nicht gesendet werden“).
 
 **Blockierende offene Punkte (Stand v2.2; vollständig in Abschnitt 14):**
@@ -89,7 +90,7 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
 |---|---|
 | Brief-Ergänzung F2-D2 (Screens, die Brief v2 nicht gestaltet, und Brief-Folgen aus N-14, 3.7) | L3, L5, L6, L7 (jeweils der passende Teil) |
 | E-7, E-15, E-27, E-31 | nur Ausschnitt 3 (KI-Plan) |
-| E-30 leichtere Variante | nicht blockierend für Ausschnitt 2 (ohne Entscheidung bietet „Schmerz melden“ nur den Abbruch); Schema-Entscheidung **vor L2 empfohlen** |
+| E-30 leichtere Variante | **entschieden (N-17):** ja, Schema in L2 |
 | O-44 Manny-Look bei Neubindung auf neuem Gerät | **entschieden (N-17):** Konto-Wert gewinnt |
 
 O-17, O-18, O-19, O-2 (inkl. O-2a, O-2b) und E-28 blockieren nichts mehr (N-14); O-41, O-42, O-43 sind entschieden (N-16).

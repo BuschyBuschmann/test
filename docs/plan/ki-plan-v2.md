@@ -74,7 +74,7 @@ Aus den Nutzerentscheidungen vom 2026-10-14:
 - **NE-24 (Flutter-Plan N-14, 2026-10-14)** „Zeit“ einer Übung = Dauer je Satz in Sekunden (`duration_sec`); Schätzregel mit der Pause des Physios (`pause_sec`, sonst 60 s); Kürzung E-36 halbiert die Dauer je Satz in Sekunden (`max(1, abrunden(Dauer / 2))`). **E-28 = Schmerz 6.** Warnzeichen aus dem Tages-Check-up: Schmerz ≥ 7, Anstieg ≥ 3 zum Check-up des Vortags, Schwellung 3 (gleicher fester Hinweis); Stimmungs-Nachricht ab 5 aufeinanderfolgenden Tagen mit Check-up und Stimmung ≤ 2, an jedem weiteren Tag erneut, Lücke unterbricht, Patient erfährt nichts. Schwellung 0–3 und Einschränkungen als Einzelwert-Skala im Tages-Check-up.
 - **NE-25 (Flutter-Plan N-16, 2026-10-14)** Stimmungskette und Anstiegsregel zählen **je Verletzung** (neue Verletzung → Zählung beginnt neu, Vortag einer anderen Verletzung zählt nicht). Mehrere Stimmungs-Warnzeichen aus einem verspäteten Check-up: je Tag ein Warnzeichen, beim Physio **eine** gemeinsame Meldung. Nachträgliche Warnzeichen durch verspätete Check-ups sind gewollt. Für diesen Plan ändert sich dadurch nur die Beschreibung in 4.3; Chat-Warnzeichen sind nicht betroffen.
 
-**Vor KI-1/KI-2 zu entscheiden (blockierend):** E-7, E-15, E-27, E-30, E-31. E-28 und O-2 sind entschieden (NE-24). **Vor KI-P1/KI-P2 (Physio-KI):** E-38, E-39, E-42; vor dem KI-Bild-Teil zusätzlich E-40.
+**Vor KI-1/KI-2 zu entscheiden (blockierend):** E-7, E-15, E-27, E-31 (E-30 entschieden 2026-10-14: leichtere Variante ja, Flutter-Plan N-17). E-28 und O-2 sind entschieden (NE-24). **Vor KI-P1/KI-P2 (Physio-KI):** E-38, E-39, E-42; vor dem KI-Bild-Teil zusätzlich E-40.
 
 ---
 
@@ -498,7 +498,7 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 | E-27 | Physio-Grenzen | **neu – vor KI-1/KI-2 zu entscheiden** | Obergrenzen; `null` = nicht freigegeben (4.2.1) |
 | E-28 | Schmerzschwelle für Kürzung | **erledigt** (NE-24) | Schmerz ≥ 6 im Tages-Check-up (unter der Warnschwelle 7) |
 | E-29 | Verhalten bei Verstoß | neu | kein zweiter Versuch, Ersatzprogramm (4.2.2) |
-| E-30 | Leichtere Variante | **offen – vor KI-1/KI-2 zu entscheiden; Schema vor Flutter-Plan L2 empfohlen** | `easier_variant_of` + Plan-Editor; wird auch von „Schmerz melden“ in der Session (Ausschnitt 2) genutzt, ohne Entscheidung dort nur Abbruch |
+| E-30 | Leichtere Variante | **entschieden 2026-10-14: ja** (Schema in Flutter-Plan L2, N-17) | `easier_variant_of` + Plan-Editor; wird auch von „Schmerz melden“ in der Session (Ausschnitt 2) genutzt, ohne Entscheidung dort nur Abbruch |
 | E-31 | KI-Einwilligung getrennt? | **neu – vor KI-1/KI-2 zu entscheiden** | getrennter Schritt; nennt Chat-Warnzeichen inkl. Krise |
 | E-32 | Akte im Kontext | neu | Behandler (Rolle, Name), Krankengeschichte (Art, Titel), Tages-Check-ups (Schmerz, Wohlbefinden, Motivation, Schwellung, Einschränkungs-Stufe; ohne Stimmung, NE-22), Check-ups nach der Einheit und Verlauf 7 Tage; Quelle nur `app.manny_context_facts` (4.1) |
 | E-33 | Übung begleiten | neu | deterministisch, KI nur Motivationssätze |
