@@ -1,4 +1,4 @@
-# Checkliste: Weiter nach dem Limit-Reset (Abend 2026-10-13)
+# Checkliste: Weiter nach dem Limit-Reset (Stand 2026-10-14)
 
 Arbeitsweise wie bisher: Orchestrator koordiniert, eine Frage pro Schritt, nichts wird umgesetzt ohne Freigabe. Nach jedem verifizierten Schritt wird committet und gepusht. Bei einem Sitzungslimit plant der Orchestrator selbst eine Erinnerung für kurz nach dem Reset.
 
@@ -29,8 +29,15 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
   - Übungs-Baukasten: Felder, Bilder auswählen/hochladen/KI-generiert, direkte Zuordnung zu Patienten.
   - Historie je Patient.
   - Physio-KI: Aufgaben und Grenzen.
+  - Neuer Patient: Anlegen und Verbinden per QR/Link in wenigen Sekunden. Der Ablauf steht schon im Plan Ausschnitt 2 (Einladung) und wird hier vereinfacht.
   - Bezug zu P-1 bis P-5.
 - [ ] **2d Feed/News** (`/product-strategist`): Zielbild, Inhaltsquellen (eigene, Artikel, Krankenkassen), Personalisierung nach Verletzung, Prüfpunkte zu Rechten und Quellen. Wann im Ausbau, MVP oder später?
+- [ ] **2e Design-Überarbeitung** (`ui-designer`, Ablauf C, gestaltet erst nach den Inhalten aus 2a–2d):
+  - Leiste unten neu: Pfad, Heute, Nachrichten, Profil/Konto. Wohin kommen dann der Manny-Button und „Deine Daten“?
+  - Transparente Leiste wie bei iOS/Instagram, dazu Tiefe und 3D-Wirkung. Das berührt das Blur-Budget und die Glow-Regel E-1 im Brief.
+  - Neuer Look nach `docs/design/inspiration/health-app-glas-orange.webp`.
+  - Manny komplett neu nach `docs/design/inspiration/manny-pinguin-aquarell.png`: Aquarell-Pinguin mit Posen und Accessoires. Klären, ob als Illustration (Bilder) oder weiter gezeichnet im Code. Die Manny-Illustration war bisher ein bekannter Blocker.
+  - Ablauf: Grunddesign zur Freigabe, dann Design-Brief v2 zur Freigabe. Danach ein Umbaupaket für die bestehenden Screens und Goldens.
 - [ ] Für jedes Thema: Entscheidungen festhalten, Priorität (Ausschnitt 2 / 3 / 4 / später) festlegen und dem Nutzer zur Freigabe vorlegen.
 
 ## Schritt 3: Dokumente aktualisieren
@@ -52,3 +59,5 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
 ## Hinweise
 - Was erledigt ist, wird hier abgehakt und in `docs/UEBERGABE.md` nachgetragen.
 - Reihenfolge: erst Schritt 1 (klein, schließt Offenes ab), dann der Dialog in Schritt 2, weil er bestimmt, was in Ausschnitt 2 gebaut wird.
+- Kläre in Schritt 2, ob das neue Design vor Ausschnitt 2 kommt (alle neuen Screens gleich im neuen Look) oder danach (zuerst die Funktionen). Empfehlung: das Grunddesign früh festlegen, damit Physio-Bereich und neue Screens nicht zweimal gestaltet werden.
+- Prüfe in Schritt 1, ob sich die Restkorrekturen von „Schnelle Klarheit“ noch lohnen, wenn ohnehin ein Redesign kommt. Die zwei Pflichtpunkte (Screenreader, Sichtbarkeit) lohnen sich in jedem Fall.
