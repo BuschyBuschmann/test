@@ -286,9 +286,9 @@ void main() {
         }),
         hasLength(1),
       );
-      // accent/accentHi nicht in Fehler-/Status-Widgets
+      // accent/accentText nicht in Fehler-/Status-Widgets
       expect(
-        checkRule4(<String, String>{errView: 'Icon(color: c.accentHi)'}),
+        checkRule4(<String, String>{errView: 'Icon(color: c.accentText)'}),
         hasLength(1),
       );
       expect(
@@ -325,7 +325,7 @@ void main() {
         hasLength(1),
       );
       // erlaubt
-      expect(checkRule5(f('TextStyle(color: c.accentHi)')), isEmpty);
+      expect(checkRule5(f('TextStyle(color: c.accentText)')), isEmpty);
       expect(checkRule5(f('TextStyle(color: c.text1)')), isEmpty);
       expect(
         checkRule5(f('BoxDecoration(color: c.accent)')),
@@ -336,7 +336,9 @@ void main() {
         isEmpty,
       ); // Symbol
       expect(
-        checkRule5(f('TextButton.styleFrom(foregroundColor: colors.accentHi)')),
+        checkRule5(
+          f('TextButton.styleFrom(foregroundColor: colors.accentText)'),
+        ),
         isEmpty,
       );
     });
@@ -448,38 +450,41 @@ void main() {
       );
     });
 
-    test('Regel 9: keine Animation in glow_background.dart und manny.dart', () {
-      for (final String name in <String>[
-        'glow_background.dart',
-        'manny.dart',
-      ]) {
-        final String p = 'lib/ui/components/$name';
-        expect(
-          checkRule9(<String, String>{p: 'late AnimationController c;'}),
-          hasLength(1),
-        );
+    test(
+      'Regel 9: keine Animation in world_background.dart und manny.dart',
+      () {
+        for (final String name in <String>[
+          'world_background.dart',
+          'manny.dart',
+        ]) {
+          final String p = 'lib/ui/components/$name';
+          expect(
+            checkRule9(<String, String>{p: 'late AnimationController c;'}),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{
+              p: 'class X extends State with SingleTickerProviderStateMixin {}',
+            }),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{p: 'final t = Ticker(cb);'}),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{p: 'CustomPaint(painter: p)'}),
+            isEmpty,
+          );
+        }
         expect(
           checkRule9(<String, String>{
-            p: 'class X extends State with SingleTickerProviderStateMixin {}',
+            'lib/ui/components/path_node.dart': 'AnimationController c;',
           }),
-          hasLength(1),
-        );
-        expect(
-          checkRule9(<String, String>{p: 'final t = Ticker(cb);'}),
-          hasLength(1),
-        );
-        expect(
-          checkRule9(<String, String>{p: 'CustomPaint(painter: p)'}),
           isEmpty,
         );
-      }
-      expect(
-        checkRule9(<String, String>{
-          'lib/ui/components/path_node.dart': 'AnimationController c;',
-        }),
-        isEmpty,
-      );
-    });
+      },
+    );
 
     test('Regel 10: Ton in strings_de.dart', () {
       Map<String, String> f(String code) => <String, String>{
@@ -614,7 +619,7 @@ void main() {
       };
       const String cluster = 'lib/ui/components/action_cluster.dart';
       expect(checkRule12(f(cluster, 'c.accent')), hasLength(1));
-      expect(checkRule12(f(cluster, 'c.accentHi')), hasLength(1));
+      expect(checkRule12(f(cluster, 'c.accentText')), hasLength(1));
       expect(
         checkRule12(
           f('lib/ui/components/manny_chat_button.dart', 'CuraBlur(child: x)'),
@@ -627,13 +632,13 @@ void main() {
       );
       expect(
         checkRule12(
-          f('lib/ui/components/chat_composer.dart', 'GlowBackground()'),
+          f('lib/ui/components/chat_composer.dart', 'WorldBackground()'),
         ),
         hasLength(1),
       );
       expect(
         checkRule12(
-          f('lib/ui/components/chat_screen_scaffold.dart', 'GlowBackground()'),
+          f('lib/ui/components/chat_screen_scaffold.dart', 'WorldBackground()'),
         ),
         isEmpty,
       );
@@ -809,6 +814,72 @@ void main() {
       );
     });
   });
+  group('Regel 17: Blur-Budget und Uhr der Welt', () {
+    test('Budget im Token: 3 ist erlaubt, 4 und fehlend nicht', () {
+      expect(
+        checkRule17(<String, String>{
+          kTokensFile: 'static const int maxPerScreen = 3;',
+        }),
+        isEmpty,
+      );
+      expect(
+        checkRule17(<String, String>{
+          kTokensFile: 'static const int maxPerScreen = 4;',
+        }),
+        hasLength(1),
+      );
+      expect(
+        checkRule17(<String, String>{kTokensFile: 'static const int x = 3;'}),
+        hasLength(1),
+      );
+    });
+
+    test('CuraBlur muss gegen das Budget zählen', () {
+      expect(
+        checkRule17(<String, String>{kBlurFile: 'budget.tryAcquire();'}),
+        isEmpty,
+      );
+      expect(
+        checkRule17(<String, String>{kBlurFile: 'BackdropFilter(filter: f)'}),
+        hasLength(1),
+      );
+    });
+
+    test('DateTime.now nur im Kompositions- und Weltuhr-Code', () {
+      for (final String path in <String>[
+        'lib/ui/components/world_background.dart',
+        'lib/theme/world_tokens.dart',
+        'lib/state/world_scope.dart',
+        'lib/logic/streak.dart',
+      ]) {
+        expect(
+          checkRule17(<String, String>{path: 'final t = DateTime.now();'}),
+          hasLength(1),
+          reason: path,
+        );
+      }
+      for (final String path in <String>[
+        'lib/logic/world_time.dart',
+        'lib/logic/clock.dart',
+        'lib/main.dart',
+        'lib/dev/preview_app.dart',
+      ]) {
+        expect(
+          checkRule17(<String, String>{path: 'final t = DateTime.now;'}),
+          isEmpty,
+          reason: path,
+        );
+      }
+      // Kommentare zählen nicht.
+      expect(
+        checkRule17(<String, String>{
+          'lib/ui/a.dart': '// DateTime.now ist verboten',
+        }),
+        isEmpty,
+      );
+    });
+  });
+
   group('Selbsttest R-U1 MINOR-2: bisher übersehene Muster', () {
     const String u = 'lib/ui/today/a.dart';
     List<Violation> r(int rule, String code, [String path = u]) =>
@@ -874,8 +945,11 @@ void main() {
         ),
         isNotEmpty,
       );
-      expect(r(5, 'type.body.apply(color: colors.accentHi)'), isEmpty);
-      expect(r(5, 'final c = colors.accentHi;\nTextStyle(color: c)'), isEmpty);
+      expect(r(5, 'type.body.apply(color: colors.accentText)'), isEmpty);
+      expect(
+        r(5, 'final c = colors.accentText;\nTextStyle(color: c)'),
+        isEmpty,
+      );
       // accent als Fläche/Symbol bleibt erlaubt
       expect(r(5, 'Icon(Icons.add, color: colors.accent)'), isEmpty);
       expect(

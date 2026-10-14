@@ -4,11 +4,16 @@ import 'day_program.dart';
 import 'equality.dart';
 import 'injury_type.dart';
 import 'json_support.dart';
+import 'manny_look.dart';
 import 'manny_state.dart';
 import 'placeholder_pools.dart';
 import 'streak.dart';
 
-/// Onboarding (Schritt 0..3 = Schritt 1..4).
+/// Letzter Onboarding-Schritt (Index): fünf Schritte seit Schema 2.
+const int kLastOnboardingStep = 4;
+
+/// Onboarding (Schritt 0..4 = Schritt 1..5; Schritt 1 ist die Look-Wahl,
+/// Ergänzung 1, 6a).
 class OnboardingState {
   const OnboardingState({
     this.completed = false,
@@ -23,7 +28,12 @@ class OnboardingState {
   factory OnboardingState.fromJson(Json j) {
     return OnboardingState(
       completed: reqBool(j, 'completed'),
-      step: inRange(reqInt(j, 'step'), 0, 3, 'onboarding.step'),
+      step: inRange(
+        reqInt(j, 'step'),
+        0,
+        kLastOnboardingStep,
+        'onboarding.step',
+      ),
       name: optString(j, 'name', ''),
       injuryType: InjuryType.fromJsonName(optStringOrNull(j, 'injuryType')),
       injuryOther: optString(j, 'injuryOther', ''),
@@ -238,7 +248,7 @@ class CelebrationState {
 }
 
 /// Schema des Dokuments; erhöht bei jeder inkompatiblen Änderung (Plan 6.2).
-const int kCurrentSchema = 1;
+const int kCurrentSchema = 2;
 
 /// Der gesamte persistierte Zustand.
 class AppState {
@@ -251,6 +261,7 @@ class AppState {
     required this.prefs,
     required this.manny,
     required this.celebration,
+    this.mannyLook = MannyLook.defaultLook,
   });
 
   /// Ausgangszustand (Erststart, nach Löschen): Streak 0, Freezes 2, Zeitwahl
@@ -264,6 +275,7 @@ class AppState {
     prefs: const PrefsState(),
     manny: const MannyState(),
     celebration: null,
+    mannyLook: MannyLook.defaultLook,
   );
 
   /// Liest ein **bereits auf [kCurrentSchema] migriertes** Dokument
@@ -305,6 +317,7 @@ class AppState {
       celebration: celebration == null
           ? null
           : CelebrationState.fromJson(celebration),
+      mannyLook: MannyLook.fromJson(j['mannyLook']),
     );
   }
 
@@ -317,6 +330,9 @@ class AppState {
   final MannyState manny;
   final CelebrationState? celebration;
 
+  /// Gewählter Manny-Look (Schema 2); Vorbelegung `brille`.
+  final MannyLook mannyLook;
+
   AppState copyWith({
     OnboardingState? onboarding,
     ConsentState? consent,
@@ -327,6 +343,7 @@ class AppState {
     MannyState? manny,
     CelebrationState? celebration,
     bool clearCelebration = false,
+    MannyLook? mannyLook,
   }) {
     return AppState(
       onboarding: onboarding ?? this.onboarding,
@@ -337,6 +354,7 @@ class AppState {
       prefs: prefs ?? this.prefs,
       manny: manny ?? this.manny,
       celebration: clearCelebration ? null : (celebration ?? this.celebration),
+      mannyLook: mannyLook ?? this.mannyLook,
     );
   }
 
@@ -350,6 +368,7 @@ class AppState {
     'prefs': prefs.toJson(),
     'manny': manny.toJson(),
     'celebration': celebration?.toJson(),
+    'mannyLook': mannyLook.jsonName,
   };
 
   @override
@@ -362,7 +381,8 @@ class AppState {
       other.day == day &&
       other.prefs == prefs &&
       other.manny == manny &&
-      other.celebration == celebration;
+      other.celebration == celebration &&
+      other.mannyLook == mannyLook;
 
   @override
   int get hashCode => Object.hash(
@@ -374,5 +394,6 @@ class AppState {
     prefs,
     manny,
     celebration,
+    mannyLook,
   );
 }

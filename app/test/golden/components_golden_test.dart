@@ -1,5 +1,5 @@
 // Goldens der geteilten Bausteine (U2a, Plan 12.2 G): Typo-Tafel, Bausteine
-// einzeln (Normal und Hoher Kontrast), Flächen mit Glow, Manny-Posen. Referenz
+// einzeln (Normal und Hoher Kontrast), Flächen auf der Welt, Manny-Posen. Referenz
 // ist ausschließlich diese Linux-Umgebung; Erzeugung mit `--update-goldens`,
 // Sichtung durch den `ui-designer`, Freigabe durch den Nutzer (Plan 12.1).
 @Tags(<String>['golden'])
@@ -16,7 +16,7 @@ import 'package:curaone/ui/components/cura_text_field.dart';
 import 'package:curaone/ui/components/date_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
-import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/world_background.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
@@ -32,9 +32,9 @@ import '../support/pump_app.dart';
 
 const Size _board = Size(390, 844);
 
-Widget _withGlow(Widget content) => Stack(
+Widget _withWorld(Widget content) => Stack(
   children: <Widget>[
-    const Positioned.fill(child: GlowBackground()),
+    const Positioned.fill(child: WorldBackground()),
     content,
   ],
 );
@@ -57,7 +57,7 @@ Future<void> _golden(
 Widget _gap() => const SizedBox(height: 12);
 
 /// Bausteine einzeln: Tasten, Auswahl, Felder, Kreise, Fortschritt, Label.
-Widget _controls() => _withGlow(
+Widget _controls() => _withWorld(
   SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(
@@ -142,7 +142,7 @@ Widget _controls() => _withGlow(
 );
 
 /// Flächen: Glas-Karte, Snackbar, Sprechblasen, Dialog.
-Widget _surfaces() => _withGlow(
+Widget _surfaces() => _withWorld(
   SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(
@@ -214,7 +214,7 @@ Widget _surfaces() => _withGlow(
 );
 
 /// Nav und Button-Gruppe über scrollendem Inhalt (Blur, Ausblenden).
-Widget _navBoard() => _withGlow(
+Widget _navBoard() => _withWorld(
   Stack(
     children: <Widget>[
       Positioned.fill(
@@ -252,7 +252,7 @@ Widget _navBoard() => _withGlow(
   ),
 );
 
-Widget _manny() => _withGlow(
+Widget _manny() => _withWorld(
   Padding(
     padding: const EdgeInsets.all(16),
     child: Column(
@@ -299,7 +299,7 @@ Widget _typoBoard() => Builder(
             Text(
               '${e.key} · ${e.value.fontFamily} ${e.value.fontSize} '
               '${e.value.fontWeight?.value}',
-              style: t.caption.copyWith(color: c.text3),
+              style: t.caption.copyWith(color: c.text2),
             ),
             Text(
               e.key == 'label' ? 'ABSCHNITTSTITEL' : 'Heute, Jakob 17:00',
@@ -379,10 +379,6 @@ void main() {
         'manny_poses',
         size: const Size(390, 300),
       );
-    });
-
-    testWidgets('glow', (WidgetTester tester) async {
-      await _golden(tester, _withGlow(const SizedBox.expand()), 'glow');
     });
   });
 }

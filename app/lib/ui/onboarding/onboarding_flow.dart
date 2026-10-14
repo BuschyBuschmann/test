@@ -49,7 +49,8 @@ class OnboardingFlow extends StatefulWidget {
     this.notice = StartNotice.none,
   });
 
-  /// Schritt 0 … 3; ohne Angabe der gespeicherte.
+  /// Zustandsschritt 0 … 4 (Schritt 0 = Look-Wahl, noch ohne Seite, siehe
+  /// [_lookSteps]); ohne Angabe der gespeicherte.
   final int? initialStep;
 
   /// Hinweis nach dem Neustart (Snackbar).
@@ -60,6 +61,13 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
+  /// Übergang bis F2-R4: Der Zustand zählt seit Schema 2 fünf Schritte
+  /// (Schritt 0 = „Wie soll Manny aussehen?“, Ergänzung 1, 6a), die Seiten
+  /// sind noch die vier bisherigen. Seite = Zustandsschritt − 1; Schritt 0
+  /// zeigt die Seite „Name“ (der Look bleibt „Mit Brille“).
+  static const int _lookSteps = 1;
+
+  /// Letzte **Seite** (Index).
   static const int _lastStep = 3;
 
   final SnackbarController _snackbar = SnackbarController();
@@ -82,10 +90,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final AppController? c = context
         .getInheritedWidgetOfExactType<AppScope>()
         ?.notifier;
-    _step = (widget.initialStep ?? c?.state.onboarding.step ?? 0).clamp(
-      0,
-      _lastStep,
-    );
+    _step = ((widget.initialStep ?? c?.state.onboarding.step ?? 0) - _lookSteps)
+        .clamp(0, _lastStep);
     _snackbar.addListener(_onSnackbar);
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterFirstFrame());
   }
@@ -166,7 +172,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _goTo(int step) {
     _pageFocus.requestFocus();
-    _controller.setStep(step);
+    _controller.setStep(step + _lookSteps);
     setState(() {
       _direction = step > _step ? 1 : -1;
       _step = step;

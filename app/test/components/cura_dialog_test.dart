@@ -56,8 +56,8 @@ void main() {
     final Finder f = find.byType(CuraDialog);
     final CuraColors c = colorsAt(tester, f);
     final BoxDecoration d = decorationsUnder(tester, f).first;
-    expect(d.color, const Color(0xFF1B2129));
-    expect(d.borderRadius, BorderRadius.circular(24));
+    expect(d.color, c.surfaceOpaque);
+    expect(d.borderRadius, BorderRadius.circular(28));
     expect(d.border, Border.all(color: c.borderHair, width: 1));
     expect(d.boxShadow, isNull);
     expect(backdropCount(tester), 0);
@@ -378,7 +378,7 @@ void main() {
       tester,
       find.byType(CuraDialog),
     ).first;
-    expect(d.color, const Color(0xFF1B2129));
+    expect(d.color, c.surfaceOpaque);
     expect(d.border, Border.all(color: c.borderControlHc, width: 1));
     expect(backdropCount(tester), 0);
   });

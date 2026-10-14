@@ -1,6 +1,7 @@
 import 'package:curaone/app.dart';
 import 'package:curaone/data/manny_chat_source.dart';
 import 'package:curaone/state/app_controller.dart';
+import 'package:curaone/state/display_controller.dart';
 import 'package:curaone/ui/path/path_source.dart';
 import 'package:curaone/ui/today/today_source.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ Future<void> pumpCura(
   bool disableAnimations = false,
   bool accessibleNavigation = false,
   bool highContrast = false,
+  DisplayController? display,
 }) async {
   setViewport(tester, size);
   if (keyboard > 0) {
@@ -36,6 +38,7 @@ Future<void> pumpCura(
   await tester.pumpWidget(
     CuraApp(
       controller: controller,
+      display: display,
       navigatorKey: navigatorKey,
       startup: startup,
       chatSource: chatSource ?? const ExampleMannyChatSource(),

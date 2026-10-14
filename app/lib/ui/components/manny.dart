@@ -300,7 +300,7 @@ class _MannyPainter extends CustomPainter {
         foot,
         const Radius.circular(MannyGeometry.footRadius),
       );
-      canvas.drawRRect(r, fill..color = colors.accentHi);
+      canvas.drawRRect(r, fill..color = colors.accentTop);
     }
 
     // Flügel und Körper.
@@ -352,11 +352,11 @@ class _MannyPainter extends CustomPainter {
       ..lineTo(57 + open, 49)
       ..lineTo(50, 58 + open)
       ..close();
-    canvas.drawPath(beak, fill..color = colors.accentHi);
+    canvas.drawPath(beak, fill..color = colors.accentTop);
 
     // Pressed: Form 10 % heller (keine Animation, keine Pose-Änderung).
     if (pressed) {
-      final Paint overlay = Paint()..color = colors.pressedOverlay;
+      final Paint overlay = Paint()..color = colors.pressedOverlayLight;
       canvas.drawOval(MannyGeometry.body, overlay);
       for (final MannyWing w in wings) {
         canvas.drawPath(w.path(), overlay);

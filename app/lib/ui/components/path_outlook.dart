@@ -53,11 +53,11 @@ class PathOutlook extends StatelessWidget {
   /// Tipp, Enter, Leertaste: zeigt den `NodeHint` (Besitzer).
   final VoidCallback onPressed;
 
-  /// Der Titel skaliert bis 150 % mit (wie die Titel der Köpfe): bei 200 % auf
+  /// Der Titel skaliert bis 125 % mit: bei 200 % auf
   /// 320 dp bräche „Gesundheitssport“ sonst mitten im Wort (F-3, B3).
   static TextScaler titleScaler(TextScaler scaler) => scaler.clamp(
     minScaleFactor: 1,
-    maxScaleFactor: CuraSize.headerTitleMaxTextScale,
+    maxScaleFactor: CuraSize.outlookTitleMaxTextScale,
   );
 
   /// Breite des Textblocks bei der Markenbreite [width], Schloss daneben.
@@ -180,7 +180,7 @@ class PathOutlook extends StatelessWidget {
           children: <Widget>[
             // Titel höchstens bei 150 %, nie mitten im Wort (F-3).
             MediaQuery.withClampedTextScaling(
-              maxScaleFactor: CuraSize.headerTitleMaxTextScale,
+              maxScaleFactor: CuraSize.outlookTitleMaxTextScale,
               child: Text(
                 S.outlookTitle,
                 style: type.heading.copyWith(color: colors.text1),

@@ -17,9 +17,11 @@ import '../data/prefs_state_store.dart';
 import '../data/state_store.dart';
 import '../logic/clock.dart';
 import '../logic/manny_text_source.dart';
+import '../logic/world_time.dart';
 import '../ui/path/path_source.dart';
 import '../ui/today/today_source.dart';
 import '../state/app_controller.dart';
+import '../state/display_controller.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
 import '../theme/cura_motion.dart';
@@ -178,7 +180,13 @@ class _PreviewClock {
 
 /// Laufzeit eines App-Szenarios: Controller, Speicher und Startfunktion.
 class _AppRuntime {
-  _AppRuntime._(this.controller, this.seed, this.startup, [this._clock]);
+  _AppRuntime._(
+    this.controller,
+    this.seed,
+    this.startup,
+    this.display, [
+    this._clock,
+  ]);
 
   /// Szenario-Uhr (veränderlich für Zeitsprünge); `null` bei `live`.
   final _PreviewClock? _clock;
@@ -216,6 +224,7 @@ class _AppRuntime {
         _controller(clock, store, store),
         seed ?? const AppSeed(),
         null,
+        DisplayController(worldClock: WorldClock(clock)),
       );
     }
     final DateTime now = seed.now ?? env.now;
@@ -238,6 +247,8 @@ class _AppRuntime {
               await c.deleteAll();
             }
           : null,
+      // Die Welt läuft auf der Uhr des Szenarios (deterministisch).
+      DisplayController(worldClock: WorldClock(() => clock.now)),
       clock,
     );
   }
@@ -257,7 +268,13 @@ class _AppRuntime {
   final AppSeed seed;
   final Future<void> Function(AppController)? startup;
 
-  void dispose() => controller.dispose();
+  /// Darstellungs-Einstellungen des Szenarios (Welt nach der Szenario-Uhr).
+  final DisplayController display;
+
+  void dispose() {
+    controller.dispose();
+    display.dispose();
+  }
 }
 
 class PreviewApp extends StatefulWidget {
@@ -329,6 +346,7 @@ class _PreviewAppState extends State<PreviewApp> {
     if (runtime != null) {
       return CuraApp(
         controller: runtime.controller,
+        display: runtime.display,
         startup: runtime.startup,
         pathSource: runtime.pathSource,
         todaySource: runtime.todaySource,

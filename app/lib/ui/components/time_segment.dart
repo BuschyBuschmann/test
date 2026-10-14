@@ -81,7 +81,7 @@ class _Segment extends StatelessWidget {
       builder: (BuildContext context, bool pressed) {
         return TweenAnimationBuilder<Color?>(
           tween: ColorTween(
-            end: selected ? colors.accentHi : colors.controlBorder,
+            end: selected ? colors.accent : colors.controlBorder,
           ),
           duration: motion.duration(motion.fast),
           curve: motion.curve,

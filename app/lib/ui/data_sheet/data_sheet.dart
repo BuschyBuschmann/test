@@ -379,7 +379,7 @@ class _DataSheetState extends State<DataSheet> {
                       builder: (BuildContext context, bool pressed) {
                         final Color color = pressed
                             ? colors.text1
-                            : colors.accentHi;
+                            : colors.accentText;
                         return ConstrainedBox(
                           constraints: const BoxConstraints(
                             minHeight: CuraSize.touchTarget,

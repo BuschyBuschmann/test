@@ -101,7 +101,7 @@ class _CuraTextFieldState extends State<CuraTextField> {
           padding: EdgeInsets.zero,
           radius: CuraComponent.fieldRadius,
           lightEdge: false,
-          borderColor: _focused ? colors.accentHi : colors.controlBorder,
+          borderColor: _focused ? colors.accentText : colors.controlBorder,
           borderWidth: _focused
               ? CuraSize.selectedBorder
               : CuraSize.controlBorder,
@@ -124,7 +124,7 @@ class _CuraTextFieldState extends State<CuraTextField> {
                 textCapitalization: widget.textCapitalization,
                 autofillHints: widget.autofillHints,
                 style: type.body.copyWith(color: colors.text1),
-                cursorColor: colors.accentHi,
+                cursorColor: colors.accentText,
                 decoration: InputDecoration(
                   hintText: widget.hintText,
                   hintStyle: type.body.copyWith(color: colors.text2),

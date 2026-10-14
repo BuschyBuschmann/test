@@ -175,7 +175,7 @@ class PathView extends StatelessWidget {
               child: Text(
                 label.text,
                 textAlign: TextAlign.center,
-                style: type.caption.copyWith(color: colors.text3),
+                style: type.caption.copyWith(color: colors.text2),
               ),
             ),
           ),

@@ -1,4 +1,4 @@
-// Statische Code-Regeln 1–16 (Plan 12.3, Test C) als prüfbare Funktionen.
+// Statische Code-Regeln 1–17 (Plan 12.3, Test C) als prüfbare Funktionen.
 // Jede Regel bekommt die Dateien als `Map<Pfad, Quelltext>` (Pfade relativ zum
 // Paketstamm, mit `/`, z. B. `lib/ui/components/glass_card.dart`) und liefert
 // die Verstöße. `code_rules_test.dart` wendet sie auf `lib/` an und prüft sie
@@ -227,7 +227,7 @@ List<Violation> checkRule3(Map<String, String> files) {
 final RegExp _r4Token = RegExp(
   r'\b(?:statusError|catFrist|tri(?:Gruen|Gelb|Orange|Rot))\b',
 );
-final RegExp _r4Accent = RegExp(r'\baccent(?:Hi)?\b');
+final RegExp _r4Accent = RegExp(r'\baccent(?:Text|Top)?\b');
 final RegExp _anyCall = RegExp(r'\b[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*\s*\(');
 final RegExp _handlerArg = RegExp(r'^on(?:Pressed|Tap)\w*$');
 const Set<String> _r4ActionFiles = <String>{
@@ -253,7 +253,7 @@ List<Violation> checkRule4(Map<String, String> files) {
         path,
         code,
         _r4Accent,
-        'accent/accentHi nicht in Fehler-/Status-Widgets',
+        'accent/accentText nicht in Fehler-/Status-Widgets',
       );
     }
     if (hits.isEmpty) return;
@@ -313,7 +313,7 @@ List<Violation> checkRule4(Map<String, String> files) {
 // Regel 5: accent nie als Textfarbe (Brief-E-2)
 // ---------------------------------------------------------------------------
 
-final RegExp _r5Accent = RegExp(r'\baccent\b');
+final RegExp _r5Accent = RegExp(r'\baccent(?:Top)?\b');
 final RegExp _r5Calls = RegExp(
   r'\b(?:TextStyle|ButtonStyle|DefaultTextStyle)\s*\(|\.\s*(?:copyWith|apply|merge|styleFrom)\s*\(',
 );
@@ -343,7 +343,7 @@ List<Violation> checkRule5(Map<String, String> files) {
               5,
               path,
               lineOf(code, arg.offset),
-              'accent als Textfarbe in ${call.name}(${arg.name}: …): accentHi oder text1 verwenden',
+              'accent als Textfarbe in ${call.name}(${arg.name}: …): accentText oder text1 verwenden',
             ),
           );
         }
@@ -596,7 +596,7 @@ List<Violation> checkRule8(Map<String, String> files) {
 }
 
 // ---------------------------------------------------------------------------
-// Regel 9: keine Animation in glow_background.dart und manny.dart
+// Regel 9: keine Animation in world_background.dart und manny.dart
 // ---------------------------------------------------------------------------
 
 final RegExp _r9Anim = RegExp(
@@ -607,7 +607,7 @@ List<Violation> checkRule9(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
   _stripped(files).forEach((String path, String code) {
     final String name = baseName(path);
-    if (name != 'glow_background.dart' && name != 'manny.dart') return;
+    if (name != 'world_background.dart' && name != 'manny.dart') return;
     _addMatches(
       out,
       9,
@@ -759,9 +759,9 @@ const Set<String> _r12Files = <String>{
   'action_cluster.dart',
   'example_notice.dart',
 };
-final RegExp _r12Accent = RegExp(r'\baccent(?:Hi|Soft)?\b');
+final RegExp _r12Accent = RegExp(r'\baccent(?:Text|Top|Soft)?\b');
 final RegExp _r12Blur = RegExp(r'\b(?:CuraBlur|BackdropFilter)\b');
-final RegExp _r12Glow = RegExp(r'\bGlowBackground\b');
+final RegExp _r12World = RegExp(r'\bWorldBackground\b');
 final RegExp _r12Status = RegExp(
   r'\b(?:statusError|catFrist|tri(?:Gruen|Gelb|Orange|Rot))\b',
 );
@@ -810,8 +810,8 @@ List<Violation> checkRule12(Map<String, String> files) {
         12,
         path,
         code,
-        _r12Glow,
-        'GlowBackground nur im ChatScreenScaffold',
+        _r12World,
+        'WorldBackground nur im ChatScreenScaffold',
       );
     }
     _addMatches(
@@ -983,6 +983,80 @@ List<Violation> checkRule16(Map<String, String> files) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Regel 17: Blur-Budget und Uhr der Welt (Brief v2 3.1, 3.5, 9; Plan 3.6)
+// ---------------------------------------------------------------------------
+
+const String kTokensFile = 'lib/theme/tokens.dart';
+const String kBlurFile = 'lib/ui/components/cura_blur.dart';
+
+/// Höchstens so viele gleichzeitig sichtbare `BackdropFilter` je Screen
+/// (Brief 3.5: Leiste, Kopf-Karte, Manny-Knopf).
+const int kBlurBudgetMax = 3;
+
+final RegExp _r17Budget = RegExp(r'\bmaxPerScreen\s*=\s*(\d+)\s*;');
+final RegExp _r17Acquire = RegExp(r'\btryAcquire\b');
+final RegExp _r17Now = RegExp(r'\bDateTime\s*\.\s*now\b');
+
+/// Dateien in `lib/logic`, die eine Systemuhr nennen dürfen: `clock.dart`
+/// (Typ `Clock`) und `world_time.dart` (`WorldClock`, die Uhr der Welt).
+const Set<String> kSystemClockFiles = <String>{
+  'lib/logic/clock.dart',
+  'lib/logic/world_time.dart',
+};
+
+List<Violation> checkRule17(Map<String, String> files) {
+  final List<Violation> out = <Violation>[];
+  final Map<String, String> code = _stripped(files);
+  final String? tokens = code[kTokensFile];
+  if (tokens != null) {
+    final RegExpMatch? m = _r17Budget.firstMatch(tokens);
+    if (m == null) {
+      out.add(
+        const Violation(17, kTokensFile, 1, 'BlurTokens.maxPerScreen fehlt'),
+      );
+    } else if (int.parse(m.group(1)!) > kBlurBudgetMax) {
+      out.add(
+        Violation(
+          17,
+          kTokensFile,
+          lineOf(tokens, m.start),
+          'Blur-Budget über $kBlurBudgetMax (Brief 3.5)',
+        ),
+      );
+    }
+  }
+  final String? blur = code[kBlurFile];
+  if (blur != null && !_r17Acquire.hasMatch(blur)) {
+    out.add(
+      const Violation(
+        17,
+        kBlurFile,
+        1,
+        'CuraBlur zählt nicht gegen das Budget',
+      ),
+    );
+  }
+  code.forEach((String path, String src) {
+    final bool uiSide =
+        inDir(path, 'lib/ui') ||
+        inDir(path, 'lib/theme') ||
+        inDir(path, 'lib/state');
+    final bool logic =
+        inDir(path, 'lib/logic') && !kSystemClockFiles.contains(path);
+    if (!uiSide && !logic) return;
+    _addMatches(
+      out,
+      17,
+      path,
+      src,
+      _r17Now,
+      'Uhr nur über Clock bzw. lib/logic/world_time.dart, nie DateTime.now',
+    );
+  });
+  return out;
+}
+
 /// Alle Regeln in Reihenfolge.
 final Map<int, List<Violation> Function(Map<String, String>)> kRules =
     <int, List<Violation> Function(Map<String, String>)>{
@@ -1002,4 +1076,5 @@ final Map<int, List<Violation> Function(Map<String, String>)> kRules =
       14: checkRule14,
       15: checkRule15,
       16: checkRule16,
+      17: checkRule17,
     };

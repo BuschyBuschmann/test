@@ -67,7 +67,7 @@ void main() {
           .widget<Text>(find.text('Kreuzbandriss (ACL)'))
           .style!;
       expect(s.fontFamily, 'BricolageGrotesque');
-      expect(s.fontSize, 18);
+      expect(s.fontSize, 20);
       expect(find.byIcon(Icons.check_circle_rounded), findsNothing);
       expect(
         decorationsUnder(
@@ -87,7 +87,7 @@ void main() {
       final CuraColors c = colorsAt(tester, f);
       expect(
         _borderBox(tester, f).border,
-        Border.all(color: c.accentHi, width: 2),
+        Border.all(color: c.accent, width: 2),
       );
       expect(
         decorationsUnder(
@@ -98,7 +98,7 @@ void main() {
       );
       final Finder check = find.byIcon(Icons.check_circle_rounded);
       expect(check, findsOneWidget);
-      expect(tester.widget<Icon>(check).color, c.accentHi);
+      expect(tester.widget<Icon>(check).color, c.accentText);
       expect(
         tester.getRect(check).right,
         greaterThan(tester.getRect(f).right - 32),
@@ -241,9 +241,9 @@ void main() {
     ) async {
       await pumpApp(tester, card(selected: true));
       final CuraColors c = colorsAt(tester, find.byType(ChoiceCard));
-      final Color ground = compose(c.accentSoft, glassWithGlow(c));
+      final Color ground = compose(c.accentSoft, compose(c.cardFillTop, c.bg));
       expect(contrastRatio(c.text1, ground), greaterThanOrEqualTo(4.5));
-      expect(contrastRatio(c.accentHi, ground), greaterThanOrEqualTo(3));
+      expect(contrastRatio(c.accentText, ground), greaterThanOrEqualTo(3));
     });
   });
 
@@ -272,7 +272,7 @@ void main() {
           c.accent,
           c.progressOff,
         ]);
-        expect(c.progressOff.a, closeTo(0.18, 0.005));
+        expect(c.progressOff.a, closeTo(0.14, 0.005));
         final List<Rect> rects = find
             .descendant(of: f, matching: find.byType(DecoratedBox))
             .evaluate()
@@ -340,7 +340,7 @@ void main() {
       expect(tester.testTextInput.isVisible, isTrue);
       expect(
         _borderBox(tester, box).border,
-        Border.all(color: c.accentHi, width: 2),
+        Border.all(color: c.accentText, width: 2),
       );
       await tester.enterText(find.byType(TextField), 'Jakob');
       expect(ctrl.text, 'Jakob');
@@ -508,7 +508,7 @@ void main() {
       final CuraColors c = colorsAt(tester, find.byType(CuraLabel));
       final TextStyle s = tester.widget<Text>(find.text('DEIN PROFIL')).style!;
       expect(s.fontSize, 13);
-      expect(s.fontWeight, FontWeight.w600);
+      expect(s.fontWeight, FontWeight.w700);
       expect(s.letterSpacing, closeTo(13 * 0.06, 0.001));
       expect(s.color, c.text2);
       expect(

@@ -103,7 +103,13 @@ class PillButton extends StatelessWidget {
                   PillButtonVariant.primary =>
                     pressed ? colors.accentPressed : colors.accent,
                   PillButtonVariant.neutral =>
-                    pressed ? colors.pureWhite : colors.text1,
+                    // Helle Fläche mit dunkler Schrift in beiden Themen.
+                    pressed
+                        ? Color.alphaBlend(
+                            colors.pressedOverlay,
+                            colors.pureWhite,
+                          )
+                        : colors.pureWhite,
                   PillButtonVariant.outline =>
                     pressed ? colors.pressedOverlay : null,
                 };
@@ -113,7 +119,9 @@ class PillButton extends StatelessWidget {
                   colors.shadowsEnabled
               ? CuraShadow.primaryGlow
               : null;
-          final BoxBorder? border = variant == PillButtonVariant.outline
+          final BoxBorder? border =
+              variant == PillButtonVariant.outline ||
+                  (variant == PillButtonVariant.neutral && !dimmed)
               ? Border.all(
                   color: dimmed ? colors.borderHair : colors.controlBorder,
                   width: CuraSize.controlBorder,

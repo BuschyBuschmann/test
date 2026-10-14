@@ -59,9 +59,9 @@ const ctxOptions = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1
 {
   const normal = await openScenario(await browser.newContext(ctxOptions), base, { scenario: 'cmp-surfaces', dumpText: 1 });
   const forced = await openScenario(await browser.newContext({ ...ctxOptions, forcedColors: 'active' }), base, { scenario: 'cmp-surfaces', dumpText: 1 });
-  check('(b) Ohne Emulation: highContrast=false, Glow vorhanden', normal.env?.system.highContrast === false && normal.dump?.hasGlow === true);
+  check('(b) Ohne Emulation: highContrast=false, Welt mit Dekor vorhanden', normal.env?.system.highContrast === false && normal.dump?.hasWorld === true && normal.dump?.worldDecor === true);
   check('(b) forced-colors: active kommt als Systemsignal highContrast=true an', forced.env?.system.highContrast === true);
-  check('(b) forced-colors: active wirkt ohne hc-Parameter (Theme HC, kein Glow)', forced.dump?.hasGlow === false);
+  check('(b) forced-colors: active wirkt ohne hc-Parameter (Theme HC, Welt ohne Dekor)', forced.dump?.hasWorld === true && forced.dump?.worldDecor === false);
   const a = md5(await normal.page.screenshot());
   const b = md5(await forced.page.screenshot());
   check('(b) forced-colors: Darstellung weicht ab', a !== b);

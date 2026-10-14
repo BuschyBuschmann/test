@@ -89,7 +89,7 @@ class ContactRow extends StatelessWidget {
                   const SizedBox(width: CuraSpace.s2),
                   Text(
                     contact.dayShort(),
-                    style: type.caption.copyWith(color: colors.text3),
+                    style: type.caption.copyWith(color: colors.text2),
                   ),
                 ],
               ),

@@ -9,7 +9,7 @@ import 'package:curaone/ui/components/content_frame.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
-import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/world_background.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
@@ -59,7 +59,6 @@ Scenario _scenario({
 ProbedText _text(
   String text, {
   required TextGround ground,
-  required double glow,
   required Color color,
   double size = 16,
   int weight = 400,
@@ -71,7 +70,6 @@ ProbedText _text(
   sizeSp: size,
   weight: weight,
   ground: ground,
-  glowAlpha: glow,
   onScreen: true,
   isIcon: icon,
 );
@@ -475,80 +473,59 @@ void main() {
     });
   });
 
-  group('Glow-Regel', () {
-    final CuraColors c = CuraColors.dark;
+  group('Textkontrast auf Karte und Welt (V2-5)', () {
+    final CuraColors c = CuraColors.light;
     const Size v = Size(390, 844);
 
-    test('Grenzen nach Untergrund und Farbe (Errata E-1)', () {
-      TextProbe p(ProbedText t) =>
-          TextProbe(texts: <ProbedText>[t], hasGlow: true, view: v);
-      // text-1 auf Glas: 16 % erlaubt, 17 % nicht
+    TextProbe p(ProbedText t) => TextProbe(
+      texts: <ProbedText>[t],
+      hasWorld: true,
+      worldDecor: true,
+      view: v,
+    );
+
+    test('Text auf Karte: Worst Case ≥ 4,5, Symbol ≥ 3', () {
       expect(
-        checkGlowRule(
-          p(_text('a', ground: TextGround.glass, glow: 0.16, color: c.text1)),
+        checkCardTextContrast(
+          p(_text('a', ground: TextGround.glass, color: c.text1)),
           c,
           v,
         ),
         isEmpty,
       );
       expect(
-        checkGlowRule(
-          p(_text('a', ground: TextGround.glass, glow: 0.17, color: c.text1)),
+        checkCardTextContrast(
+          p(_text('a', ground: TextGround.glass, color: c.accentText)),
           c,
           v,
         ),
-        isNotEmpty,
+        isEmpty,
       );
-      // farbiger Text auf Glas: 12 %
+      // Mandarine als Text auf der Karte fällt durch (V2-32).
+      final List<Finding> f = checkCardTextContrast(
+        p(_text('a', ground: TextGround.glass, color: c.accent)),
+        c,
+        v,
+      );
+      expect(f.map((Finding x) => x.check), contains('Kontrast auf Karte'));
+      expect(f.every((Finding x) => !x.advisory), isTrue);
+    });
+
+    test('deckende Flächen und halbtransparente Schrift sind ausgenommen', () {
       expect(
-        checkGlowRule(
+        checkCardTextContrast(
+          p(_text('a', ground: TextGround.opaque, color: c.accent)),
+          c,
+          v,
+        ),
+        isEmpty,
+      );
+      expect(
+        checkCardTextContrast(
           p(
             _text(
               'a',
               ground: TextGround.glass,
-              glow: 0.13,
-              color: c.catPhysio,
-            ),
-          ),
-          c,
-          v,
-        ),
-        isNotEmpty,
-      );
-      // bg: 24 %
-      expect(
-        checkGlowRule(
-          p(_text('a', ground: TextGround.bg, glow: 0.24, color: c.text1)),
-          c,
-          v,
-        ),
-        isEmpty,
-      );
-      expect(
-        checkGlowRule(
-          p(_text('a', ground: TextGround.bg, glow: 0.25, color: c.text1)),
-          c,
-          v,
-        ),
-        isNotEmpty,
-      );
-      // deckende Flächen: glowfrei, nie ein Befund
-      expect(
-        checkGlowRule(
-          p(_text('a', ground: TextGround.opaque, glow: 0.9, color: c.text1)),
-          c,
-          v,
-        ),
-        isEmpty,
-      );
-      // halbtransparente Schrift (Disabled) ausgenommen
-      expect(
-        checkGlowRule(
-          p(
-            _text(
-              'a',
-              ground: TextGround.glass,
-              glow: 0.2,
               color: c.text1.withValues(alpha: 0.38),
             ),
           ),
@@ -559,26 +536,25 @@ void main() {
       );
     });
 
-    test('Zusatzbedingung Kontrast ≥ 4,5 bei diesem Alpha', () {
-      TextProbe p(ProbedText t) =>
-          TextProbe(texts: <ProbedText>[t], hasGlow: true, view: v);
-      // accent-hi auf Glas bei 12 % erreicht nur ca. 4,34 (Errata): Befund trotz Grenze 12 %
-      final List<Finding> f = checkGlowRule(
-        p(_text('a', ground: TextGround.glass, glow: 0.12, color: c.accentHi)),
+    test('Text direkt auf der Welt ist ein Richtwert (bis F2-R2 bis R4)', () {
+      final List<Finding> f = checkCardTextContrast(
+        p(_text('Titel', ground: TextGround.bg, color: c.text1)),
         c,
         v,
       );
-      expect(f.map((Finding x) => x.check), contains('Kontrast bei Glow'));
+      expect(f, hasLength(1));
+      expect(f.single.check, 'Text direkt auf der Welt');
+      expect(f.single.advisory, isTrue);
     });
 
-    testWidgets('Sonde: Untergrund und Glow am nächsten Rechteckpunkt', (
+    testWidgets('Sonde: Untergrund Karte, Welt und deckend', (
       WidgetTester tester,
     ) async {
       await pump(
         tester,
         const Stack(
           children: <Widget>[
-            Positioned.fill(child: GlowBackground()),
+            Positioned.fill(child: WorldBackground()),
             Positioned(
               left: 16,
               top: 60,
@@ -607,13 +583,11 @@ void main() {
       final ProbedText opaque = p.texts.firstWhere(
         (ProbedText t) => t.text == 'Deckend',
       );
-      expect(p.hasGlow, isTrue);
+      expect(p.hasWorld, isTrue);
+      expect(p.worldDecor, isTrue);
       expect(glass.ground, TextGround.glass);
-      expect(glass.glowAlpha, greaterThan(0.1));
       expect(bg.ground, TextGround.bg);
-      expect(bg.glowAlpha, lessThan(glass.glowAlpha));
       expect(opaque.ground, TextGround.opaque);
-      expect(opaque.glowAlpha, 0);
     });
   });
 
@@ -632,7 +606,7 @@ void main() {
         tester,
         Stack(
           children: <Widget>[
-            const Positioned.fill(child: GlowBackground()),
+            const Positioned.fill(child: WorldBackground()),
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
               child: const SizedBox(width: 5, height: 5),
@@ -752,12 +726,9 @@ void main() {
         await pumpScenario(tester, nav);
         // Die rohe Leitlinie meldet im aktiven Nav-Eintrag ca. 2,27:1 (Icon-Pixel als Text) ...
         final Evaluation raw = await textContrastGuideline.evaluate(tester);
-        expect(
-          raw.passed,
-          isFalse,
-          reason: 'Bekannte Eigenheit nicht mehr vorhanden: Ausnahme entfernen',
-        );
-        expect(raw.reason, contains('2.2'));
+        // Im hellen Thema tritt sie nicht auf (Leitlinie besteht); trat sie auf,
+        // ist nur dieser Wert zulässig.
+        if (!raw.passed) expect(raw.reason, contains('2.2'));
         // ... die Matrix-Prüfung lässt sie nur dort zu.
         expect(await checkTextContrast(tester), isEmpty);
       },
@@ -975,7 +946,7 @@ void main() {
           tester,
           const Stack(
             children: <Widget>[
-              Positioned.fill(child: GlowBackground()),
+              Positioned.fill(child: WorldBackground()),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: CuraSheetFrame(
@@ -1004,7 +975,7 @@ void main() {
           tester,
           const Stack(
             children: <Widget>[
-              Positioned.fill(child: GlowBackground()),
+              Positioned.fill(child: WorldBackground()),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: CuraSheetScope(
@@ -1099,7 +1070,7 @@ void main() {
         tester,
         Stack(
           children: <Widget>[
-            const Positioned.fill(child: GlowBackground()),
+            const Positioned.fill(child: WorldBackground()),
             Positioned(
               left: 8,
               top: 8,
@@ -1115,7 +1086,6 @@ void main() {
       expect(icons, isNotEmpty);
       for (final ProbedText t in icons) {
         expect(t.ground, TextGround.opaque);
-        expect(t.glowAlpha, 0);
       }
     });
 

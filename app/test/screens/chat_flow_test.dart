@@ -1001,6 +1001,7 @@ void main() {
         'prefs',
         'manny',
         'celebration',
+        'mannyLook',
       });
       expect(
         jsonEncode(doc).toLowerCase().contains('chat'),

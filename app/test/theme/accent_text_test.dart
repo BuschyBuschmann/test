@@ -1,5 +1,6 @@
 // MINOR-3 (R-U1): Material-Standards dürfen `accent` nicht als Textfarbe
-// nehmen (Brief-E-2, UI-4). `colorScheme.primary` bleibt `accent`.
+// nehmen (Brief-E-2, V2-32). `colorScheme.primary` bleibt `accent`; Orange als
+// Text ist `accentText`.
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -27,9 +28,9 @@ Set<Color> textColors(WidgetTester tester, Finder root) {
 }
 
 void main() {
-  final CuraColors colors = CuraColors.dark;
+  final CuraColors colors = CuraColors.light;
 
-  testWidgets('TextButton ohne eigenen Stil: Text accentHi, nicht accent', (
+  testWidgets('TextButton ohne eigenen Stil: Text accentText, nicht accent', (
     WidgetTester tester,
   ) async {
     await pumpApp(
@@ -37,7 +38,7 @@ void main() {
       TextButton(onPressed: () {}, child: const Text('Weiter')),
     );
     expect(textColors(tester, find.byType(TextButton)), <Color>{
-      colors.accentHi,
+      colors.accentText,
     });
   });
 
@@ -58,7 +59,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     final Set<Color> used = textColors(tester, find.byType(TextField));
     expect(used, isNot(contains(colors.accent)));
-    expect(used, contains(colors.accentHi));
+    expect(used, contains(colors.accentText));
   });
 
   for (final DatePickerEntryMode mode in <DatePickerEntryMode>[

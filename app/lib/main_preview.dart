@@ -129,7 +129,8 @@ void _dump(PreviewConfig config) {
         'h': size.height,
         'dpr': view.devicePixelRatio,
       },
-      'hasGlow': probe.hasGlow,
+      'hasWorld': probe.hasWorld,
+      'worldDecor': probe.worldDecor,
       'texts': <Map<String, Object?>>[
         for (final ProbedText t in probe.texts) t.toJson(),
       ],

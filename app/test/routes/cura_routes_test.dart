@@ -158,7 +158,7 @@ void main() {
             .color
             .value!
             .a,
-        closeTo(0.60, 0.01),
+        closeTo(0.45, 0.01),
       );
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

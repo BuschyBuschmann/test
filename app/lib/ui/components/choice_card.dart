@@ -56,7 +56,7 @@ class ChoiceCard extends StatelessWidget {
       builder: (BuildContext context, bool pressed) {
         return TweenAnimationBuilder<Color?>(
           tween: ColorTween(
-            end: selected ? colors.accentHi : colors.controlBorder,
+            end: selected ? colors.accent : colors.controlBorder,
           ),
           duration: motion.duration(motion.fast),
           curve: motion.curve,
@@ -112,7 +112,7 @@ class ChoiceCard extends StatelessWidget {
                   Icon(
                     Icons.check_circle_rounded,
                     size: CuraComponent.iconSize,
-                    color: colors.accentHi,
+                    color: colors.accentText,
                   ),
                 ],
               ],

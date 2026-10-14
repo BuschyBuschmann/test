@@ -8,14 +8,44 @@ import 'dart:convert';
 import 'app_state.dart';
 import 'clock.dart';
 import 'json_support.dart';
+import 'manny_look.dart';
 
 export 'app_state.dart' show kCurrentSchema;
 export 'json_support.dart' show UnreadableDataException;
 
 /// Migrationen: Schlüssel n bringt ein Dokument von Schema n auf n + 1.
-/// Noch leer (nur Schema 1 existiert); jede neue Version ergänzt hier eine
-/// Funktion **und** ein Fixture `test/fixtures/state_v<n>.json`.
-const Map<int, Json Function(Json)> kMigrations = <int, Json Function(Json)>{};
+/// Jede neue Version ergänzt hier eine Funktion **und** ein Fixture
+/// `test/fixtures/state_v<n>*.json`.
+const Map<int, Json Function(Json)> kMigrations = <int, Json Function(Json)>{
+  1: migrateV1ToV2,
+};
+
+/// Schema 1 → 2 (Plan 3.5, Brief-Ergänzung 1, 10): Das Onboarding bekommt vor
+/// dem Namen den Look-Schritt, aus dem alten Schritt n wird Schritt n + 1.
+/// - nicht abgeschlossenes Onboarding: `step` + 1 (alter Bereich 0..3);
+/// - `mannyLook` = `brille` für alle Bestandsdaten;
+/// - wer das Onboarding abgeschlossen hat, wird nicht erneut gefragt (der
+///   Schritt bleibt unverändert; er wird nie wieder angezeigt).
+Json migrateV1ToV2(Json doc) {
+  final Json out = Json.of(doc);
+  final Object? onboarding = doc['onboarding'];
+  if (onboarding is Map && onboarding['completed'] == false) {
+    final Object? step = onboarding['step'];
+    if (step is int) {
+      // Außerhalb des alten Bereichs war schon Schema 1 unlesbar; ohne diese
+      // Prüfung würde `3 + 1 = 4` einen kaputten Wert gültig machen.
+      if (step < 0 || step > 3) unreadable('onboarding.step: $step');
+      out['onboarding'] = <String, Object?>{
+        for (final MapEntry<Object?, Object?> e in onboarding.entries)
+          if (e.key is String) e.key! as String: e.value,
+        'step': step + 1,
+      };
+    }
+  }
+  out['mannyLook'] = MannyLook.defaultLook.jsonName;
+  out['schema'] = 2;
+  return out;
+}
 
 /// Bringt [doc] per Migrationskette auf [currentSchema]. `schema` fehlt, ist
 /// kein `int`, liegt über [currentSchema] oder es fehlt eine Migration →

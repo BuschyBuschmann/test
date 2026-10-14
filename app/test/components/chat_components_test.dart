@@ -259,7 +259,7 @@ void main() {
       final Text t = tester.widget(find.text('Kein Rat'));
       expect(t.textAlign, TextAlign.center);
       expect(t.style!.fontSize, 13);
-      expect(t.style!.color, colorsAt(tester, find.text('Kein Rat')).text3);
+      expect(t.style!.color, colorsAt(tester, find.text('Kein Rat')).text2);
       // Der Disclaimer ist keine Manny-Zeile mit Emblem.
       expect(find.byType(MannyPlaceholder), findsNothing);
     });
@@ -410,7 +410,7 @@ void main() {
       final Text hint = tester.widget(find.text(S.chatComposerPlaceholder));
       expect(hint.style!.color, c.text2);
       final Icon arrow = tester.widget(find.byIcon(Icons.arrow_upward_rounded));
-      expect(arrow.color, c.text3);
+      expect(arrow.color, c.text2);
       final Finder circle = find.ancestor(
         of: find.byIcon(Icons.arrow_upward_rounded),
         matching: find.byWidgetPredicate(
@@ -494,7 +494,7 @@ void main() {
       final Icon icon = tester.widget(find.byIcon(Icons.info_outline_rounded));
       expect(icon.size, 18);
       final Text dis = tester.widget(find.text(S.chatDisclaimer));
-      expect(dis.style!.color, c.text3);
+      expect(dis.style!.color, c.text2);
       expect(dis.textAlign, TextAlign.center);
     });
   });
@@ -746,7 +746,7 @@ void main() {
       final CuraColors c = colorsAt(tester, find.byType(ChatHeader));
       expect(find.byTooltip(S.back), findsOneWidget);
       final Text title = tester.widget(find.text(S.chatTitle));
-      expect(title.style!.fontSize, 18);
+      expect(title.style!.fontSize, 20);
       expect(title.style!.color, c.text1);
       final Text sub = tester.widget(find.text(S.chatSubtitle));
       expect(sub.style!.fontSize, 14);
@@ -921,7 +921,7 @@ void main() {
 
     testWidgets('Liste 48 dp bleibt bei heading', (WidgetTester tester) async {
       await pumpAvatar(tester, size: CuraSize.avatar, initials: 'PM');
-      expect(tester.widget<Text>(find.text('PM')).style!.fontSize, 18);
+      expect(tester.widget<Text>(find.text('PM')).style!.fontSize, 20);
       expectInsideRing(tester, 48, 'PM', 'PM');
     });
 
@@ -1043,7 +1043,7 @@ void main() {
       final Text preview = tester.widget(find.text(S.examplePhysioLine3));
       expect(preview.style!.color, c.text2);
       expect(preview.maxLines, isNull, reason: 'bricht um, nie abgeschnitten');
-      expect(tester.widget<Text>(find.text('Mo')).style!.color, c.text3);
+      expect(tester.widget<Text>(find.text('Mo')).style!.color, c.text2);
     });
 
     testWidgets('Ring: Physio cat-physio, Ärzte cat-arzt, sonst Weiß 30 %; '
@@ -1062,12 +1062,12 @@ void main() {
         return (d.border! as Border).top.color;
       }
 
-      final CuraColors n = CuraColors.dark;
+      final CuraColors n = CuraColors.light;
       expect(await ring('physio-mueller'), n.catPhysio);
       expect(await ring('aerzte-weber'), n.catArzt);
       expect(await ring('familie-mama'), n.avatarRingNeutral);
       expect(await ring('freunde-lena'), n.avatarRingNeutral);
-      final CuraColors hc = CuraColors.darkHighContrast;
+      final CuraColors hc = CuraColors.lightHighContrast;
       expect(await ring('physio-mueller', hc: true), hc.controlBorder);
       expect(await ring('aerzte-weber', hc: true), hc.controlBorder);
     });

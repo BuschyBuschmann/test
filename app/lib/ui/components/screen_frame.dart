@@ -1,11 +1,11 @@
-// `ScreenFrame`: Gerüst der Screens (Plan 4.5): Grund `bg`, Glow einmal je
+// `ScreenFrame`: Gerüst der Screens (Plan 4.5): Grund `bg`, Welt einmal je
 // Screen-Root hinter dem Inhalt (volle Breite), Inhalt und Overlays im
 // `ContentFrame` (höchstens 560 dp, mittig). Overlays (Nav, Snackbar-Host)
 // liegen über dem Inhalt, innerhalb des Rahmens.
 import 'package:flutter/material.dart';
 
 import 'content_frame.dart';
-import 'glow_background.dart';
+import 'world_background.dart';
 
 class ScreenFrame extends StatelessWidget {
   const ScreenFrame({
@@ -28,7 +28,7 @@ class ScreenFrame extends StatelessWidget {
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: Stack(
         children: <Widget>[
-          const Positioned.fill(child: GlowBackground()),
+          const Positioned.fill(child: WorldBackground()),
           Positioned.fill(
             child: ContentFrame(
               child: Stack(

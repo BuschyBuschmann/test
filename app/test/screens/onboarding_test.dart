@@ -377,7 +377,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'Schulter');
       await tester.pump();
       final AppState saved = (await h.persisted())!;
-      expect(saved.onboarding.step, 2);
+      expect(saved.onboarding.step, 3);
       expect(saved.onboarding.injuryType, InjuryType.other);
       expect(saved.onboarding.injuryOther, 'Schulter');
       await disposeApp(tester);
@@ -431,7 +431,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(pop.count, 1);
       expect(find.text('Schritt 1 von 4'), findsOneWidget);
-      expect(h.state.onboarding.step, 0);
+      expect(h.state.onboarding.step, 1);
       await disposeApp(tester);
     });
 
@@ -445,7 +445,7 @@ void main() {
       await tester.tap(find.byTooltip(S.back));
       await tester.pumpAndSettle();
       expect(find.text('Schritt 1 von 4'), findsOneWidget);
-      expect(h.state.onboarding.step, 0);
+      expect(h.state.onboarding.step, 1);
       await disposeApp(tester);
     });
 

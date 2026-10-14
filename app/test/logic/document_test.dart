@@ -11,10 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/builders.dart';
 
-Map<String, Object?> minimalDoc() => <String, Object?>{
-  'schema': 1,
-  'onboarding': <String, Object?>{'completed': false, 'step': 0},
-};
+Map<String, Object?> minimalDoc({int schema = kCurrentSchema}) =>
+    <String, Object?>{
+      'schema': schema,
+      'onboarding': <String, Object?>{'completed': false, 'step': 0},
+    };
 
 AppState decode(Object? doc, {LocalDay? today}) =>
     decodeDocument(jsonEncode(doc), today ?? kToday);
@@ -86,7 +87,7 @@ void main() {
         2: (Json j) => <String, Object?>{...j, 'schema': 3, 'neu': 1},
       };
       final Json out = migrateToCurrent(
-        minimalDoc(),
+        minimalDoc(schema: 1),
         currentSchema: 3,
         migrations: two,
       );
@@ -95,9 +96,10 @@ void main() {
     });
 
     test('fehlende Migration → unlesbar', () {
+      // Von Schema 2 nach 3 gibt es (noch) keine Migration.
       expect(
         () =>
-            decodeDocument(jsonEncode(minimalDoc()), kToday, currentSchema: 2),
+            decodeDocument(jsonEncode(minimalDoc()), kToday, currentSchema: 3),
         throwsA(isA<UnreadableDataException>()),
       );
     });
@@ -105,7 +107,7 @@ void main() {
     test('Migration, die das Schema nicht erhöht → unlesbar', () {
       expect(
         () => migrateToCurrent(
-          minimalDoc(),
+          minimalDoc(schema: 1),
           currentSchema: 2,
           migrations: <int, Json Function(Json)>{1: (Json j) => j},
         ),
@@ -191,7 +193,7 @@ void main() {
       final Json j = AppState.initial(kToday).toJson();
       expect(j.keys.toSet(), <String>{
         'schema', 'onboarding', 'consent', 'streak', 'path', 'day', 'prefs',
-        'manny', 'celebration', //
+        'manny', 'celebration', 'mannyLook', //
       });
       expect(j['schema'], kCurrentSchema);
       expect((j['streak']! as Map<String, Object?>).keys.toSet(), <String>{
@@ -424,7 +426,7 @@ void main() {
         ]) {
           expect(
             () => decodeDocument(
-              jsonEncode(minimalDoc()),
+              jsonEncode(minimalDoc(schema: 1)),
               kToday,
               currentSchema: 2,
               migrations: <int, Json Function(Json)>{1: broken},
@@ -444,7 +446,7 @@ void main() {
       ]) {
         expect(
           () => decodeDocument(
-            jsonEncode(minimalDoc()),
+            jsonEncode(minimalDoc(schema: 1)),
             kToday,
             currentSchema: 2,
             migrations: <int, Json Function(Json)>{1: buggy},

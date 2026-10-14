@@ -22,7 +22,7 @@
 //   --clock=fixed|install|none   Fake-Uhr (Standard fixed, siehe web_checks.mjs)
 //
 // Exit-Code 1 bei: Pipette außerhalb der Toleranz, Kontrast < Schwelle bei
-// Glow-nahem Text, Seitenfehler, Szenario nicht bereit.
+// Text auf Karte oder Welt, Seitenfehler, Szenario nicht bereit.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -160,7 +160,7 @@ async function measureContrast(png, dump, job) {
     !t.inOverlay &&
     overlays.some((o) => t.x < o.x + o.w && t.x + t.w > o.x && t.y < o.y + o.h && t.y + t.h > o.y);
   const texts = dump.texts.filter(
-    (t) => t.onScreen && !hidden(t) && t.glowAlpha > 0 && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
+    (t) => t.onScreen && !hidden(t) && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
   );
   if (!texts.length) return rows;
   const requests = texts.map((t, i) => ({
@@ -180,7 +180,6 @@ async function measureContrast(png, dump, job) {
       scenario: job.id,
       text: t.text.replace(/\s+/g, ' ').slice(0, 40),
       ground: t.ground,
-      glowAlpha: t.glowAlpha,
       textColor: t.color,
       measuredBackground: m.rgb ? rgbToHex(m.rgb) : '',
       samples: m.n,
@@ -287,7 +286,7 @@ const shots = results.filter((r) => r.kind === 'shot');
 const sims = results.filter((r) => r.kind === 'sim');
 const contrastRows = shots.flatMap((r) => r.contrast);
 const csv = [
-  'variant,viewport,scenario,kind,text,ground,glowAlpha,textColor,measuredBackground,samples,ratio,limit,status',
+  'variant,viewport,scenario,kind,text,ground,textColor,measuredBackground,samples,ratio,limit,status',
   ...contrastRows.map((c) =>
     [
       c.variant,
@@ -296,7 +295,6 @@ const csv = [
       c.kind,
       JSON.stringify(c.text),
       c.ground,
-      c.glowAlpha.toFixed(4),
       c.textColor,
       c.measuredBackground,
       c.samples,

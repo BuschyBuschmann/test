@@ -189,9 +189,9 @@ StatPill _streakPillFor(
   final CuraColors colors = CuraColors.of(context);
   final bool frozen = streak.display == StreakDisplay.frozen;
   final Color flame = switch (streak.display) {
-    StreakDisplay.active => colors.accentHi,
+    StreakDisplay.active => colors.accentText,
     StreakDisplay.frozen => colors.streakFreeze,
-    StreakDisplay.reset => colors.text3,
+    StreakDisplay.reset => colors.text2,
   };
   return StatPill(
     icon: Icons.local_fire_department_rounded,

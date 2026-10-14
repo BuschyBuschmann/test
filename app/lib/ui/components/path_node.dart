@@ -116,7 +116,7 @@ class _PathNodeState extends State<PathNode>
       case UnitStatus.current:
         return c.onAccent;
       case UnitStatus.locked:
-        return widget.unit.kind == UnitKind.boss ? c.accentHi : c.lockedIcon;
+        return widget.unit.kind == UnitKind.boss ? c.accentText : c.lockedIcon;
     }
   }
 

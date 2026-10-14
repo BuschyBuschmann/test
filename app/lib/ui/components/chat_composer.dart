@@ -81,7 +81,7 @@ class ChatComposer extends StatelessWidget {
                         child: Icon(
                           Icons.arrow_upward_rounded,
                           size: CuraComponent.iconSize,
-                          color: colors.text3,
+                          color: colors.text2,
                         ),
                       ),
                     ),
@@ -148,7 +148,7 @@ class ChatDisclaimer extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: type.caption.copyWith(color: colors.text3),
+        style: type.caption.copyWith(color: colors.text2),
       ),
     );
   }

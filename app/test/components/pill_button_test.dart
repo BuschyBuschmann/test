@@ -56,7 +56,7 @@ void main() {
       final CuraColors c = colorsAt(tester, find.byType(PillButton));
       final BoxDecoration d = _pill(tester);
       expect(d.color, c.accent);
-      expect(d.color, const Color(0xFFD9622B));
+      expect(d.color, const Color(0xFFFF7A2E));
       expect(d.borderRadius, BorderRadius.circular(CuraRadius.pill));
       expect(d.boxShadow, CuraShadow.primaryGlow);
       expect(d.boxShadow!.single.offset, const Offset(0, 8));
@@ -68,7 +68,7 @@ void main() {
       expect(s.color, c.onAccent);
       expect(s.fontFamily, 'BricolageGrotesque');
       expect(s.fontSize, 18);
-      expect(s.fontWeight, FontWeight.w600);
+      expect(s.fontWeight, FontWeight.w800);
       expect(backdropCount(tester), 0);
     });
 
@@ -79,7 +79,7 @@ void main() {
         highContrast: true,
       );
       expect(_pill(tester).boxShadow, isNull);
-      expect(_pill(tester).color, const Color(0xFFD9622B));
+      expect(_pill(tester).color, const Color(0xFFFF7A2E));
     });
 
     testWidgets('Pressed: Füllung #DD7240', (WidgetTester tester) async {
@@ -88,15 +88,15 @@ void main() {
         _button(PillButtonVariant.primary, onPressed: () {}),
       );
       final TestGesture g = await _press(tester);
-      expect(_pill(tester).color, const Color(0xFFDD7240));
+      expect(_pill(tester).color, const Color(0xFFF06E22));
       await g.up();
       await tester.pump();
-      expect(_pill(tester).color, const Color(0xFFD9622B));
+      expect(_pill(tester).color, const Color(0xFFFF7A2E));
     });
   });
 
   group('Neutral hell', () {
-    testWidgets('Füllung text-1, Text on-accent; Pressed reines Weiß', (
+    testWidgets('Helle Füllung (Weiß), Text on-accent; Pressed getönt', (
       WidgetTester tester,
     ) async {
       await pumpApp(
@@ -108,14 +108,17 @@ void main() {
         ),
       );
       final CuraColors c = colorsAt(tester, find.byType(PillButton));
-      expect(_pill(tester).color, c.text1);
+      expect(_pill(tester).color, c.pureWhite);
       expect(_pill(tester).boxShadow, isNull);
       expect(
         tester.widget<Text>(find.text('Abbrechen')).style!.color,
         c.onAccent,
       );
       final TestGesture g = await _press(tester);
-      expect(_pill(tester).color, const Color(0xFFFFFFFF));
+      expect(
+        _pill(tester).color,
+        Color.alphaBlend(c.pressedOverlay, c.pureWhite),
+      );
       await g.up();
     });
   });

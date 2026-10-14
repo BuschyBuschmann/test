@@ -64,11 +64,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(backdropCount(tester), 0);
     final CuraColors c = colorsAt(tester, find.byType(MannyBubble));
-    expect(c.floatFill, const Color(0xFF1B2129));
+    expect(c.floatFill, c.surfaceOpaque);
     expect(
       decorationsUnder(tester, find.byType(MannyBubble)).any(
         (BoxDecoration x) =>
-            x.color == const Color(0xFF1B2129) &&
+            x.color == c.surfaceOpaque &&
             x.border == Border.all(color: c.borderControlHc, width: 1),
       ),
       isTrue,

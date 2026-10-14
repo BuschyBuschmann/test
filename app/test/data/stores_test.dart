@@ -38,7 +38,7 @@ void main() {
         clock: FakeClock().call,
       );
       await s.save(expectedV1());
-      expect(raw.raw, contains('"schema":1'));
+      expect(raw.raw, contains('"schema":2'));
       expect(await s.load(), expectedV1());
     });
 
@@ -109,8 +109,11 @@ void main() {
     PrefsStateStore make() =>
         PrefsStateStore(clock: FakeClock().call, prefs: prefs);
 
-    test('Schlüsselliste: genau ein Schlüssel', () {
-      expect(kAllStorageKeys, <String>{'curaone.state.v1'});
+    test('Schlüsselliste: Zustand und Darstellung (B-21)', () {
+      expect(kAllStorageKeys, <String>{
+        'curaone.state.v1',
+        'curaone.display.v1',
+      });
     });
 
     test('leer → null; save/load Roundtrip', () async {

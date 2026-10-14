@@ -34,7 +34,6 @@ import '../ui/components/cura_text_field.dart';
 import '../ui/components/date_card.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
-import '../ui/components/glow_background.dart';
 import '../ui/components/header_icon_button.dart';
 import '../ui/components/manny.dart';
 import '../ui/components/manny_bubble.dart';
@@ -44,6 +43,7 @@ import '../ui/components/mic_button.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
 import '../ui/components/step_progress.dart';
+import '../ui/components/world_background.dart';
 import '../ui/messages/example_contacts.dart';
 import 'preview_script.dart'
     show
@@ -239,11 +239,11 @@ class Scenario {
 // Gerüst
 // ---------------------------------------------------------------------------
 
-/// Glow hinter dem Inhalt, Inhalt im `ContentFrame`, Overlays darüber.
+/// Welt hinter dem Inhalt, Inhalt im `ContentFrame`, Overlays darüber.
 Widget _screen({required Widget body, List<Widget> overlays = const []}) {
   return Stack(
     children: <Widget>[
-      const Positioned.fill(child: GlowBackground()),
+      const Positioned.fill(child: WorldBackground()),
       Positioned.fill(child: ContentFrame(child: body)),
       ...overlays,
     ],
@@ -252,17 +252,16 @@ Widget _screen({required Widget body, List<Widget> overlays = const []}) {
 
 Widget _gap() => const SizedBox(height: CuraSpace.s3);
 
-/// Zeilenumbruch-sicherer Platz über Inhalten auf Glas: der obere linke
-/// Lichtfleck liegt dort bei 24 %, Text auf Glas verträgt höchstens 16 %
-/// (Errata E-1).
-const double _glowClearance = CuraSpace.s10 * 5;
+/// Platz über den Inhalten der Szenarien (stammt aus der Zeit des Glow, der
+/// Wert bleibt, damit die Szenario-Layouts stabil sind).
+const double _topClearance = CuraSpace.s10 * 5;
 
 Widget _scrollBody(List<Widget> children, {double bottom = CuraSpace.s6}) {
   return SingleChildScrollView(
     key: PreviewKeys.scroll,
     padding: EdgeInsets.fromLTRB(
       CuraSpace.pageMargin,
-      _glowClearance,
+      _topClearance,
       CuraSpace.pageMargin,
       bottom,
     ),
@@ -301,7 +300,7 @@ Widget _typo(BuildContext context, ScenarioEnv env) {
         children: <Widget>[
           for (final MapEntry<String, TextStyle> e
               in t.all.entries) ...<Widget>[
-            Text(_styleCaption(e), style: t.caption.copyWith(color: c.text3)),
+            Text(_styleCaption(e), style: t.caption.copyWith(color: c.text2)),
             Text(
               _sampleFor(e.key),
               style: e.value.copyWith(color: e.value.color ?? c.text1),
@@ -638,7 +637,7 @@ Widget _pipette(BuildContext context, ScenarioEnv env) {
         Padding(
           padding: const EdgeInsets.fromLTRB(
             CuraSpace.pageMargin,
-            _glowClearance,
+            _topClearance,
             CuraSpace.pageMargin,
             CuraSpace.pageMargin,
           ),
@@ -686,7 +685,9 @@ AppState _onboardingState(
   return AppState.initial(_today(env)).copyWith(
     onboarding: OnboardingState(
       completed: completed,
-      step: step,
+      // Seite (0..3) → Zustandsschritt seit Schema 2 (Look-Schritt davor,
+      // bis F2-R4 ohne eigene Seite).
+      step: step + 1,
       name: name,
       injuryType: type,
       injuryOther: other,
@@ -885,7 +886,7 @@ AppState _pathState(
   return _completedState(env).copyWith(
     onboarding: OnboardingState(
       completed: true,
-      step: 3,
+      step: kLastOnboardingStep,
       name: PreviewTexts.nameValue,
       injuryType: InjuryType.acl,
       injuryDate: today.addDays(-daysSinceInjury),
@@ -1109,7 +1110,7 @@ AppState _todayState(
   return _completedState(env).copyWith(
     onboarding: OnboardingState(
       completed: true,
-      step: 3,
+      step: kLastOnboardingStep,
       name: PreviewTexts.nameValue,
       injuryType: InjuryType.acl,
       injuryDate: d.addDays(-30),

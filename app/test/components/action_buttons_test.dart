@@ -370,7 +370,7 @@ void main() {
       );
       for (final BoxDecoration x in d) {
         expect(x.border?.top.color, isNot(c.accent));
-        expect(x.border?.top.color, isNot(c.accentHi));
+        expect(x.border?.top.color, isNot(c.accentText));
       }
     });
   });

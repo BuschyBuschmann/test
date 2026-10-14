@@ -51,7 +51,7 @@ Widget _framed(GlobalKey key, Widget child) => Align(
 );
 
 void main() {
-  final CuraColors c = CuraColors.dark;
+  final CuraColors c = CuraColors.light;
 
   testWidgets('Größen: voll 100:120, Kopf quadratisch', (
     WidgetTester tester,
@@ -102,8 +102,8 @@ void main() {
     Color unit(num x, num y) => p.at((x * 2).round(), (y * 2).round());
     expect(_near(unit(26, 70), c.mannyBody), isTrue, reason: 'Körper');
     expect(_near(unit(50, 95), c.mannyBelly), isTrue, reason: 'Bauch');
-    expect(_near(unit(50, 53), c.accentHi), isTrue, reason: 'Schnabel');
-    expect(_near(unit(36, 116), c.accentHi), isTrue, reason: 'Fuß');
+    expect(_near(unit(50, 53), c.accentTop), isTrue, reason: 'Schnabel');
+    expect(_near(unit(36, 116), c.accentTop), isTrue, reason: 'Fuß');
     expect(_near(unit(38, 38), c.mannyBelly), isTrue, reason: 'Auge');
     expect(_near(unit(41, 41), c.bg), isTrue, reason: 'Pupille');
     // Außerhalb transparent.
@@ -153,7 +153,11 @@ void main() {
     final _Pixels p = await _capture(tester, key);
     // Zuschnitt 16..84 × 10..78 → 2 px je Einheit; Auge (36,40) → (40,60).
     expect(_near(p.at(40, 60), c.mannyBelly), isTrue);
-    expect(_near(p.at(68, 86), c.accentHi), isTrue, reason: 'Schnabel (50,53)');
+    expect(
+      _near(p.at(68, 86), c.accentTop),
+      isTrue,
+      reason: 'Schnabel (50,53)',
+    );
     // A-U2 MINOR-1: Ausschnitt ist ein Kreis. Ecke leer (Hintergrund), Körper
     // läuft bis zum Kreisrand (kein harter Waagerechtschnitt), keine
     // Flügelreste links neben dem Körper.

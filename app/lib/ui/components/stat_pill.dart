@@ -93,7 +93,7 @@ class StatPill extends StatelessWidget {
         2 * CuraSize.statPillPaddingH +
         CuraSize.statPillIcon +
         CuraSize.statPillGap +
-        text(value, type.numeral);
+        text(value, type.numeralSmall);
     if (extra != null) {
       w += CuraSize.statPillGap + text(extra, type.secondary);
     }
@@ -157,7 +157,9 @@ class StatPill extends StatelessWidget {
           const SizedBox(width: CuraSize.statPillGap),
           Text(
             value,
-            style: type.numeral.copyWith(color: valueColor ?? colors.text1),
+            style: type.numeralSmall.copyWith(
+              color: valueColor ?? colors.text1,
+            ),
           ),
           if (extra != null) ...<Widget>[
             const SizedBox(width: CuraSize.statPillGap),

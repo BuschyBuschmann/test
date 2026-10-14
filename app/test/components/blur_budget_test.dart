@@ -1,0 +1,149 @@
+// Blur-Budget (Design-Brief v2, 3.5, V2-10): höchstens 3 gleichzeitig gebaute
+// `BackdropFilter` je Scope; ein vierter bekommt keinen Platz und bleibt
+// unscharf, wird ein Platz frei, rückt er nach. Hoher Kontrast belegt keinen
+// Platz.
+import 'package:curaone/theme/tokens.dart';
+import 'package:curaone/ui/components/cura_blur.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../support/pump_app.dart';
+
+Widget _blur(int i) => CuraBlur(
+  key: ValueKey<int>(i),
+  child: SizedBox(width: 40, height: 20, child: Text('B$i')),
+);
+
+BlurBudget _budget(WidgetTester tester) =>
+    BlurBudgetScope.maybeOf(tester.element(find.byType(Column).first))!;
+
+void main() {
+  test('Budget: Obergrenze 3 ist das Token', () {
+    expect(BlurTokens.maxPerScreen, 3);
+    expect(BlurBudget().capacity, 3);
+    final BlurBudget b = BlurBudget();
+    expect(
+      <bool>[b.tryAcquire(), b.tryAcquire(), b.tryAcquire(), b.tryAcquire()],
+      <bool>[true, true, true, false],
+    );
+    expect(b.used, 3);
+    b.release();
+    expect(b.used, 2);
+    expect(b.tryAcquire(), isTrue);
+  });
+
+  testWidgets('vier CuraBlur: genau 3 BackdropFilter, vierter ohne Blur', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(
+      tester,
+      BlurBudgetScope(
+        child: Column(children: <Widget>[for (int i = 0; i < 4; i++) _blur(i)]),
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(_budget(tester).used, 3);
+    // Der Inhalt des vierten steht trotzdem da.
+    expect(find.text('B3'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey<int>(3)),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('wird ein Platz frei, rückt der wartende Blur nach', (
+    WidgetTester tester,
+  ) async {
+    Widget tree(int count) => BlurBudgetScope(
+      child: Column(
+        children: <Widget>[for (int i = 0; i < count; i++) _blur(i)],
+      ),
+    );
+    await pumpApp(tester, tree(4));
+    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    // Der erste Blur verschwindet.
+    await pumpApp(
+      tester,
+      BlurBudgetScope(
+        child: Column(children: <Widget>[for (int i = 1; i < 4; i++) _blur(i)]),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey<int>(3)),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Hoher Kontrast: kein Blur, kein Platz belegt', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(
+      tester,
+      BlurBudgetScope(
+        child: Column(children: <Widget>[for (int i = 0; i < 4; i++) _blur(i)]),
+      ),
+      highContrast: true,
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(_budget(tester).used, 0);
+    expect(find.text('B0'), findsOneWidget);
+  });
+
+  testWidgets('ohne Scope: kein Limit (Einzelbausteine)', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(
+      tester,
+      Column(children: <Widget>[for (int i = 0; i < 5; i++) _blur(i)]),
+    );
+    expect(find.byType(BackdropFilter), findsNWidgets(5));
+  });
+
+  testWidgets('getrennte Scopes haben getrennte Budgets (je Screen)', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(
+      tester,
+      Column(
+        children: <Widget>[
+          BlurBudgetScope(
+            child: Column(
+              children: <Widget>[for (int i = 0; i < 3; i++) _blur(i)],
+            ),
+          ),
+          BlurBudgetScope(
+            child: Column(
+              children: <Widget>[for (int i = 10; i < 13; i++) _blur(i)],
+            ),
+          ),
+        ],
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsNWidgets(6));
+  });
+
+  testWidgets('Stärke der Weichzeichnung ist wählbar (Leiste σ 30)', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(
+      tester,
+      BlurBudgetScope(
+        child: CuraBlur(
+          sigma: BlurTokens.navSigma,
+          child: const SizedBox(width: 40, height: 20),
+        ),
+      ),
+    );
+    final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
+    expect(f.filter.toString(), contains('30'));
+  });
+}

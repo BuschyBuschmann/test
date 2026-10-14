@@ -7,8 +7,13 @@
 // aus der View neu erzeugt.
 //
 // Der `ContentFrame` (höchstens 560 dp) steckt in jedem Screen
-// (`ScreenFrame`), nicht im Builder: Hintergrund und Glow laufen so über die
+// (`ScreenFrame`), nicht im Builder: Hintergrund und Welt laufen so über die
 // volle Breite (Plan 4.5), Scrim und Dialoge ebenfalls.
+//
+// Darstellung (Brief v2 3.1/3.2/3.5): Thema (System/Hell/Dunkel), „Transparenz
+// reduzieren“ und die Welt kommen aus dem [DisplayController]; Welt und Thema
+// sind unabhängig. Der [WorldHost] hält die Welt (Zeitregel, Minuten-Timer),
+// das [BlurBudgetScope] begrenzt die Blur-Flächen auf 3.
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -17,13 +22,20 @@ import 'l10n/strings_de.dart';
 import 'state/app_controller.dart';
 import 'state/app_scope.dart';
 import 'state/chat_source_scope.dart';
+import 'state/display_controller.dart';
+import 'state/display_scope.dart';
+import 'state/world_scope.dart';
 import 'theme/cura_theme.dart';
+import 'logic/display_settings.dart';
+import 'ui/components/cura_blur.dart';
 import 'ui/path/path_source.dart';
 import 'ui/today/today_source.dart';
 import 'ui/start/start_gate.dart';
 
-/// Wählt den Token-Satz nach `MediaQuery.highContrast` (Normal oder
-/// „Hoher Kontrast“).
+/// Wählt den Token-Satz: Thema (System/Hell/Dunkel aus den Einstellungen,
+/// sonst `MediaQuery.platformBrightness`) und Kontrast. „Hoher Kontrast“ gilt
+/// bei `MediaQuery.highContrast` **oder** gesetztem App-Schalter „Transparenz
+/// reduzieren“ (Brief 3.5, Entscheidung 5).
 class CuraThemeSelector extends StatelessWidget {
   const CuraThemeSelector({super.key, required this.child});
 
@@ -31,8 +43,19 @@ class CuraThemeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DisplaySettings settings =
+        DisplayScope.maybeOf(context)?.settings ?? const DisplaySettings();
+    final Brightness brightness = switch (settings.theme) {
+      ThemeChoice.light => Brightness.light,
+      ThemeChoice.dark => Brightness.dark,
+      ThemeChoice.system => MediaQuery.platformBrightnessOf(context),
+    };
     return Theme(
-      data: CuraTheme.build(highContrast: MediaQuery.highContrastOf(context)),
+      data: CuraTheme.build(
+        brightness: brightness,
+        highContrast:
+            MediaQuery.highContrastOf(context) || settings.reduceTransparency,
+      ),
       child: child,
     );
   }
@@ -48,12 +71,17 @@ class CuraApp extends StatelessWidget {
     this.startup,
     this.previewWrapper,
     this.navigatorKey,
+    this.display,
     this.chatSource = const ExampleMannyChatSource(),
     this.pathSource = const ImmediatePathSource(),
     this.todaySource = const ImmediateTodaySource(),
   });
 
   final AppController controller;
+
+  /// Darstellungs-Einstellungen (Welt, Thema, Transparenz, Ton, Vibration).
+  /// Ohne Angabe gelten die Standardwerte (Welt Automatisch, Thema System).
+  final DisplayController? display;
 
   /// Quelle des Manny-Chat-Verlaufs (KS-5, nur lesend). Standard: fester
   /// Beispielverlauf.
@@ -75,6 +103,12 @@ class CuraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget app = _buildApp();
+    final DisplayController? d = display;
+    return d == null ? app : DisplayScope(controller: d, child: app);
+  }
+
+  Widget _buildApp() {
     return AppScope(
       controller: controller,
       child: ChatSourceScope(
@@ -92,7 +126,9 @@ class CuraApp extends StatelessWidget {
               supportedLocales: const <Locale>[Locale('de')],
               localizationsDelegates: GlobalMaterialLocalizations.delegates,
               builder: (BuildContext context, Widget? app) {
-                final Widget themed = CuraThemeSelector(child: app!);
+                final Widget themed = WorldHost(
+                  child: BlurBudgetScope(child: CuraThemeSelector(child: app!)),
+                );
                 final PreviewWrapper? wrap = previewWrapper;
                 return wrap == null ? themed : wrap(context, themed);
               },

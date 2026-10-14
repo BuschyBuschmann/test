@@ -36,16 +36,20 @@ abstract final class CuraSpace {
   static const double mannyTextIndent = 36;
 }
 
+/// Radien (Brief 3.4): Karte 28, Kopf-Karte 32, Bildkachel 18, Chip, Button
+/// und Leiste Pille, Sheet oben 32, Kugeln rund.
 abstract final class CuraRadius {
-  static const double card = 24;
+  static const double card = 28;
+  static const double headerCard = 32;
+  static const double imageTile = 18;
   static const double pill = 999;
   static const double chipInner = 12;
-  static const double sheet = 28; // nur oben
+  static const double sheet = 32; // nur oben
   static const double iconTile = 7;
 
   // Ergänzung 1 und 2.
   static const double snackbar = 20;
-  static const double dialog = 24;
+  static const double dialog = 28;
   static const double nodeHint = 16;
   static const double bubble = 20; // Sprechblase und Chat-Blasen
   static const double bubbleCorner = 6; // Ecke zur Absenderseite
@@ -57,6 +61,45 @@ abstract final class CuraSize {
   // Touch-Ziele (Brief 3.4).
   static const double touchTarget = 48;
   static const double minTargetGap = 8;
+
+  // --- Brief v2, 3.4: Größen der neuen Komponenten (F2-R2/R3 bauen sie) ----
+  /// Seitenrand der Karten (Text: `CuraSpace.pageMargin` 16).
+  static const double cardMargin = 14;
+
+  /// Glas-Button 52 dp (Primärbutton `primaryButtonHeight` 56).
+  static const double glassButtonHeight = 52;
+
+  /// Smiley sichtbar 46 dp, Hit-Area 48.
+  static const double ratingFace = 46;
+
+  /// Leiste: 72 dp hoch, 14 dp Seitenabstand, 24 dp unten plus Safe Area;
+  /// Tab 62 × 56 dp (Physio 76 × 56); Schleier darunter 150 dp.
+  static const double navBarHeight = 72;
+  static const double navBarSideMargin = 14;
+  static const double navBarBottomMargin = 24;
+  static const double navTabWidth = 62;
+  static const double navTabWidthPhysio = 76;
+  static const double navTabHeight = 56;
+  static const double navVeilHeight = 150;
+
+  /// Seitenleiste Physio am Rechner ab 840 dp Breite, 240 dp breit; Inhalt
+  /// bis 1200 dp.
+  static const double sideNavBreakpoint = 840;
+  static const double sideNavWidth = 240;
+  static const double physioContentMaxWidth = 1200;
+
+  /// Pfad-Kugeln (`OrbNode`): Trainingstag, Wochenziel, Phasen-Abschluss,
+  /// aktuell, Boss.
+  static const double orbDay = 56;
+  static const double orbWeekGoal = 62;
+  static const double orbPhaseEnd = 80;
+  static const double orbCurrent = 92;
+  static const double orbBoss = 104;
+
+  /// Zähler-Orb 150 dp, Bildkachel der Übungszeile 56 dp, Profil-Zeile ≥ 56.
+  static const double counterOrb = 150;
+  static const double exerciseTile = 56;
+  static const double listRowMinHeight = 56;
 
   // Nav: 64 dp hoch, 16 dp Abstand zu den Seiten, 22 dp zum unteren Rand.
   static const double navHeight = 64;
@@ -198,6 +241,10 @@ abstract final class CuraSize {
   /// bei 200 % auf 320 dp bräche er mitten im Wort (A-U3, B3). Umbrüche nur an
   /// Wortgrenzen, nichts wird abgeschnitten.
   static const double headerTitleMaxTextScale = 1.5;
+
+  /// Titel der Ausblick-Marke (`heading` 20 sp, Gewicht 800): bis 125 %, sonst
+  /// bräche „Gesundheitssport“ auf 320 dp mitten im Wort.
+  static const double outlookTitleMaxTextScale = 1.25;
 
   // Zeilen und Längen.
   static const double lineLengthMax = 560; // Zeilenlänge und ContentFrame

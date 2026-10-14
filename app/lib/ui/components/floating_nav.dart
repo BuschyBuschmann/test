@@ -136,7 +136,7 @@ class _NavEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
-    final Color iconColor = active ? colors.accentHi : colors.text2;
+    final Color iconColor = active ? colors.accentText : colors.text2;
     final Color labelColor = active ? colors.text1 : colors.text2;
     // Die Semantik (und der Fokusring) liegt an der Pill; die ganze Zelle
     // (64 dp hoch) reagiert zusätzlich auf Tipps.

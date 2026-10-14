@@ -8,8 +8,11 @@ import 'package:curaone/data/prefs_state_store.dart';
 import 'package:curaone/data/state_store.dart';
 import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/logic/manny_text_source.dart';
+import 'package:curaone/logic/display_settings.dart';
+import 'package:curaone/logic/world_time.dart';
 import 'package:curaone/main.dart';
 import 'package:curaone/state/app_controller.dart';
+import 'package:curaone/state/display_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // ignore: depend_on_referenced_packages
@@ -73,5 +76,41 @@ void main() {
     await pumpCura(tester, second);
     expect(find.text(S.dataUnreadable), findsOneWidget);
     await disposeApp(tester);
+  });
+
+  group('Darstellungs-Einstellungen im Produktionsstart (B-21)', () {
+    test('„Alles löschen“ setzt die Einstellungen zurück und entfernt den '
+        'Schlüssel', () async {
+      final DisplayController display = buildProductionDisplay();
+      display
+        ..setWorld(WorldChoice.night)
+        ..setReduceTransparency(true);
+      await display.flush();
+      expect(
+        await SharedPreferencesAsync().getString(kDisplayStorageKey),
+        isNotNull,
+      );
+      final AppController controller = buildProductionController(
+        display: display,
+      );
+      addTearDown(controller.dispose);
+      await controller.deleteAll();
+      expect(display.settings, const DisplaySettings());
+      expect(
+        await SharedPreferencesAsync().getString(kDisplayStorageKey),
+        isNull,
+      );
+    });
+
+    test('Neustart: gespeicherte Einstellungen werden geladen', () async {
+      final DisplayController first = buildProductionDisplay()
+        ..setWorld(WorldChoice.evening)
+        ..setTheme(ThemeChoice.dark);
+      await first.flush();
+      final DisplayController second = buildProductionDisplay();
+      await second.load();
+      expect(second.settings.world, WorldChoice.evening);
+      expect(second.settings.theme, ThemeChoice.dark);
+    });
   });
 }

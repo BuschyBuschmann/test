@@ -155,7 +155,7 @@ class CuraSnackbar extends StatelessWidget {
                   heightFactor: 1,
                   child: Text(
                     action,
-                    style: type.bodyStrong.copyWith(color: colors.accentHi),
+                    style: type.bodyStrong.copyWith(color: colors.accentText),
                   ),
                 ),
               ),

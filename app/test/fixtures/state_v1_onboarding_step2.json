@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "onboarding": {
+    "completed": false,
+    "step": 1,
+    "name": "Jakob",
+    "injuryType": null,
+    "injuryOther": "",
+    "injuryDate": null
+  },
+  "consent": null,
+  "streak": {
+    "count": 0,
+    "freezes": 2,
+    "lastTrainingDay": null,
+    "evaluatedThrough": null,
+    "coveredInGap": 0,
+    "uncoveredInGap": 0,
+    "resetNoticePending": false
+  },
+  "path": {"completedUnitIds": [], "pulsePending": null},
+  "day": {
+    "dayKey": "2026-10-07",
+    "removed": [],
+    "swaps": {},
+    "custom": [],
+    "done": false
+  },
+  "prefs": {"timeChoice": 20},
+  "manny": {"lastShown": {}, "greetingPending": false},
+  "celebration": null
+}

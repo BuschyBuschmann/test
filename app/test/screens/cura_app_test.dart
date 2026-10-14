@@ -3,7 +3,8 @@
 import 'package:curaone/state/app_scope.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_motion.dart';
-import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/theme/world_painter.dart';
+import 'package:curaone/ui/components/world_background.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,14 +16,15 @@ CuraColors _colors(WidgetTester tester) =>
     CuraColors.of(tester.element(find.byType(HomeShell)));
 
 void main() {
-  testWidgets('Normal: dunkler Token-Satz mit Glow, deutsche Locale', (
+  testWidgets('Normal: heller Token-Satz mit Welt, deutsche Locale', (
     WidgetTester tester,
   ) async {
     final Harness h = await Harness.onboarded();
     addTearDown(h.dispose);
     await pumpCura(tester, h.controller);
     expect(_colors(tester).highContrast, isFalse);
-    expect(find.byType(GlowBackground), findsOneWidget);
+    expect(_colors(tester).isDark, isFalse, reason: 'System = Hell im Test');
+    expect(find.byType(WorldBackground), findsOneWidget);
     final BuildContext context = tester.element(find.byType(HomeShell));
     expect(Localizations.localeOf(context).languageCode, 'de');
     expect(AppScope.of(context), same(h.controller));
@@ -39,15 +41,14 @@ void main() {
     addTearDown(h.dispose);
     await pumpCura(tester, h.controller);
     expect(_colors(tester).highContrast, isTrue);
-    // HC: kein Glow, kein Blur.
+    // HC: kein Blur, Welt ohne Körnung, Dunst, Sterne und Sonne/Mond.
     expect(find.byType(BackdropFilter), findsNothing);
-    expect(
-      find.byType(CustomPaint).evaluate().where((Element e) {
-        return (e.widget as CustomPaint).painter.runtimeType.toString() ==
-            'GlowPainter';
-      }),
-      isEmpty,
-    );
+    final Iterable<WorldPainter> worlds = tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((CustomPaint p) => p.painter)
+        .whereType<WorldPainter>();
+    expect(worlds, isNotEmpty);
+    expect(worlds.every((WorldPainter p) => !p.decor), isTrue);
     await disposeApp(tester);
   });
 

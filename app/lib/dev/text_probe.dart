@@ -1,8 +1,8 @@
-// Text-Sonde der Prüfumgebung (Plan 12.5 `dumpText`, 8.2 Glow-Regel): geht
+// Text-Sonde der Prüfumgebung (Plan 12.5 `dumpText`): geht
 // durch den Element-Baum und liefert zu jedem `RenderParagraph` das
 // Text-Rechteck (globale Koordinaten), die Textfarbe, Schriftgröße und
-// -gewicht, den Untergrund (`bg`, `glass`, `opaque`) und den Glow-Alpha am
-// dem Glow-Mittelpunkt nächstgelegenen Punkt des Rechtecks. Dieselbe Sonde
+// -gewicht und den Untergrund (`bg` = direkt auf der Welt, `glass` = Karte,
+// Leiste, Blase, `opaque`). Dieselbe Sonde
 // läuft in der Matrix und im Release-Build der Preview (Browser), darum
 // arbeitet sie über Elemente und nicht über `debugCreator`.
 
@@ -10,11 +10,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../logic/path_model.dart' show UnitStatus;
-import '../theme/glow.dart';
+import '../theme/world_painter.dart';
 import '../ui/components/action_circle.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
-import '../ui/components/glow_background.dart';
 import '../ui/components/manny_bubble.dart';
 import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
@@ -25,17 +24,16 @@ import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
 import '../ui/routes/cura_sheet_route.dart';
 
-/// Untergrund eines Textes (Errata E-1, Plan 8.2).
+/// Untergrund eines Textes (Plan 8.2; seit Brief v2 „Text nie direkt auf der
+/// Welt“).
 enum TextGround {
-  /// Fläche `bg`, Glow scheint durch.
+  /// Text direkt auf der Welt (`bg`).
   bg,
 
-  /// Glas-Fläche (`GlassCard`, E2: Nav, Blase, Sheet; A-35): Glow liegt
-  /// darunter.
+  /// Karte oder Glasfläche (`GlassCard`, E2: Nav, Blase, Sheet; A-35).
   glass,
 
-  /// Deckende Fläche (Snackbar, Dialog, Hinweis, Primär-/Neutral-Button):
-  /// glowfrei.
+  /// Deckende Fläche (Snackbar, Dialog, Hinweis, Primär-/Neutral-Button).
   opaque,
 }
 
@@ -47,7 +45,6 @@ class ProbedText {
     required this.sizeSp,
     required this.weight,
     required this.ground,
-    required this.glowAlpha,
     required this.onScreen,
     required this.isIcon,
     this.inOverlay = false,
@@ -67,14 +64,11 @@ class ProbedText {
   final int weight;
   final TextGround ground;
 
-  /// Glow-Alpha (0 … 1) am nächstgelegenen Punkt; 0 ohne Glow.
-  final double glowAlpha;
-
   /// Das Rechteck schneidet die sichtbare Fläche.
   final bool onScreen;
 
   /// Symbol (Icon-Font, Zeichen im privaten Bereich), kein Text: gilt für
-  /// Kontrast als Symbol (3:1), nicht für Schrift- und Glow-Regeln.
+  /// Kontrast als Symbol (3:1), nicht für Schriftregeln.
   final bool isIcon;
 
   /// Der Text gehört zu einem markierten Overlay (`overlay:*`: Nav,
@@ -94,7 +88,6 @@ class ProbedText {
     'fontSize': sizeSp,
     'weight': weight,
     'ground': ground.name,
-    'glowAlpha': glowAlpha,
     'onScreen': onScreen,
     'isIcon': isIcon,
     'inOverlay': inOverlay,
@@ -111,14 +104,19 @@ String _hex(Color c) {
 class TextProbe {
   const TextProbe({
     required this.texts,
-    required this.hasGlow,
+    required this.hasWorld,
+    required this.worldDecor,
     required this.view,
   });
 
   final List<ProbedText> texts;
 
-  /// Ein `GlowPainter` ist im Baum.
-  final bool hasGlow;
+  /// Ein `WorldPainter` ist im Baum.
+  final bool hasWorld;
+
+  /// Die Welt zeigt Körnung, Dunst, Sterne und Sonne/Mond (aus bei Hoher
+  /// Kontrast/Transparenz reduzieren).
+  final bool worldDecor;
   final Size view;
 }
 
@@ -126,27 +124,30 @@ class TextProbe {
 TextProbe probeTexts({Element? root, required Size view}) {
   final Element? start = root ?? WidgetsBinding.instance.rootElement;
   if (start == null) {
-    return TextProbe(texts: const <ProbedText>[], hasGlow: false, view: view);
+    return TextProbe(
+      texts: const <ProbedText>[],
+      hasWorld: false,
+      worldDecor: false,
+      view: view,
+    );
   }
-  GlowGeometry? glow;
-  Offset glowOrigin = Offset.zero;
+  WorldPainter? world;
 
-  // 1. Glow suchen.
-  void findGlow(Element e) {
-    if (glow != null) return;
+  // 1. Welt suchen.
+  void findWorld(Element e) {
+    if (world != null) return;
     final Widget w = e.widget;
-    if (w is CustomPaint && w.painter is GlowPainter) {
-      final RenderObject? r = e.renderObject;
-      if (r is RenderBox && r.attached && r.hasSize) {
-        glowOrigin = r.localToGlobal(Offset.zero);
-        glow = GlowGeometry(r.size.width, r.size.height);
+    if (w is CustomPaint) {
+      final CustomPainter? painter = w.painter;
+      if (painter is WorldPainter) {
+        world = painter;
         return;
       }
     }
-    e.visitChildren(findGlow);
+    e.visitChildren(findWorld);
   }
 
-  findGlow(start);
+  findWorld(start);
 
   // 2. Texte einsammeln.
   final List<ProbedText> out = <ProbedText>[];
@@ -196,7 +197,7 @@ TextProbe probeTexts({Element? root, required Size view}) {
       if (!c && _isBuriedRoute(e)) c = true;
       final RenderObject? r = e.renderObject;
       if (r is RenderParagraph && r.attached && r.hasSize) {
-        final ProbedText? p = _probe(r, g, glow, glowOrigin, screen, c, o);
+        final ProbedText? p = _probe(r, g, screen, c, o);
         if (p != null) out.add(p);
       }
     }
@@ -204,14 +205,17 @@ TextProbe probeTexts({Element? root, required Size view}) {
   }
 
   walk(start, TextGround.bg, false, false);
-  return TextProbe(texts: out, hasGlow: glow != null, view: view);
+  return TextProbe(
+    texts: out,
+    hasWorld: world != null,
+    worldDecor: world?.decor ?? false,
+    view: view,
+  );
 }
 
 ProbedText? _probe(
   RenderParagraph r,
   TextGround ground,
-  GlowGeometry? glow,
-  Offset glowOrigin,
   Rect screen,
   bool covered,
   bool inOverlay,
@@ -232,7 +236,7 @@ ProbedText? _probe(
   Rect rect = local.shift(origin);
   // Ein scrollender Bereich schneidet seinen Inhalt ab: Text außerhalb des
   // Sichtfensters ist unsichtbar, teilweise sichtbarer Text zählt mit seinem
-  // sichtbaren Teil (Glow- und Pixel-Messung sonst über fremden Pixeln, etwa
+  // sichtbaren Teil (Pixel-Messung sonst über fremden Pixeln, etwa
   // unter der Mikrofon-Zeile).
   bool clipped = false;
   for (RenderObject? node = r.parent; node != null; node = node.parent) {
@@ -275,11 +279,6 @@ ProbedText? _probe(
   visit(r.text, null);
   if (fontSize == double.infinity) return null;
 
-  double alpha = 0;
-  if (glow != null && ground != TextGround.opaque) {
-    final Rect rel = rect.shift(-glowOrigin);
-    alpha = glow.alphaForRect(rel.left, rel.top, rel.right, rel.bottom);
-  }
   return ProbedText(
     text: plain,
     rect: rect,
@@ -287,7 +286,6 @@ ProbedText? _probe(
     sizeSp: fontSize,
     weight: weight,
     ground: ground,
-    glowAlpha: alpha,
     onScreen: !covered && !clipped && rect.overlaps(screen),
     isIcon: _isIcon(plain),
     inOverlay: inOverlay,

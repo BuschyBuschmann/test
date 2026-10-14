@@ -475,7 +475,7 @@ void main() {
           final ColoredBox fill = tester.widget<ColoredBox>(
             find.descendant(of: bar, matching: find.byType(ColoredBox)).first,
           );
-          expect(fill.color, CuraColors.dark.bg);
+          expect(fill.color, CuraColors.light.bg);
           expect(
             find.descendant(of: bar, matching: find.byType(BackdropFilter)),
             findsNothing,
@@ -1528,7 +1528,7 @@ void main() {
         expect(dashed.dash, 6);
         expect(dashed.gap, 4);
         expect(dashed.width, 1.5);
-        expect(dashed.radius, 24);
+        expect(dashed.radius, 28);
         final BoxDecoration glass = decorationsUnder(
           tester,
           _outlook,

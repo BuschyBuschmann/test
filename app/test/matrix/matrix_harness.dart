@@ -77,7 +77,7 @@ Future<void> settle(WidgetTester tester, Scenario scenario) async {
 }
 
 CuraColors colorsFor({required bool hc}) =>
-    hc ? CuraColors.darkHighContrast : CuraColors.dark;
+    hc ? CuraColors.lightHighContrast : CuraColors.light;
 
 TextProbe probe(WidgetTester tester) => probeTexts(view: viewSize(tester));
 

@@ -14,37 +14,45 @@ import 'tokens.dart';
 Color _white(double alpha) => const Color(0xFFFFFFFF).withValues(alpha: alpha);
 
 extension CuraColorRoles on CuraColors {
-  /// Pressed: Überlagerung Weiß 10 % (Brief 5, Ergänzung 2).
-  Color get pressedOverlay => _white(Palette.pressedOverlayAlpha);
+  /// Pressed: Überlagerung `ink-1`/`text-1` 10 % (Brief 5, Ergänzung 2).
+  Color get pressedOverlay =>
+      text1.withValues(alpha: Palette.pressedOverlayAlpha);
 
-  /// Innere Lichtkante der Glas-Karte E1 (Brief 3.5): Weiß 10 %.
-  Color get lightEdge => _white(Palette.lightEdgeAlpha);
+  /// Pressed auf dunklen Figuren (Manny-Platzhalter): Weiß 10 %.
+  Color get pressedOverlayLight => _white(Palette.pressedOverlayAlpha);
 
-  /// Aktionschip (Brief 5.3): Füllung Weiß 7 %.
-  Color get chipFill => _white(Palette.chipFillAlpha);
+  /// Innere Lichtkante der Karte E1 (Brief 3.5): Weiß 60 % (Hell) bzw. 10 %
+  /// (Dunkel).
+  Color get lightEdge =>
+      _white(isDark ? Palette.lightEdgeDarkAlpha : Palette.lightEdgeLightAlpha);
 
-  /// Disabled: Füllung Weiß 10 %, Inhalt `text-1` 38 % (Brief 5).
-  Color get disabledFill => _white(Palette.disabledFillAlpha);
+  /// Aktionschip (Brief 5.3): neutraler Chip auf der Karte (`chip-neutral`).
+  Color get chipFill => chipNeutralFill;
+
+  /// Disabled: Füllung `ink-1`/`text-1` 10 %, Inhalt `text-1` 38 % (Brief 5).
+  Color get disabledFill => text1.withValues(alpha: Palette.disabledFillAlpha);
   Color get disabledContent =>
       text1.withValues(alpha: Palette.disabledContentAlpha);
 
   /// Pressed-Füllung „Neutral hell“: reines Weiß (Ergänzung 1, Abschnitt 2).
   Color get pureWhite => _white(1);
 
-  /// Offene Segmente der Fortschrittsanzeige: Weiß 18 % (Brief 5.8).
-  Color get progressOff => _white(Palette.progressOffAlpha);
+  /// Spur von Fortschrittsbalken und Reglern: `ink-1` 14 % (Brief 3.2).
+  Color get progressOff => text1.withValues(alpha: Palette.progressOffAlpha);
 
-  /// Neutraler Avatar-Ring (Familie, Freunde): Weiß 30 % (Ergänzung 2, 3.3).
-  Color get avatarRingNeutral => _white(Palette.avatarRingNeutralAlpha);
+  /// Neutraler Avatar-Ring (Familie, Freunde): `text-1` 30 % (Ergänzung 2, 3.3).
+  Color get avatarRingNeutral =>
+      text1.withValues(alpha: Palette.avatarRingNeutralAlpha);
 
-  /// Pfad-Units (Brief 5.5): Rand gesperrter Units Weiß 20 % (Hoher Kontrast:
-  /// `border-control-hc`), Schloss/Stern Weiß 50 %, zukünftige Strecke Weiß
+  /// Pfad-Units (Brief 5.5): Rand gesperrter Units `text-1` 20 % (Hoher
+  /// Kontrast: `border-control-hc`), Schloss/Stern 50 %, zukünftige Strecke
   /// 22 %, Ring der aktuellen Unit `accent` 40 %, ihr Schein `accent` 50 %,
   /// Rand der Boss-Unit `accent` 55 %.
-  Color get lockedBorder =>
-      highContrast ? controlBorder : _white(Palette.lockedBorderAlpha);
-  Color get lockedIcon => _white(Palette.lockedIconAlpha);
-  Color get futureLine => _white(Palette.futureLineAlpha);
+  Color get lockedBorder => highContrast
+      ? controlBorder
+      : text1.withValues(alpha: Palette.lockedBorderAlpha);
+  Color get lockedIcon => text1.withValues(alpha: Palette.lockedIconAlpha);
+  Color get futureLine => text1.withValues(alpha: Palette.futureLineAlpha);
   Color get accentRing => accent.withValues(alpha: Palette.accentRingAlpha);
   Color get accentUnitGlow =>
       accent.withValues(alpha: Palette.accentUnitGlowAlpha);
@@ -54,7 +62,7 @@ extension CuraColorRoles on CuraColors {
   Color get accentUnitGlowClear => accentUnitGlow.withValues(alpha: 0);
 
   /// Ring-Puls nach der Feier: blendet mit [t] (0 … 1) aus.
-  Color unitPulse(double t) => accentHi.withValues(alpha: 1 - t);
+  Color unitPulse(double t) => accent.withValues(alpha: 1 - t);
 
   /// Rand der aktiven Nav-Pill: `accent` 60 % (Brief 5.4).
   Color get navActiveBorder =>

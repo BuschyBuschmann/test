@@ -105,7 +105,7 @@ void main() {
     expect(
       d.any(
         (BoxDecoration x) =>
-            x.color == const Color(0xFF1B2129) &&
+            x.color == c.surfaceOpaque &&
             x.border == Border.all(color: c.borderControlHc, width: 1),
       ),
       isTrue,
@@ -161,7 +161,7 @@ void main() {
     expect(c.navActiveBorder.a, closeTo(0.6, 0.005));
     expect(
       tester.widget<Icon>(find.byIcon(Icons.route_rounded)).color,
-      c.accentHi,
+      c.accentText,
     );
     expect(tester.widget<Text>(find.text('Pfad')).style!.color, c.text1);
     expect(
@@ -235,11 +235,11 @@ void main() {
   ) async {
     await pumpApp(tester, _nav());
     final CuraColors c = colorsAt(tester, find.byType(FloatingNav));
-    final Color nav = floatOverBg(c);
+    final Color nav = compose(c.floatFill, c.bg);
     final Color pill = compose(c.accentSoft, nav);
     expect(contrastRatio(c.text1, pill), greaterThanOrEqualTo(4.5));
     expect(contrastRatio(c.text2, nav), greaterThanOrEqualTo(7.0));
-    expect(contrastRatio(c.accentHi, pill), greaterThanOrEqualTo(3));
+    expect(contrastRatio(c.accentText, pill), greaterThanOrEqualTo(3));
   });
 
   testWidgets('Tastatur: Tab erreicht die Einträge, Enter wählt', (

@@ -60,7 +60,10 @@ void main() {
         tester.widget<DecoratedBox>(ring).decoration as BoxDecoration;
     expect(d.borderRadius, BorderRadius.circular(16));
     expect(d.border!.top.width, 2);
-    expect(d.border!.top.color, const Color(0xFFF2F0EB));
+    expect(
+      d.border!.top.color,
+      colorsAt(tester, find.byType(FocusRing)).focusRing,
+    );
     // Der Ring fängt keine Tipps ab und ist nicht in der Semantik.
     expect(
       find.ancestor(of: ring, matching: find.byType(IgnorePointer)),

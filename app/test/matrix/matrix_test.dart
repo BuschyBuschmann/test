@@ -56,7 +56,11 @@ void main() {
               ...checkFocusedField(tester, s),
               ...checkBackdrops(tester, s.maxBackdrops),
               ...checkChatFooter(tester, s),
-              ...checkGlowRule(probe(tester), colorsFor(hc: false), size),
+              ...checkCardTextContrast(
+                probe(tester),
+                colorsFor(hc: false),
+                size,
+              ),
               ...takeLayoutExceptions(tester),
             ];
             await tester.pumpWidget(const SizedBox.shrink());
@@ -76,7 +80,11 @@ void main() {
         final List<Finding> f = <Finding>[
           ...takeLayoutExceptions(tester),
           ...checkHighContrast(tester),
-          ...checkGlowRule(probe(tester), colorsFor(hc: true), Viewports.phone),
+          ...checkCardTextContrast(
+            probe(tester),
+            colorsFor(hc: true),
+            Viewports.phone,
+          ),
         ];
         await tester.pumpWidget(const SizedBox.shrink());
         expectNoFindings(f, report: _report, caseName: hcName);

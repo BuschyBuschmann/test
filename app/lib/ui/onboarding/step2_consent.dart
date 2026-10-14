@@ -54,7 +54,7 @@ class Step2Consent extends StatelessWidget {
               const SizedBox(height: CuraSpace.s4),
               Text(
                 S.consentPlaceholderNote,
-                style: type.caption.copyWith(color: colors.text3),
+                style: type.caption.copyWith(color: colors.text2),
               ),
             ],
           ),
@@ -76,9 +76,11 @@ class Step2Consent extends StatelessWidget {
                   child: Text(
                     S.privacyLink,
                     style: type.bodyStrong.copyWith(
-                      color: pressed ? colors.text1 : colors.accentHi,
+                      color: pressed ? colors.text1 : colors.accentText,
                       decoration: TextDecoration.underline,
-                      decorationColor: pressed ? colors.text1 : colors.accentHi,
+                      decorationColor: pressed
+                          ? colors.text1
+                          : colors.accentText,
                     ),
                   ),
                 ),

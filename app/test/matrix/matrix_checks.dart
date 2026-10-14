@@ -12,12 +12,11 @@ import 'package:curaone/theme/contrast.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_motion.dart';
-import 'package:curaone/theme/glow.dart';
+import 'package:curaone/theme/world_painter.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/cura_text_field.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
-import 'package:curaone/ui/components/glow_background.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:flutter/material.dart';
@@ -1280,52 +1279,44 @@ List<Finding> checkChatFooter(WidgetTester tester, Scenario scenario) {
         ];
 }
 
-/// Glow-Alpha-Regel (Plan 8.2, Brief-E-1): je Text der Alpha am nächsten
-/// Punkt: `bg` ≤ 24 %, `text-1/2/3` auf Glas ≤ 16 %, farbiger Text und
-/// `accent-hi` auf Glas ≤ 12 %; dazu Kontrast ≥ 4,5 bei diesem Alpha
-/// (Symbole 3). Deckende Flächen sind glowfrei. Halbtransparente Schrift
-/// (Disabled) ist ausgenommen. **Gilt nur in der Ruhelage** (Scrollstand 0,
-/// kein Zwischenzustand beim Scrollen; Präzisierung A-U2, Punkt 20): Die
-/// Matrix prüft deshalb den eingeschwungenen Ausgangszustand. Texte unter
-/// einer anderen Route/Scrim und außerhalb des Bildschirms zählen nicht.
-List<Finding> checkGlowRule(TextProbe probe, CuraColors colors, Size view) {
+/// Textkontrast auf dem Untergrund (Brief v2, 3.2 und 3.5; ersetzt die
+/// Glow-Alpha-Regel): Text auf einer Karte oder Glasfläche (`glass`) erreicht
+/// im Worst Case über Schwarz, Weiß, Mandarine und Grau unter der Karte 4,5:1
+/// (Symbole 3:1). Deckende Flächen prüfen die Paar-Tests der Tokens. Text
+/// **direkt auf der Welt** (`bg`) verstößt gegen „Text nie direkt auf der
+/// Welt“ (V2-5); die neuen Komponenten (HeaderCard, Karten, Leiste) lösen das
+/// in F2-R2 bis F2-R4 ein, bis dahin ist es ein Richtwert (`advisory`).
+/// Halbtransparente Schrift (Disabled) ist ausgenommen. Texte unter einer
+/// anderen Route/Scrim und außerhalb des Bildschirms zählen nicht.
+List<Finding> checkCardTextContrast(
+  TextProbe probe,
+  CuraColors colors,
+  Size view,
+) {
   final List<Finding> out = <Finding>[];
-  bool near(Color a, Color b) =>
-      (a.r - b.r).abs() < 0.004 &&
-      (a.g - b.g).abs() < 0.004 &&
-      (a.b - b.b).abs() < 0.004;
   for (final ProbedText t in probe.texts) {
     if (!t.onScreen || t.ground == TextGround.opaque) continue;
     if (t.color.a < 0.999) continue;
-    final bool plain =
-        near(t.color, colors.text1) ||
-        near(t.color, colors.text2) ||
-        near(t.color, colors.text3);
-    final bool glass = t.ground == TextGround.glass;
-    final GlowBackdrop backdrop = !glass
-        ? GlowBackdrop.bg
-        : (plain ? GlowBackdrop.glass : GlowBackdrop.coloredOnGlass);
-    final double limit = maxGlowAlphaFor(backdrop);
-    if (!t.isIcon && t.glowAlpha > limit + 0.0005) {
-      out.add(
-        Finding(
-          'Glow-Alpha',
-          '"${t.text}" ${(t.glowAlpha * 100).toStringAsFixed(1)} % > '
-              '${(limit * 100).toStringAsFixed(0)} % (${backdrop.name})',
-        ),
-      );
+    if (t.ground == TextGround.bg) {
+      if (!t.isIcon) {
+        out.add(
+          Finding(
+            'Text direkt auf der Welt',
+            '"${t.text}" liegt auf keiner Karte (V2-5)',
+            advisory: true,
+          ),
+        );
+      }
+      continue;
     }
-    final Color ground = glass
-        ? glassWithGlow(colors, glow: t.glowAlpha)
-        : backgroundWithGlow(colors, glow: t.glowAlpha);
-    final double ratio = contrastRatio(t.color, ground);
+    final double ratio = worstCaseContrast(t.color, colors.cardFillTop);
     final double min = t.isIcon ? 3 : 4.5;
     if (ratio < min) {
       out.add(
         Finding(
-          'Kontrast bei Glow',
-          '${t.isIcon ? 'Symbol' : '"${t.text}"'} ${ratio.toStringAsFixed(2)} < $min '
-              '(Glow ${(t.glowAlpha * 100).toStringAsFixed(1)} %, ${t.ground.name})',
+          'Kontrast auf Karte',
+          '${t.isIcon ? 'Symbol' : '"${t.text}"'} ${ratio.toStringAsFixed(2)} '
+              '< $min (${t.ground.name})',
         ),
       );
     }
@@ -1337,19 +1328,25 @@ List<Finding> checkGlowRule(TextProbe probe, CuraColors colors, Size view) {
 // M-Modus
 // ---------------------------------------------------------------------------
 
-/// Hoher Kontrast: Flächen opak, kein Blur, kein Glow, keine Schatten/Scheine
+/// Hoher Kontrast: Flächen opak, kein Blur, Welt ohne Dekor, keine Schatten/Scheine
 /// (außer dem Schatten der beiden Aktionsbuttons, der bleibt, Ergänzung 2).
 List<Finding> checkHighContrast(WidgetTester tester) {
   final List<Finding> out = <Finding>[];
-  final CuraColors c = CuraColors.darkHighContrast;
+  final CuraColors c = CuraColors.lightHighContrast;
   if (find.byType(BackdropFilter).evaluate().isNotEmpty) {
     out.add(const Finding('HC kein Blur', 'BackdropFilter im Baum'));
   }
-  final bool glow = find
+  final bool decor = find
       .byType(CustomPaint)
       .evaluate()
-      .any((Element e) => (e.widget as CustomPaint).painter is GlowPainter);
-  if (glow) out.add(const Finding('HC kein Glow', 'GlowPainter im Baum'));
+      .map((Element e) => (e.widget as CustomPaint).painter)
+      .whereType<WorldPainter>()
+      .any((WorldPainter p) => p.decor);
+  if (decor) {
+    out.add(
+      const Finding('HC Welt ohne Dekor', 'WorldPainter mit Körnung/Dunst'),
+    );
+  }
 
   bool solid(Color? color, Gradient? gradient) {
     if (gradient is LinearGradient) {
@@ -1472,7 +1469,7 @@ bool _onlyInCuraTextField(WidgetTester tester, String label) {
 
 /// Bekannte Eigenheit von `textContrastGuideline` (U2a): Im **aktiven**
 /// Nav-Eintrag wertet sie die Icon-Pixel als Text und meldet fälschlich ca.
-/// 2,27:1. Die Nav-Paare stehen aus Tokens in `test/theme/contrast_test.dart`.
+/// 2,27:1. Die Nav-Paare stehen aus Tokens in `test/theme/contrast_world_test.dart`.
 /// Ausgenommen wird eine Meldung nur, wenn alle drei Bedingungen gelten
 /// (R-U2 MAJOR-2): (1) das Label gehört zum aktiven Eintrag einer `FloatingNav`,
 /// (2) **alle** Semantik-Knoten mit diesem Label liegen im Nav-Rechteck

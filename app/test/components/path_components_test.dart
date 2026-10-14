@@ -169,7 +169,7 @@ void main() {
       expect(c.bossBorder.a, closeTo(0.55, 0.005));
       expect(
         tester.widget<Icon>(find.byIcon(Icons.star_rounded)).color,
-        c.accentHi,
+        c.accentText,
       );
 
       await pumpApp(tester, _node('p2-end', UnitStatus.locked));
@@ -551,7 +551,7 @@ void main() {
         tester
             .widget<Icon>(find.byIcon(Icons.local_fire_department_rounded))
             .color,
-        c.accentHi,
+        c.accentText,
       );
       expect(find.bySemanticsLabel('Streak: 12 Tage'), findsOneWidget);
       expect(find.text('eingefroren'), findsNothing);
@@ -603,7 +603,7 @@ void main() {
         tester
             .widget<Icon>(find.byIcon(Icons.local_fire_department_rounded))
             .color,
-        c.text3,
+        c.text2,
       );
       expect(find.bySemanticsLabel('Streak: 0 Tage'), findsOneWidget);
       await pumpHeader(

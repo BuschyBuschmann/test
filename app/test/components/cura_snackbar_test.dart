@@ -65,7 +65,7 @@ void main() {
       final CuraColors c = colorsAt(tester, f);
       final BoxDecoration d = decorationsUnder(tester, f).first;
       expect(d.color, c.surfaceOpaque);
-      expect(d.color, const Color(0xFF1B2129));
+      expect(d.color, c.surfaceOpaque);
       expect(d.borderRadius, BorderRadius.circular(20));
       expect(d.border, Border.all(color: c.borderHair, width: 1));
       expect(d.boxShadow, isNull);
@@ -78,8 +78,8 @@ void main() {
       expect(t.fontSize, 16);
       expect(t.color, c.text1);
       final TextStyle a = tester.widget<Text>(find.text('Rückgängig')).style!;
-      expect(a.color, c.accentHi);
-      expect(a.fontWeight, FontWeight.w600);
+      expect(a.color, c.accentText);
+      expect(a.fontWeight, FontWeight.w700);
     });
 
     testWidgets('Hoher Kontrast: Rand border-control-hc, weiterhin opak', (
@@ -91,7 +91,7 @@ void main() {
         tester,
         find.byType(CuraSnackbar),
       ).first;
-      expect(d.color, const Color(0xFF1B2129));
+      expect(d.color, c.surfaceOpaque);
       expect(d.border, Border.all(color: c.borderControlHc, width: 1));
     });
 
