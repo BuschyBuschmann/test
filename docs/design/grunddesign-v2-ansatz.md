@@ -98,3 +98,20 @@ Bilder: `mockups/v2-manny-sticker.png` (groß, Standard, Feier, Trösten, Kopf a
 ## Rückfragen (Ansatz 4)
 1. [blockierend für die finale Figur] Wer zeichnet Manny endgültig, und mit welchen Rechten (Auftragszeichner, KI-Erstellung, Lizenz)? Dieser Entwurf ist nur Platzhalter und Briefing für den Zeichner.
 2. Stirnband als Markenzeichen: gut, oder lieber ein anderes Reha-Zeichen (Kniebandage geht bei einem Pinguin schlecht; Alternativen: Schweißband am Flügel, kleines Pflaster)?
+
+---
+
+# Ansatz 5 – Manny-Varianten
+
+Bild: `mockups/v2-manny-varianten.png` (je Variante Standard, Feier, Trösten mit Brille ab, Kopf als Knopf in 2 Größen und ein kleiner Ausschnitt auf dem Pfad). Quelle: `mockups/v2-src/manny4.py`. Alle vier sind eigene Zeichnungen und weiterhin **Platzhalter**. Mit dem Rechtekläring (Frage 1 in Ansatz 4) bleibt es bei einer Auswahl für den späteren Zeichner.
+
+- **A Lässig:** Schräge Haltung, birnenförmiger Körper, klassische schwarze Sonnenbrille mit Trapez-Gläsern, breites Grinsen, kein Stirnband. Am nächsten an der Vorlage-Silhouette, erkennbar als „cooler Pinguin“, aber das Reha-Markenzeichen fehlt.
+- **B Sportlich:** Breite Schultern, schmaler unterer Körper, dynamischer Schritt, Stirnband und Schweißband am Flügel, Wrap-around-Brille. Passt am besten zu Training und Reha, wirkt aber am unruhigsten und in kleinen Größen (Knopf) am schwersten lesbar.
+- **C Niedlich-rund:** Chibi-Proportion mit großem Kopf, kleinem Körper, runden Gläsern, weicherer Kontur, Wangenröte und Federtuft. Am freundlichsten und im Knopf am besten erkennbar, wirkt aber am jüngsten und am wenigsten „cool“.
+- **D Modern-minimal:** Geometrische Formen (Kreis und Kapsel), dünne Kontur, Brille als eine einfache Spange, nur Schnabel und Füße orange. Passt am stärksten zum Glas-Look und skaliert sauber, hat aber den geringsten Charakter und die wenigste Wärme.
+
+Meine Einschätzung: C oder D funktionieren in kleinen Größen (Chat-Avatar, Knopf) am besten, A und B transportieren mehr Haltung. Eine Mischung ist möglich (z. B. A als große Pose, C-Kopf als Knopf), sollte aber ein Zeichner vereinheitlichen.
+
+## Rückfragen (Ansatz 5)
+1. Welche Variante (oder Mischung) soll es werden?
+2. [blockierend für die finale Figur, unverändert] Wer zeichnet endgültig, mit welchen Rechten?
