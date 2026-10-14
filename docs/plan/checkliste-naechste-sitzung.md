@@ -18,12 +18,12 @@ Die Befunde aus Code-Review und Design-Abnahme sind schon vom Nutzer entschieden
 
 ## Schritt 2: Anregungen ausarbeiten (Dialog, noch keine Umsetzung)
 Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, welche Anregungen schon in Spezifikation und Plan stehen, damit nichts doppelt geplant wird.
-- [ ] **2a Training unterstützen** (`/app-experience`, Ablauf): Timer, Checkliste zum Abhaken, Materialien, Bilder, Ort. Bezug zu A-2 (Übungsdetail) und M-3 (Übung begleiten).
-- [ ] **2b Patienten-Check-ups** (`/app-experience`):
+- [x] **2a Training unterstützen** (`/app-experience`, Ablauf): Timer, Checkliste zum Abhaken, Materialien, Bilder, Ort. Bezug zu A-2 (Übungsdetail) und M-3 (Übung begleiten).
+- [x] **2b Patienten-Check-ups** (`/app-experience`):
   - Check-up nach jeder Einheit (kurz, optional je Übung).
   - Check-up auf „Heute“ (Wohlbefinden, Schmerz, Einschränkungen, Psyche, Motivation).
   - Bezug zu A-3 (Befinden) und zu den Warnzeichen. Psyche ist dabei ein sensibles Thema: Warnzeichen und Datenschutz klären.
-- [ ] **2c Physio-Bereich** (`/product-strategist`, dann `/app-experience`):
+- [x] **2c Physio-Bereich** (`/product-strategist`, dann `/app-experience`):
   - 5-Minuten-Übersicht je Patient: was auf einen Blick, was beim Aufklappen.
   - Liste mit eigenen Patienten und Praxis-Patienten zum Vertreten.
   - Übungs-Baukasten: Felder, Bilder auswählen/hochladen/KI-generiert, direkte Zuordnung zu Patienten.
@@ -31,7 +31,7 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
   - Physio-KI: Aufgaben und Grenzen.
   - Neuer Patient: Anlegen und Verbinden per QR/Link in wenigen Sekunden. Der Ablauf steht schon im Plan Ausschnitt 2 (Einladung) und wird hier vereinfacht.
   - Bezug zu P-1 bis P-5.
-- [ ] **2d Feed/News** (`/product-strategist`): Zielbild, Inhaltsquellen (eigene, Artikel, Krankenkassen), Personalisierung nach Verletzung, Prüfpunkte zu Rechten und Quellen. Wann im Ausbau, MVP oder später?
+- [x] **2d Feed/News** (`/product-strategist`): Zielbild, Inhaltsquellen (eigene, Artikel, Krankenkassen), Personalisierung nach Verletzung, Prüfpunkte zu Rechten und Quellen. Wann im Ausbau, MVP oder später?
 - [ ] **2e Design-Überarbeitung** (`ui-designer`, Ablauf C, gestaltet erst nach den Inhalten aus 2a–2d):
   - Leiste unten neu: Pfad, Heute, Nachrichten, Profil/Konto. Wohin kommen dann der Manny-Button und „Deine Daten“?
   - Transparente Leiste wie bei iOS/Instagram, dazu Tiefe und 3D-Wirkung. Das berührt das Blur-Budget und die Glow-Regel E-1 im Brief.
@@ -55,6 +55,12 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
   - lokale Werkzeuge (Supabase-CLI, Docker)
   - Pepper für den Einladungscode
 - [ ] Pakete laut Plan, jeweils mit Verifikation, Review und Commit.
+
+## Ergebnisse Schritt 2 (2026-10-14)
+- 2a/2b → `docs/produkt/curaone-ablaeufe-training-checkup.md`
+- 2c → `docs/produkt/curaone-physio-bereich.md` (Ausschnitt 2 ohne KI, Physio-KI in Ausschnitt 3)
+- 2d → `docs/produkt/curaone-feed.md` (stufenweise ab Ausschnitt 4)
+- Präsentations-Feedback: modern und jung, „Instagram × Duolingo für Gesundheit“
 
 ## Hinweise
 - Was erledigt ist, wird hier abgehakt und in `docs/UEBERGABE.md` nachgetragen.
