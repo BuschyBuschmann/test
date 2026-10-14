@@ -1,6 +1,6 @@
 # CuraOne Grunddesign v2
 
-Status: zur Freigabe · Stand 2026-10-14 · Grunddesign, kein Brief. Vorarbeit und Begründungen: `grunddesign-v2-ansatz.md` (Ansätze 1–4). Mockups (Abend-Welt, 390×844, Beispieldaten, Manny = Platzhalter): `mockups/v2-grunddesign-uebersicht.png` und `v2-heute.png`, `v2-session.png`, `v2-checkup.png`, `v2-profil.png`, `v2-chats.png`, `v2-physio.png`; Pfad: `v2-ansatz4-abend.png`; Tageszeiten: `v2-ansatz3-tageszeiten.png`; Manny: `v2-manny-sticker.png`. Quellen: `mockups/v2-src/`.
+Status: FREIGEGEBEN (2026-10-14), Manny A „Lässig“ (Platzhalter-Skizze bis zur Rechteklärung) · Stand 2026-10-14 · Grunddesign, kein Brief. Vorarbeit und Begründungen: `grunddesign-v2-ansatz.md` (Ansätze 1–4). Mockups (Abend-Welt, 390×844, Beispieldaten, Manny = Platzhalter): `mockups/v2-grunddesign-uebersicht.png` und `v2-heute.png`, `v2-session.png`, `v2-checkup.png`, `v2-profil.png`, `v2-chats.png`, `v2-physio.png`; Pfad: `v2-ansatz4-abend.png`; Tageszeiten: `v2-ansatz3-tageszeiten.png`; Manny: `v2-manny-sticker.png`. Quellen: `mockups/v2-src/`.
 
 ## 1. Leitidee
 Eine ruhige Welt aus Licht, Ebenen und Glas, die sich mit der Tageszeit verändert. Pfad-Stationen sind schwebende Glas-Kugeln, Karten und Leiste sind Milchglas, Orange ist das Licht und die Handlung. Modern und jung heißt: große runde Formen, viel Fläche, klare fette Typo, ein Maskottchen mit Haltung (Manny mit Sonnenbrille). Jede erledigte Handlung wird gefeiert, aber nie laut oder kindisch.

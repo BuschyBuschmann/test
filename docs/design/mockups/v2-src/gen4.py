@@ -1,5 +1,5 @@
 import re
-from manny import *
+from mannyA import *
 tag='<span class="ph">PLATZHALTER · eigene Skizze</span>'
 sheet=f'''<!doctype html><html lang="de"><meta charset="utf-8"><style>
 @font-face{{font-family:DMS;src:url("../../../../app/assets/fonts/DMSans[opsz,wght].ttf");font-weight:100 1000}}
