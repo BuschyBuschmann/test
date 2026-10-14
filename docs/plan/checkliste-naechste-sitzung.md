@@ -32,7 +32,7 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
   - Neuer Patient: Anlegen und Verbinden per QR/Link in wenigen Sekunden. Der Ablauf steht schon im Plan Ausschnitt 2 (Einladung) und wird hier vereinfacht.
   - Bezug zu P-1 bis P-5.
 - [x] **2d Feed/News** (`/product-strategist`): Zielbild, Inhaltsquellen (eigene, Artikel, Krankenkassen), Personalisierung nach Verletzung, Prüfpunkte zu Rechten und Quellen. Wann im Ausbau, MVP oder später?
-- [ ] **2e Design-Überarbeitung** (`ui-designer`, Ablauf C, gestaltet erst nach den Inhalten aus 2a–2d):
+- [x] **2e Design-Überarbeitung** (`ui-designer`, Ablauf C, gestaltet erst nach den Inhalten aus 2a–2d):
   - Leiste unten neu: Pfad, Heute, Nachrichten, Profil/Konto. Wohin kommen dann der Manny-Button und „Deine Daten“?
   - Transparente Leiste wie bei iOS/Instagram, dazu Tiefe und 3D-Wirkung. Das berührt das Blur-Budget und die Glow-Regel E-1 im Brief.
   - Neuer Look nach `docs/design/inspiration/health-app-glas-orange.webp`.
@@ -61,6 +61,7 @@ Grundlage: `docs/produkt/curaone-anregungen-2026-10-13.md`. Ich prüfe zuerst, w
 - 2c → `docs/produkt/curaone-physio-bereich.md` (Ausschnitt 2 ohne KI, Physio-KI in Ausschnitt 3)
 - 2d → `docs/produkt/curaone-feed.md` (stufenweise ab Ausschnitt 4)
 - Präsentations-Feedback: modern und jung, „Instagram × Duolingo für Gesundheit“
+- 2e → `docs/design/grunddesign-v2.md` (Manny A „Lässig“) und `docs/design/design-brief-v2.md`, beide FREIGEGEBEN 2026-10-14
 
 ## Hinweise
 - Was erledigt ist, wird hier abgehakt und in `docs/UEBERGABE.md` nachgetragen.

@@ -1,6 +1,6 @@
 # Design-Brief v2: CuraOne, Tageszeit-Welt, Glas und Manny
 
-Status: **BRIEF ZUR FREIGABE** · Stand 2026-10-14 · Grundlage: freigegebenes `grunddesign-v2.md` (inkl. Manny A „Lässig“, Tageszeit-Welt, Glas-Kugeln, Leiste, Physio in ruhigerer Welt) und die freigegebenen Produktdokumente `docs/produkt/curaone-ablaeufe-training-checkup.md`, `curaone-physio-bereich.md`, `curaone-spezifikation-manny-gehirn.md`, `curaone-feed.md`. Orientierung: `mockups/v2-grunddesign-uebersicht.png` und die Einzelbilder `mockups/v2-*.png`.
+Status: **FREIGEGEBEN (2026-10-14)** · Stand 2026-10-14 · Grundlage: freigegebenes `grunddesign-v2.md` (inkl. Manny A „Lässig“, Tageszeit-Welt, Glas-Kugeln, Leiste, Physio in ruhigerer Welt) und die freigegebenen Produktdokumente `docs/produkt/curaone-ablaeufe-training-checkup.md`, `curaone-physio-bereich.md`, `curaone-spezifikation-manny-gehirn.md`, `curaone-feed.md`. Orientierung: `mockups/v2-grunddesign-uebersicht.png` und die Einzelbilder `mockups/v2-*.png`.
 
 **Dieser Brief löst `design-brief-v1.md`, die Errata E-1 bis E-5 und die Ergänzungen 1 bis 3 als Gestaltungsvorgabe ab.** Verhalten, Inhalte, Texte und Abläufe aus v1 bleiben, soweit Abschnitt 2 sie nicht ausdrücklich ersetzt. Die Mockups sind Skizzen (Beispieldaten, Manny als Platzhalter). Maßgeblich ist dieser Text; bei Abweichung gilt er (z. B. Kartendeckung 92 %, siehe 3.5).
 
@@ -347,9 +347,9 @@ Platz in der Leiste ist reserviert (5. Ziel). Gestaltung folgt in einem eigenen 
 ## 13. Offene Entscheidungen und Rückfragen
 1. **[blockierend für die Auslieferung, nicht für den Prototyp]** Rechte an den Illustrationen: Wer zeichnet oder liefert die finale Manny-Figur (alle Posen, Köpfe) und die 3D-Objekte (Flamme, Stern, Pokal), mit welchen Nutzungsrechten? Bis dahin laufen die Platzhalter, die als solche gekennzeichnet sind; die Etsy-Vorlage darf nicht verwendet werden.
 2. Feed: eigener Entwurf in Ausschnitt 4 (Karten, Quelle und Datum, Moderation). *Annahme:* später.
-3. Smileys: Emoji oder eigene Manny-Gesichter? *Annahme:* Emoji im Prototyp.
-4. Thema-Override (System/Hell/Dunkel) im Profil: gewünscht oder nur System? *Annahme:* Override vorhanden.
-5. Plattformschalter für „Transparenz reduzieren“ (iOS-Systemoption) braucht einen Plattformaufruf; Android hat keine Entsprechung. *Annahme:* App-Schalter plus Hoher Kontrast reichen.
+3. Smileys: Emoji oder eigene Manny-Gesichter? **Entschieden (2026-10-14):** Emoji im Prototyp.
+4. Thema-Override (System/Hell/Dunkel) im Profil: gewünscht oder nur System? **Entschieden (2026-10-14):** Override im Profil (System/Hell/Dunkel).
+5. Plattformschalter für „Transparenz reduzieren“ (iOS-Systemoption) braucht einen Plattformaufruf; Android hat keine Entsprechung. **Entschieden (2026-10-14):** App-Schalter plus Hoher Kontrast reichen.
 
 ## 14. Nicht enthalten
 Feed-Gestaltung, Community-Funktionen, KI-Kurzbriefing und Physio-KI (Ausschnitt 3), Übungsvideos, Tablet-spezifische Layouts des Patientenbereichs, Karte/Filter für Orte, ein vollständiger Entwurf der Onboarding- und Pfad-Texte (Texte aus v1 bleiben), echte Illustrationen und 3D-Objekte, Fotos von Personen.
