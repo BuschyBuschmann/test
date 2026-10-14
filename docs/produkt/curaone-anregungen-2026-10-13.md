@@ -47,6 +47,11 @@ Das Training muss deutlich mehr unterstützt werden:
 4. Generell braucht die App Tiefe und 3D-Wirkung.
 5. Die Leiste soll transparenter werden, angelehnt an das neue iOS- bzw. Instagram-Design.
 
+## 6. Feedback aus der Präsentation (2026-10-14)
+- Insgesamt gutes Feedback. Anregungen kamen vor allem zum Design und zur funktionalen Darstellung.
+- Die App muss **modern und jung** aussehen: eine Health-Version aus einem **Mix aus Instagram und Duolingo**.
+- Es werden noch deutlich mehr Funktionen gebraucht. Sie kommen über die Anregungen oben und die nächsten Ausschnitte.
+
 ## Erste Einordnung (Orchestrator, nicht entschieden)
 - Teile davon berühren bereits freigegebene Pläne und gehören vor dem Bau von Ausschnitt 2 geklärt:
   - Physio-Patientenliste und Historie → Spec P-5, Plan Ausschnitt 2.
