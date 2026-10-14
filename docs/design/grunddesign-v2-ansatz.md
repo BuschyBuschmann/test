@@ -74,3 +74,27 @@ Regeln dahinter: Kopf-Karte ist Milchglas mit 66 % (Tag) bzw. 58 % (Nacht) dunkl
 1. Sind die Zeitgrenzen (5/10/17/21 Uhr, 30 Minuten Überblendung) so gut, oder soll die Welt sich nur nach der Sonne am Wohnort richten?
 2. Tageszeit nur für die Welt, Inhaltsflächen nach System hell/dunkel: einverstanden? Alternative: Nacht schaltet die ganze App dunkel.
 3. [blockierend für Manny und 3D-Objekte, unverändert] Wer liefert die finalen Illustrationen und mit welchen Rechten?
+
+---
+
+# Ansatz 4 – Manny
+
+Bilder: `mockups/v2-manny-sticker.png` (groß, Standard, Feier, Trösten, Kopf als Knopf in 3 Größen) und `mockups/v2-ansatz4-abend.png` (Abend-Pfad mit neuem Manny). Quelle: `mockups/v2-src/gen4.py` (SVG im Code gezeichnet). Alles weiterhin **Platzhalter** (im Bild so beschriftet), bis finale Illustrationen mit geklärten Rechten vorliegen. Der Aquarell-Stil entfällt.
+
+**Stilregeln.**
+- Flacher Sticker-Stil: gleichmäßige, sehr dunkle Kontur (Marine `#0B1020`, etwa 4–5 px bei 390 Breite, runde Ecken und Enden), wenige flache Farbflächen mit einem einzigen Schatten-Ton je Fläche (rechts bzw. unten), ein kleiner heller Reflex am Kopf.
+- Farben: Körper Blau-Grau `#2A3A57` (Schatten `#1B2640`), Bauch Creme `#FFF1D8` (Schatten `#EAD5B4`), Schnabel und Füße Orange `#FF9A2E`, Stirnband Mandarine `#FF7A2E` (identisch mit dem App-Akzent).
+- Schwarze Sonnenbrille mit je einem hellen Glanzreflex, breit über der Augenpartie. Sie ist Markenzeichen und lässt sich absetzen.
+- Haltung: lässig stehend, Flügel leicht abstehend, Schnabel mit leichtem Lächeln. Die Kontur bleibt in allen Größen gleich dick relativ zur Figur, im Kopf-Knopf wird sie nicht dünner als 3 px.
+- Posen aus Runde 1 bleiben gültig (Begrüßung, Feier, Erinnerung, Chat, Training, Trösten), je Pose eine feste Illustration, Bewegung im Code. Trösten: Brille ab (in der Hand), Augen sichtbar, Flügel auf der Brust, Brille nur wieder aufsetzen, wenn die Situation entspannt ist.
+
+**Abgrenzung zur Vorlage (Etsy-Sticker, nur Inspiration, nichts übernommen).** Die Vorlage gibt nur die allgemeine Stil-Idee vor: Pinguin, dunkle Kontur, flache Farben, Sonnenbrille. Eigen sind:
+- Aufrechte, symmetrische Birnenform mit rundem Kopf (die Vorlage ist schräg geneigt und eiförmig).
+- Kein weißer Gesichtsbereich, der Bauch läuft spitz unter dem Schnabel zusammen, anderer Bauchumriss und Schattenverlauf.
+- **Stirnband in Akzentorange** als Reha-Markenzeichen (Vorlage: keines), Brillengläser in einem eigenen Rechteckschnitt mit Bügeln.
+- Dreizehige, runde Füße und eigene Flügelform. Alle Formen sind frei im Code gezeichnet, es wurde nichts durchgepaust oder aus der Vorlage übernommen.
+- Grenze: Mit Sonnenbrille bleibt die Grundidee (Pinguin mit Sonnenbrille im Stil eines Stickers) naheliegend. Rechtlich geprüft ist das nicht (keine Rechtsberatung); die endgültige Figur sollte der Zeichner eigenständig entwerfen.
+
+## Rückfragen (Ansatz 4)
+1. [blockierend für die finale Figur] Wer zeichnet Manny endgültig, und mit welchen Rechten (Auftragszeichner, KI-Erstellung, Lizenz)? Dieser Entwurf ist nur Platzhalter und Briefing für den Zeichner.
+2. Stirnband als Markenzeichen: gut, oder lieber ein anderes Reha-Zeichen (Kniebandage geht bei einem Pinguin schlecht; Alternativen: Schweißband am Flügel, kleines Pflaster)?
