@@ -1,12 +1,15 @@
-// `PillButton` (Brief 5.3, Ergänzung 1 Abschnitt 2): Primär, Neutral hell und
-// Umriss. 56 dp hoch (wächst bei Textumbruch), volle Pill, `button`-Stil,
-// Icon optional links, Pressed (Brief 5, Plan 8.4), Disabled 38 %,
-// Fortschrittskreis-Zustand. Hit-Area ≥ 48 dp.
+// `PillButton`: Engine der beiden Brief-v2-Buttons `PrimaryPill` und
+// `GlassPill` (Brief 4) plus Umriss-Variante. Hit-Area ≥ 48 dp, Pressed,
+// Disabled, Fortschrittskreis-Zustand.
 //
-// Primär: Füllung `accent`, Text `on-accent`, Schein 0/8/28 (nur ohne Hoher
-// Kontrast). Neutral hell: Füllung `text-1`, Text `on-accent`; Pressed reines
-// Weiß. Umriss: keine Füllung, 1,5 dp `border-control` (HC `-hc`), Text und
-// Icon `text-1`; Pressed Weiß 10 %.
+// Primär (`PrimaryPill`): Verlauf Mandarine (`#FFA063` → `#FF7A2E`), Text
+// `on-accent`, 56 dp, Lichtkante oben, Schein unten (0/14/24, Mandarine 70 %,
+// nur ohne Hoher Kontrast), **kein harter Rand**. Gedrückt: 2 % kleiner,
+// Schein halb. Deaktiviert: Weiß 50 % mit `ink-2`-Text und Rand.
+// Neutral (`GlassPill`): Weiß 90 % ohne Blur, 52 dp, Rand `border-control`,
+// Text `ink-1` (dunkle Tinte in beiden Themen, die Pille bleibt hell).
+// Umriss: keine Füllung, 1,5 dp `border-control` (HC `-hc`), Text und Icon
+// `text-1`; Pressed Überlagerung `text-1` 10 %.
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -90,43 +93,52 @@ class PillButton extends StatelessWidget {
         builder: (BuildContext context, bool pressed) {
           // Gesperrt wegen `busy` bleibt lesbar (Fortschritt zeigt den Zustand).
           final bool dimmed = onPressed == null;
-          final Color content = dimmed
-              ? colors.disabledContent
-              : switch (variant) {
-                  PillButtonVariant.primary ||
-                  PillButtonVariant.neutral => colors.onAccent,
-                  PillButtonVariant.outline => colors.text1,
-                };
-          final Color? fill = dimmed
-              ? colors.disabledFill
-              : switch (variant) {
-                  PillButtonVariant.primary =>
+          final bool primary = variant == PillButtonVariant.primary;
+          final bool glass = variant == PillButtonVariant.neutral;
+          final Color content = switch (variant) {
+            PillButtonVariant.primary =>
+              dimmed ? colors.primaryDisabledInk : colors.onAccent,
+            PillButtonVariant.neutral =>
+              dimmed ? colors.disabledContent : colors.glassPillInk,
+            PillButtonVariant.outline =>
+              dimmed ? colors.disabledContent : colors.text1,
+          };
+          final Color? fill = switch (variant) {
+            PillButtonVariant.primary =>
+              dimmed ? colors.primaryDisabledFill : null,
+            PillButtonVariant.neutral =>
+              dimmed
+                  ? colors.disabledFill
+                  : (pressed ? colors.glassPillPressed : colors.glassPillFill),
+            PillButtonVariant.outline =>
+              dimmed ? null : (pressed ? colors.pressedOverlay : null),
+          };
+          final Gradient? gradient = primary && !dimmed
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    colors.accentTop,
                     pressed ? colors.accentPressed : colors.accent,
-                  PillButtonVariant.neutral =>
-                    // Helle Fläche mit dunkler Schrift in beiden Themen.
-                    pressed
-                        ? Color.alphaBlend(
-                            colors.pressedOverlay,
-                            colors.pureWhite,
-                          )
-                        : colors.pureWhite,
-                  PillButtonVariant.outline =>
-                    pressed ? colors.pressedOverlay : null,
-                };
-          final List<BoxShadow>? glow =
-              variant == PillButtonVariant.primary &&
-                  !dimmed &&
-                  colors.shadowsEnabled
-              ? CuraShadow.primaryGlow
-              : null;
-          final BoxBorder? border =
-              variant == PillButtonVariant.outline ||
-                  (variant == PillButtonVariant.neutral && !dimmed)
-              ? Border.all(
-                  color: dimmed ? colors.borderHair : colors.controlBorder,
-                  width: CuraSize.controlBorder,
+                  ],
                 )
               : null;
+          final List<BoxShadow>? glow =
+              primary && !dimmed && colors.shadowsEnabled
+              ? (pressed
+                    ? CuraShadow.primaryGlowPressed
+                    : CuraShadow.primaryGlow)
+              : null;
+          // Primär hat im Normalzustand keinen Rand (kein harter Rand), nur
+          // deaktiviert; Glas und Umriss tragen `border-control`.
+          final BoxBorder? border = primary && !dimmed
+              ? null
+              : Border.all(
+                  color: dimmed
+                      ? (primary ? colors.controlBorder : colors.borderHair)
+                      : (glass ? colors.glassPillBorder : colors.controlBorder),
+                  width: CuraSize.controlBorder,
+                );
           final Widget text = Text(
             label,
             textAlign: TextAlign.center,
@@ -154,31 +166,63 @@ class PillButton extends StatelessWidget {
             ],
             Flexible(child: text),
           ];
-          return DecoratedBox(
+          final Widget body = ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: glass
+                  ? CuraSize.glassButtonHeight
+                  : CuraSize.primaryButtonHeight,
+              minWidth: expand ? double.infinity : CuraSize.touchTarget,
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: large ? CuraSpace.s4 : CuraSpace.s6,
+                vertical: glass ? CuraSpace.s3 : CuraSpace.s4,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: row,
+              ),
+            ),
+          );
+          final bool edge = primary && !dimmed && !colors.highContrast;
+          Widget pill = DecoratedBox(
             decoration: BoxDecoration(
               color: fill,
+              gradient: gradient,
               borderRadius: BorderRadius.circular(CuraRadius.pill),
               border: border,
               boxShadow: glow,
             ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: CuraSize.primaryButtonHeight,
-                minWidth: expand ? double.infinity : CuraSize.touchTarget,
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: large ? CuraSpace.s4 : CuraSpace.s6,
-                  vertical: CuraSpace.s4,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: row,
-                ),
-              ),
-            ),
+            child: edge
+                ? Stack(
+                    fit: StackFit.passthrough,
+                    children: <Widget>[
+                      body,
+                      // Lichtkante oben (1 dp, Weiß), innerhalb der Rundung.
+                      Positioned(
+                        top: CuraSize.hairline,
+                        left: CuraSpace.s5,
+                        right: CuraSpace.s5,
+                        height: CuraSize.hairline,
+                        child: ExcludeSemantics(
+                          child: IgnorePointer(
+                            child: ColoredBox(color: colors.primaryEdge),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : body,
           );
+          // Gedrückt: 2 % kleiner (Brief 4).
+          if (primary && pressed && !dimmed) {
+            pill = Transform.scale(
+              scale: CuraComponent.primaryPressedScale,
+              child: pill,
+            );
+          }
+          return pill;
         },
       ),
     );

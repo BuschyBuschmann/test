@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/strings_de.dart';
+import '../../logic/manny_occasions.dart' show MannyPose;
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../theme/cura_colors.dart';
@@ -249,6 +250,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       text: current && _micHint ? S.micHint : _bubbleText(step, c),
       bubbleVisible: !current || _bubbleOpen,
       onCloseBubble: _closeBubble,
+      pose: step == 0 ? MannyPose.gruessend : MannyPose.neutral,
     );
     final Widget content = switch (step) {
       0 => Step1Name(prompt: prompt, onSubmit: _next),

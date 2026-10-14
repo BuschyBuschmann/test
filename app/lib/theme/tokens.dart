@@ -109,13 +109,73 @@ abstract final class Palette {
   static const double scrimAlphaHighContrast = 0.72;
 
   // --- Karte als Fläche schwebender Elemente ----------------------------------------
-  // Übergang bis F2-R2: Nav, Blase, Sheet nutzen `card` mit 82 %.
+  // Übergang: schwebende Flächen mit `card` 82 % (nur noch Sheet-Kompakt,
+  // Knoten-Hinweis); Leiste, Kopf-Karte und Manny-Knopf nutzen die Welt-Tokens.
   static const double floatAlpha = 0.82;
 
-  // --- Manny-Platzhalter (Painter entfällt in F2-R2) ---------------------------------
-  static const Color mannyBody = Color(0xFF34425F);
-  static const Color mannyBelly = Color(0xFFF2F0EB);
-  static const double mannyOutlineAlpha = 0.35;
+  // --- Karte E1 (Brief 3.5): Schatten 0/18/30, negativer Spread, warm getönt
+  // (Annahme der Zahlen: Spread -12, Deckkraft 16 % Hell / 45 % Dunkel).
+  static const Color cardShadowTint = Color(0xFF2A211C);
+  static const double cardShadowLightAlpha = 0.16;
+  static const double cardShadowDarkAlpha = 0.45;
+
+  // --- Buttons (Brief 4) ---------------------------------------------------------------
+  // GlassPill: Weiß 90 % ohne Blur; Primär deaktiviert: Weiß 50 %.
+  static const double glassPillAlpha = 0.90;
+  static const double primaryDisabledAlpha = 0.50;
+  // Schein und Lichtkante des Primärbuttons.
+  static const double primaryEdgeAlpha = 0.55;
+
+  // --- Kopf-Karte (Brief 3.1): Text immer `#FFFFFF`; Chips darin Weiß 18 %.
+  static const Color headerInk = Color(0xFFFFFFFF);
+  static const double headerChipFillAlpha = 0.18;
+  static const double headerTrackAlpha = 0.30;
+
+  // --- Leiste (Brief 4.1) ----------------------------------------------------------------
+  // Badge „Chats“: `#B3261E` mit weißem Text und Rand.
+  static const Color navBadge = Color(0xFFB3261E);
+  static const Color navBadgeInk = Color(0xFFFFFFFF);
+
+  // --- Pfad-Kugeln `OrbNode` (Brief 4, Glas-Objekte) ------------------------------------
+  // Radialverlauf (Glanz oben links -> Körper -> Rand), je Zustand.
+  static const Color orbPearlHigh = Color(0xFFFFFFFF);
+  static const Color orbPearlBody = Color(0xFFF1EAF5);
+  static const Color orbPearlEdge = Color(0xFFC9BDD3);
+  static const Color orbMandarinHigh = Color(0xFFFFB98A);
+  static const Color orbMandarinEdge = Color(0xFFE5651A);
+  static const Color orbGoldHigh = Color(0xFFFFE08A);
+  static const Color orbGoldEdge = Color(0xFFF2BC3A);
+  static const Color orbGlassLightHigh = Color(0xFFF1EEF3);
+  static const Color orbGlassLightBody = Color(0xFFD7D2DC);
+  static const Color orbGlassLightEdge = Color(0xFFB1A9BA);
+  static const Color orbGlassDarkHigh = Color(0xFF5A5360);
+  static const Color orbGlassDarkBody = Color(0xFF433D49);
+  static const Color orbGlassDarkEdge = Color(0xFF2E2933);
+  // Stern auf Gold, Flagge/Haken siehe `onGold` / `onAccent`.
+  static const Color orbStar = Color(0xFFB8470F);
+  static const Color orbCheck = onGold;
+  static const double orbGlossAlpha = 0.55;
+  static const double orbEdgeAlpha = 0.70;
+  static const double orbInnerShadowAlpha = 0.22;
+  static const double orbGroundShadowAlpha = 0.28;
+  static const double orbHaloAlpha = 0.45;
+
+  // --- Sheet (Brief 4): Griff ---------------------------------------------------------------
+  static const double sheetHandleAlpha = 0.28;
+
+  // --- Manny (Brief-Ergänzung 1, 6.4) -------------------------------------------------
+  // Helle Scheibe unter dem Kopf (Avatar, Chat-Kopf) in Hell und Dunkel gleich;
+  // Halo hinter der Figur auf der Welt Nacht: Weiß 28 %.
+  static const Color mannyDisc = Color(0xFFFBF3E4);
+  static const double mannyHaloAlpha = 0.28;
+
+  // Gewählte Look-Karte: Fläche `#FFF1E4` (Hell); im Thema Dunkel eine dunkle,
+  // warm getönte Fläche (Annahme: Brief nennt nur den Hell-Wert).
+  static const Color mannyChoiceSelectedLight = Color(0xFFFFF1E4);
+  static const Color mannyChoiceSelectedDark = Color(0xFF3A2A1F);
+
+  // Manny-Knopf: Glas Weiß 78 %, wie die Leiste im Zustand Aktiv (auch Nacht).
+  static const double mannyButtonGlassAlpha = 0.78;
 
   // Weitere Deckkraftwerte aus dem Brief (Ablage, keine neuen Design-Tokens).
   static const double lightEdgeLightAlpha = 0.60; // Lichtkante oben, Hell
@@ -133,7 +193,8 @@ abstract final class Palette {
   static const double accentUnitGlowAlpha = 0.50;
   static const double bossBorderAlpha = 0.55;
   static const double navActiveBorderAlpha = 0.60;
-  static const double primaryGlowAlpha = 0.28;
+  // Schein unter dem Primärbutton: Mandarine 70 % (Brief 4, `PrimaryPill`).
+  static const double primaryGlowAlpha = 0.70;
   static const double navShadowAlpha = 0.45;
   static const double actionButtonShadowAlpha = 0.40;
 }
@@ -287,6 +348,8 @@ class CuraSpringCurve extends Curve {
 }
 
 abstract final class SnackbarTokens {
+  /// Brief v2, 4: „Eingetragen. Rückgängig“ bleibt 6 s stehen.
+  static const Duration standard = Duration(seconds: 6);
   static const Duration short = Duration(seconds: 4);
   static const Duration medium = Duration(seconds: 5);
   static const Duration long = Duration(seconds: 8);

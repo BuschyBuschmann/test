@@ -1,5 +1,7 @@
-// `CuraDialog` (Ergänzung 1, Abschnitt 2): Bestätigungsdialog. Fläche
-// `surface-opaque`, Rand `border-hair` (Hoher Kontrast `-hc`), Radius 24,
+// `CuraDialog` (Brief v2, 4; Ergänzung 1, Abschnitt 2): Bestätigungsdialog.
+// Fläche `card` zu 100 % opak (`surface-opaque`), Rand `border-hair` (Hoher
+// Kontrast `-hc`), Radius 28, Scrim `ink-1` 45 % (Route), Abbrechen immer
+// vorhanden, Warn-Dialoge neutral (kein Mandarine als Statusfarbe),
 // Breite Bildschirm minus 32 dp (höchstens 400 dp), Icon 28 dp `text-1`,
 // Titel `title`, Text `body`, Buttons gestapelt in voller Breite (56 dp,
 // Abstand 8 dp). Der Inhalt scrollt, wenn er nicht passt; die Buttons bleiben

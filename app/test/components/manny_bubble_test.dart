@@ -25,22 +25,34 @@ Widget _bubble({
   ),
 );
 
-Finder _body() => find.descendant(
-  of: find.byType(MannyBubble),
-  matching: find.byType(BackdropFilter),
-);
+/// Körper der Blase: die Karte (`card`, kein Blur).
+Finder _body() => find
+    .descendant(
+      of: find.byType(MannyBubble),
+      matching: find.byWidgetPredicate(
+        (Widget w) =>
+            w is DecoratedBox &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).borderRadius ==
+                BorderRadius.circular(20),
+      ),
+    )
+    .first;
 
 void main() {
-  testWidgets('Aufbau: E2 (surface-float, Radius 20, Rand hair), Text bubble '
-      '14,5 sp, Blur, kein Schatten', (WidgetTester tester) async {
+  testWidgets('Aufbau: Karte E1 (card 92 %, Radius 20, Rand hair), Text '
+      'bubble 14,5 sp, kein Blur (V2-11), kein Schatten', (
+    WidgetTester tester,
+  ) async {
     await pumpApp(tester, _bubble());
     await tester.pumpAndSettle();
     final CuraColors c = colorsAt(tester, find.byType(MannyBubble));
-    expect(backdropCount(tester), 1);
+    expect(backdropCount(tester), 0);
     final BoxDecoration d = decorationsUnder(
       tester,
       find.byType(MannyBubble),
-    ).firstWhere((BoxDecoration x) => x.color == c.floatFill);
+    ).firstWhere((BoxDecoration x) => x.color == c.cardFillTop);
+    expect(c.cardFillTop, c.card);
     expect(d.borderRadius, BorderRadius.circular(20));
     expect(d.border, Border.all(color: c.borderHair, width: 1));
     expect(d.boxShadow, isNull);
@@ -64,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(backdropCount(tester), 0);
     final CuraColors c = colorsAt(tester, find.byType(MannyBubble));
-    expect(c.floatFill, c.surfaceOpaque);
+    expect(c.cardFillTop, c.surfaceOpaque);
     expect(
       decorationsUnder(tester, find.byType(MannyBubble)).any(
         (BoxDecoration x) =>

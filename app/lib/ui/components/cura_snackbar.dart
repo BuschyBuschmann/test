@@ -1,12 +1,13 @@
-// `CuraSnackbar` + `SnackbarHost` (Ergänzung 1, Abschnitt 2, 3.3; Plan 9):
-// Fläche `surface-opaque`, Rand `border-hair` (Hoher Kontrast `-hc`), Radius
+// `CuraSnackbar` + `SnackbarHost` (Brief v2, 4; Ergänzung 1, Abschnitt 2, 3.3;
+// Plan 9): Fläche `card` zu 100 % opak (`surface-opaque`), Rand `border-hair`
+// (Hoher Kontrast `-hc`), Radius
 // 20, Innenabstand 16, Text `body` `text-1`, optionale Aktion rechts als
 // Text-Button in `accent-hi` (Hit-Area 48 dp); ab Textskalierung 1,3 oder wenn
 // sie nicht daneben passt, steht die Aktion rechtsbündig unter dem Text.
 // Immer nur eine Snackbar: eine neue ersetzt die alte, die alte Aktion
 // verfällt. Live-Region („Eingetragen. Rückgängig, Schaltfläche“), nie Blur.
 // Erscheinen: Einblenden plus 8 dp Schiebung (`dur-base`); bei reduzierter
-// Bewegung höchstens `dur-fast` ohne Schiebung. Dauer 4/5/8 s (B-8); der
+// Bewegung höchstens `dur-fast` ohne Schiebung. Standard 6 s (Brief v2, 4), sonst 4/5/8 s (B-8); der
 // Timer pausiert bei Fokus/Hover und läuft nicht bei `accessibleNavigation`.
 import 'dart:async';
 
@@ -46,7 +47,7 @@ enum SnackbarCloseReason {
 class CuraSnackbarMessage {
   const CuraSnackbarMessage({
     required this.text,
-    this.duration = SnackbarTokens.long,
+    this.duration = SnackbarTokens.standard,
     this.actionLabel,
     this.actionSemanticsLabel,
     this.onAction,
@@ -55,7 +56,8 @@ class CuraSnackbarMessage {
 
   final String text;
 
-  /// 4 s (`short`), 5 s (`medium`) oder 8 s (`long`), Brief B-8.
+  /// 6 s (`standard`, Brief v2) oder 4 s (`short`), 5 s (`medium`), 8 s
+  /// (`long`), Brief B-8.
   final Duration duration;
 
   /// Sichtbare Aktion („Rückgängig“).

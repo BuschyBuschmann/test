@@ -43,7 +43,7 @@ class MannyPerch {
 
   /// Abstand der Fußunterkante (Standlinie) von der Oberkante der Zeichnung.
   static double feetFromTop(double height) =>
-      height * MannyGeometry.baseline / MannyGeometry.height;
+      MannyIllustration.feetFromTop(height);
 
   /// Die gezeichnete Form (ohne Trefferrand) für eine Unit mit [center] und
   /// [diameter]: Füße auf dem oberen Rand des Kreises.
@@ -52,7 +52,7 @@ class MannyPerch {
     required double diameter,
     double height = CuraSize.mannyPathHeight,
   }) {
-    final Size size = MannyPlaceholder.sizeFor(MannyCrop.full, height);
+    final Size size = MannyIllustration.sizeFor(MannyCrop.full, height);
     final double baseline =
         center.y - diameter / 2 + CuraSize.mannyPerchOverlap;
     return Rect.fromLTWH(
@@ -197,15 +197,16 @@ class PathView extends StatelessWidget {
       center: p.center,
       diameter: p.diameter,
     );
-    final EdgeInsets insets = MannyPlaceholder.tapInsets(draw.size);
+    final EdgeInsets insets = MannyIllustration.tapInsets(draw.size);
     return Positioned(
       left: draw.left - insets.left,
       top: draw.top - insets.top,
-      child: MannyPlaceholder(
+      child: MannyIllustration(
         key: const ValueKey<String>('path-manny'),
         height: CuraSize.mannyPathHeight,
         pose: mannyPose,
         onTap: onMannyTap,
+        onWorld: true,
       ),
     );
   }

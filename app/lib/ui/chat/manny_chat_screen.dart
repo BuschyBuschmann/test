@@ -43,11 +43,7 @@ class MannyChatScreen extends StatelessWidget {
       header: const ChatHeader(
         title: S.chatTitle,
         subtitle: S.chatSubtitle,
-        leading: MannyPlaceholder(
-          height: CuraSize.emblemHeader,
-          crop: MannyCrop.head,
-          excludeSemantics: true,
-        ),
+        leading: MannyAvatar(size: CuraSize.emblemHeader),
       ),
       notice: const ExampleNotice(
         label: S.chatNoticeLabel,

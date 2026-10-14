@@ -2,6 +2,7 @@
 // Scrim, PopScope, Fokusrückgabe, reduzierte Bewegung) und `CuraDialogRoute`
 // (Scrim, Escape, PopScope, Routenname, Fokus).
 import 'package:curaone/l10n/strings_de.dart';
+import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/pill_button.dart';
@@ -12,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/component_support.dart';
 import '../support/pump_app.dart';
 
 const String _kSheetName = 'Test-Sheet';
@@ -122,60 +124,73 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('Blur nur im Normalmodus; Hoher Kontrast opak mit Scrim 72 %', (
-      WidgetTester tester,
-    ) async {
-      Future<void> open({required bool hc}) async {
-        await pumpApp(
-          tester,
-          Builder(
-            builder: (BuildContext context) => TextButton(
-              onPressed: () => Navigator.of(context).push<void>(
-                CuraSheetRoute<void>(
-                  context: context,
-                  routeLabel: _kSheetName,
-                  builder: (BuildContext context) => _sheet(rows: 2),
+    testWidgets(
+      'Sheet ist opak ohne Blur (V2-11); Scrim 45 %, Hoher Kontrast 72 %',
+      (WidgetTester tester) async {
+        Future<void> open({required bool hc}) async {
+          await pumpApp(
+            tester,
+            Builder(
+              builder: (BuildContext context) => TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  CuraSheetRoute<void>(
+                    context: context,
+                    routeLabel: _kSheetName,
+                    builder: (BuildContext context) => _sheet(rows: 2),
+                  ),
                 ),
+                child: const Text('Öffnen'),
               ),
-              child: const Text('Öffnen'),
             ),
+            highContrast: hc,
+          );
+          // Theme-Wechsel (200 ms) abwarten, sonst sind die Farben gemischt.
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Öffnen'));
+          await tester.pumpAndSettle();
+        }
+
+        await open(hc: false);
+        expect(find.byType(BackdropFilter), findsNothing);
+        final CuraColors c = colorsAt(tester, find.byType(CuraSheetFrame));
+        expect(
+          decorationsUnder(tester, find.byType(CuraSheetFrame)).any(
+            (BoxDecoration x) =>
+                x.color == c.surfaceOpaque &&
+                x.borderRadius ==
+                    const BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          highContrast: hc,
+          isTrue,
+          reason: 'card 100 % opak, Radius 32 oben',
         );
-        // Theme-Wechsel (200 ms) abwarten, sonst sind die Farben gemischt.
+        expect(c.surfaceOpaque.a, 1);
+        expect(
+          tester
+              .widget<AnimatedModalBarrier>(
+                find.byType(AnimatedModalBarrier).last,
+              )
+              .color
+              .value!
+              .a,
+          closeTo(0.45, 0.01),
+        );
+        await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Öffnen'));
-        await tester.pumpAndSettle();
-      }
 
-      await open(hc: false);
-      expect(find.byType(BackdropFilter), findsOneWidget);
-      expect(
-        tester
-            .widget<AnimatedModalBarrier>(
-              find.byType(AnimatedModalBarrier).last,
-            )
-            .color
-            .value!
-            .a,
-        closeTo(0.45, 0.01),
-      );
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-
-      await open(hc: true);
-      expect(find.byType(BackdropFilter), findsNothing);
-      expect(
-        tester
-            .widget<AnimatedModalBarrier>(
-              find.byType(AnimatedModalBarrier).last,
-            )
-            .color
-            .value!
-            .a,
-        closeTo(0.72, 0.01),
-      );
-    });
+        await open(hc: true);
+        expect(find.byType(BackdropFilter), findsNothing);
+        expect(
+          tester
+              .widget<AnimatedModalBarrier>(
+                find.byType(AnimatedModalBarrier).last,
+              )
+              .color
+              .value!
+              .a,
+          closeTo(0.72, 0.01),
+        );
+      },
+    );
 
     testWidgets('Tipp auf den Scrim schließt', (WidgetTester tester) async {
       await _openSheet(tester);

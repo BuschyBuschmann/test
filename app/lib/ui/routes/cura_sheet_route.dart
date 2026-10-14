@@ -9,8 +9,10 @@
 // Sheet-Höhe oder bei einem Fling über 700 dp/s nach unten.
 //
 // Übergang: Schiebung in `dur-base`; bei reduzierter Bewegung nur Einblenden
-// in höchstens `dur-fast`. Scrim aus dem Token `scrim`. Die Fläche ist E2
-// (`surface-float`, Blur über `CuraBlur`, bei Hoher Kontrast opak).
+// in höchstens `dur-fast`. Scrim aus dem Token `scrim`. Die Fläche ist das
+// `Sheet` des Briefs v2 (4, 3.5): `card` zu 100 % opak, **ohne Blur**, Radius
+// 32 oben, Griff, Schließen-Schaltfläche 48 dp (im Kopf des Besitzers); der
+// Fokus bleibt im Sheet (modale Route).
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' show Material, MaterialType;
@@ -20,7 +22,7 @@ import '../../l10n/strings_de.dart';
 import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_motion.dart';
-import '../components/cura_blur.dart';
+import '../../theme/cura_roles.dart';
 
 class CuraSheetRoute<T> extends PopupRoute<T> {
   CuraSheetRoute({
@@ -179,15 +181,14 @@ class _SheetPlacement extends StatelessWidget {
   }
 }
 
-/// Fläche des Sheets (E2) mit festem Kopf, scrollendem Mittelteil und fester
+/// Fläche des Sheets mit Griff, festem Kopf, scrollendem Mittelteil und fester
 /// Fußleiste. Kopf und Fußleiste scrollen nicht mit. Die Ziehgeste liegt nur
-/// auf [header].
+/// auf Griff und [header]. Die Fläche ist immer opak (`card` 100 %, kein Blur,
+/// V2-11).
 ///
 /// Im kompakten Zustand ([CuraSheetScope.compact]: wenig Platz über der
-/// Tastatur) läuft der Kopf als erstes Element mit dem Inhalt, die Fläche ist
-/// opak (`surface-opaque`, wie bei Hohem Kontrast; kein Blur, kein durch die
-/// Fläche scheinender Glow, Errata E-1: der Inhalt scrollt dort unter den
-/// Lichtfleck); die Fußleiste bleibt fest, ihr Rand ist enger.
+/// Tastatur) läuft der Kopf als erstes Element mit dem Inhalt (ohne Griff); die
+/// Fußleiste bleibt fest, ihr Rand ist enger.
 class CuraSheetFrame extends StatefulWidget {
   const CuraSheetFrame({
     super.key,
@@ -281,12 +282,11 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
         borderRadius: shape,
         boxShadow: colors.shadowsEnabled ? CuraShadow.floating : null,
       ),
-      child: _MaybeBlur(
-        enabled: !compact,
+      child: ClipRRect(
         borderRadius: shape,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: compact ? colors.surfaceOpaque : colors.floatFill,
+            color: colors.surfaceOpaque,
             borderRadius: shape,
             border: Border.all(
               color: colors.cardBorder,
@@ -315,7 +315,11 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
                     onVerticalDragStart: _onDragStart,
                     onVerticalDragUpdate: _onDragUpdate,
                     onVerticalDragEnd: _onDragEnd,
-                    child: widget.header,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[const _SheetHandle(), widget.header],
+                    ),
                   ),
                 Flexible(
                   child: SingleChildScrollView(
@@ -366,21 +370,30 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
   }
 }
 
-/// `CuraBlur` nur, wenn [enabled] (im kompakten Zustand ist die Fläche opak).
-class _MaybeBlur extends StatelessWidget {
-  const _MaybeBlur({
-    required this.enabled,
-    required this.borderRadius,
-    required this.child,
-  });
-
-  final bool enabled;
-  final BorderRadius borderRadius;
-  final Widget child;
+/// Griff oben am Sheet (Brief 4): 36 × 4 dp, reine Zier (kein Screenreader-
+/// Knoten); „Schließen“ ist eine eigene Schaltfläche im Kopf.
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled) return child;
-    return CuraBlur(borderRadius: borderRadius, child: child);
+    final CuraColors colors = CuraColors.of(context);
+    return ExcludeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.only(top: CuraSpace.s2),
+        child: Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.sheetHandle,
+              borderRadius: BorderRadius.circular(CuraRadius.pill),
+            ),
+            child: const SizedBox(
+              width: CuraSize.sheetHandleWidth,
+              height: CuraSize.sheetHandleHeight,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

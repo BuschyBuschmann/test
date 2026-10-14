@@ -63,7 +63,7 @@ class ActionCluster extends StatelessWidget {
         messages,
         if (mode == ActionClusterMode.path) ...<Widget>[
           const SizedBox(height: CuraSpace.clusterGap),
-          MannyChatButton(onPressed: onOpenChat, focusNode: chatFocusNode),
+          MannyButton(onPressed: onOpenChat, focusNode: chatFocusNode),
         ],
       ],
     );

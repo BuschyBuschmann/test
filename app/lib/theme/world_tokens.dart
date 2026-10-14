@@ -76,6 +76,9 @@ class WorldPalette {
   /// `header-tint` mit Deckkraft (Kopf-Karte).
   final Color headerTint;
 
+  /// `header-tint` zu 100 % (Hoher Kontrast/Transparenz reduzieren).
+  Color get headerTintOpaque => headerTint.withValues(alpha: 1);
+
   /// `nav-tint`, Ruhe und Aktiv (Farbe mit Deckkraft).
   final Color navRest;
   final Color navActive;

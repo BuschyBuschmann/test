@@ -32,8 +32,8 @@ abstract final class CuraSpace {
   /// Snackbar: Abstand über der Button-Gruppe (Ergänzung 2, 3.1/UI-41).
   static const double snackbarGap = 12;
 
-  /// Manny-Text-Einzug in der Nachrichtenliste (Ergänzung 2, 2.2).
-  static const double mannyTextIndent = 36;
+  /// Manny-Text-Einzug in der Nachrichtenliste (Scheibe 48 dp plus 8 dp).
+  static const double mannyTextIndent = 56;
 }
 
 /// Radien (Brief 3.4): Karte 28, Kopf-Karte 32, Bildkachel 18, Chip, Button
@@ -101,12 +101,12 @@ abstract final class CuraSize {
   static const double exerciseTile = 56;
   static const double listRowMinHeight = 56;
 
-  // Nav: 64 dp hoch, 16 dp Abstand zu den Seiten, 22 dp zum unteren Rand.
-  static const double navHeight = 64;
-  static const double navSideMargin = 16;
-  static const double navBottomMargin = 22;
-  static const double navActivePill = 48;
+  // Leiste: Labels skalieren bis 130 % (Brief 3.3); Maße oben (`navBar*`).
   static const double navLabelMaxTextScale = 1.3;
+
+  /// Aktiver Tab: Pille 56 dp hoch (Brief 4.1); Badge „Chats“ (Zähler).
+  static const double navActivePill = navTabHeight;
+  static const double navBadgeMin = 20;
 
   // Buttons und Felder.
   static const double primaryButtonHeight = 56;
@@ -197,17 +197,45 @@ abstract final class CuraSize {
   /// (rechts bliebe kaum Breite für den Text).
   static const double bubbleAboveTextScale = 1.5;
 
-  // Manny.
-  static const double mannyPathHeight = 80;
+  // Manny (Brief-Ergänzung 1, 6.2): Leinwand des Körpers 158 x 193 dp (1x),
+  // Kopf 110 x 110 dp; unten 8 dp Rand, die Figur steht auf der Fußlinie.
+  // Kein Bild wird größer als seine Leinwand dargestellt.
+  static const double mannyBodyWidth = 158;
+  static const double mannyBodyHeight = 193;
+  static const double mannyHeadCanvas = 110;
+  static const double mannyBottomMargin = 8;
+
+  /// Darstellungsgrößen (Leinwandhöhe): Pfad 88 (Figur ca. 80), Onboarding
+  /// Name-Schritt 120, Auswahlkarten höchstens 190.
+  static const double mannyPathHeight = 88;
   static const double mannyOnboardingMinHeight = 56;
   static const double mannyOnboardingMaxHeight = 64;
-  // Onboarding Schritt 1: Manny groß (Brief 6.1, „ca. 120 dp“).
   static const double mannyOnboardingStep1Height = 120;
+  static const double mannyChoiceMaxHeight = 190;
 
-  // Button-Gruppe (Ergänzung 2, 2 und 3.1).
+  /// Kein Manny-Kopf kleiner als 40 dp (6.5); die Scheibe misst `Kopf / 0,86`.
+  static const double mannyHeadMin = 40;
+  static const double mannyDiscHeadFactor = 0.86;
+
+  /// Halo in der Welt Nacht: Durchmesser 1,15 x Leinwandbreite.
+  static const double mannyHaloScale = 1.15;
+
+  /// Anteil des Halo-Radius, bis zu dem er voll deckt (danach weicher Auslauf).
+  static const double mannyHaloSolid = 0.72;
+
+  /// Look-Auswahlkarten (6a): Mindesthöhe 300, Radio-Kreis 28, Rand 3 dp;
+  /// untereinander (Bild links 120 dp), wenn die Breite unter 360 dp liegt
+  /// oder die Systemschrift über 130 %.
+  static const double mannyChoiceMinHeight = 300;
+  static const double mannyChoiceRadio = 28;
+  static const double mannyChoiceBorder = 3;
+  static const double mannyChoiceStackedImage = 120;
+  static const double mannyChoiceStackBelowWidth = 360;
+  static const double mannyChoiceStackAboveTextScale = 1.3;
+
+  // Manny-Knopf (Brief 5) und Nachrichten-Knopf der Button-Gruppe.
   static const double mannyChatButton = 56;
   static const double messagesButton = 48;
-  static const double mannyHeadInButton = 38;
   static const double mannyHitMargin = 8;
   static const double sendCircle = 40; // Hit-Area 48
   static const double sendCircleHitArea = 48;
@@ -234,8 +262,10 @@ abstract final class CuraSize {
   /// „DW“ berühren sonst bei 130 % den Ring (A-U3, B4). Die Initialen sind
   /// dekorativ, der Name steht daneben in voller Skalierung.
   static const double avatarCompactInitialsMaxTextScale = 1.15;
-  static const double emblemMessage = 26;
-  static const double emblemHeader = 34;
+  // Manny-Köpfe stehen auf der hellen Scheibe, der Kopf darin misst 86 %; die
+  // kleinste Scheibe ist daher 48 dp (Kopf 41 dp, Mindestgröße 40 dp).
+  static const double emblemMessage = 48;
+  static const double emblemHeader = 56;
 
   /// Der große Titel im Kopf (`title`, „Nachrichten“) skaliert bis 150 % mit:
   /// bei 200 % auf 320 dp bräche er mitten im Wort (A-U3, B3). Umbrüche nur an
@@ -306,6 +336,10 @@ abstract final class CuraSize {
   static const double nodeHintArrow = 8;
   static const double sheetMaxHeightFraction = 0.90;
 
+  /// Griff oben am Sheet (Brief 4).
+  static const double sheetHandleWidth = 36;
+  static const double sheetHandleHeight = 4;
+
   /// Abstand zwischen Bildschirmoberkante und Sheet-Oberkante (Mindestwert):
   /// Der Titel steht dann unterhalb des stärksten Lichtflecks (Text auf Glas
   /// höchstens 16 % Glow, Errata E-1). Auf hohen Bildschirmen ohne Tastatur ist
@@ -327,22 +361,51 @@ abstract final class CuraSize {
   static const double hairline = 1;
   static const double controlBorder = 1.5;
   static const double selectedBorder = 2;
-  static const double focusRingWidth = 2;
+
+  /// Fokusring (Brief 3.2): 3 dp Tinte mit 2 dp Außenrand in der Gegenfarbe.
+  static const double focusRingWidth = 3;
+  static const double focusRingOuterWidth = 2;
   static const double focusRingGap = 2;
   static const double pathLine = 3;
   static const double stepBarHeight = 4;
+
+  /// Fortschrittsbalken der Kopf-Karte (Wochenbalken).
+  static const double headerProgressHeight = 8;
 }
 
 /// Schatten (Brief 3.5 und Ergänzung 2). Farben aus `tokens.dart`.
 abstract final class CuraShadow {
   static const Color _black = Color(0xFF000000);
 
-  /// Primärbutton: Schein 0/8/28 `accent` 28 %.
+  /// Primärbutton (Brief 4): Schein unten 0/14/24, Mandarine 70 %.
   static final List<BoxShadow> primaryGlow = <BoxShadow>[
     BoxShadow(
       color: Palette.accent.withValues(alpha: Palette.primaryGlowAlpha),
-      offset: const Offset(0, 8),
-      blurRadius: 28,
+      offset: const Offset(0, 14),
+      blurRadius: 24,
+    ),
+  ];
+
+  /// Gedrückt: Schein halb so stark.
+  static final List<BoxShadow> primaryGlowPressed = <BoxShadow>[
+    BoxShadow(
+      color: Palette.accent.withValues(alpha: Palette.primaryGlowAlpha / 2),
+      offset: const Offset(0, 14),
+      blurRadius: 24,
+    ),
+  ];
+
+  /// Karte E1 (Brief 3.5): 0/18/30 mit negativem Spread, warm getönt.
+  static List<BoxShadow> card({required bool dark}) => <BoxShadow>[
+    BoxShadow(
+      color: Palette.cardShadowTint.withValues(
+        alpha: dark
+            ? Palette.cardShadowDarkAlpha
+            : Palette.cardShadowLightAlpha,
+      ),
+      offset: const Offset(0, 18),
+      blurRadius: 30,
+      spreadRadius: -12,
     ),
   ];
 
@@ -364,4 +427,31 @@ abstract final class CuraShadow {
       blurRadius: 16,
     ),
   ];
+}
+
+/// Geometrie der Glas-Kugeln (`OrbNode`, Brief 4/3.5) als Anteile des
+/// Durchmessers: Glanzpunkt oben links, Innenschatten unten, Bodenschatten.
+abstract final class OrbGeometry {
+  /// Lichtpunkt des Radialverlaufs (Alignment-Koordinaten −1 … 1).
+  static const double highX = -0.38;
+  static const double highY = -0.42;
+  static const double gradientRadius = 1.0;
+  static const List<double> gradientStops = <double>[0, 0.58, 1];
+
+  /// Glanzfleck: Lage und Größe als Anteil des Durchmessers, Neigung in Grad.
+  static const double glossLeft = 0.17;
+  static const double glossTop = 0.09;
+  static const double glossWidth = 0.40;
+  static const double glossHeight = 0.22;
+  static const double glossTiltDegrees = -28;
+
+  /// Innenschatten: beginnt auf dieser Höhe (Anteil) und dunkelt nach unten.
+  static const double innerShadowFrom = 0.55;
+
+  /// Bodenschatten: Ellipse unter der Kugel (Breite, Höhe, Abstand zur Kante
+  /// als Anteil des Durchmessers) und ihre Weichzeichnung (dp).
+  static const double groundWidth = 0.78;
+  static const double groundHeight = 0.14;
+  static const double groundOffset = 0.04;
+  static const double groundBlur = 6;
 }

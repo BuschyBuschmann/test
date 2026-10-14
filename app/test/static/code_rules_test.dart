@@ -182,7 +182,7 @@ void main() {
         ),
         isEmpty,
       );
-      // Ausnahmen: lib/theme und manny.dart
+      // Ausnahme: lib/theme. manny.dart ist seit Brief v2 keine mehr (PNGs).
       expect(
         checkRule2(<String, String>{'lib/theme/x.dart': 'EdgeInsets.all(16)'}),
         isEmpty,
@@ -191,7 +191,7 @@ void main() {
         checkRule2(<String, String>{
           'lib/ui/components/manny.dart': 'BoxConstraints(maxWidth: 560)',
         }),
-        isEmpty,
+        hasLength(1),
       );
     });
 
@@ -218,18 +218,31 @@ void main() {
         }),
         isEmpty,
       );
-      expect(
-        checkRule3(<String, String>{
-          'lib/ui/components/manny_bubble.dart': 'CuraBlur(child: x)',
-        }),
-        isEmpty,
-      );
-      expect(
-        checkRule3(<String, String>{
-          'lib/ui/routes/cura_sheet_route.dart': 'CuraBlur(child: x)',
-        }),
-        isEmpty,
-      );
+      // Brief v2 (V2-11): Leiste, Kopf-Karte, Manny-Knopf; Blase und Sheet nicht.
+      for (final String ok in <String>[
+        'lib/ui/components/header_card.dart',
+        'lib/ui/components/manny_chat_button.dart',
+      ]) {
+        expect(
+          checkRule3(<String, String>{ok: 'CuraBlur(child: x)'}),
+          isEmpty,
+          reason: ok,
+        );
+      }
+      for (final String no in <String>[
+        'lib/ui/components/manny_bubble.dart',
+        'lib/ui/routes/cura_sheet_route.dart',
+        'lib/ui/components/cura_dialog.dart',
+        'lib/ui/components/cura_snackbar.dart',
+        'lib/ui/components/status_chip.dart',
+        'lib/ui/components/orb_node.dart',
+      ]) {
+        expect(
+          checkRule3(<String, String>{no: 'CuraBlur(child: x)'}),
+          hasLength(1),
+          reason: no,
+        );
+      }
       expect(
         checkRule3(<String, String>{
           'lib/ui/components/glass_card.dart': 'CuraBlur(child: x)',
@@ -620,10 +633,26 @@ void main() {
       const String cluster = 'lib/ui/components/action_cluster.dart';
       expect(checkRule12(f(cluster, 'c.accent')), hasLength(1));
       expect(checkRule12(f(cluster, 'c.accentText')), hasLength(1));
+      // Der Manny-Knopf ist seit Brief v2 Glas (Blur über CuraBlur erlaubt).
       expect(
         checkRule12(
           f('lib/ui/components/manny_chat_button.dart', 'CuraBlur(child: x)'),
         ),
+        isEmpty,
+      );
+      expect(
+        checkRule12(
+          f('lib/ui/components/manny_chat_button.dart', 'BackdropFilter(x)'),
+        ),
+        isEmpty,
+        reason: 'Regel 3 prüft BackdropFilter, nicht Regel 12',
+      );
+      expect(
+        checkRule12(f('lib/ui/components/messages_button.dart', 'CuraBlur(x)')),
+        hasLength(1),
+      );
+      expect(
+        checkRule12(f('lib/ui/components/manny_chat_button.dart', 'c.accent')),
         hasLength(1),
       );
       expect(
@@ -992,8 +1021,45 @@ void main() {
       );
       expect(
         r(3, 'CuraBlur(child: x)', 'lib/ui/routes/cura_sheet_route.dart'),
+        isNotEmpty,
+        reason: 'Sheets sind opak ohne Blur (V2-11)',
+      );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/components/header_card.dart'),
         isEmpty,
       );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/components/manny_chat_button.dart'),
+        isEmpty,
+      );
+    });
+
+    test('Regel 18: Manny nur aus PNGs, kein Painter, kein Platzhalter', () {
+      const String m = 'lib/ui/components/manny.dart';
+      expect(
+        r(18, 'class _MannyPainter extends CustomPainter {}', m),
+        isNotEmpty,
+      );
+      expect(r(18, 'CustomPaint(painter: p)', m), isNotEmpty);
+      expect(r(18, 'const MannyPlaceholder(height: 80)', u), isNotEmpty);
+      expect(r(18, 'MannyGeometry.baseline', u), isNotEmpty);
+      expect(
+        r(18, "const t = 'Manny (Platzhalter)';", 'lib/l10n/strings_de.dart'),
+        isNotEmpty,
+      );
+      expect(r(18, "Text('Manny: Platzhalter-Grafik');", u), isNotEmpty);
+      // andere Platzhalter und gezeichnete Nicht-Manny-Dinge bleiben erlaubt
+      expect(r(18, "const t = 'Platzhalter für Übungsbild';", u), isEmpty);
+      expect(
+        r(18, 'CustomPaint(painter: p)', 'lib/ui/components/orb_node.dart'),
+        isEmpty,
+      );
+      expect(
+        r(18, 'MannyIllustration(height: 88)', 'lib/ui/path/path_view.dart'),
+        isEmpty,
+      );
+      // Kommentare zählen nicht
+      expect(r(18, '// früher MannyPlaceholder', m), isEmpty);
     });
 
     test('Regel 4: Status-Token über Variable und in Handlungselement', () {

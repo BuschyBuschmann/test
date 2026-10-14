@@ -14,6 +14,7 @@ import '../l10n/strings_de.dart';
 import '../logic/app_state.dart';
 import '../logic/clock.dart';
 import '../logic/day_program.dart';
+import '../logic/manny_look.dart';
 import '../logic/manny_state.dart';
 import '../logic/path_generator.dart';
 import '../logic/path_model.dart';
@@ -24,6 +25,7 @@ import '../logic/injury_type.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
 import '../theme/cura_typography.dart';
+import '../theme/tokens.dart' show BlurTokens;
 import '../ui/components/action_cluster.dart';
 import '../ui/components/choice_card.dart';
 import '../ui/components/content_frame.dart';
@@ -38,6 +40,7 @@ import '../ui/components/header_icon_button.dart';
 import '../ui/components/manny.dart';
 import '../ui/components/manny_bubble.dart';
 import '../ui/components/manny_chat_button.dart';
+import '../ui/components/manny_look_picker.dart';
 import '../ui/components/messages_button.dart';
 import '../ui/components/mic_button.dart';
 import '../ui/components/pill_button.dart';
@@ -174,7 +177,7 @@ class Scenario {
     required this.id,
     this.builder,
     this.app,
-    this.maxBackdrops = 2,
+    this.maxBackdrops = BlurTokens.maxPerScreen,
     this.expectsPrimary = false,
     this.expectsNav = false,
     this.expectsCluster = false,
@@ -415,7 +418,7 @@ Widget _controls(BuildContext context, ScenarioEnv env) {
             onPressed: _noop,
           ),
           MessagesButton(onPressed: _noop),
-          MannyChatButton(onPressed: _noop),
+          MannyButton(onPressed: _noop),
         ],
       ),
     ]),
@@ -430,7 +433,7 @@ Widget _surfaces(BuildContext context, ScenarioEnv env) {
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const MannyPlaceholder(height: CuraSize.mannyPathHeight),
+          const MannyIllustration(height: CuraSize.mannyPathHeight),
           const SizedBox(width: CuraSpace.s1),
           Expanded(
             child: MannyBubble(
@@ -474,21 +477,31 @@ Widget _surfaces(BuildContext context, ScenarioEnv env) {
 Widget _manny(BuildContext context, ScenarioEnv env) {
   return _screen(
     body: _scrollBody(<Widget>[
-      Wrap(
-        crossAxisAlignment: WrapCrossAlignment.end,
-        spacing: CuraSpace.s4,
-        runSpacing: CuraSpace.s4,
-        children: <Widget>[
-          for (final MannyPose p in MannyPose.values)
-            MannyPlaceholder(height: CuraSize.mannyPathHeight, pose: p),
-          for (final MannyPose p in MannyPose.values)
-            MannyPlaceholder(
-              height: CuraSize.mannyHeadInButton,
-              pose: p,
-              crop: MannyCrop.head,
-            ),
-        ],
-      ),
+      for (final MannyLook look in MannyLookPicker.order) ...<Widget>[
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.end,
+          spacing: CuraSpace.s4,
+          runSpacing: CuraSpace.s4,
+          children: <Widget>[
+            // Die drei gelieferten Posen (Ergänzung 1, 6.3): normal, freudig,
+            // traurig; Kopf auf heller Scheibe in 48 und 56 dp.
+            for (final MannyPose p in const <MannyPose>[
+              MannyPose.neutral,
+              MannyPose.feiernd,
+              MannyPose.troestend,
+            ])
+              MannyIllustration(
+                height: CuraSize.mannyPathHeight,
+                pose: p,
+                look: look,
+              ),
+            MannyAvatar(size: CuraSize.avatar, look: look),
+            MannyAvatar(size: CuraSize.emblemHeader, look: look),
+          ],
+        ),
+        _gap(),
+      ],
+      MannyLookPicker(value: MannyLook.brille, onChanged: (_) {}),
     ]),
   );
 }
@@ -1384,7 +1397,7 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'cmp-nav-cluster',
     builder: _navCluster,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
     expectsCluster: true,
     tablet: true,
@@ -1392,7 +1405,7 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'cmp-snackbar',
     builder: _snackbar,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
   ),
   Scenario(id: 'cmp-pipette', builder: _pipette),
@@ -1496,13 +1509,13 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'path-loading',
     app: _pathLoading,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
   ),
   Scenario(
     id: 'path-error',
     app: _pathError,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
     expectsPrimary: true,
   ),
@@ -1530,13 +1543,13 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'today-loading',
     app: _todayLoading,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
   ),
   Scenario(
     id: 'today-error',
     app: _todayError,
-    maxBackdrops: 1,
+    maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
     expectsPrimary: true,
   ),

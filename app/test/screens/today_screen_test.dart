@@ -15,6 +15,7 @@ import 'package:curaone/state/transient_ui.dart';
 import 'package:curaone/ui/components/category_card.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/cura_pressable.dart';
+import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
@@ -453,7 +454,7 @@ void main() {
       await _today(tester, source: _Pending());
       expect(find.bySemanticsLabel(S.loading), findsOneWidget);
       expect(find.byType(MessagesButton), findsNothing);
-      expect(find.byType(MannyChatButton), findsNothing);
+      expect(find.byType(MannyButton), findsNothing);
       expect(find.text(S.trainingLog), findsNothing);
       expect(find.byType(FloatingNav), findsOneWidget);
       handle.dispose();
@@ -468,7 +469,7 @@ void main() {
         expect(find.text(S.todayLoadError), findsOneWidget);
         expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
         expect(find.byType(MessagesButton), findsNothing);
-        expect(find.byType(MannyChatButton), findsNothing);
+        expect(find.byType(MannyButton), findsNothing);
         await _tap(tester, find.text(S.retry));
         expect(source.calls, 2);
         expect(find.text(S.todayLoadError), findsNothing);
@@ -543,8 +544,15 @@ void main() {
         final Rect nav = tester.getRect(find.byType(FloatingNav));
         expect(snackbar.overlaps(nav), isFalse);
         expect(snackbar.overlaps(row), isFalse);
-        // Opak, ohne Blur: nur die Nav hat einen BackdropFilter.
-        expect(find.byType(BackdropFilter), findsOneWidget);
+        // Opak, ohne Blur: nur Nav und Manny-Knopf haben einen BackdropFilter.
+        expect(find.byType(BackdropFilter), findsNWidgets(2));
+        expect(
+          find.descendant(
+            of: find.byType(CuraSnackbar),
+            matching: find.byType(BackdropFilter),
+          ),
+          findsNothing,
+        );
         await _closeLater(tester);
       },
     );
@@ -656,7 +664,7 @@ void main() {
         final Harness h = await _today(tester);
         await _startAndLog(tester);
         expect(h.controller.transient.undoWindowOpen, isTrue);
-        await _tap(tester, find.byType(MannyChatButton));
+        await _tap(tester, find.byType(MannyButton));
         expect(h.controller.transient.undoWindowOpen, isFalse);
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
@@ -823,7 +831,7 @@ void main() {
       (WidgetTester tester) async {
         await _today(tester, size: Viewports.phone);
         final Rect messages = _rectOf(tester, find.byType(MessagesButton));
-        final Rect manny = _rectOf(tester, find.byType(MannyChatButton));
+        final Rect manny = _rectOf(tester, find.byType(MannyButton));
         final Rect primary = _primary(tester);
         expect(manny.top - messages.bottom, closeTo(8, 0.01));
         expect(messages.right, closeTo(manny.right, 0.01));
@@ -833,7 +841,13 @@ void main() {
         expect(primary.width, closeTo(390 - 32 - 56 - 8, 0.01));
         expect(primary.left, 16);
         // 16 dp über der Nav.
-        expect(844 - manny.bottom, closeTo(64 + 22 + 16, 0.01));
+        expect(
+          844 - manny.bottom,
+          closeTo(
+            CuraSize.navBarHeight + CuraSize.navBarBottomMargin + 16,
+            0.01,
+          ),
+        );
         await disposeApp(tester);
       },
     );
@@ -859,7 +873,7 @@ void main() {
             reason: '„Training starten“ bricht bei ×$scale um',
           );
           final Rect messages = _rectOf(tester, find.byType(MessagesButton));
-          final Rect manny = _rectOf(tester, find.byType(MannyChatButton));
+          final Rect manny = _rectOf(tester, find.byType(MannyButton));
           expect(manny.size, const Size(56, 56), reason: 'bleibt bei ×$scale');
           expect(manny.bottom, closeTo(primary.bottom, 0.01));
           expect(

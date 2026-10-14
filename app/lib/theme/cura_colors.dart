@@ -50,9 +50,6 @@ class CuraColors extends ThemeExtension<CuraColors> {
     required this.chipWarnFill,
     required this.chipWarnText,
     required this.scrim,
-    required this.mannyBody,
-    required this.mannyBelly,
-    required this.mannyOutline,
     required this.cardFillTop,
     required this.cardFillBottom,
     required this.cardBorder,
@@ -123,9 +120,6 @@ class CuraColors extends ThemeExtension<CuraColors> {
   final Color chipWarnFill;
   final Color chipWarnText;
   final Color scrim;
-  final Color mannyBody;
-  final Color mannyBelly;
-  final Color mannyOutline;
 
   /// Karten-Füllung oben/unten (v2: beide `card`, flache Fläche; Hoher
   /// Kontrast: opak).
@@ -241,9 +235,6 @@ class CuraColors extends ThemeExtension<CuraColors> {
         Palette.scrimBase,
         highContrast ? Palette.scrimAlphaHighContrast : Palette.scrimAlpha,
       ),
-      mannyBody: Palette.mannyBody,
-      mannyBelly: Palette.mannyBelly,
-      mannyOutline: _a(Palette.cardLight, Palette.mannyOutlineAlpha),
       cardFillTop: cardFill,
       cardFillBottom: cardFill,
       cardBorder: highContrast ? borderControlHc : borderHair,
@@ -329,9 +320,6 @@ class CuraColors extends ThemeExtension<CuraColors> {
     Color? chipWarnFill,
     Color? chipWarnText,
     Color? scrim,
-    Color? mannyBody,
-    Color? mannyBelly,
-    Color? mannyOutline,
     Color? cardFillTop,
     Color? cardFillBottom,
     Color? cardBorder,
@@ -379,9 +367,6 @@ class CuraColors extends ThemeExtension<CuraColors> {
       chipWarnFill: chipWarnFill ?? this.chipWarnFill,
       chipWarnText: chipWarnText ?? this.chipWarnText,
       scrim: scrim ?? this.scrim,
-      mannyBody: mannyBody ?? this.mannyBody,
-      mannyBelly: mannyBelly ?? this.mannyBelly,
-      mannyOutline: mannyOutline ?? this.mannyOutline,
       cardFillTop: cardFillTop ?? this.cardFillTop,
       cardFillBottom: cardFillBottom ?? this.cardFillBottom,
       cardBorder: cardBorder ?? this.cardBorder,

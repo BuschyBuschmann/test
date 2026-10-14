@@ -532,7 +532,7 @@ void main() {
         final Harness h = await _boot();
         await pumpCura(tester, h.controller);
         void expectNone() {
-          expect(find.byType(MannyChatButton), findsNothing);
+          expect(find.byType(MannyButton), findsNothing);
           expect(find.byType(MessagesButton), findsNothing);
           expect(find.byType(ActionCluster), findsNothing);
         }
@@ -707,7 +707,7 @@ void main() {
         expect(find.text('Schritt 1 von 4'), findsNothing);
         expect(raw.deletes, 0, reason: 'bei Lesefehlern nichts löschen');
         // Keine Button-Gruppe beim StartGate-Fehler (A-43).
-        expect(find.byType(MannyChatButton), findsNothing);
+        expect(find.byType(MannyButton), findsNothing);
         expect(find.byType(MessagesButton), findsNothing);
 
         await tester.tap(find.text(S.retry));
@@ -982,7 +982,7 @@ void main() {
         '(Kante des Namensfeldes)', (WidgetTester tester) async {
       final Harness h = await _boot();
       await pumpCura(tester, h.controller, size: Viewports.tablet);
-      final double manny = tester.getTopLeft(find.byType(MannyPlaceholder)).dx;
+      final double manny = tester.getTopLeft(find.byType(MannyIllustration)).dx;
       final double field = tester.getTopLeft(find.byType(TextField)).dx;
       expect(manny, closeTo(field, 0.5));
       await disposeApp(tester);

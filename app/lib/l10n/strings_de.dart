@@ -366,6 +366,31 @@ abstract final class S {
   // -------------------------------------------------------------------------
   static const String mannyImageLabel = 'Manny, dein Begleiter';
   static const String mannyChatOpen = 'Manny, Chat öffnen';
+
+  // Manny-Look-Auswahl (Brief-Ergänzung 1, 6a/6b): Radio-Gruppe mit zwei Karten.
+  static const String mannyLookGroup = 'Manny-Look';
+  static const String mannyLookWith = 'Mit Brille';
+  static const String mannyLookWithout = 'Ohne Brille';
+  static const String mannyLookWithLabel = 'Manny mit Brille';
+  static const String mannyLookWithoutLabel = 'Manny ohne Brille';
+  static const String mannyLookSelected = 'Ausgewählt';
+
+  /// „Manny mit Brille, ausgewählt, 1 von 2“ (V2-66).
+  static String mannyLookChoiceLabel(
+    String label,
+    bool selected,
+    int index,
+    int total,
+  ) =>
+      '$label, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}, '
+      '$index von $total';
+
+  /// Echo für den Screenreader bei der Wahl: „Manny-Look: Ohne Brille“.
+  static String mannyLookEcho(String name) => '$mannyLookGroup: $name';
+
+  /// Leiste (Brief 4.1): Zähler im Badge, „Chats, 2 ungelesen“.
+  static String navUnread(String label, int count) =>
+      '$label, $count ungelesen';
   static const String messagesButton = 'Nachrichten';
   static const String micUnavailable = 'Spracheingabe, noch nicht verfügbar';
   static const String bubbleClose = 'Nachricht schließen';

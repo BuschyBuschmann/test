@@ -100,7 +100,7 @@ class PrimaryActionRow extends StatelessWidget {
             const SizedBox(height: CuraSpace.clusterGap),
             FocusTraversalOrder(
               order: const NumericFocusOrder(HomeShellState.focusOrderManny),
-              child: MannyChatButton(
+              child: MannyButton(
                 onPressed: onOpenChat,
                 focusNode: chatFocusNode,
               ),

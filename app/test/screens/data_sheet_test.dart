@@ -341,7 +341,7 @@ void main() {
       );
       await _openSheet(tester);
       expect(
-        find.descendant(of: _sheet, matching: find.byType(MannyPlaceholder)),
+        find.descendant(of: _sheet, matching: find.byType(MannyIllustration)),
         findsNothing,
       );
       expect(
@@ -1316,7 +1316,7 @@ void main() {
         'fokussierbar noch per Tipp erreichbar', (WidgetTester tester) async {
       final SemanticsHandle semantics = tester.ensureSemantics();
       await _pumpPath(tester);
-      final Rect chat = tester.getRect(find.byType(MannyChatButton));
+      final Rect chat = tester.getRect(find.byType(MannyButton));
       final Rect messages = tester.getRect(find.byType(MessagesButton));
       expect(find.bySemanticsLabel(S.mannyChatOpen), findsOneWidget);
       await _openSheet(tester);
@@ -1356,7 +1356,7 @@ void main() {
         await tester.pump();
         final BuildContext? ctx = FocusManager.instance.primaryFocus?.context;
         if (ctx == null) continue;
-        expect(ctx.findAncestorWidgetOfExactType<MannyChatButton>(), isNull);
+        expect(ctx.findAncestorWidgetOfExactType<MannyButton>(), isNull);
         expect(ctx.findAncestorWidgetOfExactType<MessagesButton>(), isNull);
       }
       // Tipp auf die Stelle der Gruppe trifft den Scrim/das Sheet, kein Chat.
@@ -1474,7 +1474,9 @@ void main() {
         await _pumpPath(tester, size: Viewports.small, scale: 2);
         await _openSheet(tester);
         expect(_deleteButton, findsOneWidget);
-        await tester.tap(_nameField);
+        // Der Griff und die 52-dp-Glas-Buttons lassen bei 200 % weniger Platz:
+        // das Feld liegt erst nach dem Scrollen im Bild.
+        await _tapIn(tester, _nameField);
         await tester.pumpAndSettle();
         await _showKeyboard(tester);
         expect(

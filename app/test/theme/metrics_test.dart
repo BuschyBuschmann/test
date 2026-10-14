@@ -59,10 +59,11 @@ void main() {
   test('Ergänzung 2: Avatare, Embleme, Einzug, Längen, Zeilen', () {
     expect(CuraSize.avatar, 48);
     expect(CuraSize.avatarHeader, 36);
-    expect(CuraSize.emblemMessage, 26);
-    expect(CuraSize.emblemHeader, 34);
-    expect(CuraSize.mannyHeadInButton, 38);
-    expect(CuraSpace.mannyTextIndent, 36);
+    // Manny-Köpfe stehen auf der Scheibe (Ergänzung 1, 6.4/6.5): Kopf 86 %,
+    // nie unter 40 dp.
+    expect(CuraSize.emblemMessage, 48);
+    expect(CuraSize.emblemHeader, 56);
+    expect(CuraSpace.mannyTextIndent, CuraSize.emblemMessage + 8);
     expect(CuraSize.lineLengthMax, 560);
     expect(CuraSize.contactRowMin, 72);
     expect(CuraSpace.messageGap, 20);
@@ -81,10 +82,7 @@ void main() {
   test('Brief 3.4: Touch-Ziele, Nav, Buttons, Units', () {
     expect(CuraSize.touchTarget, 48);
     expect(CuraSize.minTargetGap, 8);
-    expect(CuraSize.navHeight, 64);
-    expect(CuraSize.navSideMargin, 16);
-    expect(CuraSize.navBottomMargin, 22);
-    expect(CuraSize.navActivePill, 48);
+    expect(CuraSize.navActivePill, 56);
     expect(CuraSize.primaryButtonHeight, 56);
     expect(CuraSize.chipHeight, 48);
     expect(
@@ -141,11 +139,22 @@ void main() {
     expect(floating.blurRadius, 30);
     expect(floating.color.a, closeTo(0.45, 1e-9));
 
+    // Primärbutton (Brief 4): Schein unten 0/14/24, Mandarine 70 %.
     final BoxShadow glow = CuraShadow.primaryGlow.single;
-    expect(glow.offset, const Offset(0, 8));
-    expect(glow.blurRadius, 28);
-    expect(glow.color.a, closeTo(0.28, 1e-9));
+    expect(glow.offset, const Offset(0, 14));
+    expect(glow.blurRadius, 24);
+    expect(glow.color.a, closeTo(0.70, 1e-9));
     expect(glow.color.withValues(alpha: 1).toARGB32(), 0xFFFF7A2E);
+    expect(CuraShadow.primaryGlowPressed.single.color.a, closeTo(0.35, 1e-9));
+
+    // Karte E1 (Brief 3.5): 0/18/30 mit negativem Spread, warm getönt.
+    for (final bool dark in <bool>[false, true]) {
+      final BoxShadow card = CuraShadow.card(dark: dark).single;
+      expect(card.offset, const Offset(0, 18));
+      expect(card.blurRadius, 30);
+      expect(card.spreadRadius, lessThan(0));
+      expect(card.color.withValues(alpha: 1).toARGB32(), 0xFF2A211C);
+    }
   });
 
   test('Motion (Brief v2 3.6) und Blur-Budget (3.5)', () {

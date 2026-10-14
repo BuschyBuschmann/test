@@ -1,7 +1,7 @@
 // `CategoryCard` (Brief 5.2, Plan 9): Glas-Karte (E1) für Termine und
 // Übungen. Links ein 4-dp-Streifen in der Kategoriefarbe (14 dp Abstand oben
 // und unten, runde Enden), darüber die Kategorie als Icon-Kachel (20 dp,
-// Radius 7, Symbol in `on-accent`) plus Label in der Kategoriefarbe, dann der
+// Radius 7, Symbol in `on-category`) plus Label in der Kategoriefarbe, dann der
 // Titel (`heading`), optional die Uhrzeit rechts daneben (`numeralLarge`), die
 // Meta-Zeile (`secondary`, `text-2`) und eine Aktionsleiste.
 //
@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/strings_de.dart';
 import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
+import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import 'cura_label.dart';
 import 'glass_card.dart';
@@ -172,7 +173,7 @@ class CategoryCard extends StatelessWidget {
   }
 }
 
-/// Icon-Kachel (20 dp, Radius 7) mit dem Kategoriesymbol in `on-accent`. Eine
+/// Icon-Kachel (20 dp, Radius 7) mit dem Kategoriesymbol in `on-category` (Weiß im Thema Hell, Tinte im Thema Dunkel). Eine
 /// deckende Fläche in der Kategoriefarbe: die Prüfungen rechnen das Symbol
 /// gegen sie, nicht gegen das Glas darunter (`TextGround.opaque`).
 class CategoryIconTile extends StatelessWidget {
@@ -194,7 +195,7 @@ class CategoryIconTile extends StatelessWidget {
         child: Icon(
           icon,
           size: CuraSize.categoryIconGlyph,
-          color: colors.onAccent,
+          color: colors.onCategory,
         ),
       ),
     );

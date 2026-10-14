@@ -939,34 +939,29 @@ void main() {
   });
 
   group('Text-Sonde: Untergrund und Verdeckung (R-U2 Punkt 12)', () {
-    testWidgets(
-      'Sheet (CuraSheetFrame) gilt als Glas, auch ohne Typnamen (Release-fest)',
-      (WidgetTester tester) async {
-        await pump(
-          tester,
-          const Stack(
-            children: <Widget>[
-              Positioned.fill(child: WorldBackground()),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: CuraSheetFrame(
-                  header: Text('Kopf'),
-                  body: Text('Inhalt'),
-                ),
-              ),
-            ],
-          ),
-        );
-        final TextProbe p = probe(tester);
-        final Iterable<ProbedText> texts = p.texts.where(
-          (ProbedText t) => t.text == 'Kopf' || t.text == 'Inhalt',
-        );
-        expect(texts, hasLength(2));
-        for (final ProbedText t in texts) {
-          expect(t.ground, TextGround.glass);
-        }
-      },
-    );
+    testWidgets('Sheet (CuraSheetFrame) gilt als deckend (card 100 %), auch ohne Typnamen '
+        '(Release-fest)', (WidgetTester tester) async {
+      await pump(
+        tester,
+        const Stack(
+          children: <Widget>[
+            Positioned.fill(child: WorldBackground()),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: CuraSheetFrame(header: Text('Kopf'), body: Text('Inhalt')),
+            ),
+          ],
+        ),
+      );
+      final TextProbe p = probe(tester);
+      final Iterable<ProbedText> texts = p.texts.where(
+        (ProbedText t) => t.text == 'Kopf' || t.text == 'Inhalt',
+      );
+      expect(texts, hasLength(2));
+      for (final ProbedText t in texts) {
+        expect(t.ground, TextGround.opaque);
+      }
+    });
 
     testWidgets(
       'Sheet im kompakten Zustand (wenig Platz über der Tastatur) ist deckend',
@@ -1818,7 +1813,7 @@ void _u3aMatrixTests(
           Positioned(
             right: 16,
             bottom: 100,
-            child: MannyChatButton(onPressed: () {}),
+            child: MannyButton(onPressed: () {}),
           ),
           Positioned(
             right: messagesRight,

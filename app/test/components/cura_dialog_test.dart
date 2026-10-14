@@ -99,15 +99,17 @@ void main() {
     expect(tester.getSize(decoratedDialog(tester)).width, 400);
   });
 
-  testWidgets('Buttons gestapelt, volle Breite, 56 dp, Abstand 8 dp; sichere '
-      'Aktion oben mit Anfangsfokus', (WidgetTester tester) async {
+  testWidgets('Buttons gestapelt, volle Breite (Glas 52 dp, Umriss 56 dp), '
+      'Abstand 8 dp; sichere Aktion oben mit Anfangsfokus', (
+    WidgetTester tester,
+  ) async {
     await pumpApp(tester, _dialog());
     await tester.pumpAndSettle();
     final Rect a = tester.getRect(find.widgetWithText(PillButton, 'Abbrechen'));
     final Rect b = tester.getRect(
       find.widgetWithText(PillButton, 'Ja, alles löschen'),
     );
-    expect(a.height, 56);
+    expect(a.height, 52, reason: 'GlassPill (Abbrechen)');
     expect(b.height, 56);
     expect(a.width, b.width);
     expect(b.top - a.bottom, 8);

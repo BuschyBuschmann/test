@@ -24,7 +24,7 @@ HintMeasure _hintOf(double width, double height) =>
 
 /// Gruppe wie auf dem Pfad: 56 breit, 112 hoch, 16 vom Rand, über der Nav.
 Rect _cluster(Size viewport) {
-  final double nav = CuraSize.navHeight + CuraSize.navBottomMargin;
+  final double nav = CuraSize.navBarHeight + CuraSize.navBarBottomMargin;
   final double bottom = viewport.height - nav - CuraSpace.pageMargin;
   return Rect.fromLTRB(
     viewport.width - CuraSpace.pageMargin - 56,
@@ -302,7 +302,7 @@ void main() {
       // Oben: 306 - 158 = 148 ≥ 8 und 306 ≥ 64 → oben passt.
       expect(p.arrow, HintArrow.down);
       // Erzwinge: Unit nahe oben UND nahe der Gruppe (kleine Sichtfläche).
-      const Size tiny = Size(320, 300);
+      const Size tiny = Size(320, 310); // Leiste 96 dp (72 + 24)
       final Rect c = _cluster(tiny); // Oberkante 86 → Grenze 78
       final HintPlacement side = placeHint(
         unit: unit(250, 50),

@@ -137,11 +137,7 @@ class _MannyText extends StatelessWidget {
                     alignment: Alignment.topLeft,
                     minHeight: 0,
                     maxHeight: CuraSize.emblemMessage,
-                    child: MannyPlaceholder(
-                      height: CuraSize.emblemMessage,
-                      crop: MannyCrop.head,
-                      excludeSemantics: true,
-                    ),
+                    child: MannyAvatar(size: CuraSize.emblemMessage),
                   )
                 : null,
           ),

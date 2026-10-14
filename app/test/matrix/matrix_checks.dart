@@ -895,7 +895,7 @@ List<Finding> checkTodayGroup(WidgetTester tester, Scenario scenario) {
   final Rect? messages = o['cluster'];
   if (row == null || messages == null) return const <Finding>[];
   final Finder manny = find.byElementPredicate(
-    (Element e) => e.widget is MannyChatButton && !isBuriedRoute(e),
+    (Element e) => e.widget is MannyButton && !isBuriedRoute(e),
   );
   final Finder primary = find.byElementPredicate(
     (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),

@@ -35,3 +35,7 @@ flutter:
   assets:
     - assets/fonts/OFL-BricolageGrotesque.txt
     - assets/fonts/OFL-DMSans.txt
+    # Manny: finale Grafiken in zwei Varianten; die Dichte-Varianten 2.0x/ und
+    # 3.0x/ liegen daneben und werden von Flutter selbst gewählt.
+    - assets/manny/brille/
+    - assets/manny/ohne/

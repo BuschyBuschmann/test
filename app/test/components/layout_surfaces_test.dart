@@ -252,8 +252,8 @@ void main() {
   });
 
   group('GlassCard (Brief 5.1, E1)', () {
-    testWidgets('Normal: Verlauf, Rand 1 dp hair, Radius 28, Lichtkante, '
-        'kein Blur, kein Schatten', (WidgetTester tester) async {
+    testWidgets('Normal: card 92 %, Rand 1 dp hair, Radius 28, Lichtkante, '
+        'Schatten 0/18/30 ohne Blur', (WidgetTester tester) async {
       await pumpApp(
         tester,
         const Center(child: GlassCard(child: Text('Inhalt'))),
@@ -267,7 +267,16 @@ void main() {
         (BoxDecoration x) => x.border != null,
       );
       expect(border.border, Border.all(color: c.borderHair, width: 1));
-      expect(d.every((BoxDecoration x) => x.boxShadow == null), isTrue);
+      // Schatten der Karte (E1): 0/18/30 mit negativem Spread, warm getönt.
+      expect(d.first.boxShadow, CuraShadow.card(dark: false));
+      final BoxShadow shadow = d.first.boxShadow!.single;
+      expect(shadow.offset, const Offset(0, 18));
+      expect(shadow.blurRadius, 30);
+      expect(shadow.spreadRadius, lessThan(0));
+      expect(shadow.color.toARGB32() & 0xFFFFFF, 0x2A211C);
+      expect(d.skip(1).every((BoxDecoration x) => x.boxShadow == null), isTrue);
+      // card 92 % (Hell: Weiß), kein Blur (V2-10).
+      expect(c.card, const Color(0xFFFFFFFF).withValues(alpha: 0.92));
       expect(backdropCount(tester), 0);
       // Lichtkante: ColoredBox 1 dp hoch in `lightEdge`.
       final Finder edge = find.descendant(
@@ -301,6 +310,7 @@ void main() {
       final List<BoxDecoration> d = decorationsUnder(tester, card).toList();
       final LinearGradient g = d.first.gradient! as LinearGradient;
       expect(g.colors, <Color>[c.surfaceOpaque, c.surfaceOpaque]);
+      expect(d.first.boxShadow, isNull, reason: 'kein Schatten bei HC');
       expect(
         d.firstWhere((BoxDecoration x) => x.border != null).border,
         Border.all(color: c.borderControlHc, width: 1),

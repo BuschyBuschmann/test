@@ -90,7 +90,7 @@ Finder _navEntry(String label) =>
     find.descendant(of: find.byType(FloatingNav), matching: find.text(label));
 
 Future<void> _openChat(WidgetTester tester) async {
-  await tester.tap(find.byType(MannyChatButton));
+  await tester.tap(find.byType(MannyButton));
   await tester.pumpAndSettle();
 }
 
@@ -137,7 +137,7 @@ void main() {
       final BuildContext context = tester.element(find.byType(HomeShell));
       final double navTop =
           tester.view.physicalSize.height - FloatingNav.occupiedHeight(context);
-      final Rect manny = tester.getRect(find.byType(MannyChatButton));
+      final Rect manny = tester.getRect(find.byType(MannyButton));
       final Rect messages = tester.getRect(find.byType(MessagesButton));
       expect(manny.size, const Size(56, 56));
       expect(messages.size, const Size(48, 48));
@@ -215,18 +215,18 @@ void main() {
       );
       await tester.pumpAndSettle();
       // Die Gruppe bleibt sichtbar (unter dem Scrim), ist aber nicht bedienbar.
-      expect(find.byType(MannyChatButton), findsOneWidget);
+      expect(find.byType(MannyButton), findsOneWidget);
       expect(_semanticLabels(tester), isNot(contains(S.mannyChatOpen)));
       expect(_semanticLabels(tester), isNot(contains(S.messagesButton)));
       // Tastatur: Tab bleibt im Sheet.
       for (int i = 0; i < 4; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
-        expect(_focusInside(find.byType(MannyChatButton)), isFalse);
+        expect(_focusInside(find.byType(MannyButton)), isFalse);
         expect(_focusInside(find.byType(MessagesButton)), isFalse);
       }
       // Tipp auf die Stelle der Gruppe trifft den Scrim, nicht den Button.
-      await tester.tapAt(tester.getCenter(find.byType(MannyChatButton)));
+      await tester.tapAt(tester.getCenter(find.byType(MannyButton)));
       await tester.pumpAndSettle();
       expect(find.byType(MannyChatScreen), findsNothing);
       h.dispose();
@@ -252,7 +252,7 @@ void main() {
             kind = 'unit';
           } else if (_focusInside(find.byType(MessagesButton))) {
             kind = 'messages';
-          } else if (_focusInside(find.byType(MannyChatButton))) {
+          } else if (_focusInside(find.byType(MannyButton))) {
             kind = 'chat';
           } else if (_focusInside(find.byType(FloatingNav))) {
             kind = 'nav';
@@ -311,7 +311,7 @@ void main() {
       expect(find.byType(ActionChip), findsNothing);
       // Keine Nav, keine Button-Gruppe, kein Blur (UI-85).
       expect(find.byType(FloatingNav), findsNothing);
-      expect(find.byType(MannyChatButton), findsNothing);
+      expect(find.byType(MannyButton), findsNothing);
       expect(find.byType(MessagesButton), findsNothing);
       expect(find.byType(BackdropFilter), findsNothing);
       await disposeApp(tester);
@@ -836,7 +836,7 @@ void main() {
         tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
       );
       await _home(tester);
-      await tester.tap(find.byType(MannyChatButton));
+      await tester.tap(find.byType(MannyButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1));
       final double start = tester.getTopLeft(find.text('Manny')).dx;

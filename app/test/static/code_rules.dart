@@ -35,10 +35,10 @@ const Map<String, String> kSieAllowlist = <String, String>{};
 /// derzeit leer).
 const Set<String> kMaxLinesAllowlist = <String>{};
 
-/// Regel 2: Dateien, in denen Painter-Geometrie Zahlen enthalten darf.
-const Set<String> kNumberLiteralExempt = <String>{
-  'lib/ui/components/manny.dart',
-};
+/// Regel 2: Dateien, in denen Painter-Geometrie Zahlen enthalten darf (seit
+/// Brief v2 keine: Manny kommt aus PNGs, die Kugeln malt `orb_node.dart` mit
+/// Tokens aus `OrbGeometry`).
+const Set<String> kNumberLiteralExempt = <String>{};
 
 const String kStringsFile = 'lib/l10n/strings_de.dart';
 
@@ -182,11 +182,14 @@ List<Violation> checkRule2(Map<String, String> files) {
 const Set<String> _r3BackdropFiles = <String>{
   'lib/ui/components/cura_blur.dart',
 };
+
+/// Brief v2 (3.5, V2-11): Blur nur in Leiste, Kopf-Karte und Manny-Knopf.
+/// Sheets, Dialoge, Blasen, Karten, Chips und Listenzeilen haben keinen.
 const Set<String> _r3BlurFiles = <String>{
   'lib/ui/components/cura_blur.dart',
   'lib/ui/components/floating_nav.dart',
-  'lib/ui/components/manny_bubble.dart',
-  'lib/ui/routes/cura_sheet_route.dart',
+  'lib/ui/components/header_card.dart',
+  'lib/ui/components/manny_chat_button.dart',
 };
 final RegExp _r3Backdrop = RegExp(
   r'\b(?:BackdropFilter|ImageFiltered)\b|\bImageFilter\s*\.\s*blur\b',
@@ -213,7 +216,7 @@ List<Violation> checkRule3(Map<String, String> files) {
         path,
         code,
         _r3Blur,
-        'CuraBlur nur in floating_nav, manny_bubble, cura_sheet_route',
+        'CuraBlur nur in floating_nav, header_card, manny_chat_button (V2-11)',
       );
     }
   });
@@ -750,8 +753,13 @@ List<Violation> checkRule11(Map<String, String> files) {
 }
 
 // ---------------------------------------------------------------------------
-// Regel 12: Ergänzung 2 (UI-72, UI-78, UI-85)
+// Regel 12: Ergänzung 2 (UI-72, UI-78, UI-85), angepasst an Brief v2
 // ---------------------------------------------------------------------------
+
+/// Der Manny-Knopf ist seit Brief v2 Glas (Weiß 78 %, Blur über `CuraBlur`):
+/// dort ist der Blur erlaubt (Regel 3 prüft die Stelle); alle übrigen
+/// Chat-/Button-Gruppen-Bausteine bleiben ohne Blur.
+const Set<String> kBlurAllowedChatFiles = <String>{'manny_chat_button.dart'};
 
 const Set<String> _r12Files = <String>{
   'manny_chat_button.dart',
@@ -796,14 +804,16 @@ List<Violation> checkRule12(Map<String, String> files) {
       _r12Accent,
       'kein Akzent in Chat-/Button-Gruppen-Bausteinen',
     );
-    _addMatches(
-      out,
-      12,
-      path,
-      code,
-      _r12Blur,
-      'kein Blur in Chat-/Button-Gruppen-Bausteinen',
-    );
+    if (!kBlurAllowedChatFiles.contains(baseName(path))) {
+      _addMatches(
+        out,
+        12,
+        path,
+        code,
+        _r12Blur,
+        'kein Blur in Chat-/Button-Gruppen-Bausteinen',
+      );
+    }
     if (baseName(path) != 'chat_screen_scaffold.dart') {
       _addMatches(
         out,
@@ -1057,6 +1067,68 @@ List<Violation> checkRule17(Map<String, String> files) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Regel 18: Manny nur aus den PNGs (Ergänzung 1, V2-56)
+// ---------------------------------------------------------------------------
+
+final RegExp _r18Old = RegExp(
+  r'\bMannyPlaceholder\b|\b_?MannyPainter\b|\bMannyGeometry\b|\bMannyWing\b',
+);
+final RegExp _r18Painter = RegExp(r'\bCustomPainter\b|\bCustomPaint\b');
+
+/// Dateien des Manny-Bildes selbst (die Blase malt nur ihren Pfeil).
+const Set<String> kMannyFiles = <String>{
+  'manny.dart',
+  'manny_chat_button.dart',
+  'manny_look_picker.dart',
+};
+
+final RegExp _r18Hint = RegExp(r'Platzhalter', caseSensitive: false);
+final RegExp _r18Manny = RegExp(r'Manny', caseSensitive: false);
+
+/// Kein gezeichneter Manny: kein Platzhalter-Widget, kein `CustomPainter` in
+/// den Manny-Dateien und kein Text, der Manny als „Platzhalter“ kennzeichnet.
+List<Violation> checkRule18(Map<String, String> files) {
+  final List<Violation> out = <Violation>[];
+  _stripped(files).forEach((String path, String code) {
+    if (!inDir(path, 'lib')) return;
+    _addMatches(
+      out,
+      18,
+      path,
+      code,
+      _r18Old,
+      'gezeichneter Manny-Platzhalter ist entfallen (Ergänzung 1)',
+    );
+    if (kMannyFiles.contains(baseName(path))) {
+      _addMatches(
+        out,
+        18,
+        path,
+        code,
+        _r18Painter,
+        'kein CustomPainter für Manny (PNG-Grafiken)',
+      );
+    }
+    if (inDir(path, 'lib/ui') || path == kStringsFile) {
+      final List<String> lines = code.split('\n');
+      for (int i = 0; i < lines.length; i++) {
+        if (_r18Manny.hasMatch(lines[i]) && _r18Hint.hasMatch(lines[i])) {
+          out.add(
+            Violation(
+              18,
+              path,
+              i + 1,
+              'Manny als „Platzhalter“ gekennzeichnet (V2-56)',
+            ),
+          );
+        }
+      }
+    }
+  });
+  return out;
+}
+
 /// Alle Regeln in Reihenfolge.
 final Map<int, List<Violation> Function(Map<String, String>)> kRules =
     <int, List<Violation> Function(Map<String, String>)>{
@@ -1077,4 +1149,5 @@ final Map<int, List<Violation> Function(Map<String, String>)> kRules =
       15: checkRule15,
       16: checkRule16,
       17: checkRule17,
+      18: checkRule18,
     };

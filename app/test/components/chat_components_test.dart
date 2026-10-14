@@ -141,18 +141,26 @@ void main() {
     });
 
     testWidgets('Emblem je Manny-Block: vor jedem Block, nicht je Nachricht, '
-        'Text ab 36 dp', (WidgetTester tester) async {
+        'Text ab 56 dp', (WidgetTester tester) async {
       await pumpApp(tester, _list(_example));
-      // Drei Nachrichten: Manny, Nutzer, Manny → zwei Blöcke → zwei Embleme.
-      expect(find.byType(MannyPlaceholder), findsNWidgets(2));
-      for (final Element e in find.byType(MannyPlaceholder).evaluate()) {
-        final MannyPlaceholder m = e.widget as MannyPlaceholder;
-        expect(m.height, CuraSize.emblemMessage);
+      // Drei Nachrichten: Manny, Nutzer, Manny → zwei Blöcke → zwei Embleme
+      // (Kopf auf heller Scheibe, Scheibe 48 dp, Kopf darin ≥ 40 dp).
+      expect(find.byType(MannyAvatar), findsNWidgets(2));
+      for (final Element e in find.byType(MannyAvatar).evaluate()) {
+        final MannyAvatar m = e.widget as MannyAvatar;
+        expect(m.size, CuraSize.emblemMessage);
+      }
+      for (final Element e in find.byType(MannyIllustration).evaluate()) {
+        final MannyIllustration m = e.widget as MannyIllustration;
         expect(m.crop, MannyCrop.head);
+        expect(m.height, greaterThanOrEqualTo(CuraSize.mannyHeadMin));
       }
       final Rect list = tester.getRect(find.byType(ListView));
       final Rect text = _rect(tester, _example[0].text);
-      expect(text.left, list.left + CuraSpace.pageMargin + 36);
+      expect(
+        text.left,
+        list.left + CuraSpace.pageMargin + CuraSpace.mannyTextIndent,
+      );
 
       // Aufeinanderfolgende Manny-Nachrichten bilden einen Block (ein Emblem,
       // 8 dp Abstand); der Wechsel des Autors gibt 20 dp.
@@ -165,7 +173,7 @@ void main() {
           _msg('d', ChatAuthor.manny, 'Vierte'),
         ]),
       );
-      expect(find.byType(MannyPlaceholder), findsNWidgets(2));
+      expect(find.byType(MannyAvatar), findsNWidgets(2));
       final Rect a = _rect(tester, 'Erste');
       final Rect b = _rect(tester, 'Zweite');
       expect(b.top - a.bottom, closeTo(8, 0.6));
@@ -261,7 +269,7 @@ void main() {
       expect(t.style!.fontSize, 13);
       expect(t.style!.color, colorsAt(tester, find.text('Kein Rat')).text2);
       // Der Disclaimer ist keine Manny-Zeile mit Emblem.
-      expect(find.byType(MannyPlaceholder), findsNothing);
+      expect(find.byType(MannyIllustration), findsNothing);
     });
 
     testWidgets('ersetzte Quelle: Liste zeigt genau deren Nachrichten', (

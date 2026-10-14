@@ -176,11 +176,11 @@ Future<void> _tapUnit(WidgetTester tester, String id) async {
 /// Mitte der gezeichneten Manny-Form (Widget ohne Trefferrand).
 Rect _mannyDraw(WidgetTester tester) {
   final Rect box = tester.getRect(_manny);
-  final Size draw = MannyPlaceholder.sizeFor(
+  final Size draw = MannyIllustration.sizeFor(
     MannyCrop.full,
     CuraSize.mannyPathHeight,
   );
-  final EdgeInsets insets = MannyPlaceholder.tapInsets(draw);
+  final EdgeInsets insets = MannyIllustration.tapInsets(draw);
   return Rect.fromLTWH(
     box.left + insets.left,
     box.top + insets.top,
@@ -663,27 +663,35 @@ void main() {
       },
     );
 
-    testWidgets('Begrüßung einmal nach dem Onboarding, Pose neutral', (
-      WidgetTester tester,
-    ) async {
-      final Harness h = await _pump(
-        tester,
-        tweak: (AppState s) => _week(
-          s.copyWith(manny: const MannyState(greetingPending: true)),
-          0,
-        ),
-      );
-      expect(
-        find.text("Moin Jakob, los geht's. Dein Weg beginnt hier."),
-        findsOneWidget,
-      );
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.neutral);
-      await tester.tap(find.byTooltip(S.bubbleClose));
-      await tester.pumpAndSettle();
-      expect(h.state.manny.greetingPending, isFalse);
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.neutral);
-      await _close(tester);
-    });
+    testWidgets(
+      'Begrüßung einmal nach dem Onboarding, Pose freudig (gruessend)',
+      (WidgetTester tester) async {
+        final Harness h = await _pump(
+          tester,
+          tweak: (AppState s) => _week(
+            s.copyWith(manny: const MannyState(greetingPending: true)),
+            0,
+          ),
+        );
+        expect(
+          find.text("Moin Jakob, los geht's. Dein Weg beginnt hier."),
+          findsOneWidget,
+        );
+        // Begrüßen zeigt die Pose „freudig“ (Ergänzung 1, 6.3).
+        expect(
+          tester.widget<MannyIllustration>(_manny).pose,
+          MannyPose.gruessend,
+        );
+        await tester.tap(find.byTooltip(S.bubbleClose));
+        await tester.pumpAndSettle();
+        expect(h.state.manny.greetingPending, isFalse);
+        expect(
+          tester.widget<MannyIllustration>(_manny).pose,
+          MannyPose.neutral,
+        );
+        await _close(tester);
+      },
+    );
 
     testWidgets('Streak-Gefahr ab 18:00, nicht um 17:59; Pose motiviert', (
       WidgetTester tester,
@@ -706,7 +714,10 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.motiviert);
+      expect(
+        tester.widget<MannyIllustration>(_manny).pose,
+        MannyPose.motiviert,
+      );
       await _close(tester);
     });
 
@@ -730,7 +741,10 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.motiviert);
+      expect(
+        tester.widget<MannyIllustration>(_manny).pose,
+        MannyPose.motiviert,
+      );
       await _close(tester);
     });
 
@@ -755,7 +769,7 @@ void main() {
       await tester.pump();
       expect(h.controller.transient.undoWindowOpen, isFalse);
       expect(find.text('Stark, Jakob. Das war Tag 1.'), findsOneWidget);
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.feiernd);
+      expect(tester.widget<MannyIllustration>(_manny).pose, MannyPose.feiernd);
       // Ring-Puls auf der erledigten Unit.
       expect(tester.widget<PathNode>(_unit('w5-d1')).pulse, isTrue);
       // Feier und Puls sind verbraucht.
@@ -778,7 +792,7 @@ void main() {
         h.state.manny.shownOn(MannyOccasion.celebration, h.controller.today),
         isTrue,
       );
-      expect(tester.widget<MannyPlaceholder>(_manny).pose, MannyPose.neutral);
+      expect(tester.widget<MannyIllustration>(_manny).pose, MannyPose.neutral);
       await _close(tester);
     });
 
@@ -962,7 +976,11 @@ void main() {
         _hint,
       ).firstWhere((BoxDecoration x) => x.borderRadius != null);
       expect(d.color, c.surfaceOpaque);
-      expect(backdropCount(tester), 1, reason: 'nur die Nav');
+      expect(
+        backdropCount(tester),
+        2,
+        reason: 'Nav und Manny-Knopf, sonst keiner',
+      );
       await _tapUnit(tester, 'w7-d1');
       expect(_hint, findsOneWidget);
       expect(find.text('Kommt in Woche 7'), findsOneWidget);
@@ -1032,7 +1050,7 @@ void main() {
       expect(_hint, findsNothing, reason: 'Scrollen');
 
       await show();
-      await tester.tap(find.byType(MannyChatButton));
+      await tester.tap(find.byType(MannyButton));
       await tester.pumpAndSettle();
       expect(h.controller.transient.hintUnitId, isNull, reason: 'Chat öffnen');
       await _close(tester);
@@ -1270,7 +1288,7 @@ void main() {
       final BuildContext? ctx = FocusManager.instance.primaryFocus?.context;
       bool onButton = false;
       ctx?.visitAncestorElements((Element e) {
-        if (e.widget is MannyChatButton) onButton = true;
+        if (e.widget is MannyButton) onButton = true;
         return !onButton;
       });
       expect(onButton, isTrue);
@@ -1296,18 +1314,12 @@ void main() {
           return open;
         }
 
-        final Path hit = MannyPlaceholder.hitPath(
-          size: draw.size,
-          pose: MannyPose.neutral,
-        );
         Offset at(Offset o) => draw.topLeft + o;
-        // Punkte relativ zur gezeichneten Form (Ursprung oben links).
+        // Punkte relativ zur Leinwand der Figur (Ursprung oben links): die
+        // Trefferfläche ist die Leinwand plus 8 dp Rand links, rechts, oben.
         final Offset body = Offset(draw.width / 2, 40);
-        const Offset margin = Offset(6, 40); // knapp außerhalb des Körpers
+        const Offset margin = Offset(-6, 40); // im 8-dp-Rand
         const Offset outside = Offset(-14, 40);
-        expect(hit.contains(body), isTrue);
-        expect(hit.contains(margin), isTrue, reason: 'im 8-dp-Rand');
-        expect(hit.contains(outside), isFalse);
         expect(await opensChat(at(body)), isTrue, reason: 'Körper');
         expect(await opensChat(at(margin)), isTrue, reason: 'Rand');
         expect(await opensChat(at(outside)), isFalse, reason: '14 dp daneben');
@@ -1338,8 +1350,8 @@ void main() {
         final BuildContext? ctx = FocusManager.instance.primaryFocus?.context;
         bool inManny = false;
         ctx?.visitAncestorElements((Element e) {
-          if (e.widget is MannyPlaceholder &&
-              (e.widget as MannyPlaceholder).onTap != null) {
+          if (e.widget is MannyIllustration &&
+              (e.widget as MannyIllustration).onTap != null) {
             inManny = true;
           }
           return !inManny;
@@ -1355,7 +1367,7 @@ void main() {
       'zusätzlich (ein Chat, nicht zwei)',
       (WidgetTester tester) async {
         await _pump(tester);
-        await tester.tap(find.byType(MannyChatButton));
+        await tester.tap(find.byType(MannyButton));
         await tester.pumpAndSettle();
         expect(find.byType(MannyChatScreen), findsOneWidget);
         await _close(tester);
@@ -1429,7 +1441,7 @@ void main() {
                     tester.element(find.byType(FloatingNav)),
                   ),
               size.width,
-              CuraSize.navHeight,
+              CuraSize.navBarHeight,
             );
             expect(o.overlaps(nav), isFalse, reason: 'Marke $o unter Nav $nav');
             final Rect cluster = ActionCluster.rectOf(
@@ -1500,7 +1512,7 @@ void main() {
         expect(
           find.descendant(
             of: _outlook,
-            matching: find.byType(MannyPlaceholder, skipOffstage: false),
+            matching: find.byType(MannyIllustration, skipOffstage: false),
           ),
           findsNothing,
         );
@@ -1516,7 +1528,11 @@ void main() {
         await _pump(tester);
         await _revealOutlook(tester);
         final CuraColors c = colorsAt(tester, _outlook);
-        expect(backdropCount(tester), 1, reason: 'nur die Nav');
+        expect(
+          backdropCount(tester),
+          2,
+          reason: 'Nav und Manny-Knopf, sonst keiner',
+        );
         final DashedRRectPainter dashed = tester
             .widgetList<CustomPaint>(
               find.descendant(of: _outlook, matching: find.byType(CustomPaint)),
@@ -2043,7 +2059,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(h.controller.transient.visibleBubble, isNull);
       expect(_hint, findsOneWidget);
-      expect(backdropCount(tester), 1, reason: 'nur die Nav');
+      expect(
+        backdropCount(tester),
+        2,
+        reason: 'Nav und Manny-Knopf, sonst keiner',
+      );
       await _close(tester);
     });
 
@@ -2110,8 +2130,14 @@ void main() {
       final Rect cluster = tester.getRect(find.byType(ActionCluster));
       final Rect nav = tester.getRect(find.byType(FloatingNav));
       expect(cluster.right, 390 - 16);
-      expect(cluster.bottom, lessThanOrEqualTo(nav.top - 16 + 0.5 + 22));
-      expect(cluster.bottom, closeTo(844 - (64 + 22) - 16, 0.5));
+      expect(cluster.bottom, lessThanOrEqualTo(nav.top - 16 + 0.5 + 24));
+      expect(
+        cluster.bottom,
+        closeTo(
+          844 - (CuraSize.navBarHeight + CuraSize.navBarBottomMargin) - 16,
+          0.5,
+        ),
+      );
       await _close(tester);
     });
 
@@ -2377,7 +2403,7 @@ void main() {
         expect(find.byType(StartLoadingView), findsOneWidget);
         expect(find.bySemanticsLabel(S.loading), findsOneWidget);
         expect(find.byType(ActionCluster), findsNothing);
-        expect(find.byType(MannyChatButton), findsNothing);
+        expect(find.byType(MannyButton), findsNothing);
         expect(find.byType(FloatingNav), findsOneWidget);
         expect(find.byType(PathHeader), findsNothing);
         expect(

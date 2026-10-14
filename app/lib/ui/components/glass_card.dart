@@ -1,9 +1,11 @@
-// `GlassCard` (Brief 5.1, E1 aus 3.5): Verlauf `surface-glass-top` zu
-// `-bottom`, Rand `border-hair` 1 dp, innere Lichtkante oben (Weiß 10 %),
-// **kein Blur, kein Schatten**. Hoher Kontrast: opak (`surface-opaque`) mit
-// `border-control-hc`, ohne Lichtkante. Alle Glas-Flächen der App (Karten,
-// Auswahl, Felder) sind `GlassCard`s, damit Prüfungen den Untergrund „Glas“
-// am Vorfahren erkennen (Plan 8.2).
+// `GlassCard` (Brief v2, 4 und 3.5, Ebene E1): Pseudo-Glas aus `card` (Weiß
+// 92 % im Thema Hell, `#241D18` 92 % im Thema Dunkel), Radius 28, Innenabstand
+// 16, Rand `border-hair` 1 dp, Lichtkante oben 1 dp und ein weicher, warm
+// getönter Schatten 0/18/30 mit negativem Spread. **Kein Blur** (V2-10: Karten
+// enthalten keinen `BackdropFilter`). Hoher Kontrast/Transparenz reduzieren:
+// opak (`card` 100 %) mit `border-control-hc`, ohne Lichtkante und Schatten.
+// Alle Karten der App (Auswahl, Felder, Blasen) sind `GlassCard`s, damit
+// Prüfungen den Untergrund „Karte“ am Vorfahren erkennen (Plan 8.2).
 import 'package:flutter/widgets.dart';
 
 import '../../theme/cura_colors.dart';
@@ -21,6 +23,7 @@ class GlassCard extends StatelessWidget {
     this.borderWidth = CuraSize.hairline,
     this.overlay,
     this.lightEdge = true,
+    this.shadow = true,
   });
 
   final Widget child;
@@ -41,13 +44,22 @@ class GlassCard extends StatelessWidget {
   final Color? overlay;
   final bool lightEdge;
 
+  /// Schatten der Karte (ohne Blur); aus bei verschachtelten Karten.
+  final bool shadow;
+
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final BorderRadius shape = borderRadius ?? BorderRadius.circular(radius);
     final bool edge = lightEdge && !colors.highContrast;
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: colors.cardFill, borderRadius: shape),
+      decoration: BoxDecoration(
+        gradient: colors.cardFill,
+        borderRadius: shape,
+        boxShadow: shadow && colors.shadowsEnabled
+            ? CuraShadow.card(dark: colors.isDark)
+            : null,
+      ),
       child: DecoratedBox(
         decoration: BoxDecoration(color: overlay, borderRadius: shape),
         child: DecoratedBox(

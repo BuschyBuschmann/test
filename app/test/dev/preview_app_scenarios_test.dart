@@ -7,6 +7,7 @@ import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
+import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/messages_button.dart';
@@ -227,7 +228,7 @@ void main() {
       await path(tester, 'path-celebration');
       expect(
         tester
-            .widget<MannyPlaceholder>(
+            .widget<MannyIllustration>(
               find.byKey(const ValueKey<String>('path-manny')),
             )
             .pose,
@@ -282,7 +283,12 @@ void main() {
         find.byKey(const ValueKey<String>('unit:p3-end'), skipOffstage: false),
       );
       expect(manny.center.dx, closeTo(unit.center.dx, 1));
-      expect(manny.bottom, closeTo(unit.top + 6, 3));
+      // Die Füße (Fußlinie) stehen 6 dp tief auf der Unit; unter der Fußlinie
+      // bleibt der Rand der Leinwand (8 dp bei 193 dp Höhe).
+      final double belowFeet =
+          CuraSize.mannyPathHeight -
+          MannyIllustration.feetFromTop(CuraSize.mannyPathHeight);
+      expect(manny.bottom - belowFeet, closeTo(unit.top + 6, 1));
     });
 
     testWidgets('path-header-wrap: feste Skalierung 1,2, Umbruch-Layout bei '

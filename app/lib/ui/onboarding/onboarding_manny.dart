@@ -2,7 +2,8 @@
 // Inhaltsspalte (auch auf breiten Displays, A-U3 B5); Manny links, die Blase
 // rechts daneben mit Pfeil nach links; bleiben rechts weniger als 140 dp, steht
 // die Blase oberhalb (Pfeil nach unten). Manny ist hier nicht antippbar
-// (Ergänzung 2: kein Chat-Einstieg im Onboarding).
+// (Ergänzung 2: kein Chat-Einstieg im Onboarding). Manny zeigt die gewählte
+// Variante (Ergänzung 1).
 import 'package:flutter/material.dart';
 
 import '../../theme/cura_roles.dart';
@@ -16,7 +17,11 @@ class OnboardingManny extends StatelessWidget {
     required this.text,
     required this.bubbleVisible,
     required this.onCloseBubble,
+    this.pose = MannyPose.neutral,
   });
+
+  /// Name-Schritt: Begrüßen (Pose `freudig`), sonst Standard (Ergänzung 1, 6a).
+  final MannyPose pose;
 
   /// Höhe von Manny (Schritt 1: 120 dp, sonst 64 dp).
   final double height;
@@ -26,8 +31,8 @@ class OnboardingManny extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Size manny = MannyPlaceholder.sizeFor(MannyCrop.full, height);
-    final Widget figure = MannyPlaceholder(height: height);
+    final Size manny = MannyIllustration.sizeFor(MannyCrop.full, height);
+    final Widget figure = MannyIllustration(height: height, pose: pose);
     if (!bubbleVisible) {
       return Align(alignment: Alignment.topLeft, child: figure);
     }

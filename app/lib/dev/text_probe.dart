@@ -14,11 +14,15 @@ import '../theme/world_painter.dart';
 import '../ui/components/action_circle.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
+import '../ui/components/header_card.dart';
 import '../ui/components/manny_bubble.dart';
 import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
+import '../ui/components/orb_node.dart';
 import '../ui/components/path_node.dart';
 import '../ui/components/pill_button.dart';
+import '../ui/components/status_chip.dart';
+import '../ui/components/world_label_chip.dart';
 import '../ui/components/category_card.dart';
 import '../ui/components/cura_dialog.dart';
 import '../ui/components/cura_snackbar.dart';
@@ -30,10 +34,13 @@ enum TextGround {
   /// Text direkt auf der Welt (`bg`).
   bg,
 
-  /// Karte oder Glasfläche (`GlassCard`, E2: Nav, Blase, Sheet; A-35).
+  /// Karte (`GlassCard`, `card` 92 %, Blase); der Kontrast gilt im Worst Case
+  /// über Schwarz, Weiß, Mandarine und Grau unter der Karte (Brief 3.2).
   glass,
 
-  /// Deckende Fläche (Snackbar, Dialog, Hinweis, Primär-/Neutral-Button).
+  /// Fläche mit eigener, gemessener Farbpaarung: Kopf-Karte, Leiste, Label-
+  /// Chip (Tabelle 3.1, `contrast_world_test`), Snackbar, Dialog, Sheet,
+  /// Hinweis, Primär-/Neutral-Button, Status-Chip, Kugel.
   opaque,
 }
 
@@ -157,9 +164,14 @@ TextProbe probeTexts({Element? root, required Size view}) {
     final Widget w = e.widget;
     if (w is Offstage && w.offstage) return;
     TextGround g = ground;
-    if (w is GlassCard || w is FloatingNav || w is MannyBubble) {
+    if (w is GlassCard || w is MannyBubble) {
       g = TextGround.glass;
-    } else if (w is CuraSnackbar ||
+    } else if (w is HeaderCard ||
+        w is FloatingNav ||
+        w is WorldLabelChip ||
+        w is StatusChip ||
+        w is OrbNode ||
+        w is CuraSnackbar ||
         w is CuraDialog ||
         w is ActionCircle ||
         w is NodeHint ||
@@ -167,19 +179,16 @@ TextProbe probeTexts({Element? root, required Size view}) {
         w is OpaqueSurface) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
-      g = (w.variant == PillButtonVariant.outline || w.onPressed == null)
-          ? TextGround.bg
-          : TextGround.opaque;
+      // Primär und Glas haben eine eigene Fläche (auch deaktiviert); der
+      // Umriss behält den Untergrund dahinter.
+      g = w.variant == PillButtonVariant.outline ? ground : TextGround.opaque;
     } else if (w is PathNode) {
       // Erledigte und aktuelle Units haben eine deckende Füllung (`text-1`,
       // `accent`); gesperrte sind Glas (Brief 5.5).
       g = w.status == UnitStatus.locked ? TextGround.glass : TextGround.opaque;
     } else if (w is CuraSheetFrame) {
-      // Sheet: E2 (`surface-float` mit Blur), streng wie Glas (A-35). Im
-      // kompakten Zustand (wenig Platz über der Tastatur) ist die Fläche opak.
-      final bool compact =
-          e.getInheritedWidgetOfExactType<CuraSheetScope>()?.compact ?? false;
-      g = compact ? TextGround.opaque : TextGround.glass;
+      // Sheet: `card` zu 100 % opak, kein Blur (Brief v2, 4).
+      g = TextGround.opaque;
     }
     // Weitere Flächentypen ordnen die Pakete, die sie einführen, mit einer
     // `is`-Prüfung ein (nie über `runtimeType`: Release-Builds minifizieren

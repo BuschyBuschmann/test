@@ -1,9 +1,10 @@
-// `CuraChip` (Brief 5.3): Aktionschip „Tauschen“ / „Entfernen“. Füllung
-// Weiß 7 %, Text und Icon `text-1`, 36 dp sichtbar, Hit-Area 48 dp. Pressed:
-// Überlagerung Weiß 10 %. Hoher Kontrast: zusätzlich Rand `border-control-hc`
-// (die Füllung allein trägt dort keine erkennbare Fläche). Neutrale Farben:
-// ein Chip ist eine Handlung (Löschen-ähnliche Aktionen nie in Warnfarben,
-// Brief Abschnitt 4).
+// `CuraChip` (Brief v2, 4 und 3.2): Aktionschip „Tauschen“ / „Entfernen“.
+// 13 sp/700 (Stil `chip`), Radius Pille, Füllung `chip-neutral` (`ink-1` 7 % auf
+// der Karte, im Thema Dunkel Weiß 10 %), Text und Icon `text-1`, 36 dp sichtbar,
+// Hit-Area 48 dp. Pressed: Überlagerung 10 %. Hoher Kontrast: zusätzlich Rand
+// `border-control-hc` (die Füllung allein trägt dort keine erkennbare Fläche).
+// Neutrale Farben: ein Chip ist eine Handlung (Löschen-ähnliche Aktionen nie in
+// Warnfarben, Brief Abschnitt 4). Statusanzeigen siehe `StatusChip`.
 import 'package:flutter/material.dart';
 
 import '../../theme/cura_colors.dart';
@@ -77,16 +78,18 @@ class CuraChip extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Icon(
-                          icon,
-                          size: CuraComponent.iconSize,
-                          color: colors.text1,
+                        ExcludeSemantics(
+                          child: Icon(
+                            icon,
+                            size: CuraSize.hintIcon,
+                            color: colors.text1,
+                          ),
                         ),
-                        const SizedBox(width: CuraComponent.pillIconGap),
+                        const SizedBox(width: CuraSpace.s2),
                         Flexible(
                           child: Text(
                             label,
-                            style: type.secondary.copyWith(color: colors.text1),
+                            style: type.chip.copyWith(color: colors.text1),
                           ),
                         ),
                       ],
