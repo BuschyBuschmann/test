@@ -445,7 +445,7 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
   check('Heute: Button-Gruppe (Manny, Nachrichten) und „Training eintragen“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0 && (await button(page, 'Training eintragen').count()) > 0);
   await shot(page, 'heute-standard');
   await click(page, 'Training eintragen');
-  check('Training eintragen öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trage es nachher ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
+  check('Training eintragen öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trainiere selbst und trage es ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
   check('Sheet offen: Button-Gruppe ist aus der Semantik (nicht bedienbar)', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0);
   await shot(page, 'heute-sheet');
   await click(page, 'Eintragen');

@@ -1,7 +1,7 @@
 // `InfoNote` (SK-1): Hinweiszeile mit Info-Symbol (`text-2`, 18 dp) und Text in
 // `secondary` `text-2`, wie die Zeile „Ändern sich Verletzung oder Datum …“ in
-// „Deine Daten“. Keine Fläche, keine Aktion. Symbol und Text verschmelzen zu
-// einem Screenreader-Knoten. Mit [announce] liest der Screenreader den Text
+// „Deine Daten“. Keine Fläche, keine Aktion. Symbol und Text bilden einen
+// einzigen Screenreader-Knoten (Label und Live-Region zusammen). Mit [announce] liest der Screenreader den Text
 // beim Erscheinen vor (Live-Region), z. B. wenn er nach einer Auswahl auftaucht.
 import 'package:flutter/material.dart';
 
@@ -22,30 +22,31 @@ class InfoNote extends StatelessWidget {
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
+    // Flag und Label in einem Knoten (wie NodeHint, MannyBubble).
     return Semantics(
       container: true,
       liveRegion: announce,
-      child: MergeSemantics(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(top: CuraSpace.s1),
-              child: Icon(
-                Icons.info_outline_rounded,
-                size: CuraSize.hintIcon,
-                color: colors.text2,
-              ),
+      label: text,
+      excludeSemantics: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: CuraSpace.s1),
+            child: Icon(
+              Icons.info_outline_rounded,
+              size: CuraSize.hintIcon,
+              color: colors.text2,
             ),
-            const SizedBox(width: CuraSpace.s2),
-            Expanded(
-              child: Text(
-                text,
-                style: type.secondary.copyWith(color: colors.text2),
-              ),
+          ),
+          const SizedBox(width: CuraSpace.s2),
+          Expanded(
+            child: Text(
+              text,
+              style: type.secondary.copyWith(color: colors.text2),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

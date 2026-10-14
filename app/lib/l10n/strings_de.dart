@@ -378,7 +378,7 @@ abstract final class S {
   static String choiceLabel(String title, bool selected) =>
       '$title, Auswahl, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}';
 
-  /// Mit Untertitel: „Manuell, Ich trage es nachher ein, Auswahl, ausgewählt“.
+  /// Mit Untertitel: „Manuell, Ich trainiere selbst und trage es ein, Auswahl, ausgewählt“.
   static String choiceLabelDetail(String title, String detail, bool selected) =>
       choiceLabel('$title, $detail', selected);
 
@@ -482,7 +482,7 @@ abstract final class S {
   /// Trainings-Sheet „Wie willst du trainieren?“ (Brief 6.3, Spec 2).
   static const String trainingSheetTitle = 'Wie willst du trainieren?';
   static const String modeManual = 'Manuell';
-  static const String modeManualHint = 'Ich trage es nachher ein';
+  static const String modeManualHint = 'Ich trainiere selbst und trage es ein';
   static const String modePassive = 'Passiv';
   static const String modeActive = 'Aktiv';
   static const String modeSoon = 'Folgt';

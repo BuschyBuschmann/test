@@ -727,6 +727,19 @@ void main() {
         expect(find.text('Phase 2 · Muskelfaserriss'), findsOneWidget);
         await _openSheet(tester);
         expect(find.text(S.injuryNoOwnPath), findsOneWidget);
+        // Beim Öffnen keine zusätzliche Ansage; erst eine Änderung im Entwurf.
+        final SemanticsHandle sem = tester.ensureSemantics();
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSemantics(find.text(S.injuryNoOwnPath)),
+          isSemantics(label: S.injuryNoOwnPath, isLiveRegion: false),
+        );
+        await _tapIn(tester, _card(S.injuryAnkle));
+        expect(
+          tester.getSemantics(find.text(S.injuryNoOwnPath)),
+          isSemantics(label: S.injuryNoOwnPath, isLiveRegion: true),
+        );
+        sem.dispose();
         await disposeApp(tester);
       },
     );

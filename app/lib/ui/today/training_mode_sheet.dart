@@ -1,6 +1,6 @@
 // `TrainingModeSheet` (Brief 6.3, Spec 2, Plan 4.4): „Wie willst du
 // trainieren?“ mit den drei Modi. Im ersten Ausschnitt ist nur **Manuell**
-// aktiv („Ich trage es nachher ein“); Passiv und Aktiv sind sichtbar, aber
+// aktiv („Ich trainiere selbst und trage es ein“); Passiv und Aktiv sind sichtbar, aber
 // deaktiviert mit dem Zusatz „Folgt“. Die Fußleiste „Eintragen“
 // bestätigt den Modus Manuell. Die Feedback-Abfrage gehört nicht in den
 // Ausschnitt.

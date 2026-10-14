@@ -318,8 +318,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(S.injuryNoOwnPath), findsOneWidget, reason: title);
         expect(
-          tester.getSemantics(find.text(S.injuryNoOwnPath)).label,
-          S.injuryNoOwnPath,
+          tester.getSemantics(find.text(S.injuryNoOwnPath)),
+          isSemantics(label: S.injuryNoOwnPath, isLiveRegion: true),
           reason: title,
         );
       }
@@ -329,6 +329,36 @@ void main() {
       sem.dispose();
       await disposeApp(tester);
     });
+  });
+
+  group('Hinweis sichtbar bei kleinem Fenster (SK-1 B1)', () {
+    for (final double scale in <double>[1.0, 2.0]) {
+      testWidgets('320×568, Textgröße ×$scale: Hinweis steht unter der '
+          'gewählten Karte und liegt im Sichtfeld', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final Harness h = await _boot();
+        await pumpCura(tester, h.controller);
+        await _advanceTo(tester, 2);
+        await tester.ensureVisible(find.text(S.injuryMuscle));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(S.injuryMuscle));
+        await tester.pumpAndSettle();
+        final Rect note = tester.getRect(find.text(S.injuryNoOwnPath));
+        final Rect card = tester.getRect(find.text(S.injuryMuscle));
+        expect(note.top, greaterThanOrEqualTo(card.bottom));
+        expect(note.top, lessThan(card.bottom + 80));
+        expect(find.text(S.injuryNoOwnPath).hitTestable(), findsOneWidget);
+        expect(note.bottom, lessThanOrEqualTo(568));
+        expect(note.top, greaterThanOrEqualTo(0));
+        await disposeApp(tester);
+      });
+    }
   });
 
   group('Fortsetzen und Zurück (UI-16, N-13)', () {

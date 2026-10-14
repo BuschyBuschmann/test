@@ -295,7 +295,14 @@ class _DataSheetState extends State<DataSheet> {
                   if (_draft.injuryType != null &&
                       _draft.injuryType != InjuryType.acl) ...<Widget>[
                     const SizedBox(height: CuraSpace.s2),
-                    const InfoNote(text: S.injuryNoOwnPath, announce: true),
+                    InfoNote(
+                      text: S.injuryNoOwnPath,
+                      // Nur ansagen, wenn der Typ im Entwurf gerade geändert
+                      // wurde, nicht beim Öffnen mit gespeichertem Typ.
+                      announce:
+                          _draft.injuryType !=
+                          _controller.state.onboarding.injuryType,
+                    ),
                   ],
                   const SizedBox(height: CuraSpace.s6),
                   const CuraLabel(S.dataDateLabel),

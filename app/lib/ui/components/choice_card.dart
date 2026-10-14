@@ -46,7 +46,7 @@ class ChoiceCard extends StatelessWidget {
     return CuraPressable(
       onPressed: onPressed,
       // Der Untertitel gehört zur Beschriftung: der Screenreader liest sonst
-      // nur den Titel („Manuell“), nicht „Ich trage es nachher ein“.
+      // nur den Titel („Manuell“), nicht „Ich trainiere selbst und trage es ein“.
       semanticLabel: subtitle == null
           ? S.choiceLabel(title, selected)
           : S.choiceLabelDetail(title, subtitle!, selected),

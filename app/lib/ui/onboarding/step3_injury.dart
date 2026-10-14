@@ -1,8 +1,9 @@
 // Schritt 3: Verletzungstyp (Brief 6.1, UI-14). Vier `ChoiceCard`s,
 // Einfachauswahl; bei „Anderes“ erscheint ein optionales Textfeld („Was ist
 // passiert?“), „Weiter“ ist trotzdem aktiv. Auswahl und Freitext werden sofort
-// gespeichert. Bei allen Typen außer Kreuzband erscheint der Hinweis, dass es
-// noch keinen eigenen Pfad gibt (Beispielpfad).
+// gespeichert. Bei allen Typen außer Kreuzband erscheint direkt unter der
+// gewählten Karte der Hinweis, dass es noch keinen eigenen Pfad gibt
+// (Beispielpfad).
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -10,6 +11,8 @@ import '../../logic/injury_type.dart';
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../theme/cura_metrics.dart';
+import '../../theme/cura_motion.dart';
+import '../../theme/tokens.dart';
 import '../components/choice_card.dart';
 import '../components/cura_text_field.dart';
 import '../components/info_note.dart';
@@ -53,11 +56,25 @@ class _Step3InjuryState extends State<Step3Injury> {
     Widget card(InjuryType type, String title, {IconData? icon}) {
       return Padding(
         padding: const EdgeInsets.only(bottom: CuraSpace.s3),
-        child: ChoiceCard(
-          title: title,
-          selected: selected == type,
-          leadingIcon: icon,
-          onPressed: () => c.selectInjury(type),
+        child: Builder(
+          builder: (BuildContext cardContext) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              ChoiceCard(
+                title: title,
+                selected: selected == type,
+                leadingIcon: icon,
+                onPressed: () => c.selectInjury(type),
+              ),
+              // Nur der Kreuzband-Pfad ist ausgearbeitet. Der Hinweis steht
+              // direkt unter der gewählten Karte: Sie liegt nach dem Tippen im
+              // Sichtfeld, also auch der Hinweis, ohne Scrollen und Animation.
+              if (selected == type && type != InjuryType.acl) ...<Widget>[
+                const SizedBox(height: CuraSpace.s2),
+                _RevealNote(target: cardContext),
+              ],
+            ],
+          ),
         ),
       );
     }
@@ -78,13 +95,41 @@ class _Step3InjuryState extends State<Step3Injury> {
             textInputAction: TextInputAction.done,
             onChanged: c.setInjuryOther,
           ),
-        // Nur der Kreuzband-Pfad ist ausgearbeitet; bei den anderen Typen steht
-        // der Beispielpfad (ehrlicher Hinweis, SK-1).
-        if (selected != null && selected != InjuryType.acl) ...<Widget>[
-          const SizedBox(height: CuraSpace.s2),
-          const InfoNote(text: S.injuryNoOwnPath, announce: true),
-        ],
       ],
     );
   }
+}
+
+/// Hinweis „noch keinen eigenen Pfad“: Beim Erscheinen wird die gewählte Karte
+/// samt Hinweis in den sichtbaren Bereich gescrollt, falls sie (bei großer
+/// Schrift oder kleinem Fenster) am unteren Rand sitzt. Bei reduzierter Bewegung ohne
+/// Animation.
+class _RevealNote extends StatefulWidget {
+  const _RevealNote({required this.target});
+
+  /// Kontext der Karte samt Hinweis; dieser Bereich wird sichtbar gemacht.
+  final BuildContext target;
+
+  @override
+  State<_RevealNote> createState() => _RevealNoteState();
+}
+
+class _RevealNoteState extends State<_RevealNote> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bool reduced = CuraMotion.of(context).reduced;
+      Scrollable.ensureVisible(
+        widget.target,
+        duration: reduced ? Duration.zero : MotionTokens.fast,
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const InfoNote(text: S.injuryNoOwnPath, announce: true);
 }
