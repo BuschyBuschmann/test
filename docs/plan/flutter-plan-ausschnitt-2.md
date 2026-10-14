@@ -1,45 +1,37 @@
 # Flutter-Plan Ausschnitt 2 „Fundament“: Patienten-Framework, Training, Check-ups und Physio-Bereich (ohne KI)
 
-Status: **PLAN ZUR FREIGABE** · v2.1 (v1.2 FREIGEGEBEN 2026-10-12 → v2.0 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.1 nach Review S3-3, Nutzerentscheidungen N-14 und Manny-Entscheidung N-15) · Pakete S3-1, S3-K1 · Autor: `flutter-developer` · Stand 2026-10-14
+Status: **PLAN ZUR FREIGABE** · v2.2 (v1.2 FREIGEGEBEN 2026-10-12 → v2.0 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.1 nach Review S3-3, Nutzerentscheidungen N-14 und Manny-Entscheidung N-15 → v2.2 nach Re-Review S3-RR und Nutzerentscheidungen N-16) · Pakete S3-1, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
 
-## Änderungsprotokoll v2.0 → v2.1 (Paket S3-K1)
+## Änderungsprotokoll v2.1 → v2.2 (Paket S3-K2, Re-Review S3-RR und Nutzerentscheidungen N-16)
 
 | Befund / Entscheidung | Änderung | Stelle |
 |---|---|---|
-| MAJOR-1 L1 ∥ L2 nicht getrennt | Parallel nur L1 (`app/`) und F2-1/F2-1R (`supabase/`, `.gitignore`); F2-2 Seed (schreibt `app/tool/seed/`, `app/pubspec.yaml`/`.lock`) erst nach L1 | 2.2 (L2), 2.3 (F2-2), Reihenfolge 2.3, 5, 10, 11, R2-10 |
-| MAJOR-2 „freigegeben“ ohne gemeinsame Datumsbasis | Tage nur vom Gerät (`local_day`) mit Plausibilitätsprüfung ±1 Tag; Sicherheitsregeln ohne Datum (Übung/Bild sichtbar für jede Position des aktuellen Plans); Fixtures „Mitternacht/Zeitzone“ | 6.1 Nr. 5, 6.2 `exercises`, 6.4, 6.6, 6.7 „Datumsbasis“, 6.11, 5, DB-T63, DB-T68, DB-T68a, DB-T80, R2-23, B-33; KI-Plan 4.2/4.2.1 |
-| MINOR-1 `create_patient`-Idempotenz | `ON CONFLICT DO NOTHING` + `FOR UPDATE` (serialisiert), Parametervergleich per `create_params_hash`, abweichend → `idempotency_mismatch` | 6.2 `patients`, 6.6, DB-T64b |
-| MINOR-2 zwei Lieferungen für `create_patient`/`regenerate_invitation` | beide in L2 (Migration 05), UI in L6; F2-7a nur `set_main_physio`; Vorlagen-Lesezugriff und DB-T76 in L2 | 6.4, 2.3 (F2-1, F2-7a), 5, 12.2 |
-| MINOR-3 `training_sessions.mode` | alle Spalten in L2 (Migration 06); F2-5a nur Check-up nach der Einheit; DB-T73 in L2 | 6.2, 2.2, 2.3, 5, 12.2 |
-| MINOR-4 `injury_id` serverseitig | Herleitung über `plan_id` der Session bzw. die Session; Check-ups/Fragen = aktive Verletzung (Annahme B-32) | 6.2, 6.3, 8.11, DB-T61, B-32 |
-| MINOR-5 Stimmungskette reihenfolgeabhängig | Warnzeichen je Tag (`warning_signs.local_day`, Unique), Auswertung für X und Folgetage, FIFO je Gerät, Test außer der Reihe | 6.2, 6.9, 8.11, DB-T57, DB-T82, R2-24 |
-| MINOR-6 (KI-Plan) | siehe KI-Plan v2.4 | KI-Plan 4.8.2, 6.2, 6.3 |
-| MINOR-7 Kachel 6 ohne Datenquelle | Datenquelle Plan der aktiven Verletzung, `phase_summary`, Annahme „nächstes Ziel“ | 6.12, 9, 3.7 Teil D, 13.3, O-42, B-34 |
-| MINOR-8 `assign_exercise` ohne Prüfung `release_with_phase_id` | Prüfung gleicher Plan und Freischalt-Regeln | 6.11, DB-T67 |
-| MINOR-9 Hilfsfunktionen ohne Aufruferprüfung | Aufruferprüfung in `current_injury_id`/`current_plan_id`/`physio_can_see_patient`; Schema `app` nicht exponiert | 6.1 Nr. 5, DB-T81 |
-| NIT Schätzregel ohne Dauer | „/60, aufrunden, min. 1“ ergänzt | 8.4 |
-| N-14 O-17 (+ a, b) | `duration_sec` je Satz; Schätzregel mit `pause_sec`/60 s; Kürzung halbiert Sekunden | 0, 6.2, 8.4, 8.7, 12.3, 13.5 |
-| N-14 O-18 | Schwellung 0–3 feste Spalte, 6. Frage | 0, 6.2, 6.4, 6.9, 6.12, 8.6, 3.7 Teil B, 13.1, 13.2, DB-T56 |
-| N-14 O-19 | Einschränkungen Einzelwert-Skala | 6.2, 8.6, 3.7 Teil B, DB-T75 |
-| N-14 O-2, O-2a, O-2b | Regeln entschieden (Vortag, Schwellung mit gleichem Hinweis, jeden weiteren Tag erneut, Lücke unterbricht); `is_provisional` entfällt; Einwilligungstext | 0, 6.2, 6.9, 7.2, 8.6, 10, DB-T57, DB-T77, 13.2, 14 |
-| N-14 E-28 | Kürzung ab Schmerz 6 | 8.2, 8.7, 13.2, R2-21 |
-| N-15 Manny (Brief-Ergänzung 1 freigegeben) | finale Grafiken beider Varianten in L1, Look-Schritt im Onboarding (5 Schritte), Profil-Zeile, lokal gespeichert mit Schema-Sprung 1 → 2, Look-Schritt auch im Code-Start, Tests und Rückverfolgung V2-56 (ersetzt), V2-65–V2-75 | 0, Grundlagen, 2.2, 2.3, 3.1–3.7, 5, 8.1, 8.12, 12.3, 13.4, 13.5, O-41, O-43, B-31, R2-25 |
-| Brief-Folgen O-18/O-19 | Brief-Ergänzung in F2-D2 Teil B (vor L5, Nutzerfreigabe): 6 Fragen, „Frage N von 6“, Einschränkungen-Skala, Kachel 2 mit Schwellung | 3.7, 2.2 (L5), 13.4 |
-| unverändert | Rollenmodell, RLS ohne `FORCE`, entzogene Standardrechte, Definer mit `search_path = ''`, Sichten `security_invoker`, Manny-Chat nie für Physio. Begründet geändert: Patientensicht auf `exercises`/Übungsbilder ohne Datumsbezug (MAJOR-2, enger: Aufruferprüfung der Hilfsfunktionen, MINOR-9) | 6.1 |
+| MAJOR-A `physio_can_see_patient` ließ gebundene Patienten durch | Patientenklausel nur noch in `current_injury_id`/`current_plan_id`; `physio_can_see_patient` nur für Physios der Praxis, ohne Selbstbezug; DB-T81 mit Fall „Patient, eigene ID → `false`“ und Physio-Policies | 6.1 Nr. 5, DB-T81 |
+| MAJOR-B ±1 Tag verwarf verspätete Check-ups | `submit_daily_checkup`: Grenze Bindungstag − 1 bis UTC-Datum + 1 (kein Höchstalter, Annahme B-35); `invalid_local_day` in der Warteschlange zurückgestellt statt verworfen; Physio-RPCs und `manny-today` bleiben bei ±1; Fixture (h), DB-T83 „Check-up 3 Tage verspätet“ | 6.7 Nr. 3/5, 6.4, 8.6, 8.11, DB-T80, DB-T83, 12.3, B-35 |
+| MINOR-C Aufruferprüfung bricht Trigger/Seed | interne ungeprüfte `app.active_injury_id_internal(p)` nur für Trigger und geprüfte Definer-Funktionen, kein `EXECUTE` für API-Rollen; DB-T45, DB-T81 erweitert | 6.1 Nr. 5, 6.3, DB-T45, DB-T81 |
+| MINOR-D fremde `training_session_id` | `set_injury_id` prüft, dass die Session demselben Patienten gehört (sonst `42501`); DB-T61 erweitert | 6.3, DB-T61 |
+| MINOR-E Fixtures unter `app/` für L2 | Ablage `supabase/tests/fixtures/local_day/`, angelegt von F2-1; Dart-Tests lesen sie nur | 2.3 (F2-1, F2-3), 5, 6.7 Nr. 5; KI-Plan 4.2.1 |
+| MINOR-F gleichzeitige Wiederholung `create_patient` | App sendet nicht erneut, solange ein Aufruf läuft, und zeigt nur die Antwort des zuletzt gestarteten; DB-T64b + W-Test | 6.6, DB-T64b, 13.3 |
+| NIT R2-19, R2-25, Testbereich T01…, NEU-7 | „aktiv oder vorbereitet“; alle 24 Dateien (V2-73); `T01 … T85`; `warning_raised` nur aus Warnzeichen, die dieser Check-up selbst erzeugt hat (`trigger_checkup_id`) | 16, 5, 6.2, 6.4, DB-T41 |
+| N-16 O-41 Manny-Look im Konto | `patients.manny_look`, Schreiben nur über `set_manny_look` (Definer, nur eigener Patient), Warteschlangen-Art `manny_look_set`, Übertragung bei Bindung, „Alles löschen“ setzt zurück; L1 nur lokal, Spalte/RPC L2, App L3; DB-T85; Neubindungs-Regel als Annahme B-36 mit Rückfrage O-44 | 0, 2.2, 2.3, 3.5, 6.2, 6.4, 6.13, 8.1, 8.10, 8.11, 12.2, 13.5, 14, 17 |
+| N-16 O-42, O-43 | entschieden: „nächstes Ziel“ = Titel der nächsten Phase; Look-Schritt vor dem Code-Feld; B-31/B-34 entfallen | 0, 3.2, 3.5, 3.7, 6.12, 8.1, 13.3, 14, 17 |
+| N-16 Zählweise je Verletzung | Stimmungskette und Anstiegsregel nur über Check-ups derselben Verletzung; DB-T57, DB-T77 erweitert | 0, 6.9, 7.2, DB-T57, DB-T77 |
+| N-16 eine Benachrichtigung je Eingang | Trigger setzt `trigger_checkup_id`; Physio-Liste und Kachel 2 fassen Stimmungs-Warnzeichen eines Eingangs zu einer Meldung zusammen (je Tag bleibt ein Warnzeichen); DB-T84 | 6.2, 6.9, 6.12, 9, DB-T84 |
+| N-16 Bestätigungen | nachträgliche Warnzeichen (R2-24) und gelockerte Übungs-/Storage-Policy für vorbereitete Positionen vom Nutzer bestätigt | 0, 6.7 Nr. 2, 6.9, 16 |
 
-Ältere Änderungsprotokolle (v1.2 → v2.0, v1 → v1.1 → v1.2) stehen in Abschnitt 19.
+Ältere Änderungsprotokolle (v2.0 → v2.1, v1.2 → v2.0, v1 → v1.1 → v1.2) stehen in Abschnitt 19.
 
 ---
 
 Verbindliche Grundlagen:
 - `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11), Abschnitt 4 (P-1–P-5, A-1–A-4, T-1), 7, 8, 10.
 - `docs/produkt/curaone-ablaeufe-training-checkup.md` (FREIGEGEBEN 2026-10-14): T-1–T-6, C-1–C-3, Abläufe 1–4, Randfälle.
-- `docs/produkt/curaone-physio-bereich.md` (FREIGEGEBEN 2026-10-14): PB-1–PB-9, Ausschnitt 2 = PB-A–PB-G (ohne KI); PB-5 Physio-KI → KI-Plan v2.4.
+- `docs/produkt/curaone-physio-bereich.md` (FREIGEGEBEN 2026-10-14): PB-1–PB-9, Ausschnitt 2 = PB-A–PB-G (ohne KI); PB-5 Physio-KI → KI-Plan v2.5.
 - `docs/produkt/curaone-feed.md` (FREIGEGEBEN 2026-10-14): Feed erst ab Ausschnitt 4 → hier nur Abgrenzung.
 - `docs/design/design-brief-v2.md` (FREIGEGEBEN 2026-10-14), insbesondere Abschnitt 10 (Migration) und 11 (V2-1–V2-64); `docs/design/grunddesign-v2.md`.
 - `docs/design/design-brief-v2-ergaenzung-1.md` (FREIGEGEBEN 2026-10-14; Manny mit finalen Grafiken und Look-Wahl; ersetzt Brief-Abschnitt 6 und V2-56, ergänzt Onboarding-Schritt 6a, Profil-Zeile 6b, V2-65–V2-75 und die Migrationsliste 10) und die Bilder unter `docs/design/manny/{brille,ohne}/` (normal, freudig, traurig, kopf; 1x, `2.0x/`, `3.0x/`). Dieser Plan nennt Funktion, Speicherung, Lieferung und Prüfung; Gestaltung, Maße und Posen-Zuordnung gelten im Wortlaut der Ergänzung.
-- Nutzerentscheidungen 2026-10-12 und 2026-10-14 (Abschnitt 0).
-- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v2.4 (Löschkonzept, Chat-Bindung, Kürzungsregel 4.2.3).
+- Nutzerentscheidungen 2026-10-12 und 2026-10-14 (Abschnitt 0, einschließlich N-16).
+- `KONVENTIONEN.md` (Regeln 1–5), `docs/plan/flutter-plan-v1.md` v1.3 (Architektur, Prüf-Infrastruktur 12), KI-Plan v2.5 (Löschkonzept, Chat-Bindung, Kürzungsregel 4.2.3).
 
 Kontext (gelesen, nicht zur Anforderung umgedeutet): `docs/UEBERGABE.md`, `docs/plan/checkliste-naechste-sitzung.md`, Code unter `app/lib` und `app/test` (nur lesend; Stand HEAD `39d8a8d`). Ausschnitt 2 ist noch nicht gebaut: Es gibt kein `supabase/`-Verzeichnis, also auch keine Migrationen, die geändert werden müssten.
 
@@ -67,7 +59,7 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
 - **N-10** C-3 präzisiert: Stimmung wird nur erfasst und dem Physio gezeigt. Bei sehr schlechter Stimmung an 5 Tagen in Folge bekommt der Physio eine Nachricht (Warnzeichen ohne Details), **mehr nicht**, keine Reaktion gegenüber dem Patienten. Die Schwelle „sehr schlecht“ ist inzwischen entschieden (N-14, O-2a).
 - **N-11** Design-Brief v2 freigegeben; Smileys im Prototyp als Emoji; Thema-Override System/Hell/Dunkel im Profil; „Transparenz reduzieren“ als App-Schalter plus Hoher Kontrast (kein iOS-Plattformaufruf).
 - **N-12** Reihenfolge: **Das Redesign (Umbau aller bestehenden Screens und Goldens auf Brief v2 inkl. neuer Leiste/Navigation, Tageszeit-Welt, Manny – seit N-15 mit den finalen Grafiken statt Platzhaltern) ist die erste Lieferung von Ausschnitt 2**; danach entstehen alle neuen Screens direkt im neuen Look.
-- **N-13** Physio-KI (PB-5) erst in Ausschnitt 3 (KI-Plan v2.4); Feed erst ab Ausschnitt 4.
+- **N-13** Physio-KI (PB-5) erst in Ausschnitt 3 (KI-Plan v2.5); Feed erst ab Ausschnitt 4.
 - **N-14 Offene Werte entschieden (2026-10-14; in v2.1 in alle Abschnitte eingearbeitet):**
   - **O-17:** „Zeit“ einer Übung = **Dauer je Satz in Sekunden** (`duration_sec`). Zusätzlich bestätigt: (a) die Schätzregel N-7 nutzt die Pause des Physios (`pause_sec`), ohne Angabe weiter 60 s (8.4); (b) die Kürzung E-36 halbiert die Dauer je Satz in Sekunden: `max(1, abrunden(Dauer / 2))` (8.7, KI-Plan 4.2.3).
   - **O-18:** Schwellung **bleibt** als 6. Frage im Tages-Check-up (0–3), feste Spalte `swelling`.
@@ -76,23 +68,32 @@ Kennzeichnung: **L-n** = Lieferung, **F2-…** = Arbeitspaket, **B-n** = Annahme
   - **O-2a:** „Sehr schlechte Stimmung“ = Smiley **1 oder 2** (Skala 1–5, 1 = sehr schlecht; `mood_max = 2`).
   - **O-2b:** 5 aufeinanderfolgende Kalendertage mit Check-up und Stimmung ≤ 2 → Nachricht an den Physio; **an jedem weiteren solchen Tag erneut** eine Nachricht; **ein Tag ohne Check-up unterbricht die Kette**. Der Patient erfährt nichts (`notify_patient = false`).
   - **E-28:** Kürzung des Tagesprogramms **ab Schmerz 6** (Schmerz ≥ 6; liegt unter der Warnschwelle 7).
-- **N-15 Manny (2026-10-14):** Manny bekommt finale, vom Nutzer gelieferte Grafiken in zwei Varianten **mit Brille / ohne Brille** (je Posen Normal, Freudig, Traurig und Kopf; weitere Posen fallen auf diese zurück). Der Patient wählt die Variante **im Onboarding** (eigener Schritt „Wie soll Manny aussehen?“) und kann sie **im Profil** jederzeit ändern. Die Rechte liegen beim Nutzer; Manny ist **kein Platzhalter** mehr. Die Rechtefrage bleibt nur für die 3D-Objekte (Flamme, Stern, Pokal) offen. Gestaltung: `docs/design/design-brief-v2-ergaenzung-1.md` (**FREIGEGEBEN 2026-10-14**; ersetzt Brief-Abschnitt 6), Bilder: `docs/design/manny/`. Alles in **L1** (3.5).
+- **N-15 Manny (2026-10-14):** Manny bekommt finale, vom Nutzer gelieferte Grafiken in zwei Varianten **mit Brille / ohne Brille** (je Posen Normal, Freudig, Traurig und Kopf; weitere Posen fallen auf diese zurück). Der Patient wählt die Variante **im Onboarding** (eigener Schritt „Wie soll Manny aussehen?“) und kann sie **im Profil** jederzeit ändern. Die Rechte liegen beim Nutzer; Manny ist **kein Platzhalter** mehr. Die Rechtefrage bleibt nur für die 3D-Objekte (Flamme, Stern, Pokal) offen. Gestaltung: `docs/design/design-brief-v2-ergaenzung-1.md` (**FREIGEGEBEN 2026-10-14**; ersetzt Brief-Abschnitt 6), Bilder: `docs/design/manny/`. Alles in **L1** (3.5); seit N-16 kommt die Speicherung im Konto in L2/L3 dazu.
+- **N-16 Entscheidungen zum Re-Review (2026-10-14; in v2.2 eingearbeitet):**
+  - **O-41:** Der Manny-Look wird **zusätzlich im Konto (Backend) gespeichert**, damit er beim Gerätewechsel erhalten bleibt: Spalte `patients.manny_look`, Schreibrecht nur für den Patienten selbst über die Definer-Funktion `set_manny_look`, Synchronisation über die Warteschlange; **lokal bleibt die Quelle für die Anzeige**; vor der Bindung nur lokal, bei der Bindung wird der lokale Wert übertragen. L1 bleibt ohne Backend; Spalte und Funktion in L2, App-Anbindung in L3 (3.5, 6.2, 6.4, 8.1). „Alles löschen“ erfasst den Wert (6.13).
+  - **O-42:** „Nächstes Ziel“ in Kachel 6 = Titel der nächsten Phase (6.12).
+  - **O-43:** Im Code-Start steht der Look-Schritt **vor dem Code-Feld** (3.7 Teil A, 8.1).
+  - **R2-24 bestätigt:** Nachträgliche Warnzeichen durch verspätete Check-ups sind gewollt (6.9).
+  - **Vorschau vorbereiteter Übungen bestätigt:** Der Patient liest Übungen (und ab L8 deren Bilder) aktiver **und** vorbereiteter Positionen seines aktuellen Plans über die API (6.7 Nr. 2, 6.11).
+  - **Zählweise je Verletzung:** Stimmungskette (O-2b) und Anstiegsregel (Vortag) zählen **je Verletzung**; mit einer neuen Verletzung beginnt die Zählung neu, der Vortag einer anderen Verletzung zählt nicht (6.9).
+  - **Zusammenfassen:** Entstehen durch einen verspäteten Check-up mehrere Stimmungs-Warnzeichen auf einmal, bleibt es je Tag ein Warnzeichen; der Physio bekommt für diesen Eingang **eine gemeinsame Meldung** (6.9, 6.12, 9).
 
-**Blockierende offene Punkte (Stand v2.1; vollständig in Abschnitt 14):**
+**Blockierende offene Punkte (Stand v2.2; vollständig in Abschnitt 14):**
 
 | Punkt | blockiert |
 |---|---|
 | Brief-Ergänzung F2-D2 (Screens, die Brief v2 nicht gestaltet, und Brief-Folgen aus N-14, 3.7) | L3, L5, L6, L7 (jeweils der passende Teil) |
 | E-7, E-15, E-27, E-31 | nur Ausschnitt 3 (KI-Plan) |
 | E-30 leichtere Variante | nicht blockierend für Ausschnitt 2 (ohne Entscheidung bietet „Schmerz melden“ nur den Abbruch); Schema-Entscheidung **vor L2 empfohlen** |
+| O-44 Manny-Look bei Neubindung auf neuem Gerät: Konto-Wert oder im Code-Start gewählter Wert? | L3 (Annahme B-36: Konto-Wert gewinnt) |
 
-O-17, O-18, O-19, O-2 (inkl. O-2a, O-2b) und E-28 blockieren nichts mehr (N-14).
+O-17, O-18, O-19, O-2 (inkl. O-2a, O-2b) und E-28 blockieren nichts mehr (N-14); O-41, O-42, O-43 sind entschieden (N-16).
 
 ---
 
 ## 1. Kurzfassung
 
-| Thema | Plan v2.1 |
+| Thema | Plan v2.2 |
 |---|---|
 | Lieferungen | **L1 Redesign** → L2 Backend-Kern → L3 Patienten-App am Backend → L4 Training (Session, Check-up nach der Einheit) → L5 Tages-Check-up, Stimmungs-Nachricht, Kürzung, Frage an den Physio → L6 Physio-Grundgerüst (Liste, neuer Patient, Plan, Akte) → L7 Physio-Patientenübersicht (Kacheln, Notizen, Fragen, Historie) → L8 Übungs-Baukasten mit Bildern → L9 Ende-zu-Ende, Kriterienbericht, Gesamtreview |
 | Backend | Supabase EU: Postgres mit RLS, Supabase Auth, **Storage nur für Übungsbilder** (neu, L8). **Keine Edge Functions in Ausschnitt 2** |
@@ -122,8 +123,8 @@ O-17, O-18, O-19, O-2 (inkl. O-2a, O-2b) und E-28 blockieren nichts mehr (N-14).
 | Lieferung | Ergebnis (lauffähig) | Pakete | Abhängigkeit | Verifikation | Blockiert durch |
 |---|---|---|---|---|---|
 | **L1 Redesign-Migration** | Ausschnitt-1-App vollständig im Look von Brief v2: Welt, Thema Hell/Dunkel, Glas, neue Leiste mit 4 Zielen, Manny-Knopf, **Manny mit finalen Grafiken in beiden Varianten (mit/ohne Brille), Look-Schritt im Onboarding (5 Schritte), Profil-Zeile „Manny-Look“** (N-15, Brief-Ergänzung 1), Profil mit „Darstellung“, Chats mit Manny angeheftet; alle Goldens neu | F2-R1, F2-R2, F2-R3, F2-R4, F2-L1R | – | 3.6 | – |
-| **L2 Backend-Kern** | Migrationen für Rollen, Praxen, Physios, Patienten, Verletzungen, Einladung, Übungen (inkl. Baukasten-Felder), Vorlagen, Pläne, Akte, Einwilligung, Training (`training_sessions` mit allen Spalten inkl. `mode`, `exercise_results`), `create_patient`, `regenerate_invitation`; Seed; DB-Tests | F2-1, F2-1R, F2-2 | F2-1/F2-1R: – (parallel zu L1, schreiben nur unter `supabase/` und `.gitignore`); **F2-2: nach L1** (schreibt `app/tool/seed/`, `app/pubspec.yaml`, `app/pubspec.lock`) | DB-Tests (12.2), Seed lokal (X2-8) | – (O-17 entschieden) |
-| **L3 Patienten-App am Backend** | Start mit Code, Einwilligung, Neubindung, Pfad aus Phasen, Heute aus dem Plan mit Abhaken (Ablauf 3 ohne Check-up), Übungsdetail, Tauschen, Akte, „Alles löschen“ mit Backend, Warteschlange, Demo-Modus | F2-3, F2-4a, F2-4b, F2-L3R | L1, L2, F2-D2 Teil A | U/W/C, Goldens, Matrix, `nav_checks` | F2-D2 Teil A |
+| **L2 Backend-Kern** | Migrationen für Rollen, Praxen, Physios, Patienten, Verletzungen, Einladung, Übungen (inkl. Baukasten-Felder), Vorlagen, Pläne, Akte, Einwilligung, Training (`training_sessions` mit allen Spalten inkl. `mode`, `exercise_results`), `create_patient`, `regenerate_invitation`, Spalte `patients.manny_look` mit `set_manny_look` (O-41); gemeinsame Fixtures `local_day`; Seed; DB-Tests | F2-1, F2-1R, F2-2 | F2-1/F2-1R: – (parallel zu L1, schreiben nur unter `supabase/` und `.gitignore`); **F2-2: nach L1** (schreibt `app/tool/seed/`, `app/pubspec.yaml`, `app/pubspec.lock`) | DB-Tests (12.2), Seed lokal (X2-8) | – (O-17 entschieden) |
+| **L3 Patienten-App am Backend** | Start mit Code, Einwilligung, Neubindung, Pfad aus Phasen, Heute aus dem Plan mit Abhaken (Ablauf 3 ohne Check-up), Übungsdetail, Tauschen, Akte, „Alles löschen“ mit Backend, Warteschlange, Manny-Look im Konto (Übertragung bei Bindung, Synchronisation, O-41), Demo-Modus | F2-3, F2-4a, F2-4b, F2-L3R | L1, L2, F2-D2 Teil A | U/W/C, Goldens, Matrix, `nav_checks` | F2-D2 Teil A |
 | **L4 Training** | „Training starten“: Packliste, geführte Session mit Zähler, Halte-/Dauer-/Pausen-Timer, Gesamtzeit, Pause, Überspringen, Beenden, Schmerz melden, Zusammenfassung; Check-up nach der Einheit (auch nach „Fertig für heute“) | F2-5a (Migration), F2-5b, F2-5c, F2-L4R | L3 | DB-Tests, U (Timer/Session mit fester Uhr), W, Goldens, Matrix, `nav_checks` | (E-30 nur für die Variante) |
 | **L5 Check-ups und Frage an den Physio** | Tages-Check-up-Karte, Warnzeichen-Trigger inkl. Stimmungs-Nachricht (5 Tage), Kürzung bei Schmerz (E-36), „Frage an meinen Physio“ mit Status | F2-6a (Migration), F2-6b, F2-6c, F2-L5R | L4, F2-D2 Teil B | DB-Tests, U, W, Goldens, Matrix | F2-D2 Teil B (inkl. Brief-Folgen aus O-18/O-19, 3.7) |
 | **L6 Physio-Grundgerüst** | `main_physio.dart` responsiv (Leiste/Seitenleiste), Anmeldung, Konto, Chats-Platzhalter, Patientenliste mit Reitern, Suche, Hauptphysio, Warnmarker; Neuer Patient in 30 s mit QR/Link/Teilen/Vorlage; Plan-Editor; Akte-Pflege | F2-7a (Migration), F2-7b, F2-7c, F2-7d, F2-L6R | L2, L5 (Warnmarker), F2-D2 Teil C | DB-Tests, W, Goldens, Matrix Handy + Rechner, `nav_checks` Physio, Ablaufprüfung < 30 s | F2-D2 Teil C |
@@ -145,16 +146,16 @@ Querpaket **F2-0 Entscheidungen** (Nutzer/Orchestrator): O-17, O-2/O-2a/O-2b, E-
 | F2-R4 | Heute (Optik Brief 7.2, Verhalten Ausschnitt 1), Onboarding mit neuem Schritt 1 „Wie soll Manny aussehen?“ (5 Schritte, Ergänzung 1, 6a) und „Deine Daten“ in neuer Optik; Restbausteine; alle Szenario-Goldens neu; `shoot.mjs` in 4 Welten; Kriterien-Selbstprüfung V2 | `flutter-developer` | F2-R3 | Goldens, Matrix, `shoot.mjs`, `nav_checks`, Web-Build, V2-65–V2-67, V2-75 |
 | F2-L1R | Review (Code) ∥ Design-Abnahme gegen Brief v2 und Brief-Ergänzung 1 | `reviewer` ∥ `ui-designer` | F2-R4 | Befundliste → Korrekturpaket |
 | F2-D2 | Brief-Ergänzung v2-1 (Teile A–D, 3.7) | `ui-designer` | – | Nutzerfreigabe |
-| F2-1 | Migrationen 01–07 (Kern, inkl. `create_patient`, `regenerate_invitation`, `training_sessions` vollständig), Nachbildung, DB-Tests der Lieferung L2 (12.2), `.gitignore`-Einträge (5) | `flutter-developer` | – (O-17 entschieden) | `supabase/tests/run_local_pg.sh` |
+| F2-1 | Migrationen 01–07 (Kern, inkl. `create_patient`, `regenerate_invitation`, `training_sessions` vollständig, `patients.manny_look` und `set_manny_look`), Nachbildung, gemeinsame Fixtures `supabase/tests/fixtures/local_day/` (6.7 Nr. 5, MINOR-E), DB-Tests der Lieferung L2 (12.2), `.gitignore`-Einträge (5) | `flutter-developer` | – (O-17 entschieden) | `supabase/tests/run_local_pg.sh` |
 | F2-1R | Sicherheitsreview Rollen, RLS, Definer, Einladung, Neubindung, Löschen, neue Kern-Tabellen | `reviewer` | F2-1 | Befundliste |
 | F2-2 | Seed + Testdaten (10); Dev-Abhängigkeit `supabase` in `app/pubspec.yaml` | `flutter-developer` | F2-1R **und** F2-L1R (L1 abgeschlossen; gemeinsame Dateien `app/pubspec.yaml`/`.lock`, MAJOR-1) | DB-T40 (Stack), lokaler Lauf gegen Postgres soweit ohne Auth-Admin möglich |
-| F2-3 | Datenschicht App: Repositories, Zwischenspeicher, Warteschlange, Zustandsmigration, `AccountDeleter`, reine Logik (`plan_today`, `path_from_phases`, `exercise_duration`, `invite_code`, `outbox`) | `flutter-developer` | L1, F2-1R | U, C |
-| F2-4a | Start mit Code, Einwilligung, Neubindung (beide Geräte), Löschen mit Backend, Demo-Modus | `flutter-developer` | F2-3, F2-D2 A | W, Goldens, Matrix, `nav_checks` |
+| F2-3 | Datenschicht App: Repositories, Zwischenspeicher, Warteschlange, Zustandsmigration, `AccountDeleter`, reine Logik (`plan_today`, `path_from_phases`, `exercise_duration`, `invite_code`, `outbox` inkl. `manny_look_set` und zurückgestellter Einträge); Dart-Tests lesen die Fixtures aus `supabase/tests/fixtures/local_day/` (nur lesend) | `flutter-developer` | L1, F2-1R | U, C |
+| F2-4a | Start mit Code (Look-Schritt vor dem Code-Feld, O-43), Einwilligung, Neubindung (beide Geräte), Manny-Look bei Bindung übertragen bzw. übernehmen (8.1), Löschen mit Backend, Demo-Modus | `flutter-developer` | F2-3, F2-D2 A | W, Goldens, Matrix, `nav_checks` |
 | F2-4b | Pfad aus Phasen (inkl. „ausgelassen“, Leerzustand), Heute aus dem Plan mit Abhaken, Übungsdetail, Tauschen, Akte („Mein Plan und meine Verletzung“) | `flutter-developer` | F2-4a | U, W, Goldens, Matrix, `nav_checks` |
 | F2-5a | Migration Check-up nach der Einheit (`session_checkups`, `session_checkup_items`, `submit_session_checkup`), DB-Tests; `training_sessions` ist seit L2 vollständig (MINOR-3) | `flutter-developer` | L3 | DB-Tests |
 | F2-5b | Session: Packliste, Übungsbildschirm, `RepCounter`, Timer, Pause/Überspringen/Beenden/Schmerz melden, Hintergrund und Sperre, Mitternacht, Ton/Vibration | `flutter-developer` | F2-5a | U (Session-Zustandsautomat, Timer mit fester Uhr), W, Goldens, Matrix |
 | F2-5c | Zusammenfassung, Check-up nach der Einheit (Session und „Fertig für heute“), `RatingScale` | `flutter-developer` | F2-5b | W, Goldens, Matrix, `nav_checks` |
-| F2-6a | Migration `daily_checkups` (inkl. `swelling`, `limitations` als Skala), `warning_rules` (entschiedene Werte O-2), `warning_signs`, Trigger inkl. Anstiegs- und Stimmungsregel (reihenfolgeunabhängig, 6.9), `submit_daily_checkup`, `patient_questions`, `ask_physio` | `flutter-developer` | L4 | DB-Tests |
+| F2-6a | Migration `daily_checkups` (inkl. `swelling`, `limitations` als Skala), `warning_rules` (entschiedene Werte O-2), `warning_signs`, Trigger inkl. Anstiegs- und Stimmungsregel (reihenfolgeunabhängig, je Verletzung, `trigger_checkup_id` für die gemeinsame Meldung, 6.9), `submit_daily_checkup`, `patient_questions`, `ask_physio` | `flutter-developer` | L4 | DB-Tests |
 | F2-6b | `DailyCheckupCard` (6 Fragen), `PainSlider`, Kürzung bei Schmerz ab 6 (`fallbackToday` mit Schmerzzweig), Hinweis „Heute etwas kürzer“, fester Hinweis bei Schmerz- und Schwellungs-Warnzeichen | `flutter-developer` | F2-6a, F2-D2 B | U, W, Goldens, Matrix |
 | F2-6c | „Frage an meinen Physio“ (Profil-Zeile mit Zahl offener, Eingabe, Liste mit Status), Einwilligungstext-Version `physio_sharing-2` | `flutter-developer` | F2-6a, F2-D2 B | W, Goldens, Matrix |
 | F2-7a | Migration `set_main_physio`; DB-T48, DB-T49 (`create_patient`, `regenerate_invitation` und Vorlagen-Lesezugriff liegen seit v2.1 in L2, MINOR-2) | `flutter-developer` | L2 | DB-Tests |
@@ -171,7 +172,7 @@ Querpaket **F2-0 Entscheidungen** (Nutzer/Orchestrator): O-17, O-2/O-2a/O-2b, E-
 | F2-10 | E2E gegen lokalen Supabase-Stack, Stack-Wiederholung (12.2), Kriterienbericht v2 | `flutter-developer` | L1–L8, X2-8 | E2E, Bericht |
 | F2-R | Gesamtreview + Design-Abnahme | `reviewer` ∥ `ui-designer` | F2-10 | Befundliste |
 
-Reihenfolge: (F2-D2 ∥ L1 ∥ F2-1 → F2-1R) → F2-2 → L3 → L4 → L5 → L6 → L7 → L8 → L9. **Parallel** laufen nur L1 (schreibt unter `app/`) und F2-1/F2-1R (schreiben unter `supabase/` und die Stamm-`.gitignore`); diese Bereiche sind getrennt, auch für Formatter und Generatoren (`dart format` läuft nur über `app/lib`, `app/test`). F2-2 (Seed) schreibt unter `app/` (`tool/seed/`, `pubspec.yaml`, `pubspec.lock`) und läuft deshalb **erst nach L1** (MAJOR-1). Ab F2-2 nacheinander.
+Reihenfolge: (F2-D2 ∥ L1 ∥ F2-1 → F2-1R) → F2-2 → L3 → L4 → L5 → L6 → L7 → L8 → L9. **Parallel** laufen nur L1 (schreibt unter `app/`) und F2-1/F2-1R (schreiben unter `supabase/` einschließlich der gemeinsamen Fixtures `supabase/tests/fixtures/local_day/` und die Stamm-`.gitignore`); diese Bereiche sind getrennt, auch für Formatter und Generatoren (`dart format` läuft nur über `app/lib`, `app/test`). F2-2 (Seed) schreibt unter `app/` (`tool/seed/`, `pubspec.yaml`, `pubspec.lock`) und läuft deshalb **erst nach L1** (MAJOR-1). Ab F2-2 nacheinander.
 
 ---
 
@@ -196,7 +197,7 @@ Die Ausschnitt-1-App (Onboarding, Pfad, Heute, Deine Daten, Manny-Chat nur anseh
 | `lib/ui/messages/*`, `lib/ui/chat/*` | F2-R3 | Ziel „Chats“, Manny angeheftet |
 | neu: Profil, Darstellung | F2-R3 | 3.4 |
 | `lib/ui/today/*` | F2-R4 | Optik 7.2; Verhalten Ausschnitt 1 („Training eintragen“) bleibt bis L3; Check-up-Karte, Session, Abhaken kommen in L3–L5 |
-| `lib/ui/onboarding/*` (`onboarding_flow.dart`, `step1_name.dart` … `step4_date.dart`), `lib/ui/data_sheet/*` | F2-R4 | Optik; Onboarding bekommt Schritt 1 „Wie soll Manny aussehen?“ (5 Schritte, Ergänzung 1, 6a), sonst bleibt das Verhalten; Onboarding wird in L3 durch den Code-Start ersetzt, bleibt aber für den Demo-Modus (B-20); der Look-Schritt geht in den Code-Start mit (8.1, B-31) |
+| `lib/ui/onboarding/*` (`onboarding_flow.dart`, `step1_name.dart` … `step4_date.dart`), `lib/ui/data_sheet/*` | F2-R4 | Optik; Onboarding bekommt Schritt 1 „Wie soll Manny aussehen?“ (5 Schritte, Ergänzung 1, 6a), sonst bleibt das Verhalten; Onboarding wird in L3 durch den Code-Start ersetzt, bleibt aber für den Demo-Modus (B-20); der Look-Schritt geht in den Code-Start mit, vor das Code-Feld (8.1, O-43 entschieden) |
 | Goldens `test/golden/goldens/*` | F2-R2 (Komponenten), F2-R4 (Szenarien) | alle neu; `glow.png` entfällt (3.6); `manny_poses.png` je Variante, Look-Schritt (Hell, Dunkel, 200 % Schrift, 320 dp) laut Ergänzung 1, 10 |
 | Tests Onboarding (Schrittzahl, Reihenfolge, Persistenz), Migration, `manny_occasions` | F2-R1/F2-R2/F2-R4 | an 5 Schritte, Schema-Sprung und neue Posen-Abbildung anpassen |
 | Tests `test/theme`, `test/static`, `test/components` | F2-R1/F2-R2 | auf neue Werte umstellen |
@@ -216,8 +217,8 @@ Manny ist kein Platzhalter mehr. Gestaltung, Maße, Posen-Zuordnung, Halo und Sc
 - **Assets:** Kopie der 24 Dateien aus `docs/design/manny/{brille,ohne}/` (normal, freudig, traurig, kopf; 1x, `2.0x/`, `3.0x/`) nach `app/assets/manny/{brille,ohne}/`; in `app/pubspec.yaml` die Verzeichnisse `assets/manny/brille/` und `assets/manny/ohne/` deklarieren (Flutter wählt die Dichte-Varianten selbst). Quelle und Erzeugungsskript bleiben unter `docs/design/manny/`; die App ändert die Bilder nicht. Kein Platzhalter-Hinweis, kein `LIESMICH`-Platzhaltertext; Lizenzhinweis-Eintrag entfällt für Manny (Rechte beim Nutzer, N-15). Die alte Skizze `manny4.py`/`_MannyPainter` entfällt (V2-56 ersetzt).
 - **Posen:** eine zentrale Abbildung Anlass → Datei in `lib/logic/manny_occasions.dart` (Tabelle 6.3 der Ergänzung; neue Anlässe fallen auf `normal` zurück). Die gewählte Variante gilt in jeder Pose.
 - **Speicherung der Wahl:** Feld `mannyLook` (`brille` · `ohne`) im lokalen App-Zustand (`lib/logic/app_state.dart`/`profile.dart`), gespeichert sofort bei Tipp (Neustart im Onboarding behält die Wahl). **Schema-Sprung 1 → 2** in `lib/logic/migrations.dart` (`kCurrentSchema = 2`): nicht abgeschlossenes Onboarding `step + 1`; `mannyLook = brille` für alle Bestandsdaten; wer das Onboarding abgeschlossen hat, wird nicht erneut gefragt (Ergänzung 1, 10). „Alles löschen“ setzt den Look auf die Vorbelegung „Mit Brille“ zurück und startet das Onboarding bei Schritt 1 (`data_eraser.dart`).
-- **Backend:** Ausschnitt 2 hat keinen Einstellungs- oder Profildatensatz des Patienten im Backend, in den der Look gehören würde (`patients` pflegt der Physio; der Patient hat dort kein UPDATE-Recht). Der Look bleibt deshalb **nur lokal**; keine Synchronisation, keine neue Spalte, keine geänderten Rechte (Annahme B-31, Rückfrage O-41). Folge: Nach Neubindung auf einem neuen Gerät gilt dort die Vorbelegung, bis der Patient im Profil wechselt.
-- **Onboarding:** neuer Schritt 1 „Wie soll Manny aussehen?“, Onboarding 5 statt 4 Schritte, „Mit Brille“ vorbelegt, Weiter immer aktiv (Ergänzung 1, 6a). Ab L3 (Code-Start statt Onboarding, 8.1) bleibt der Look-Schritt Teil des Einstiegs (B-31).
+- **Backend (O-41 entschieden, N-16):** In **L1 bleibt der Look nur auf dem Gerät** (kein Backend). Ab L2 gibt es die Spalte `patients.manny_look` (`brille` · `ohne`, `null` = noch nicht übertragen) und die Definer-Funktion `set_manny_look(look)` (nur der gebundene, aktive Patient für die eigene Zeile, 6.4); ab L3 gleicht die App den Wert ab: **lokal bleibt die Quelle für die Anzeige**, jede Änderung im Profil geht über die Warteschlange (`manny_look_set`, 8.11); vor der Bindung nur lokal, bei der Bindung wird der lokale Wert übertragen (8.1; Neubindung auf neuem Gerät B-36/O-44). „Alles löschen“ setzt den Konto-Wert auf `null` (6.13). Folge: Nach einem Gerätewechsel steht der Look im Konto bereit.
+- **Onboarding:** neuer Schritt 1 „Wie soll Manny aussehen?“, Onboarding 5 statt 4 Schritte, „Mit Brille“ vorbelegt, Weiter immer aktiv (Ergänzung 1, 6a). Ab L3 (Code-Start statt Onboarding, 8.1) bleibt der Look-Schritt Teil des Einstiegs, vor dem Code-Feld (O-43 entschieden).
 - **Profil:** Zeile „Manny-Look“ mit Sheet, Wechsel sofort und ohne Neustart an allen Manny-Stellen (Ergänzung 1, 6b).
 - **Darstellung:** Halo nur in Welt Nacht für Manny direkt auf der Welt; Kopf immer auf heller Scheibe; Mindestgröße Kopf 40 dp; Bewegung im Code, bei „Bewegung reduzieren“ statisch (Ergänzung 1, 6.2–6.5). Neue Werte (Halo, Scheibe, Größen) als Tokens in `lib/theme/` (Regel 1).
 - **Prüfung:** 3.6; Rückverfolgung 13.4 (V2-56 ersetzt, V2-65–V2-75) und 13.5.
@@ -236,7 +237,7 @@ Manny ist kein Platzhalter mehr. Gestaltung, Maße, Posen-Zuordnung, Halo und Sc
 
 ### 3.7 Brief-Ergänzung F2-D2 (was Brief v2 nicht gestaltet)
 Brief v2 gestaltet Pfad, Heute, Session, Check-ups, Profil, Chats, Physio-Liste, -Übersicht, Baukasten, Neuer Patient. **Nicht gestaltet** und für Ausschnitt 2 nötig:
-- **Teil A (vor L3):** Lage des Manny-Look-Schritts im Code-Start (Annahme B-31: vor dem Code-Feld, gleiche Karten wie Ergänzung 1, 6a; nur die Lage ist zu gestalten), Startbildschirm „Zugang über deinen Physio“ mit Code-Feld und Ergebniscodes, Einwilligung (`physio_sharing-2`, 7.2), Neuanmeldungs-Hinweise auf beiden Geräten, Leerzustand „Dein Physio stellt deinen Plan noch zusammen“, Pfad-Status „ausgelassen“, Akte-Ansicht „Mein Plan und meine Verletzung“ (Behandler, Termine, eigene Termine, Krankengeschichte), „nicht aktuell“-Hinweis, Lade-/Fehlerzustände mit Backend, Löschen mit Backend (sicher/unklar/lokaler Fehler).
+- **Teil A (vor L3):** Einbettung des Manny-Look-Schritts in den Code-Start (Lage entschieden: vor dem Code-Feld, O-43; gleiche Karten wie Ergänzung 1, 6a), Startbildschirm „Zugang über deinen Physio“ mit Code-Feld und Ergebniscodes, Einwilligung (`physio_sharing-2`, 7.2), Neuanmeldungs-Hinweise auf beiden Geräten, Leerzustand „Dein Physio stellt deinen Plan noch zusammen“, Pfad-Status „ausgelassen“, Akte-Ansicht „Mein Plan und meine Verletzung“ (Behandler, Termine, eigene Termine, Krankengeschichte), „nicht aktuell“-Hinweis, Lade-/Fehlerzustände mit Backend, Löschen mit Backend (sicher/unklar/lokaler Fehler).
 - **Teil B (vor L5):** „Frage an meinen Physio“ (Eingabe, Liste, Status „besprochen“), fester Hinweis bei Schmerz- **und Schwellungs**-Warnzeichen (O-12, O-2: derselbe Hinweis), Hinweis „Heute etwas kürzer“ im Detail.
   **Brief-Folgen aus N-14 (Ergänzung freigegebener Brief-Kriterien, Nutzerfreigabe nötig, vor L5; gestaltet vom `ui-designer`, dieser Plan nennt nur die Änderung):**
   - Brief 7.2 „Einmal am Tag · 5 schnelle Fragen“ und „Fünf Fragen nacheinander“ → **sechs** Fragen mit Schwellung 0–3 (O-18); Lage der Frage, Bezeichnungen der Stufen 0–3 und Bedienelement gestaltet der `ui-designer`.
@@ -244,7 +245,7 @@ Brief v2 gestaltet Pfad, Heute, Session, Check-ups, Profil, Chats, Physio-Liste,
   - Brief 7.2 Einschränkungen „Auswahl-Chips oder ‚keine‘“ → **Einzelwert-Skala** keine / leicht / deutlich / stark (O-19).
   - Brief 7.9 Kachel 2 „Befinden · Motivation · Warnzeichen“ → zeigt zusätzlich **Schwellung** (und die Einschränkungs-Stufe); Warnzeichen „Schwellung stark“ mit Symbol und Text wie die übrigen.
 - **Teil C (vor L6):** Physio-Anmeldung, Konto, Chats-Platzhalter, Plan-Editor (Handy und Rechner), Akte-Pflege, Code neu erzeugen, Vorlagenauswahl.
-- **Teil D (vor L7):** Historie (je Verletzung), Notiz anlegen, neue Verletzung anlegen, Kachel-Details, die Brief 7.9 nicht ausführt, Inhalt der Kachel 6 „Phase und nächstes Ziel“ nach der Datenquelle 6.12 (Annahme B-34).
+- **Teil D (vor L7):** Historie (je Verletzung), Notiz anlegen, neue Verletzung anlegen, Kachel-Details, die Brief 7.9 nicht ausführt, Inhalt der Kachel 6 „Phase und nächstes Ziel“ nach der Datenquelle 6.12 („nächstes Ziel“ = Titel der nächsten Phase, O-42 entschieden).
 
 ---
 
@@ -280,7 +281,8 @@ supabase/                                  # Repo-Stamm, Layout der Supabase-CLI
     <ts>_12_baukasten_storage.sql          # L8
   tests/
     shim/supabase_roles.sql                # nur Tests ohne Stack (12.1)
-    db/T01_*.sql … T79_*.sql               # benannte DB-Tests (12.2)
+    db/T01_*.sql … T85_*.sql               # benannte DB-Tests (12.2)
+    fixtures/local_day/*.json              # L2 (F2-1): gemeinsame Fixtures Mitternacht/Zeitzone (6.7), auch für Dart-Tests und KI-Plan
     db/race/*.sh                           # Nebenläufigkeit mit zwei Verbindungen
     stack/*.sql|*.sh                       # nur gegen lokalen Supabase-Stack (Storage, Auth-Admin, Seed)
     run_local_pg.sh                        # initdb (Temp), Shim, Migrationen, Tests, Abbau
@@ -306,7 +308,6 @@ app/
     l10n/    strings_de.dart, strings_physio_de.dart
     dev/     Fake-Repositories, Szenarien Patient und Physio
   tool/seed/seed.dart, tool/seed/testdaten.json   # F2-2, erst nach L1 (MAJOR-1)
-  test/fixtures/local_day/*.json           # gemeinsame Fixtures Mitternacht/Zeitzone (6.7), auch für SQL-Tests und KI-Plan
   tool/screens/  shoot.mjs, nav_checks.mjs (+ Physio, + Welten)
 ```
 
@@ -325,8 +326,12 @@ Supabase-Rollen: `anon`, `authenticated` (auch anonyme Sitzungen, Claim `is_anon
 3. **Sichten** nur mit `security_invoker = true` (neu genutzt für Kachel-Sichten, 6.12; DB-T72).
 4. **Jede `SECURITY DEFINER`-Funktion:** `SET search_path = ''`, voll qualifizierte Namen, prüft als Erstes Aufrufer, Rolle und Zugehörigkeit.
 5. **Hilfsfunktionen** (Definer, `STABLE`): `app.uid()`, `app.is_anonymous()`, `app.current_physio_practice()`, `app.current_patient_id()` (gebunden und `active`), `app.physio_can_see_patient(p)`, **neu** `app.current_injury_id(p)` (aktive Verletzung des Patienten), `app.current_plan_id(p)` (Plan der aktiven Verletzung), `app.patient_can_see_exercise(e)` (Übung in **irgendeiner** Position des aktuellen Plans, aktiv oder vorbereitet, **ohne Datumsbezug**, 6.7; L2 für `exercises`, L8 für Bilder).
-   - **Aufruferprüfung auch in Hilfsfunktionen mit Patienten-Parameter (MINOR-9):** `app.current_injury_id(p)`, `app.current_plan_id(p)` und `app.physio_can_see_patient(p)` liefern nur dann einen Wert bzw. `true`, wenn `p = app.current_patient_id()` oder `app.physio_can_see_patient(p)` gilt; sonst `null` bzw. `false`. Damit verraten sie auch bei direktem Aufruf nichts über fremde Patienten.
-   - **Schema `app` ist nicht über die API erreichbar:** `supabase/config.toml` `[api] schemas` nennt nur `public` (im echten Projekt X2-3 prüfen); `authenticated` hat `USAGE` auf `app` und `EXECUTE` nur auf den Hilfsfunktionen, die Policies und Trigger brauchen. DB-T81.
+   - **Aufruferprüfung auch in Hilfsfunktionen mit Patienten-Parameter (MINOR-9, korrigiert MAJOR-A):**
+     - `app.physio_can_see_patient(p)` liefert nur dann `true`, wenn der Aufrufer ein Physio ist (`app.current_physio_practice()` nicht `null`) und `p` zu dessen Praxis gehört; **keine Patientenklausel und kein Selbstbezug**. Ein gebundener Patient bekommt auch für die eigene ID `false`; damit lassen die Physio-Policies (z. B. `practice_notes` SELECT, UPDATE `patients.first_name`/`last_name`, `injuries.label`, Schreiben in `treaters`/`history_entries`, `invitations` SELECT) keinen Patienten durch.
+     - `app.current_injury_id(p)` und `app.current_plan_id(p)` liefern nur dann einen Wert, wenn `p = app.current_patient_id()` (Patient für sich selbst) oder `app.physio_can_see_patient(p)` (Physio der Praxis) gilt; sonst `null`.
+     - Damit verraten die Hilfsfunktionen auch bei direktem Aufruf nichts über fremde Patienten.
+     - **Interne Variante ohne Aufruferprüfung (MINOR-C):** `app.active_injury_id_internal(p)` (aktive Verletzung, ohne Prüfung) für Trigger (`set_injury_id`, 6.3) und für Definer-Funktionen, die den Aufrufer schon geprüft haben. Kein `EXECUTE` für `PUBLIC`, `anon`, `authenticated`; nur die Eigentümerrolle ruft sie (Definer-Kontext). So funktionieren auch Schreibvorgänge ohne Patienten-JWT (Seed mit `service_role`, DB-T45).
+   - **Schema `app` ist nicht über die API erreichbar:** `supabase/config.toml` `[api] schemas` nennt nur `public` (im echten Projekt X2-3 prüfen); `authenticated` hat `USAGE` auf `app` und `EXECUTE` nur auf den Hilfsfunktionen, die Policies brauchen (nicht auf der internen Variante). DB-T81.
 6. **Seed** nur mit `service_role` (lokal bzw. X2-4).
 7. **Storage (neu, L8):** ein privater Bucket `exercise-images`; Policies auf `storage.objects` (6.11). Keine öffentlichen URLs.
 
@@ -338,7 +343,7 @@ Grundsätze unverändert: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange 
 |---|---|---|---|---|
 | `practices` | 2 | `id`, `name`, `is_test` | SELECT (Physio eigene Praxis) | Seed |
 | `physios` | 2 | `id` → `auth.users` (`ON DELETE CASCADE`), `practice_id`, `display_name` | SELECT (gleiche Praxis) | Seed |
-| `patients` | 2 | `id`, `practice_id`, `first_name` (`CHECK` nicht leer), `last_name` (**jetzt optional**), `main_physio_id` → `physios` (`ON DELETE SET NULL`), `auth_user_id` → `auth.users` (`ON DELETE SET NULL`, unique), `status` (`invited` · `active` · `deleting` · `access_deleted`), `bound_at`, `created_at`, `create_params_hash` (**neu**, nur für die Idempotenzprüfung von `create_patient`, kein Spalten-Grant, 6.6) | SELECT (Physio der Praxis; Patient eigene Zeile); UPDATE `first_name`, `last_name` (Physio, Spalten-Grant) | RPCs (Bindung, Status, Hauptphysio) |
+| `patients` | 2 | `id`, `practice_id`, `first_name` (`CHECK` nicht leer), `last_name` (**jetzt optional**), `main_physio_id` → `physios` (`ON DELETE SET NULL`), `auth_user_id` → `auth.users` (`ON DELETE SET NULL`, unique), `status` (`invited` · `active` · `deleting` · `access_deleted`), `bound_at`, `created_at`, `create_params_hash` (**neu**, nur für die Idempotenzprüfung von `create_patient`, kein Spalten-Grant, 6.6), `manny_look` (**neu v2.2**, `brille` · `ohne`, `null` = nicht übertragen; O-41) | SELECT (Physio der Praxis; Patient eigene Zeile; `manny_look` per Spalten-Grant lesbar, der Physio-Bereich zeigt ihn nicht); UPDATE `first_name`, `last_name` (Physio, Spalten-Grant); **kein** UPDATE-Recht auf `manny_look` | RPCs (Bindung, Status, Hauptphysio, `set_manny_look`) |
 | `injuries` **neu** | 2 | `id`, `patient_id`, `label` (`CHECK` nicht leer), `reference_date` (für „Woche N“), `started_on`, `closed_on` (null = aktiv), unique partiell „eine aktive Verletzung je Patient“ | SELECT (Physio der Praxis; Patient eigene); UPDATE `label`, `reference_date` (Physio, Spalten-Grant) | `create_patient`, `start_new_injury`, `close_injury` |
 | `invitations` | 2 | unverändert: `id`, `patient_id`, `code_hmac`, `expires_at`, `redeemed_at`, `redeemed_by`, `revoked_at`, `failed_attempts` | SELECT nur Spalten-Grant **ohne** `code_hmac` (Physio der Praxis) | RPCs |
 | `redeem_attempts` | 2 | unverändert | – | `redeem_invitation` (Bereinigung > 24 h) |
@@ -357,7 +362,7 @@ Grundsätze unverändert: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange 
 | `session_checkup_items` **neu** | 4 | `checkup_id` (`CASCADE`), `plan_item_id` (Momentaufnahme), `exercise_id`, `difficulty` (`easy` · `right` · `hard` · `pain`, null), `weight_increased` bool (null), `skip_reason` (`time` · `pain` · `material` · `other`, null) | wie `session_checkups` | RPC |
 | `daily_checkups` **neu, ersetzt `wellbeing_reports`** | 5 | `id` (Gerät), `patient_id`, `injury_id` (Trigger), `local_day` (unique je Patient), `reported_at`, `pain` 0–10, `wellbeing` 1–5, `motivation` 1–5, `swelling` 0–3 (O-18 [entschieden], 3 = stark), `limitations` **ein Wert** aus `none` · `mild` · `marked` · `severe` (= keine / leicht / deutlich / stark, O-19 [entschieden]), `mood` 1–5; alle Pflicht | SELECT (beide); **kein** direktes INSERT/UPDATE/DELETE | `submit_daily_checkup`, `delete_my_data` |
 | `warning_rules` | 5 | `id`, `version`, `rule jsonb`, `active` | – | Migration (entschiedene Werte aus O-2, 6.9; nicht vorläufig) |
-| `warning_signs` | 5 | `id`, `patient_id`, `created_at`, `source` (`checkup` **neu**; ab Ausschnitt 3 `chat`), `layer`, `level`, `reason_code`, `daily_checkup_id`, `local_day` (**neu**, Tag des auslösenden Check-ups; partieller Unique-Index `(patient_id, reason_code, local_day) WHERE source = 'checkup'`, 6.9), `client_message_id` (Ausschnitt 3), `notify_patient` bool (**neu**, `true` für Schmerz und Schwellung, `false` für die Stimmungs-Nachricht), `seen_at`; **keine Textspalte** | SELECT (Physio der Praxis); kein INSERT | Trigger (L5); Chat-Funktionen (Ausschnitt 3) |
+| `warning_signs` | 5 | `id`, `patient_id`, `created_at`, `source` (`checkup` **neu**; ab Ausschnitt 3 `chat`), `layer`, `level`, `reason_code`, `daily_checkup_id`, `local_day` (**neu**, Tag des auslösenden Check-ups; partieller Unique-Index `(patient_id, reason_code, local_day) WHERE source = 'checkup'`, 6.9), `client_message_id` (Ausschnitt 3), `notify_patient` bool (**neu**, `true` für Schmerz und Schwellung, `false` für die Stimmungs-Nachricht), `trigger_checkup_id` (**neu v2.2**, der Check-up, dessen Eingang das Warnzeichen erzeugt hat; für `warning_raised` und die gemeinsame Meldung, 6.9), `seen_at`; **keine Textspalte** | SELECT (Physio der Praxis); kein INSERT | Trigger (L5); Chat-Funktionen (Ausschnitt 3) |
 | `patient_questions` **neu** | 5 | `id` (Gerät), `patient_id`, `injury_id` (Trigger), `text` (`CHECK` nicht leer, Länge ≤ O-34), `created_at`, `status` (`open` · `discussed`), `discussed_at`, `discussed_by` | SELECT (Patient eigene; Physio der Praxis); INSERT nur über `ask_physio` | `ask_physio`, `mark_question_discussed` |
 | `practice_notes` **neu** | 7 | `id`, `patient_id`, `injury_id` (Trigger), `author_id` (Trigger, = Physio), `created_at`, `text` (`CHECK` nicht leer) | SELECT, INSERT (Physio der Praxis); **Patient: keine Policy** (PB-C); UPDATE/DELETE nicht vorgesehen (O-26) | – |
 | `consents` | 2 | unverändert; neue Version `physio_sharing-2` (7.2) | SELECT (beide) | `accept_consent` |
@@ -375,10 +380,10 @@ Grundsätze unverändert: `uuid`-Schlüssel; Schreibvorgänge der Warteschlange 
 - `app.set_note_author()` **neu** – `BEFORE INSERT` auf `practice_notes`: `author_id = app.uid()`, muss Physio der Praxis des Patienten sein.
 - `app.set_injury_id()` **neu** – `BEFORE INSERT`, Definer, `search_path = ''`; Client-Werte für `injury_id` werden immer überschrieben (DB-T61). Herleitung je Tabelle (MINOR-4), damit eine offline gespeicherte Session des alten Tags nach `start_new_injury` bei ihrer alten Verletzung bleibt:
   - `training_sessions`: `injury_id = plans.injury_id` des mitgesendeten `plan_id`; der Plan muss diesem Patienten gehören (sonst `42501`), darf auch abgeschlossen sein;
-  - `exercise_results`, `session_checkups`: `injury_id` der referenzierten `training_session` (damit nie abweichend von ihrer Session); ohne Session (nur `session_checkups` nach `SET NULL`, beim Insert nicht möglich) → Fehler;
-  - `daily_checkups`, `patient_questions`, `practice_notes`: aktive Verletzung zum Zeitpunkt des Eingangs (`app.current_injury_id(patient_id)`; Annahme B-32).
+  - `exercise_results`, `session_checkups`: `injury_id` der referenzierten `training_session` (damit nie abweichend von ihrer Session); die Session muss **demselben Patienten** gehören wie die neue Zeile (`training_sessions.patient_id = NEW.patient_id`, sonst `42501`, MINOR-D: der Fremdschlüssel allein prüft das nicht, weil er RLS umgeht); ohne Session (nur `session_checkups` nach `SET NULL`, beim Insert nicht möglich) → Fehler;
+  - `daily_checkups`, `patient_questions`, `practice_notes`: aktive Verletzung zum Zeitpunkt des Eingangs (interne Variante `app.active_injury_id_internal(patient_id)` ohne Aufruferprüfung, 6.1 Nr. 5, MINOR-C; Annahme B-32). Der Aufrufer ist an dieser Stelle schon durch RLS bzw. die aufrufende RPC geprüft.
 - `app.lock_patient_for_write()` – unverändert in Logik (Definer, `search_path = ''`, `OLD` bei DELETE, nur Patienten-Schreibvorgänge, `FOR SHARE`, INSERT/UPDATE nur `active`, DELETE `active`/`deleting`), **Tabellenliste erweitert:** `training_sessions`, `exercise_results`, `session_checkups`, `session_checkup_items` (über `checkup_id` → `patient_id`), `daily_checkups`, `patient_questions`, `appointments`, `consents`, `warning_signs` (ab Ausschnitt 3 auch Chat-Tabellen). DB-T70.
-- `app.raise_warning_signs()` – `AFTER INSERT` auf `daily_checkups` (statt `wellbeing_reports`), Definer, `search_path = ''`, wertet aktive `warning_rules` aus (O-2, Regeln und Reihenfolgeunabhängigkeit 6.9).
+- `app.raise_warning_signs()` – `AFTER INSERT` auf `daily_checkups` (statt `wellbeing_reports`), Definer, `search_path = ''`, wertet aktive `warning_rules` aus (O-2, Regeln, Reihenfolgeunabhängigkeit und Zählweise je Verletzung 6.9); setzt bei jedem neu angelegten Warnzeichen `trigger_checkup_id = NEW.id` (gemeinsame Meldung, 6.9).
 
 ### 6.4 Funktionen (RPC)
 
@@ -393,8 +398,9 @@ Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLI
 | `save_plan(patient_id, expected_version, plan jsonb)` | 2 | Physio derselben Praxis | 6.7 |
 | `set_current_phase(patient_id, phase_id)` | 2 | Physio derselben Praxis | Phase muss zum **aktuellen** Plan gehören; erhöht `version` (damit „Heute“ neu lädt) |
 | `delete_my_data()` | 2 | gebundener Patient | 6.13 |
+| `set_manny_look(look)` **neu v2.2** | 2 (App ab L3) | gebundener, aktiver Patient (Status mit `FOR SHARE` wie die Schreibsperre) | setzt `manny_look` nur in der Zeile `app.current_patient_id()`; Wert aus fester Liste (`brille` · `ohne`), sonst Fehler; idempotent (gleicher Wert erneut = Erfolg); kein Patienten-Parameter, kein anderer Schreibweg (O-41, DB-T85) |
 | `submit_session_checkup(id, training_session_id, local_day, rating, items jsonb)` **neu** | 4 | gebundener, aktiver Patient | idempotenter Insert von Kopf und Positionen in einer Transaktion; Werte aus festen Listen; `skip_reason` nur bei Positionen, die in dieser Session `skipped` sind (sonst Fehler) |
-| `submit_daily_checkup(id, local_day, pain, wellbeing, motivation, swelling, limitations, mood)` **neu, ersetzt `report_wellbeing`** | 5 | gebundener, aktiver Patient | idempotenter Insert (Geräte-ID); zweite Meldung am selben Tag mit anderer ID → `already_submitted`; Rückgabe nur `warning_raised boolean` = es gibt zu diesem Check-up ein Warnzeichen mit `notify_patient = true` (die Stimmungs-Nachricht zählt **nicht**, C-3; DB-T58); bei Wiederholung derselben ID gleiche Antwort (NEU-7) |
+| `submit_daily_checkup(id, local_day, pain, wellbeing, motivation, swelling, limitations, mood)` **neu, ersetzt `report_wellbeing`** | 5 | gebundener, aktiver Patient | idempotenter Insert (Geräte-ID); `local_day` nach der Grenze für Warteschlangen-Einträge (6.7 Nr. 3: Bindungstag − 1 bis UTC-Datum + 1); zweite Meldung am selben Tag mit anderer ID → `already_submitted`; Rückgabe nur `warning_raised boolean` = es gibt ein Warnzeichen mit `notify_patient = true` und `trigger_checkup_id` = dieser Check-up (die Stimmungs-Nachricht zählt **nicht**, C-3; DB-T58); bei Wiederholung derselben ID gleiche Antwort, auch wenn inzwischen ein nachträgliches `pain_rise` für diesen Tag entstanden ist (das trägt die ID des verspäteten Vortags, NEU-7) |
 | `ask_physio(id, text)` **neu** | 5 | gebundener, aktiver Patient | idempotenter Insert; `patient_id` aus der Sitzung; Länge laut O-34 |
 | `set_main_physio(patient_id, physio_id)` **neu** | 6 | Physio derselben Praxis | Ziel-Physio muss derselben Praxis angehören; ändert keine Rechte (N-4) |
 | `mark_warnings_seen(patient_id)` | 7 | Physio derselben Praxis | unverändert (O-11) |
@@ -431,6 +437,7 @@ Alle: `SECURITY DEFINER`, `SET search_path = ''`, `REVOKE EXECUTE … FROM PUBLI
   5. Rückgabe: `patient_id`, Klartext-Code (einmalig), `expires_at`.
 - **Anzeige sofort:** QR-Code (≥ 200 dp, Schwarz auf Weiß, Ruhezone ≥ 4 Module), Link, „Teilen“ (System-Teilen: SMS, Mail, Messenger; im Browser Web-Share, sonst „Link kopieren“), „Fertig“. Code-, Link- und QR-Regeln unverändert (v1.2 5.2: `<INVITE_LINK_BASE>/?einladung=XXXXX-XXXXX` bzw. `curaone://einladung?code=…`; Link füllt das Feld, Einlösen nach Bestätigung, B-8).
 - **Fehler/offline:** Hinweis mit „Nochmal versuchen“; Eingaben bleiben, Wiederholung mit derselben `id` (Schritt 2) – nichts geht verloren, kein doppelter Patient. Ändert der Physio vor der Wiederholung Eingaben, erzeugt die App eine neue `id`.
+- **Gleichzeitige Wiederholung (MINOR-F):** Solange ein `create_patient`-Aufruf läuft, sendet die App keinen weiteren („Speichern“/„Nochmal versuchen“ ohne Wirkung, Ladezustand). Endet ein Aufruf durch Zeitüberschreitung des Clients, kann der Server ihn trotzdem noch abschließen; eine danach gestartete Wiederholung wartet auf ihn (Schritt 2) und widerruft dessen Code. Die App zeigt deshalb **nur die Antwort des zuletzt gestarteten Aufrufs** und verwirft spätere Antworten älterer Aufrufe. So ist der angezeigte QR-Code immer der gültige. Prüfung: DB-T64b (zwei Aufrufe nacheinander: nur der Code der zweiten Antwort ist einlösbar) und W-Test in F2-7c (Knopf während des Aufrufs ohne Wirkung; verspätete Antwort eines älteren Aufrufs wird nicht angezeigt).
 - **Nach dem Einlösen** landet der Patient nach der Einwilligung direkt auf dem Pfad seines Plans (PB-E AK 2; Einwilligung bleibt Pflicht nach A-1 AK 3, O-39).
 - **Prüfung < 30 s:** Ablaufprüfung in `nav_checks.mjs` (Physio, Fake-Repository): Anzahl Pflichteingaben = 2, Tipps bis QR = 1, gemessene Zeit vom Öffnen bis QR sichtbar; zusätzlich manuelle Stoppuhr-Prüfung gegen den lokalen Stack in L9.
 - Tests: DB-T63, DB-T64, DB-T64b (inkl. Parametervergleich und zwei Verbindungen); W; Golden. Die Funktion entsteht in L2 (Seed und DB-Tests brauchen sie), die Oberfläche in L6 (MINOR-2).
@@ -444,10 +451,14 @@ Unverändert: stabile IDs, Upsert nach ID, nur Entferntes löschen, Version prü
 - **„Freigegeben“ für Heute, Tauschen, Packliste und den KI-Plan** = Position der aktuellen Phase mit `release = active`, **oder** `prepared` mit `release_on ≤ local_day`, **oder** `prepared` mit `release_with_phase_id`, dessen Phase-Position ≤ Position der aktuellen Phase ist (Annahme zur Semantik von PB-6, O-28). Reine Funktion `isReleased(item, plan, localDay)` in `lib/logic/plan_today.dart`, gleiche Fixtures im KI-Plan.
 - **Datumsbasis (MAJOR-2, gewählte Lösung):**
   1. **Ein Kalendertag des Patienten ist immer der lokale Tag seines Geräts (`local_day`).** Das Gerät berechnet ihn und sendet ihn mit (Check-ups, Sessions, Ergebnisse; im KI-Plan als Eingabe von `manny-today`).
-  2. **Sicherheitsregeln hängen nicht vom Datum ab.** `app.patient_can_see_exercise`, die `exercises`-Policy (6.2) und die Storage-Policy (6.11) prüfen nur „Übung steht in einer Position des aktuellen Plans (aktiv oder vorbereitet)“. Begründung: Der Patient liest ohnehin alle `plan_items` seines Plans einschließlich vorbereiteter Positionen (6.2); die Datumsprüfung schützte nur Name, Beschreibung und Bild und erzeugte die Lücke 0–2 Uhr (MESZ), in der eine Position sichtbar, ihre Übung aber per RLS verweigert war. „Freigegeben“ ist damit eine Anzeige- und Auswahlregel (App, `manny-today`), keine Zugriffsregel.
-  3. **Serverlogik, die einen Tag braucht, bekommt ihn als Eingabe** und prüft nur die Plausibilität: `local_day` muss innerhalb von ±1 Tag um das UTC-Datum des Servers liegen (deckt alle Zeitzonen UTC−12 bis UTC+14 ab), sonst `invalid_local_day`. Das gilt für `submit_daily_checkup`, `start_new_injury`, `create_patient` (Standard-Bezugsdatum) und – im KI-Plan – `manny-today` (S8b Regel 3). Kein Server-Code verwendet `current_date`/`now()::date` für Patienten- oder Physio-Tage; Ausnahme nur Bereinigung (`redeem_attempts` > 24 h) und Ablauf der Einladung (`expires_at`, `timestamptz`).
+  2. **Sicherheitsregeln hängen nicht vom Datum ab.** `app.patient_can_see_exercise`, die `exercises`-Policy (6.2) und die Storage-Policy (6.11) prüfen nur „Übung steht in einer Position des aktuellen Plans (aktiv oder vorbereitet)“. Begründung: Der Patient liest ohnehin alle `plan_items` seines Plans einschließlich vorbereiteter Positionen (6.2); die Datumsprüfung schützte nur Name, Beschreibung und Bild und erzeugte die Lücke 0–2 Uhr (MESZ), in der eine Position sichtbar, ihre Übung aber per RLS verweigert war. „Freigegeben“ ist damit eine Anzeige- und Auswahlregel (App, `manny-today`), keine Zugriffsregel. Diese gelockerte Übungs- und Storage-Policy (Patient liest Übungen aktiver **und** vorbereiteter Positionen seines aktuellen Plans über die API) ist vom Nutzer ausdrücklich bestätigt (N-16).
+  3. **Serverlogik, die einen Tag braucht, bekommt ihn als Eingabe** und prüft nur die Plausibilität; die Grenze hängt davon ab, ob der Aufruf sofort oder über die Warteschlange kommt (MAJOR-B):
+     - **Sofortige Aufrufe** (`start_new_injury`, `create_patient` für das Standard-Bezugsdatum; im KI-Plan `manny-today`, S8b Regel 3): `local_day` innerhalb von ±1 Tag um das UTC-Datum des Servers (deckt alle Zeitzonen UTC−12 bis UTC+14 ab), sonst `invalid_local_day`.
+     - **Warteschlangen-Einträge mit Tagesprüfung** (`submit_daily_checkup`): Ein offline erfasster Check-up kann Tage später ankommen. Gültig ist deshalb `Bindungstag − 1 ≤ local_day ≤ UTC-Datum + 1` (Bindungstag = UTC-Datum von `patients.bound_at` der aktuellen Bindung; −1/+1 wegen der Zeitzonen). **Kein Höchstalter:** Offline-Zeiträume haben keine festgelegte Obergrenze, und jede feste Grenze würde einen echten, nur spät gesendeten Check-up verwerfen. Begründung der Untergrenze: Die Warteschlange gehört zur aktuellen Bindung (bei Neubindung bzw. gelöster Bindung werden die lokalen Daten verworfen, B-11), ein Eintrag mit früherem Tag kann also nur aus einer falschen Geräteuhr stammen. Annahme B-35.
+     - **Nie still verloren:** `invalid_local_day` ist in der Warteschlange **kein** Grund zum Verwerfen; der Eintrag wird zurückgestellt (8.11). Verspätet angenommene Check-ups werden ganz normal ausgewertet (Warnzeichen für ihren Tag und nachträglich für Folgetage, 6.9).
+     - Kein Server-Code verwendet `current_date`/`now()::date` für Patienten- oder Physio-Tage; Ausnahme nur die Plausibilitätsgrenzen oben, Bereinigung (`redeem_attempts` > 24 h) und Ablauf der Einladung (`expires_at`, `timestamptz`).
   4. Alternative „Zeitzone je Patient speichern“ verworfen: neues Datenfeld, und der Server müsste trotzdem der Geräteuhr bzw. -zone vertrauen.
-  5. **Gemeinsame Fixtures „Mitternacht/Zeitzone“** (`app/test/fixtures/local_day/*.json`, genutzt von Dart-Unit-Tests, SQL-Tests und den Server-Tests des KI-Plans): (a) Europe/Berlin 00:30 MESZ am Tag D (UTC noch D−1) mit `release_on = D` → freigegeben, Übung und Bild für den Patienten lesbar; (b) gleiche Lage 23:30 am Tag D−1 → nicht freigegeben, Übung trotzdem lesbar (Position des Plans); (c) Pacific/Auckland UTC+13 und America/Los_Angeles UTC−7 jeweils kurz vor und nach Mitternacht → `local_day` gültig; (d) `local_day` = UTC-Datum + 2 → `invalid_local_day`; (e) Umstellungstag Sommer-/Winterzeit Europe/Berlin (2026-10-25); (f) Session über Mitternacht → alle Ergebnisse mit `local_day` des Session-Starts (8.5); (g) Check-up um 00:10 nach Mitternacht zählt für den neuen Tag (Anstiegs- und Stimmungsregel, 6.9).
+  5. **Gemeinsame Fixtures „Mitternacht/Zeitzone“** (`supabase/tests/fixtures/local_day/*.json`, angelegt in L2 von F2-1, weil die DB-Tests von L2 sie brauchen und F2-1 parallel zu L1 nur unter `supabase/` schreibt (MINOR-E); genutzt von SQL-Tests, Dart-Unit-Tests ab L3 (nur lesend, Pfad relativ zu `app/`) und den Server-Tests des KI-Plans): (a) Europe/Berlin 00:30 MESZ am Tag D (UTC noch D−1) mit `release_on = D` → freigegeben, Übung und Bild für den Patienten lesbar; (b) gleiche Lage 23:30 am Tag D−1 → nicht freigegeben, Übung trotzdem lesbar (Position des Plans); (c) Pacific/Auckland UTC+13 und America/Los_Angeles UTC−7 jeweils kurz vor und nach Mitternacht → `local_day` gültig; (d) `local_day` = UTC-Datum + 2 → `invalid_local_day` (sofortige Aufrufe und Warteschlange); `local_day` = UTC-Datum − 2 → `invalid_local_day` nur bei sofortigen Aufrufen; (e) Umstellungstag Sommer-/Winterzeit Europe/Berlin (2026-10-25); (f) Session über Mitternacht → alle Ergebnisse mit `local_day` des Session-Starts (8.5); (g) Check-up um 00:10 nach Mitternacht zählt für den neuen Tag (Anstiegs- und Stimmungsregel, 6.9); (h) Check-up am Tag D offline erfasst, am Tag D+3 gesendet → angenommen und ausgewertet; Check-up mit Tag vor dem Bindungstag − 1 → `invalid_local_day`, in der App zurückgestellt (DB-T83, U `outbox`).
 
 ### 6.8 Verletzungen und Historie (PB-7, PB-G)
 
@@ -466,26 +477,31 @@ Unverändert: stabile IDs, Upsert nach ID, nur Entferntes löschen, Version prü
   | Regel (`reason_code`) | Bedingung für den Tag D | `notify_patient` |
   |---|---|---|
   | `pain_high` | `pain ≥ 7` | `true` (fester Hinweis O-12) |
-  | `pain_rise` | Check-up am Vortag D−1 vorhanden **und** `pain(D) − pain(D−1) ≥ 3`; ohne Check-up am Vortag keine Anstiegsregel | `true` (fester Hinweis O-12) |
+  | `pain_rise` | Check-up am Vortag D−1 **derselben Verletzung** vorhanden **und** `pain(D) − pain(D−1) ≥ 3`; ohne Check-up am Vortag oder mit Vortag einer anderen Verletzung keine Anstiegsregel (N-16) | `true` (fester Hinweis O-12) |
   | `swelling_severe` | `swelling = 3` („stark“) | `true` (**derselbe** feste Hinweis wie bei hohem Schmerz) |
-  | `mood_low_streak` | D ist der 5. oder ein weiterer aufeinanderfolgender Kalendertag mit Check-up und `mood ≤ 2` (O-2a/O-2b) | `false` |
+  | `mood_low_streak` | D ist der 5. oder ein weiterer aufeinanderfolgender Kalendertag mit Check-up **derselben Verletzung** und `mood ≤ 2` (O-2a/O-2b, N-16) | `false` |
 
   Ein Check-up kann mehrere Warnzeichen auslösen (z. B. Schmerz 8 und Schwellung 3); `submit_daily_checkup` meldet `warning_raised = true`, sobald zu diesem Check-up mindestens eines mit `notify_patient = true` besteht.
-- **Stimmungs-Nachricht (C-3, N-10, O-2a/O-2b [entschieden]):** Regelart `mood_streak` mit `mood_max = 2` und `days = 5`. Kette = aufeinanderfolgende Kalendertage (`local_day`), an denen ein Check-up mit `mood ≤ 2` vorliegt; ein Tag ohne Check-up oder mit `mood ≥ 3` unterbricht. Am 5. Tag der Kette entsteht ein Warnzeichen, **an jedem weiteren Tag der Kette erneut eines** (Tag 6, 7, …).
+- **Stimmungs-Nachricht (C-3, N-10, O-2a/O-2b [entschieden]):** Regelart `mood_streak` mit `mood_max = 2` und `days = 5`. Kette = aufeinanderfolgende Kalendertage (`local_day`), an denen ein Check-up mit `mood ≤ 2` vorliegt; ein Tag ohne Check-up oder mit `mood ≥ 3` unterbricht.
+- **Zählweise je Verletzung (N-16):** Kette und Vortag werden nur über Check-ups mit derselben `injury_id` gebildet (`injury_id` des Check-ups = aktive Verletzung beim Eingang, B-32). Mit einer neuen Verletzung beginnt die Zählung neu; ein Check-up einer anderen Verletzung zählt weder als Vortag noch als Kettenglied. Am 5. Tag der Kette entsteht ein Warnzeichen, **an jedem weiteren Tag der Kette erneut eines** (Tag 6, 7, …).
 - **Reihenfolgeunabhängig (MINOR-5):** Warnzeichen aus dem Check-up gehören zu einem Tag (`warning_signs.local_day`, Unique je `patient_id`, `reason_code`, `local_day`). Beim Eingang des Check-ups für Tag X wertet der Trigger aus:
   - alle Tagesregeln für X;
   - `pain_rise` zusätzlich für X+1, falls dessen Check-up schon vorliegt (der Vortag kam verspätet);
-  - `mood_low_streak` für X und für die schon vorliegenden Folgetage X+1, X+2, … der zusammenhängenden Kette.
-  Fehlende Warnzeichen werden angelegt (`ON CONFLICT DO NOTHING`), vorhandene nie gelöscht. Ergebnis: Die Menge der Warnzeichen hängt nur von den Check-up-Daten ab, nicht von der Eingangsreihenfolge. Ein verspätet eingegangener Check-up kann deshalb ein Warnzeichen für einen späteren, schon gemeldeten Tag nachträglich erzeugen. Das ist gewollt (der Physio erfährt den Sachverhalt, nur später) und bleibt selten, weil die Warteschlange je Gerät streng in Einfügereihenfolge sendet (FIFO, 8.11). Ein nachträgliches Warnzeichen mit `notify_patient = true` erreicht den Patienten nicht mehr als Hinweis; es steht beim Physio wie jedes andere.
+  - `mood_low_streak` für X und für die schon vorliegenden Folgetage X+1, X+2, … der zusammenhängenden Kette (jeweils nur derselben Verletzung).
+  Fehlende Warnzeichen werden angelegt (`ON CONFLICT DO NOTHING`), vorhandene nie gelöscht. Ergebnis: Die Menge der Warnzeichen hängt nur von den Check-up-Daten ab, nicht von der Eingangsreihenfolge. Ein verspätet eingegangener Check-up kann deshalb ein Warnzeichen für einen späteren, schon gemeldeten Tag nachträglich erzeugen. Das ist gewollt (der Physio erfährt den Sachverhalt, nur später; vom Nutzer bestätigt, N-16) und bleibt selten, weil die Warteschlange je Gerät streng in Einfügereihenfolge sendet (FIFO, 8.11). Ein nachträgliches Warnzeichen mit `notify_patient = true` erreicht den Patienten nicht mehr als Hinweis; es steht beim Physio wie jedes andere.
   - Ergebnis: `warning_signs` mit `source = 'checkup'`, `reason_code = 'mood_low_streak'`, ohne weitere Details, `notify_patient = false`.
   - Gegenüber dem Patienten **keine** Reaktion: `submit_daily_checkup` meldet sie nicht (DB-T58), Manny reagiert nicht (V2-57), kein Hinweis, keine Ansicht.
   - Beim Physio: Markierung in der Liste (PB-A AK 1) und in der Kachel „Befinden, Motivation, Warnzeichen“ (PB-B AK 4).
+- **Eine gemeinsame Meldung je Eingang (N-16):** Schließt ein verspäteter Check-up eine Lücke, können mehrere `mood_low_streak`-Warnzeichen auf einmal entstehen (z. B. Tag 5 kommt nach den Tagen 6 und 7 an → Warnzeichen für 5, 6 und 7). Es bleibt **je Tag ein Warnzeichen** (Unique je Tag, Reihenfolgeunabhängigkeit unverändert). Entstehung der gemeinsamen Meldung:
+  - **Trigger** (`app.raise_warning_signs`, L5): setzt an allen in diesem Eingang angelegten Warnzeichen `trigger_checkup_id = NEW.id`.
+  - **Ansicht** (Physio-Liste L6 und `v_wellbeing_overview`/Kachel 2 L7): `mood_low_streak`-Warnzeichen mit gleicher `trigger_checkup_id` werden zu **einer** Meldung zusammengefasst (betroffene Tage im Detail); Marker und Zählung „neu“ zählen diese Meldung einmal. `mark_warnings_seen` setzt `seen_at` weiter je Warnzeichen. Es gibt in Ausschnitt 2 keine weitere Benachrichtigung (kein Push), die Meldung ist der Marker bzw. der Eintrag.
+  - Test: DB-T84.
   - Ein Hilfsangebot-Hinweis an den Patienten (Anregung aus der App-Experience-Prüfung) ist **nicht** Teil des Plans (O-21).
-- Tests: DB-T25, DB-T27, DB-T41 (angepasst), DB-T55–DB-T58, DB-T60, DB-T75, DB-T77, DB-T82.
+- Tests: DB-T25, DB-T27, DB-T41 (angepasst), DB-T55–DB-T58, DB-T60, DB-T75, DB-T77, DB-T82, DB-T83, DB-T84.
 
 ### 6.10 Fragen des Patienten und Notizen (PB-C, PB-D)
 
-- `patient_questions`: Patient stellt über `ask_physio`; sieht eigene Fragen mit Status; Physio der Praxis liest und markiert „besprochen“ (auch zurücknehmbar, Annahme). Kein Chat: keine Antworten, keine Verbindung zu Chat-Tabellen; nicht im Manny-Kontext und nicht im Physio-KI-Briefing (Annahme, KI-Plan v2.4).
+- `patient_questions`: Patient stellt über `ask_physio`; sieht eigene Fragen mit Status; Physio der Praxis liest und markiert „besprochen“ (auch zurücknehmbar, Annahme). Kein Chat: keine Antworten, keine Verbindung zu Chat-Tabellen; nicht im Manny-Kontext und nicht im Physio-KI-Briefing (Annahme, KI-Plan v2.5).
 - `practice_notes`: nur Physios der Praxis, mit Autor und Datum; **keine Patienten-Policy**, auch nicht über Sichten (DB-T50). Bearbeiten/Löschen nicht vorgesehen (O-26).
 - Löschen (O-9): Fragen sind Patientendaten → werden gelöscht; Notizen sind Einträge des Physios → bleiben bei der Praxis.
 
@@ -494,7 +510,7 @@ Unverändert: stabile IDs, Upsert nach ID, nur Entferntes löschen, Version prü
 - **Felder:** 6.2 `exercises`; Pflicht Name und Beschreibung (Constraint + Formularprüfung mit Feldnennung, P-3 AK 2). Praxisweit wiederverwendbar (B-13).
 - **Bilder:** Bucket `exercise-images` (privat). Pfad `<practice_id>/<exercise_id>/<image_id>.<ext>`; Formate und Größe über Bucket-Einstellungen (`allowed_mime_types`, `file_size_limit`, **[Vorschlag] JPEG/PNG/WebP, 5 MB; O-24**). Policies auf `storage.objects`:
   - INSERT/DELETE: Physio, erstes Pfadsegment = eigene Praxis, Übung gehört der Praxis;
-  - SELECT: Physio derselben Praxis; Patient nur, wenn `app.patient_can_see_exercise(exercise_id)` (Übung in einer Position seines aktuellen Plans, ohne Datumsbezug, 6.7);
+  - SELECT: Physio derselben Praxis; Patient nur, wenn `app.patient_can_see_exercise(exercise_id)` (Übung in einer Position seines aktuellen Plans, aktiv oder vorbereitet, ohne Datumsbezug, 6.7; vom Nutzer bestätigt, N-16);
   - `anon`: nichts. Abruf per Download mit Sitzung, keine öffentlichen URLs.
   - Katalog-Bilder: CuraOne hat keine; Anzeige = neutrale Illustration (RF-1, Brief 12). KI-Bilder erst Ausschnitt 3 (KI-Plan).
 - **„Damit anfangen“ (PB-6):** Ja → `release = active`; Nein → `prepared` mit Datum oder Phase (6.7).
@@ -507,14 +523,14 @@ Alle `security_invoker = true`, nur über Tabellen, die der Physio ohnehin lesen
 - `v_training_since_last_appointment` – Trainingstage (≥ 1 erledigte Übung) / Tage seit letztem Termin, letzter gemeldeter `streak_after`, übersprungene Übungen mit Grund. „Letzter Termin“ = letzter vergangener Termin aus `appointments` mit `created_by_role = physio`; ohne → seit `bound_at` (Annahme O-30).
 - `v_exercise_feedback` – je Übung Anzahl leicht/passend/schwer/Schmerz und „Gewicht erhöht“.
 - `v_pain_trend` – Schmerz je Tag, 30 Tage.
-- `v_wellbeing_overview` – letzte Werte Wohlbefinden, Motivation, Stimmung, Einschränkungs-Stufe, **Schwellung** (O-18, Kachel 2); offene Warnzeichen zuerst (inkl. `swelling_severe`, `pain_rise`).
-- **Kachel 6 „Phase und nächstes Ziel“ (MINOR-7):** keine eigene Sicht; Datenquelle ist der Plan der aktiven Verletzung, den der Physio ohnehin lädt (`plans.current_phase_id`, `phases.title`, `phases.planned_weeks`, `phases.position`, „Woche N“ aus `injuries.reference_date`). „Nächstes Ziel“ = Titel der nächsten Phase nach Position; in der letzten Phase „letzte Phase“ (Annahme B-34, Rückfrage O-42). Reine Funktion `phase_summary` in `lib/logic/` (U-Test).
+- `v_wellbeing_overview` – letzte Werte Wohlbefinden, Motivation, Stimmung, Einschränkungs-Stufe, **Schwellung** (O-18, Kachel 2); offene Warnzeichen zuerst (inkl. `swelling_severe`, `pain_rise`); `mood_low_streak` je `trigger_checkup_id` zu einer Meldung zusammengefasst (6.9, N-16).
+- **Kachel 6 „Phase und nächstes Ziel“ (MINOR-7):** keine eigene Sicht; Datenquelle ist der Plan der aktiven Verletzung, den der Physio ohnehin lädt (`plans.current_phase_id`, `phases.title`, `phases.planned_weeks`, `phases.position`, „Woche N“ aus `injuries.reference_date`). „Nächstes Ziel“ = Titel der nächsten Phase nach Position (O-42 entschieden, N-16); in der letzten Phase **[Vorschlag]** „letzte Phase“ (Wortlaut F2-D2 D). Reine Funktion `phase_summary` in `lib/logic/` (U-Test).
 - `v_injury_history` – 6.8.
 - Tests: DB-T72 (alle Sichten `security_invoker`), DB-T06/DB-T08 erweitert um Sichten.
 
 ### 6.13 Löschen (O-9, M-4; erweitert)
 
-`delete_my_data()` wie v1.2 (Aufrufer prüfen, `FOR UPDATE`, Löschen solange `active`, Auth-Konto löschen, `already_deleted` idempotent). **Löschumfang erweitert:** `training_sessions`, `exercise_results`, `session_checkups` (+ Positionen), `daily_checkups`, `warning_signs` des Patienten, `patient_questions`, eigene `appointments`, `consents`, `account_events`. **Bleibt bei der Praxis:** Patientenzeile (Stammdaten), Verletzungen, Pläne, Behandler, Krankengeschichte, Physio-Termine, `practice_notes`, Übungen und Bilder. DB-T29, DB-T43, DB-T71.
+`delete_my_data()` wie v1.2 (Aufrufer prüfen, `FOR UPDATE`, Löschen solange `active`, Auth-Konto löschen, `already_deleted` idempotent). **Löschumfang erweitert:** `training_sessions`, `exercise_results`, `session_checkups` (+ Positionen), `daily_checkups`, `warning_signs` des Patienten, `patient_questions`, eigene `appointments`, `consents`, `account_events`. Außerdem wird `patients.manny_look` auf `null` gesetzt (Einstellung des Patienten, O-41). **Bleibt bei der Praxis:** Patientenzeile (Stammdaten), Verletzungen, Pläne, Behandler, Krankengeschichte, Physio-Termine, `practice_notes`, Übungen und Bilder. DB-T29, DB-T43, DB-T71, DB-T85.
 
 ### 6.14 Pflichtliste je neuer Tabelle mit Patientendaten
 
@@ -538,14 +554,15 @@ Unverändert (E-Mail + Passwort, keine Selbstregistrierung, Zustände Laden/fals
 
 ### 7.2 Patient (A-1)
 Ablauf unverändert aus v1.2 5.2 (Startbildschirm mit Code, anonyme Anmeldung, `redeem_invitation`, Ergebniscodes, `ok_rebound`-Hinweis, altes Gerät nach Neubindung, B-11).
-**Einwilligung `physio_sharing-2` (neu wegen C-1–C-3, PB-B, PB-D):** nennt ausdrücklich, dass der Physio Verlauf, erledigte und übersprungene Übungen mit Grund, die Check-ups (einschließlich **Schwellung** und **Stimmung**), die Fragen an den Physio und Warnzeichen sieht – auch Warnzeichen aus dem Manny-Chat einschließlich Hinweisen auf eine Krise (nur Stufe und Zeitpunkt, ohne Chattext, N-2) und eine Meldung, wenn die Stimmung an **5 aufeinanderfolgenden Tagen mit Check-up sehr schlecht** (Smiley 1 oder 2) war, und **an jedem weiteren solchen Tag erneut** (ohne Details; ein Tag ohne Check-up beendet die Zählung; die App zeigt dem Patienten dazu nichts an; C-3, O-2a/O-2b) – und dass er den Manny-Chat selbst nie sieht. Wortlaut F2-D2 A/Nutzer.
+**Einwilligung `physio_sharing-2` (neu wegen C-1–C-3, PB-B, PB-D):** nennt ausdrücklich, dass der Physio Verlauf, erledigte und übersprungene Übungen mit Grund, die Check-ups (einschließlich **Schwellung** und **Stimmung**), die Fragen an den Physio und Warnzeichen sieht – auch Warnzeichen aus dem Manny-Chat einschließlich Hinweisen auf eine Krise (nur Stufe und Zeitpunkt, ohne Chattext, N-2) und eine Meldung, wenn die Stimmung an **5 aufeinanderfolgenden Tagen mit Check-up sehr schlecht** (Smiley 1 oder 2) war, und **an jedem weiteren solchen Tag erneut** (ohne Details; ein Tag ohne Check-up beendet die Zählung, mit einer neuen Verletzung beginnt sie neu; die App zeigt dem Patienten dazu nichts an; C-3, O-2a/O-2b, N-16) – und dass er den Manny-Chat selbst nie sieht. Wortlaut F2-D2 A/Nutzer.
 
 ---
 
 ## 8. Patienten-App
 
 ### 8.1 Zustandsdokument und Migration (L3)
-Schema 1 → 2 entsteht schon in **L1** (Manny-Look, Onboarding 5 Schritte, 3.5). L3 ergänzt **Schema 3**: Abschnitt `account {patientId, boundAt}`; Schlüssel `curaone.framework.v1`, `curaone.outbox.v1`, `curaone.deletion.v1`, **neu** `curaone.display.v1` (L1), `curaone.session.v1` (L4), `curaone.checkup.v1` (L5, Wegklicken je Tag) in `kAllStorageKeys`. Migration 2 → 3: ohne `account` → Startbildschirm (außer Demo-Modus); `mannyLook` bleibt erhalten. Nach dem Einlösen startet der lokale Fortschritt neu (B-9), **der Manny-Look bleibt** (B-31). Der Code-Start enthält den Look-Schritt aus L1 (Lage F2-D2 Teil A, Annahme B-31: vor dem Code-Feld); wer schon aus L1 einen Look gewählt hat, wird nicht erneut gefragt. Fixtures `state_v2.json`, `state_v3.json`.
+Schema 1 → 2 entsteht schon in **L1** (Manny-Look, Onboarding 5 Schritte, 3.5). L3 ergänzt **Schema 3**: Abschnitt `account {patientId, boundAt}`; Schlüssel `curaone.framework.v1`, `curaone.outbox.v1`, `curaone.deletion.v1`, **neu** `curaone.display.v1` (L1), `curaone.session.v1` (L4), `curaone.checkup.v1` (L5, Wegklicken je Tag) in `kAllStorageKeys`. Migration 2 → 3: ohne `account` → Startbildschirm (außer Demo-Modus); `mannyLook` bleibt erhalten. Nach dem Einlösen startet der lokale Fortschritt neu (B-9), **der lokale Manny-Look bleibt**. Der Code-Start enthält den Look-Schritt aus L1 **vor dem Code-Feld** (O-43 entschieden; Einbettung F2-D2 Teil A); wer schon aus L1 einen Look gewählt hat, wird nicht erneut gefragt. Fixtures `state_v2.json`, `state_v3.json`.
+**Manny-Look und Konto (O-41, N-16):** Lokal bleibt die Quelle für die Anzeige. Vor der Bindung wird nichts gesendet. Nach `ok` (erste Bindung) stellt die App `manny_look_set` mit dem lokalen Wert in die Warteschlange. Nach `ok_rebound` (Neubindung auf einem anderen Gerät) gilt bis zur Klärung von O-44 Annahme B-36: Hat das Konto schon einen Wert, übernimmt das neue Gerät diesen lokal (Zweck von O-41: Look bleibt beim Gerätewechsel erhalten); ist er `null`, wird der lokale Wert übertragen. Jede spätere Änderung im Profil: lokal sofort, dann `manny_look_set`. Spätere Ladevorgänge überschreiben den lokalen Wert nicht.
 
 ### 8.2 Laden und Zwischenspeicher (L3)
 Unverändert: Laden bei Start, Fortsetzen und Öffnen von „Heute“ (P-3 AK 3); Fehler/offline → Zwischenspeicher mit „nicht aktuell“; ohne Zwischenspeicher Fehlerzustand mit „Nochmal versuchen“; `access_deleted`/gelöste Bindung → lokale Daten löschen, Startbildschirm. Das Framework enthält jetzt auch: Verletzung, Freischalt-Felder, Material, Ort, Pause, Bilder-Metadaten (ab L8), offene Fragen (ab L5), **Schmerzschwelle für die Kürzung** (E-28 = 6, ab L5; 8.7).
@@ -583,10 +600,10 @@ Regeln 1–11 aus v1.2 6.3 unverändert (Aufbau, IDs, Erledigt nur über `comple
 
 ### 8.6 Check-ups (Ablauf 4; L4/L5)
 - **Nach der Einheit (L4):** Pflicht „Wie lief’s?“ (`RatingScale`, 5 Emoji-Smileys mit Text-Label, N-11); „Details je Übung?“ optional (leicht/passend/schwer/Schmerz, „Gewicht erhöht“ ja/nein – Annahme B-18), bei übersprungenen „Warum übersprungen?“ (Zeit/Schmerz/Material fehlte/anderes). „Speichern“ erst nach Pflichtantwort; „Später“ lässt die Karte bis Tagesende auf Heute (Brief 12). Senden über die Warteschlange (`submit_session_checkup`).
-- **Tages-Check-up (L5):** `DailyCheckupCard` oben auf Heute, einmal pro Tag; **sechs** Fragen nacheinander (Wohlbefinden, Schmerz 0–10, Motivation, Einschränkungen als Einzelwert-Skala keine/leicht/deutlich/stark, Stimmung, **Schwellung 0–3**; Reihenfolge, Stufenbezeichnungen und „Frage N von 6“ laut Brief 7.2 mit Brief-Ergänzung F2-D2 Teil B); „Erledigt, danke!“; Wegklicken lokal bis zum nächsten Tag. Senden über die Warteschlange (`submit_daily_checkup`). Bei `warning_raised = true` (Schmerz ≥ 7, Anstieg ≥ 3 zum Vortag oder Schwellung 3) derselbe feste Hinweis (O-12, O-2; offline erst nach dem Senden). Stimmung: keine Reaktion (C-3).
+- **Tages-Check-up (L5):** `DailyCheckupCard` oben auf Heute, einmal pro Tag; **sechs** Fragen nacheinander (Wohlbefinden, Schmerz 0–10, Motivation, Einschränkungen als Einzelwert-Skala keine/leicht/deutlich/stark, Stimmung, **Schwellung 0–3**; Reihenfolge, Stufenbezeichnungen und „Frage N von 6“ laut Brief 7.2 mit Brief-Ergänzung F2-D2 Teil B); „Erledigt, danke!“; Wegklicken lokal bis zum nächsten Tag. Senden über die Warteschlange (`submit_daily_checkup`); auch Tage später gesendete Check-ups werden angenommen und ausgewertet (6.7 Nr. 3, 8.11). Bei `warning_raised = true` (Schmerz ≥ 7, Anstieg ≥ 3 zum Vortag oder Schwellung 3) derselbe feste Hinweis (O-12, O-2; offline erst nach dem Senden). Stimmung: keine Reaktion (C-3).
 
 ### 8.7 Kürzung bei Schmerz (Ablauf 4b Schritt 4, E-36; L5)
-- Ablauf 4b verlangt die Kürzungsregel E-36 schon ohne KI. Die deterministische Funktion `fallbackToday(phaseItems, timeChoice, pain)` (KI-Plan v2.4, 4.2.3) wird daher in L5 gebaut: ab **Schmerz ≥ 6** (E-28 [entschieden]) halbe Zeitwahl (mindestens 5 Minuten), leichtere Variante bevorzugt (nur falls E-30), sonst Kürzung der Sätze bzw. der Dauer je Satz (`max(1, abrunden(duration_sec / 2))` Sekunden, O-17 b) bzw. der Wiederholungen, Hinweis „Heute etwas kürzer“ (Brief 7.2; Wortlaut F2-D2 B/E-17).
+- Ablauf 4b verlangt die Kürzungsregel E-36 schon ohne KI. Die deterministische Funktion `fallbackToday(phaseItems, timeChoice, pain)` (KI-Plan v2.5, 4.2.3) wird daher in L5 gebaut: ab **Schmerz ≥ 6** (E-28 [entschieden]) halbe Zeitwahl (mindestens 5 Minuten), leichtere Variante bevorzugt (nur falls E-30), sonst Kürzung der Sätze bzw. der Dauer je Satz (`max(1, abrunden(duration_sec / 2))` Sekunden, O-17 b) bzw. der Wiederholungen, Hinweis „Heute etwas kürzer“ (Brief 7.2; Wortlaut F2-D2 B/E-17).
 - Schmerzwert = Schmerz aus dem heutigen Tages-Check-up; ohne Check-up keine Kürzung.
 - Die Schwelle E-28 (= 6) kommt mit dem Framework (8.2), damit die Kürzung auch offline wirkt und Server und App denselben Wert nutzen; sie ist kein Geheimnis. Die Warnzeichen-Schwellen (O-2) bleiben serverseitig.
 - Änderung gegenüber KI-Plan v2.2 4.2.3 („Ausschnitt 2 kennt keine Schmerzkürzung“): durch den freigegebenen Ablauf 4b überholt; im KI-Plan v2.3/v2.4 nachgezogen.
@@ -599,10 +616,10 @@ Profil-Zeile „Frage an meinen Physio“ mit Zahl offener Fragen; Eingabe (Län
 Profil-Zeile „Mein Plan und meine Verletzung“: Verletzung, Phase, Plan-Überblick, Behandler, Termine (eigene anlegen/ändern/löschen), Krankengeschichte (lesend). Physio-Einträge nur lesen (DB-T15). Dokumente später (O-5).
 
 ### 8.10 „Alles löschen“ mit Backend (O-9, M-4; L3)
-Reihenfolge unverändert (Sperre, `OutboxSender.pauseAndDrain()`, Merkzeichen, `delete_my_data()`, lokal verwerfen inkl. Session-Zustand und Darstellung, Abmelden). E-24 bleibt Annahme/offen.
+Reihenfolge unverändert (Sperre, `OutboxSender.pauseAndDrain()`, Merkzeichen, `delete_my_data()` – setzt auch `patients.manny_look` auf `null` –, lokal verwerfen inkl. Session-Zustand, Darstellung, zurückgestellter Warteschlangen-Einträge und Manny-Look (Vorbelegung „Mit Brille“, 3.5), Abmelden). E-24 bleibt Annahme/offen.
 
 ### 8.11 Ausgangswarteschlange (m-4)
-**Reihenfolge:** je Gerät strikt in Einfügereihenfolge (FIFO); ein Eintrag mit dauerhaftem Fehler wird verworfen und blockiert die folgenden nicht (MINOR-5, 6.9). Arten: `training_session_upsert` (Start/Ende einer Session, mit `plan_id`), `exercise_result_insert`, `exercise_result_delete`, `session_checkup_submit`, `daily_checkup_submit`, `question_submit`, `appointment_upsert`, `appointment_delete`. Fehlerklassen unverändert (Netz/5xx später; 401 erst Sitzung erneuern; `23505` Erfolg; `42501` dauerhaft; andere 4xx dauerhaft; **neu:** `already_submitted` beim Tages-Check-up = Erfolg).
+**Reihenfolge:** je Gerät strikt in Einfügereihenfolge (FIFO); ein Eintrag mit dauerhaftem Fehler wird verworfen und blockiert die folgenden nicht (MINOR-5, 6.9). Arten: `training_session_upsert` (Start/Ende einer Session, mit `plan_id`), `exercise_result_insert`, `exercise_result_delete`, `session_checkup_submit`, `daily_checkup_submit`, `question_submit`, `appointment_upsert`, `appointment_delete`, **neu** `manny_look_set` (L3, O-41). Fehlerklassen unverändert (Netz/5xx später; 401 erst Sitzung erneuern; `23505` Erfolg; `42501` dauerhaft; andere 4xx dauerhaft; **neu:** `already_submitted` beim Tages-Check-up = Erfolg). **Neu (MAJOR-B):** `invalid_local_day` ist **nicht** dauerhaft: Der Eintrag wird zurückgestellt (bleibt in `curaone.outbox.v1`, blockiert die folgenden nicht, neuer Versuch bei jedem Start und jeder neuen Verbindung) und erst bei Erfolg oder durch „Alles löschen“ entfernt. Ein Check-up geht so nie still verloren (Annahme B-35).
 
 ### 8.12 Demo-Modus (O-14) und Manny ohne KI
 Nur Prüfumgebung und `--dart-define=CURAONE_DEMO=true`: Onboarding und Beispielpfad aus Ausschnitt 1 im neuen Look (B-20). Manny-Texte ohne KI bleiben (feste Texte); Manny in der gewählten Variante (3.5); `MannyContext` aus dem Framework; Manny reagiert nicht auf Stimmung (V2-57), nur auf Schmerz melden (Trösten = Pose `traurig`, Ergänzung 1, 6.3).
@@ -615,7 +632,7 @@ Nur Prüfumgebung und `--dart-define=CURAONE_DEMO=true`: Onboarding und Beispiel
 |---|---|---|---|
 | Anmeldung, Konto | 6 | E-Mail, Passwort, Anmelden; Konto: Name, Praxis, Abmelden | leer, Laden, falsche Daten, offline, Sitzung abgelaufen, kein Physio-Konto |
 | Shell | 6 | 4 Ziele; Leiste < 840 dp, Seitenleiste ≥ 840 dp | – |
-| Patientenliste (PB-A) | 6 | Reiter „Meine Patienten“ (`main_physio_id = ich`) / „Praxis“ (alle, N-4); Suche nach Name (Vor- und Nachname, ohne Groß-/Kleinschreibung, im geladenen Bestand, B-29); Zeile: Initialen, Name, Verletzung · Phase, letzter Termin, Warnmarker (Symbol + Text) in beiden Reitern; „Neuer Patient“; Hauptphysio ändern | Laden, leer (je Reiter), keine Treffer, Fehler, mit Warnzeichen |
+| Patientenliste (PB-A) | 6 | Reiter „Meine Patienten“ (`main_physio_id = ich`) / „Praxis“ (alle, N-4); Suche nach Name (Vor- und Nachname, ohne Groß-/Kleinschreibung, im geladenen Bestand, B-29); Zeile: Initialen, Name, Verletzung · Phase, letzter Termin, Warnmarker (Symbol + Text) in beiden Reitern, Stimmungs-Warnzeichen eines Eingangs als eine Meldung (6.9, N-16); „Neuer Patient“; Hauptphysio ändern | Laden, leer (je Reiter), keine Treffer, Fehler, mit Warnzeichen |
 | Neuer Patient (PB-E) | 6 | 6.6 | Formular ungültig, Speichern, Fehler mit „Nochmal versuchen“, QR angezeigt, eingelöst, abgelaufen; „Neuen Code erzeugen“ mit Hinweis „bisheriges Gerät verliert den Zugang“ |
 | Plan (P-3) | 6 | Phasen anlegen/umbenennen/ordnen/löschen, geplante Wochen, aktuelle Phase; Positionen aus Katalog/Praxis mit Sätzen, Wdh., Dauer (mit Schätzung), Gewicht, Pause, Belastungshinweis, Phase, Freischaltung (aktiv/vorbereitet ab Datum/Phase); ordnen, entfernen; Speichern; Vorlage übernehmen beim Anlegen | Laden, leer, ungespeichert, Validierungsfehler mit Feldnennung, „aktuelle Phase fehlt“, Speichern, Konflikt, gespeichert, abgeschlossen (nur lesen) |
 | Akte (P-4) | 6 | Behandler, Termine, Krankengeschichte: anlegen, ändern, löschen; Patienten-Termine lesend | Laden, leer, Fehler, Speichern, Löschen bestätigen |
@@ -707,11 +724,11 @@ Jede Sicherheitsaussage hat genau einen Test. Spalte „L“ = Lieferung, in der
 | DB-T38 | 2+ | `definer_functions_search_path` | alle Definer-Funktionen inkl. neue |
 | DB-T39 | 2 | `set_current_phase_foreign_phase` | + Phase eines abgeschlossenen Plans → Fehler |
 | DB-T40 | 2 | `seed_idempotent_only_test_data` | Stack |
-| DB-T41 | 5 | `submit_daily_checkup_scope` | ersetzt `report_wellbeing_scope`: nur gebundener, aktiver Patient; `patient_id` aus der Sitzung; Wiederholung idempotent mit gleicher Antwort; Rückgabe nur `warning_raised` |
+| DB-T41 | 5 | `submit_daily_checkup_scope` | ersetzt `report_wellbeing_scope`: nur gebundener, aktiver Patient; `patient_id` aus der Sitzung; Wiederholung idempotent mit gleicher Antwort, **auch nachdem ein verspäteter Vortag ein `pain_rise` für diesen Tag erzeugt hat** (NEU-7, `trigger_checkup_id`); Rückgabe nur `warning_raised` |
 | DB-T42 | 2/3 | `active_patient_writes_and_undoes` | + `exercise_results` anlegen und löschen |
 | DB-T43 | 2+ | `delete_my_data_with_data` | mit Daten aller Patienten-Tabellen |
 | DB-T44 | 2 | `physio_maintains_record_invited_and_deleted` | unverändert |
-| DB-T45 | 2 | `seed_writes_without_binding` | unverändert |
+| DB-T45 | 2+ | `seed_writes_without_binding` | unverändert; **erweitert (MINOR-C):** `service_role` legt `training_sessions`, `exercise_results` und ab L5 `daily_checkups` ohne Patienten-JWT an, `injury_id` wird über die interne Variante korrekt gesetzt |
 | DB-T46 | 2 | `save_plan_foreign_ids` | unverändert |
 | DB-T47 | 2 | `redeem_attempts_cleanup` | unverändert |
 | DB-T48 | 6 | `main_physio_same_practice` | `set_main_physio` nur Physio derselben Praxis, Ziel derselben Praxis |
@@ -723,15 +740,15 @@ Jede Sicherheitsaussage hat genau einen Test. Spalte „L“ = Lieferung, in der
 | DB-T54 | 5 | `question_text_limits` | leer bzw. zu lang → Fehler (Wert O-34) |
 | DB-T55 | 5 | `daily_checkup_once_per_day` | zweite Meldung am selben Tag mit anderer ID → `already_submitted` |
 | DB-T56 | 5 | `daily_checkup_ranges` | Werte außerhalb der Skalen → Fehler (Schmerz 0–10, Wohlbefinden/Motivation/Stimmung 1–5, Schwellung 0–3); fehlender Wert → Fehler |
-| DB-T57 | 5 | `mood_streak_warning` | 5 aufeinanderfolgende Tage mit Check-up und `mood ≤ 2` → Warnzeichen `mood_low_streak` für Tag 5 ohne Details; Tag 6 und 7 in Folge → je ein weiteres; 4 Tage → keines; `mood = 3` → keines; Tag ohne Check-up unterbricht (Tage 1–4, Lücke, Tage 6–9 → keines); **Einfügen außer der Reihe** (Tag 3 zuletzt) → dieselbe Endmenge wie in Reihenfolge; Wiederholung derselben Check-up-ID → nichts zusätzlich (MINOR-5) |
+| DB-T57 | 5 | `mood_streak_warning` | 5 aufeinanderfolgende Tage mit Check-up und `mood ≤ 2` → Warnzeichen `mood_low_streak` für Tag 5 ohne Details; Tag 6 und 7 in Folge → je ein weiteres; 4 Tage → keines; `mood = 3` → keines; Tag ohne Check-up unterbricht (Tage 1–4, Lücke, Tage 6–9 → keines); **Einfügen außer der Reihe** (Tag 3 zuletzt) → dieselbe Endmenge wie in Reihenfolge; Wiederholung derselben Check-up-ID → nichts zusätzlich (MINOR-5); **je Verletzung (N-16):** Tage 1–4 bei Verletzung A, `start_new_injury`, Tage 5–6 bei Verletzung B → keines; Tage 1–5 bei B → Warnzeichen für Tag 5 von B |
 | DB-T58 | 5 | `mood_warning_not_reported_to_patient` | nur Stimmungs-Warnzeichen → `warning_raised = false`; Patient liest es nicht |
 | DB-T59 | 2 | `exercise_results_own` | Patient legt nur eigene an, löscht nur eigene; Physio liest |
 | DB-T60 | 4 | `session_checkup_scope` | nur eigener Patient; Wertelisten; `skip_reason` nur bei übersprungenen Positionen |
-| DB-T61 | 2+ | `injury_id_server_side` | Client-Wert immer überschrieben; `training_sessions` aus `plan_id` (fremder Plan → `42501`); Session des alten Tags mit altem `plan_id` **nach** `start_new_injury` → alte Verletzung; `exercise_results`/`session_checkups` = Verletzung ihrer Session; `daily_checkups`/`patient_questions` = aktive Verletzung (MINOR-4) |
+| DB-T61 | 2+ | `injury_id_server_side` | Client-Wert immer überschrieben; `training_sessions` aus `plan_id` (fremder Plan → `42501`); Session des alten Tags mit altem `plan_id` **nach** `start_new_injury` → alte Verletzung; `exercise_results`/`session_checkups` = Verletzung ihrer Session; `daily_checkups`/`patient_questions` = aktive Verletzung (MINOR-4); **`exercise_results`/`session_checkups` mit `training_session_id` eines anderen Patienten → `42501`, nichts geschrieben (MINOR-D)** |
 | DB-T62 | 7 | `new_injury_keeps_history` | `start_new_injury`: alte Verletzung geschlossen, neuer Plan, alte Daten behalten `injury_id`; `save_plan` auf altem Plan → `plan_closed` |
 | DB-T63 | 2 | `create_patient_from_template` | Vorlage kopiert mit neuen IDs, aktuelle Phase gesetzt; fremde Vorlage → `42501`; `reference_date` ohne Eingabe = übergebener `local_day`, außerhalb ±1 Tag → `invalid_local_day` |
 | DB-T64 | 2 | `create_patient_minimal` | Vorname + Verletzung oder Vorlage genügen; ohne beides bzw. leerer Vorname → Fehler; Hauptphysio = Aufrufer; Code einmalig |
-| DB-T64b | 2 | `create_patient_idempotent` | gleiche `id` mit gleichen Parametern erneut → kein zweiter Patient, alte Einladung widerrufen, neuer Code; gleiche `id` mit **anderen** Parametern → `idempotency_mismatch`, nichts geändert; fremde Praxis bzw. Status ≠ `invited` → `42501`; **zwei gleichzeitige Aufrufe** (zwei Verbindungen, `db/race/`) → genau ein Patient, genau eine offene Einladung, kein `23505` (MINOR-1) |
+| DB-T64b | 2 | `create_patient_idempotent` | gleiche `id` mit gleichen Parametern erneut → kein zweiter Patient, alte Einladung widerrufen, neuer Code; gleiche `id` mit **anderen** Parametern → `idempotency_mismatch`, nichts geändert; fremde Praxis bzw. Status ≠ `invited` → `42501`; **zwei gleichzeitige Aufrufe** (zwei Verbindungen, `db/race/`) → genau ein Patient, genau eine offene Einladung, kein `23505` (MINOR-1); **zwei Aufrufe nacheinander** → nur der Code der zweiten Antwort ist einlösbar, der erste → `invalid` (MINOR-F; App-Teil als W-Test in F2-7c, 6.6) |
 | DB-T65 | 2 | `plan_item_release` | Freischalt-Felder: genau eines bei `prepared`, Phase aus demselben Plan |
 | DB-T66 | 2 | `exercise_builder_fields` | Werte- und Ortsliste geprüft; praxisweit sichtbar, fremde Praxis nicht |
 | DB-T67 | 8 | `assign_exercise_all_or_nothing` | gültig → Position je Patient, Version +1; eine ungültige (fremde Praxis, fremde Phase, abgeschlossener Plan, `release_with_phase_id` aus anderem Plan, Freischalt-Felder unvollständig) → nichts geändert (MINOR-8) |
@@ -745,12 +762,15 @@ Jede Sicherheitsaussage hat genau einen Test. Spalte „L“ = Lieferung, in der
 | DB-T74 | 2 | `plan_closed_read_only` | abgeschlossener Plan: Patient liest, niemand schreibt über `save_plan`/`assign_exercise` |
 | DB-T75 | 5 | `limitations_scale` | `limitations` nur einer aus `none`/`mild`/`marked`/`severe`; Liste oder unbekannter Wert → Fehler (O-19) |
 | DB-T76 | 2 | `templates_practice_scope` | Physio liest Beispiele + eigene Vorlagen, schreibt nur eigene |
-| DB-T77 | 5 | `warning_rules_decided` | Schmerz 7 → `pain_high`, 6 → keines; Anstieg 3 zum Vortag → `pain_rise`, 2 → keines, ohne Vortags-Check-up → keines; Schwellung 3 → `swelling_severe`, 2 → keines; `notify_patient` = `true` für alle drei, `false` für `mood_low_streak`; `warning_raised` entsprechend; `warning_rules` hat keine Spalte `is_provisional` |
+| DB-T77 | 5 | `warning_rules_decided` | Schmerz 7 → `pain_high`, 6 → keines; Anstieg 3 zum Vortag → `pain_rise`, 2 → keines, ohne Vortags-Check-up → keines; Vortags-Check-up einer anderen Verletzung → kein `pain_rise` (N-16); Schwellung 3 → `swelling_severe`, 2 → keines; `notify_patient` = `true` für alle drei, `false` für `mood_low_streak`; `warning_raised` entsprechend; `warning_rules` hat keine Spalte `is_provisional` |
 | DB-T78 | 2 | `one_active_injury` | zweite aktive Verletzung → Constraint-Fehler |
 | DB-T79 | 7 | `views_aggregate_correct` | Kachel-Sichten liefern für Fixture-Daten die erwarteten Werte (Trainingstage, Verhältnis, Bewertungen, Schmerztrend, Schwellung, Einschränkungs-Stufe) |
-| DB-T80 | 2+ | `security_not_date_dependent` | Katalogprüfung: keine Policy (inkl. `storage.objects` im Stack) und keine in Policies verwendete Hilfsfunktion nutzt `current_date`, `now()`, `localtime`, `current_timestamp`; RPCs mit `local_day` lehnen Werte außerhalb ±1 Tag um das UTC-Datum ab (MAJOR-2) |
-| DB-T81 | 2 | `app_helpers_caller_checked` | `app.current_injury_id(p)`, `app.current_plan_id(p)`, `app.physio_can_see_patient(p)` liefern für fremde Patienten `null`/`false` (Physio fremder Praxis, anderer Patient, anonym); `config.toml` exponiert nur `public` (MINOR-9) |
+| DB-T80 | 2+ | `security_not_date_dependent` | Katalogprüfung: keine Policy (inkl. `storage.objects` im Stack) und keine in Policies verwendete Hilfsfunktion nutzt `current_date`, `now()`, `localtime`, `current_timestamp`; `start_new_injury` und `create_patient` lehnen `local_day` außerhalb ±1 Tag um das UTC-Datum ab (MAJOR-2); `submit_daily_checkup` lehnt nur Werte nach UTC-Datum + 1 oder vor Bindungstag − 1 ab (MAJOR-B, 6.7 Nr. 3) |
+| DB-T81 | 2 | `app_helpers_caller_checked` | `app.current_injury_id(p)`, `app.current_plan_id(p)`, `app.physio_can_see_patient(p)` liefern für fremde Patienten `null`/`false` (Physio fremder Praxis, anderer Patient, anonym); **gebundener Patient mit eigener ID → `physio_can_see_patient` = `false`**, `current_injury_id`/`current_plan_id` liefern ihm seine Werte; als Patient scheitern die Physio-Wege (`practice_notes` lesen, UPDATE `patients.first_name`, `injuries.label`, Schreiben in `treaters`/`history_entries`, `invitations` lesen: 0 Zeilen bzw. `permission denied`) (MAJOR-A); `app.active_injury_id_internal` für `authenticated`/`anon` nicht ausführbar (MINOR-C); `config.toml` exponiert nur `public` (MINOR-9) |
 | DB-T82 | 5 | `checkup_warnings_order_independent` | Fixture-Folgen (Schmerz-Anstieg, Stimmungskette) in Reihenfolge und vertauscht eingefügt → gleiche Menge `(reason_code, local_day)`; verspäteter Vortag erzeugt `pain_rise` für den Folgetag (MINOR-5) |
+| DB-T83 | 5 | `late_checkup_accepted` | Server-Uhr auf Tag D+3: Check-up mit `local_day = D` (nach dem Bindungstag) → angenommen, `pain_high` für D entsteht, Stimmungskette und Anstiegsregel für D und die vorhandenen Folgetage ausgewertet; `local_day` = UTC-Datum + 2 bzw. vor Bindungstag − 1 → `invalid_local_day` (MAJOR-B) |
+| DB-T84 | 5/7 | `mood_warnings_one_notification` | Check-ups Tage 1–4 und 6–7 mit `mood ≤ 2`, danach Tag 5 → drei `mood_low_streak` (Tage 5, 6, 7) mit derselben `trigger_checkup_id`; `v_wellbeing_overview` (L7) liefert dafür **eine** Meldung mit drei Tagen; in Reihenfolge eingefügt → drei Meldungen (N-16) |
+| DB-T85 | 2 | `manny_look_patient_only` | `set_manny_look` setzt nur die eigene Zeile; ungültiger Wert → Fehler; direktes UPDATE auf `patients.manny_look` → `permission denied`; Physio und anonyme/ungebundene Sitzung → `42501`; Status ≠ `active` → `42501`; `delete_my_data` → `manny_look` = `null` (O-41) |
 
 Gegen lokales Postgres 16 mit Nachbildung (hier ausführbar, `/usr/lib/postgresql/16`): alle außer DB-T40, DB-T68 und dem Storage-Teil von DB-T80. **Zusätzlich gegen den echten Stack in L9:** DB-T01, DB-T11, DB-T12, DB-T33, DB-T37, DB-T40, DB-T45, DB-T68, DB-T80 (Storage-Teil), DB-T81 (exponierte Schemas).
 
@@ -758,7 +778,7 @@ Gegen lokales Postgres 16 mit Nachbildung (hier ausführbar, `/usr/lib/postgresq
 
 | Ebene | Inhalt |
 |---|---|
-| U | `world_time` (V2-6), `manny_occasions` (V2-70), Migration 1 → 2 (Manny-Look, Onboarding-Schritt), `invite_code`, `exercise_duration` (alle Zweige, `duration_sec`, Pause des Physios/60 s, O-17), `plan_today` (Füllregel, `isReleased` mit Fixtures Mitternacht/Zeitzone 6.7, Tausch-Kandidaten), `phase_summary` (Kachel 6), `path_from_phases` (inkl. Unit-Erledigung nach T-5), `outbox` (alle Arten, Fehlerklassen, `pauseAndDrain`), `plan_validation`, `session_machine` (alle Übergänge, Pause, Hintergrund, Mitternacht, Überspringen, Beenden, Schmerz mit/ohne Variante; feste Uhr), `packing_list`, `checkup` (Karte heute offen/erledigt/weggeklickt), `fallback_today` (Kürzung ab Schmerz 6, Dauer-Zweig in Sekunden, Fixtures gemeinsam mit KI-Plan), Migration 2 → 3 |
+| U | `world_time` (V2-6), `manny_occasions` (V2-70), Migration 1 → 2 (Manny-Look, Onboarding-Schritt), `invite_code`, `exercise_duration` (alle Zweige, `duration_sec`, Pause des Physios/60 s, O-17), `plan_today` (Füllregel, `isReleased` mit Fixtures Mitternacht/Zeitzone 6.7, Tausch-Kandidaten), `phase_summary` (Kachel 6), `path_from_phases` (inkl. Unit-Erledigung nach T-5), `outbox` (alle Arten inkl. `manny_look_set`, Fehlerklassen, `pauseAndDrain`, `invalid_local_day` zurückgestellt statt verworfen, „Check-up 3 Tage verspätet“), `plan_validation`, `session_machine` (alle Übergänge, Pause, Hintergrund, Mitternacht, Überspringen, Beenden, Schmerz mit/ohne Variante; feste Uhr), `packing_list`, `checkup` (Karte heute offen/erledigt/weggeklickt), `fallback_today` (Kürzung ab Schmerz 6, Dauer-Zweig in Sekunden, Fixtures gemeinsam mit KI-Plan), Migration 2 → 3, Manny-Look-Abgleich bei Bindung (`ok`: lokaler Wert gesendet; `ok_rebound` mit Konto-Wert: übernommen, B-36) |
 | W | je Lieferung alle Screens und Zustände aus 3, 8, 9; Ansagen (Semantik), ohne Gesten bedienbar, Leisten-Sichtbarkeit, Blur-Zähler, Transparenz reduzieren |
 | C | Regeln 1–16 + Grenze Patient/Physio, `supabase_flutter` nur `lib/backend/**`, keine Schlüsselmuster, keine Chat-Begriffe in `lib/physio/**`, Text-nicht-auf-Welt, Mandarine nie als Text, Blur nur in drei Bausteinen |
 | M | Matrix für alle Szenarien (Patient und Physio), Physio zusätzlich 1024×768 und 1280×800 („ohne Scrollen“ für Kacheln) |
@@ -835,15 +855,15 @@ Prüfkürzel: U Unit, W Widget, C statisch, M Matrix, G Golden, S Screenshots, N
 | PB-A AK 1 Reiter Meine/Praxis, Warnmarker in beiden | 6 | 9 | W, DB-T07, DB-T49 |
 | PB-A AK 2 Suche nach Name | 6 | 9 | U (Filter), W |
 | PB-A AK 3 Hauptphysio = Anleger, änderbar | 6 | 6.6, 6.4 | DB-T48, DB-T64, W |
-| PB-B AK 1 Kacheln 2–8, Rechner ohne Scrollen, Handy eine Spalte (Kachel 6 aus dem Plan, B-34) | 7 | 9, 6.12 | W, M (1280×800), G, U `phase_summary` |
+| PB-B AK 1 Kacheln 2–8, Rechner ohne Scrollen, Handy eine Spalte (Kachel 6 aus dem Plan, O-42 entschieden) | 7 | 9, 6.12 | W, M (1280×800), G, U `phase_summary` |
 | PB-B AK 2 Tipp öffnet Detail (Schmerz 30 Tage, Übungen je Bewertung) | 7 | 6.12, 9 | W, DB-T79 |
 | PB-B AK 3 Training seit letztem Termin: Verhältnis, Streak, übersprungene mit Grund | 7 | 6.12 | DB-T79, W – Streak vom Gerät (B-25) |
-| PB-B AK 4 Warnzeichen zuerst, Stimmungs-Nachricht dort | 7 | 6.9, 6.12 | W, DB-T57 |
+| PB-B AK 4 Warnzeichen zuerst, Stimmungs-Nachricht dort (eine Meldung je Eingang, N-16) | 7 | 6.9, 6.12 | W, DB-T57, DB-T84 |
 | PB-B AK 5 Manny-Chat nirgends | alle | 4, 6.12 | C, DB-T72; Ausschnitt 3 DB-K01/K12 |
 | PB-C AK Notiz für Praxis, Autor, Datum, Patient sieht nicht | 7 | 6.10 | DB-T50, DB-T51, W |
 | PB-D AK 1 „Frage an meinen Physio“ → Kachel | 5/7 | 8.8, 6.10 | DB-T52, W |
 | PB-D AK 2 „besprochen“, Patient sieht Status, kein Chat | 7 | 6.10 | DB-T53, W |
-| PB-E AK 1 / PB-8 Vorname + Verletzung/Vorlage → QR, Link, Teilen, < 30 s | 6 | 6.6 | DB-T63, DB-T64, DB-T64b, W, N (Ablaufprüfung), G |
+| PB-E AK 1 / PB-8 Vorname + Verletzung/Vorlage → QR, Link, Teilen, < 30 s | 6 | 6.6 | DB-T63, DB-T64, DB-T64b, W (inkl. Wiederholung, MINOR-F), N (Ablaufprüfung), G |
 | PB-E AK 2 nach Einlösen direkt im Plan, Vorlage gefüllt | 3/6 | 6.6, 7.2 | DB-T63, W, E2E |
 | PB-F AK 1 Pflicht Name/Beschreibung, optionale Felder, Bilder | 8 | 6.11 | DB-T18, DB-T66, DB-T68, W |
 | PB-F AK 2 Zuweisung an mehrere Patienten mit Phase | 8 | 6.11 | DB-T67, W |
@@ -897,7 +917,7 @@ Prüfkürzel: U Unit, W Widget, C statisch, M Matrix, G Golden, S Screenshots, N
 | V2-63 | Neuer Patient in 30 s | L6 | W, N, G | – |
 | V2-64 | Texte Deutsch, „du“, Beispieldaten gekennzeichnet | L1 | C, Review | alle |
 
-### 13.5 Nutzerentscheidungen N-14 und N-15
+### 13.5 Nutzerentscheidungen N-14, N-15 und N-16
 
 | Entscheidung | Umsetzung | L | Prüfung |
 |---|---|---|---|
@@ -910,8 +930,15 @@ Prüfkürzel: U Unit, W Widget, C statisch, M Matrix, G Golden, S Screenshots, N
 | N-15 Manny finale Grafiken, zwei Varianten | 3.5, 5 | 1 | V2-56 (ersetzt), V2-69–V2-73 |
 | N-15 Wahl im Onboarding | 3.5, 3.2 (F2-R4), 8.1 (Code-Start) | 1/3 | V2-65–V2-67, V2-75 |
 | N-15 Wechsel im Profil jederzeit | 3.4, 3.5 (F2-R3) | 1 | V2-68 |
-| N-15 lokal gespeichert, Bestandsnutzer „Mit Brille“, Zurücksetzen bei „Alles löschen“ | 3.5, 8.1 | 1/3 | U Migration 1 → 2 und 2 → 3, W (Löschen) |
+| N-15 lokal gespeichert (Quelle der Anzeige), Bestandsnutzer „Mit Brille“, Zurücksetzen bei „Alles löschen“ | 3.5, 8.1 | 1/3 | U Migration 1 → 2 und 2 → 3, W (Löschen) |
 | N-15 Rechte beim Nutzer, kein Platzhalter | 3.5 | 1 | C (kein „Platzhalter“) |
+| N-16 O-41 Manny-Look zusätzlich im Konto, Schreiben nur durch den Patienten, Warteschlange, Übertragung bei Bindung, „Alles löschen“ | 3.5, 6.2, 6.4, 6.13, 8.1, 8.10, 8.11 | 2/3 | DB-T85, DB-T29, U `outbox` und Abgleich bei Bindung, W |
+| N-16 O-42 „nächstes Ziel“ = Titel der nächsten Phase | 6.12 | 7 | U `phase_summary`, W |
+| N-16 O-43 Look-Schritt vor dem Code-Feld | 3.7 Teil A, 8.1 | 3 | W, N |
+| N-16 nachträgliche Warnzeichen gewollt (R2-24) | 6.9 | 5 | DB-T82, DB-T83 |
+| N-16 Vorschau vorbereiteter Übungen (Policy bestätigt) | 6.7 Nr. 2, 6.11 | 2/8 | DB-T68, DB-T68a |
+| N-16 Zählweise je Verletzung | 6.9, 7.2 | 5 | DB-T57, DB-T77 |
+| N-16 eine gemeinsame Meldung je Eingang | 6.9, 6.12, 9 | 5/6/7 | DB-T84, W (Liste, Kachel 2) |
 
 ---
 
@@ -919,7 +946,7 @@ Prüfkürzel: U Unit, W Widget, C statisch, M Matrix, G Golden, S Screenshots, N
 
 Spalte „blockiert“: welche Lieferung ohne Entscheidung nicht abgeschlossen werden kann; „–“ = Annahme genügt.
 
-**Entschieden und eingearbeitet (N-14, nicht mehr offen):** O-2, O-2a, O-2b, E-28, O-17, O-18, O-19 – Werte in Abschnitt 0, Umsetzung 13.5. **N-15 Manny:** Rechtefrage für Manny erledigt; offen bleibt sie nur für die 3D-Objekte (Brief v2, 13.1).
+**Entschieden und eingearbeitet (N-14, nicht mehr offen):** O-2, O-2a, O-2b, E-28, O-17, O-18, O-19 – Werte in Abschnitt 0, Umsetzung 13.5. **N-15 Manny:** Rechtefrage für Manny erledigt; offen bleibt sie nur für die 3D-Objekte (Brief v2, 13.1). **N-16 (entschieden, 2026-10-14):** O-41 (Manny-Look zusätzlich im Konto), O-42 (nächstes Ziel = Titel der nächsten Phase), O-43 (Look-Schritt vor dem Code-Feld) – Umsetzung 13.5.
 
 | Nr. | Frage | Auswirkung | blockiert | Annahme bis Klärung |
 |---|---|---|---|---|
@@ -951,9 +978,7 @@ Spalte „blockiert“: welche Lieferung ohne Entscheidung nicht abgeschlossen w
 | O-38b | Bilder vor dem Upload neu kodieren (Metadaten wie Standort entfernen)? | Datenschutz Bilder (nur Testdaten) | – | nein im Prototyp; Risiko R2-19 |
 | O-39 | „direkt in seinem Plan“ (PB-E AK 2) – Einwilligung bleibt davor? | Ablauf nach Einlösen | – | ja, Einwilligung bleibt Pflicht (A-1 AK 3) |
 | O-40 | Auftrag nennt „FORCE RLS“; freigegeben ist RLS ohne `FORCE` (M-1) | Sicherheitsmodell | – | freigegebene Entscheidung bleibt |
-| O-41 **neu** | Manny-Look auch im Backend speichern (z. B. für Neubindung auf neuem Gerät)? | bräuchte neue Spalte und ein UPDATE-Recht des Patienten (Änderung der Sicherheitsregeln) | – | nein, nur lokal (B-31) |
-| O-42 **neu** | Kachel 6 „Phase und nächstes Ziel“: Was ist „nächstes Ziel“? | Inhalt Kachel 6 | – (L7) | Titel der nächsten Phase; letzte Phase → „letzte Phase“ (B-34) |
-| O-43 **neu** | Lage des Manny-Look-Schritts im Code-Start (L3) | Einstieg ab L3 | – (über F2-D2 Teil A) | vor dem Code-Feld (B-31) |
+| O-44 **neu** | Manny-Look bei Neubindung auf einem neuen Gerät: gilt der Wert aus dem Konto oder der im Code-Start (vor dem Code-Feld) neu gewählte? | sichtbares Verhalten nach Gerätewechsel; O-41 („bei Bindung wird der lokale Wert übertragen“) und der Zweck „bleibt beim Gerätewechsel erhalten“ widersprechen sich in diesem Fall | L3 | Konto-Wert gewinnt, wenn vorhanden (B-36) |
 | O-1, O-3, O-5–O-8, O-11, O-12, O-14–O-16 | wie v1.2 | – | – | Annahmen wie v1.2 (O-3 durch C-2 für Schmerz 0–10 und Stimmung 1–5 bestätigt) |
 
 ---
@@ -1003,13 +1028,13 @@ Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 | R2-16 **neu** | Goldens-Explosion durch Welten × Thema × Kontrast | Umfang O-32; Komponenten voll, Screens Auswahl |
 | R2-17 **neu** | Timer-Genauigkeit und Hintergrundverhalten je Plattform (Web-Tab im Hintergrund) | Zeitstempel statt Dauern, Pause bei Lebenszyklus-Wechsel, Tests mit fester Uhr, Geräte-Prüfliste |
 | R2-18 **neu** | Einladungslink in Messenger-Verläufen | einmalig einlösbar, 14 Tage, Neubindungs-Hinweis; „Neuen Code erzeugen“ |
-| R2-19 **neu** | Übungsfotos mit Personen oder Standort-Metadaten | nur Testdaten; privater Bucket; Patient sieht nur eigene freigegebene Übungen; O-38b |
+| R2-19 **neu** | Übungsfotos mit Personen oder Standort-Metadaten | nur Testdaten; privater Bucket; Patient sieht nur Übungen (und Bilder) in Positionen seines aktuellen Plans, aktiv oder vorbereitet (N-16); O-38b |
 | R2-20 **neu** | Stimmungsdaten sind besonders sensibel | nur Physio der Praxis, keine Reaktion in der App, Einwilligung nennt es, Löschen nach O-9, Datenschutz-Konzept vor echten Daten (X2-10) |
 | R2-21 | Kürzung greift ab Schmerz 6 häufiger als die Warnzeichen | entschieden (E-28 = 6); Hinweis „Heute etwas kürzer“ erklärt es; Wirkung in L9 im Kriterienbericht beobachten |
 | R2-22 **neu** | Streak beim Physio weicht vom Gerät ab (Gerät offline, Neubindung) | Anzeige „zuletzt gemeldet am …“ (Gestaltung F2-D2 D), O-31 |
 | R2-23 **neu** | Kalendertage zwischen Gerät, Server (UTC) und Physio verschieden | Datumsbasis 6.7: Tage nur vom Gerät mit Plausibilitätsprüfung, Sicherheitsregeln ohne Datum, gemeinsame Fixtures Mitternacht/Zeitzone; DB-T68a, DB-T80 |
-| R2-24 **neu** | Nachträgliche Warnzeichen durch verspätete Check-ups | gewollt und reihenfolgeunabhängig (6.9), FIFO je Gerät; DB-T82 |
-| R2-25 **neu** | Manny-Grafiken vergrößern App und Goldens (24 Dateien, ca. 1,7 MB) | nur benötigte Dichten im Repo laut Ergänzung 1; Goldens je Variante nur für Manny-Komponenten und Look-Schritt |
+| R2-24 **neu** | Nachträgliche Warnzeichen durch verspätete Check-ups | gewollt (vom Nutzer bestätigt, N-16) und reihenfolgeunabhängig (6.9), FIFO je Gerät, eine gemeinsame Meldung je Eingang; verspätete Einträge nie verworfen (6.7 Nr. 3, 8.11); DB-T82, DB-T83, DB-T84 |
+| R2-25 **neu** | Manny-Grafiken vergrößern App und Goldens (24 Dateien, ca. 1,7 MB) | alle 24 Dateien (4 Posen × 2 Varianten × 3 Dichten) im Repo, weil V2-73 die Dichte-Auswahl 1/2/3 verlangt; Goldens je Variante nur für Manny-Komponenten und Look-Schritt |
 
 ---
 
@@ -1049,10 +1074,12 @@ Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 | B-28 | Pausendauer ohne Angabe des Physios: 60 s (wie Schätzregel N-7, bestätigt mit O-17 a) | Plan, N-14 |
 | B-29 | Suche nach Name im geladenen Bestand der Praxis | Plan |
 | B-30 | Smileys als Emoji (systemabhängig) | Nutzerentscheidung N-11 |
-| B-31 | Manny-Look nur lokal auf dem Gerät (kein Backend-Profil in Ausschnitt 2), bleibt beim Einlösen und bei Neubindung auf demselben Gerät erhalten, wird nur durch „Alles löschen“ zurückgesetzt; im Code-Start (ab L3) steht der Look-Schritt vor dem Code-Feld | Plan (N-15; O-41, O-43) |
+| B-31 | entfällt: Speicherung und Lage des Look-Schritts sind entschieden (N-16, O-41, O-43) | – |
 | B-32 | `injury_id` von Tages-Check-ups und Fragen = aktive Verletzung beim Eingang (ein verspäteter Check-up vom Tag eines Verletzungswechsels kann bei der neuen Verletzung landen) | Plan (MINOR-4) |
 | B-33 | Tagesangaben aus Physio-Aktionen (`closed_on`, Standard-`reference_date`) = lokaler Tag des Physio-Geräts | Plan (MAJOR-2, 6.7) |
-| B-34 | Kachel 6: Phase, Woche N, geplante Wochen der aktuellen Phase und Titel der nächsten Phase als „nächstes Ziel“ | Plan (MINOR-7, O-42) |
+| B-34 | entfällt: „nächstes Ziel“ = Titel der nächsten Phase ist entschieden (N-16, O-42); nur der Text für die letzte Phase bleibt [Vorschlag] (6.12) | – |
+| B-35 | Plausibilitätsgrenze für Warteschlangen-Einträge (`submit_daily_checkup`): Bindungstag − 1 bis UTC-Datum + 1, ohne Höchstalter; `invalid_local_day` stellt den Eintrag zurück statt ihn zu verwerfen | Plan (MAJOR-B, 6.7 Nr. 3, 8.11) |
+| B-36 | Neubindung auf neuem Gerät: Hat das Konto einen Manny-Look, übernimmt das neue Gerät ihn; sonst wird der lokale Wert übertragen | Plan (O-41, Rückfrage O-44) |
 
 (B-6 aus v1 ist durch 6.5 ersetzt.)
 
@@ -1070,6 +1097,31 @@ Befehle vor Ausführung gegen die aktuelle Supabase-Doku prüfen.
 ---
 
 ## 19. Ältere Änderungsprotokolle
+
+### v2.0 → v2.1 (Paket S3-K1)
+
+| Befund / Entscheidung | Änderung | Stelle |
+|---|---|---|
+| MAJOR-1 L1 ∥ L2 nicht getrennt | Parallel nur L1 (`app/`) und F2-1/F2-1R (`supabase/`, `.gitignore`); F2-2 Seed (schreibt `app/tool/seed/`, `app/pubspec.yaml`/`.lock`) erst nach L1 | 2.2 (L2), 2.3 (F2-2), Reihenfolge 2.3, 5, 10, 11, R2-10 |
+| MAJOR-2 „freigegeben“ ohne gemeinsame Datumsbasis | Tage nur vom Gerät (`local_day`) mit Plausibilitätsprüfung ±1 Tag; Sicherheitsregeln ohne Datum (Übung/Bild sichtbar für jede Position des aktuellen Plans); Fixtures „Mitternacht/Zeitzone“ | 6.1 Nr. 5, 6.2 `exercises`, 6.4, 6.6, 6.7 „Datumsbasis“, 6.11, 5, DB-T63, DB-T68, DB-T68a, DB-T80, R2-23, B-33; KI-Plan 4.2/4.2.1 |
+| MINOR-1 `create_patient`-Idempotenz | `ON CONFLICT DO NOTHING` + `FOR UPDATE` (serialisiert), Parametervergleich per `create_params_hash`, abweichend → `idempotency_mismatch` | 6.2 `patients`, 6.6, DB-T64b |
+| MINOR-2 zwei Lieferungen für `create_patient`/`regenerate_invitation` | beide in L2 (Migration 05), UI in L6; F2-7a nur `set_main_physio`; Vorlagen-Lesezugriff und DB-T76 in L2 | 6.4, 2.3 (F2-1, F2-7a), 5, 12.2 |
+| MINOR-3 `training_sessions.mode` | alle Spalten in L2 (Migration 06); F2-5a nur Check-up nach der Einheit; DB-T73 in L2 | 6.2, 2.2, 2.3, 5, 12.2 |
+| MINOR-4 `injury_id` serverseitig | Herleitung über `plan_id` der Session bzw. die Session; Check-ups/Fragen = aktive Verletzung (Annahme B-32) | 6.2, 6.3, 8.11, DB-T61, B-32 |
+| MINOR-5 Stimmungskette reihenfolgeabhängig | Warnzeichen je Tag (`warning_signs.local_day`, Unique), Auswertung für X und Folgetage, FIFO je Gerät, Test außer der Reihe | 6.2, 6.9, 8.11, DB-T57, DB-T82, R2-24 |
+| MINOR-6 (KI-Plan) | siehe KI-Plan v2.4 | KI-Plan 4.8.2, 6.2, 6.3 |
+| MINOR-7 Kachel 6 ohne Datenquelle | Datenquelle Plan der aktiven Verletzung, `phase_summary`, Annahme „nächstes Ziel“ | 6.12, 9, 3.7 Teil D, 13.3, O-42, B-34 |
+| MINOR-8 `assign_exercise` ohne Prüfung `release_with_phase_id` | Prüfung gleicher Plan und Freischalt-Regeln | 6.11, DB-T67 |
+| MINOR-9 Hilfsfunktionen ohne Aufruferprüfung | Aufruferprüfung in `current_injury_id`/`current_plan_id`/`physio_can_see_patient`; Schema `app` nicht exponiert | 6.1 Nr. 5, DB-T81 |
+| NIT Schätzregel ohne Dauer | „/60, aufrunden, min. 1“ ergänzt | 8.4 |
+| N-14 O-17 (+ a, b) | `duration_sec` je Satz; Schätzregel mit `pause_sec`/60 s; Kürzung halbiert Sekunden | 0, 6.2, 8.4, 8.7, 12.3, 13.5 |
+| N-14 O-18 | Schwellung 0–3 feste Spalte, 6. Frage | 0, 6.2, 6.4, 6.9, 6.12, 8.6, 3.7 Teil B, 13.1, 13.2, DB-T56 |
+| N-14 O-19 | Einschränkungen Einzelwert-Skala | 6.2, 8.6, 3.7 Teil B, DB-T75 |
+| N-14 O-2, O-2a, O-2b | Regeln entschieden (Vortag, Schwellung mit gleichem Hinweis, jeden weiteren Tag erneut, Lücke unterbricht); `is_provisional` entfällt; Einwilligungstext | 0, 6.2, 6.9, 7.2, 8.6, 10, DB-T57, DB-T77, 13.2, 14 |
+| N-14 E-28 | Kürzung ab Schmerz 6 | 8.2, 8.7, 13.2, R2-21 |
+| N-15 Manny (Brief-Ergänzung 1 freigegeben) | finale Grafiken beider Varianten in L1, Look-Schritt im Onboarding (5 Schritte), Profil-Zeile, lokal gespeichert mit Schema-Sprung 1 → 2, Look-Schritt auch im Code-Start, Tests und Rückverfolgung V2-56 (ersetzt), V2-65–V2-75 | 0, Grundlagen, 2.2, 2.3, 3.1–3.7, 5, 8.1, 8.12, 12.3, 13.4, 13.5, O-41, O-43, B-31, R2-25 |
+| Brief-Folgen O-18/O-19 | Brief-Ergänzung in F2-D2 Teil B (vor L5, Nutzerfreigabe): 6 Fragen, „Frage N von 6“, Einschränkungen-Skala, Kachel 2 mit Schwellung | 3.7, 2.2 (L5), 13.4 |
+| unverändert | Rollenmodell, RLS ohne `FORCE`, entzogene Standardrechte, Definer mit `search_path = ''`, Sichten `security_invoker`, Manny-Chat nie für Physio. Begründet geändert: Patientensicht auf `exercises`/Übungsbilder ohne Datumsbezug (MAJOR-2, enger: Aufruferprüfung der Hilfsfunktionen, MINOR-9) | 6.1 |
 
 ### v1.2 → v2.0 (Kurzfassung; Abschnittsangaben beziehen sich auf v2.0)
 

@@ -1,6 +1,18 @@
-# KI-Plan v2.4: Manny ist das Gehirn, dazu die Physio-KI (CuraOne, Ausschnitte 3 und 4)
+# KI-Plan v2.5: Manny ist das Gehirn, dazu die Physio-KI (CuraOne, Ausschnitte 3 und 4)
 
-Status: **PLAN ZUR FREIGABE** · v2.4 (v2.2 FREIGEGEBEN 2026-10-12 → v2.3 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.4 nach Review S3-3 und Nutzerentscheidungen N-14; v2.2 nach Re-Review R-P2-RR; v2.1 nach Review R-P2; v2 Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Pakete S3-2, S3-K1 · Autor: `flutter-developer` · Stand 2026-10-14
+Status: **PLAN ZUR FREIGABE** · v2.5 (v2.2 FREIGEGEBEN 2026-10-12 → v2.3 nach den freigegebenen Produkt- und Design-Ergebnissen vom 2026-10-14 → v2.4 nach Review S3-3 und Nutzerentscheidungen N-14 → v2.5 nach Re-Review S3-RR und Nutzerentscheidungen N-16; v2.2 nach Re-Review R-P2-RR; v2.1 nach Review R-P2; v2 Überarbeitung von `docs/plan/ki-plan-v1.md` v1.2) · Pakete S3-2, S3-K1, S3-K2 · Autor: `flutter-developer` · Stand 2026-10-14
+
+## Änderungsprotokoll v2.4 → v2.5 (Paket S3-K2)
+
+| Befund / Entscheidung | Änderung | Stelle |
+|---|---|---|
+| NIT 4.1/DB-K15 `app.manny_context_facts` als parametrisierte Funktion beschrieben | Sicht mit Spalte `patient_id`, Abfrage mit Filter auf `patient_id` | 4.1 |
+| NIT 2.1 DB-K15 als Prüfung des Physio-Briefings | DB-K15 zu M-1 AK 1 (Manny-Kontext) verschoben | 2.1 |
+| NIT 4.8.2 Verneinung der statischen Regel | „nennt weder … noch … und enthält keine Schreibzugriffe“ | 4.8.2 |
+| MINOR-E (Flutter-Plan) Fixtures-Ablage | `supabase/tests/fixtures/local_day/` | 4.2.1 Regel 3 |
+| MAJOR-B (Flutter-Plan) Tagesgrenze | `manny-today` bleibt bei ±1 Tag (sofortiger Aufruf); Warteschlangen-Grenze nur im Flutter-Plan 6.7 Nr. 3 | 4.2 |
+| N-16 (Flutter-Plan) Zählweise je Verletzung, gemeinsame Meldung, nachträgliche Warnzeichen bestätigt | NE-25; Warnzeichen-Regeln aus dem Check-up je Verletzung, eine Meldung je Eingang | 0, 4.3 |
+| Querverweise | Flutter-Plan v2.1 → v2.2 (Abschnittsnummern unverändert) | Grundlagen, 2.1, 4, 6, 8 |
 
 ## Änderungsprotokoll v2.3 → v2.4 (Paket S3-K1)
 
@@ -31,7 +43,7 @@ Status: **PLAN ZUR FREIGABE** · v2.4 (v2.2 FREIGEGEBEN 2026-10-12 → v2.3 nach
 Grundlagen:
 - `docs/produkt/curaone-spezifikation-manny-gehirn.md` (FREIGEGEBEN 2026-10-11).
 - `docs/plan/ki-plan-v1.md` v1.2: bleibt Referenz für alle verwiesenen Abschnitte („v1.2, n“).
-- `docs/plan/flutter-plan-ausschnitt-2.md` **v2.1** (Rollenmodell, Schema inkl. Verletzungen, Check-ups, Übungsergebnisse, Baukasten, Einladung und Neubindung, Warnzeichen, Warteschlange, Löschen, DB-Tests DB-T01 ff.). Ausschnitt 3 setzt Ausschnitt 2 voraus. Verweise „Flutter-Plan v1.2, n“ und „Flutter-Plan v2.0, n“ in diesem Plan meinen die entsprechenden Abschnitte in v2.1 (Zuordnung dort, Abschnitt 19; die Nummern von v2.0 gelten in v2.1 unverändert).
+- `docs/plan/flutter-plan-ausschnitt-2.md` **v2.2** (Rollenmodell, Schema inkl. Verletzungen, Check-ups, Übungsergebnisse, Baukasten, Einladung und Neubindung, Warnzeichen, Warteschlange, Löschen, DB-Tests DB-T01 ff.). Ausschnitt 3 setzt Ausschnitt 2 voraus. Verweise „Flutter-Plan v1.2, n“ und „Flutter-Plan v2.0, n“ in diesem Plan meinen die entsprechenden Abschnitte in v2.2 (Zuordnung dort, Abschnitt 19; die Nummern von v2.0 gelten in v2.1 und v2.2 unverändert).
 - `docs/produkt/curaone-ablaeufe-training-checkup.md`, `docs/produkt/curaone-physio-bereich.md` (PB-5 Physio-KI, Ausschnitt 3), `docs/produkt/curaone-feed.md` (Feed ab Ausschnitt 4, hier nicht enthalten), alle FREIGEGEBEN 2026-10-14.
 - `docs/design/design-brief-v2.md` (FREIGEGEBEN 2026-10-14): Optik aller KI-Oberflächen; Kachel 1 „KI-Kurzbriefing“ ist dort als Slot vorgesehen (7.9).
 - Skill `claude-api` (Modelltabelle Stand 2026-10-06). API-Aussagen sind mit „(Skill)“ belegt oder als Annahme/„zu prüfen“ markiert; Modell-IDs nur aus Skill bzw. v1.2.
@@ -52,7 +64,7 @@ Aus dem Review R-P2 (2026-10-12):
 - **NE-16 (N-3)** Ersatzprogramm bei hohem Schmerz: automatisch kürzen nach fester Regel mit Hinweis.
 - **NE-17 (N-4)** Physio sieht alle Patienten seiner Praxis.
 - **NE-18 (N-5)** Alle MINOR/KI-MINOR/NITPICK einarbeiten; E-24 bleibt Annahme/offen.
-- **NE-19 (Runde 2)** Bestätigt: Kürzungsregel E-36 (4.2.3) und Zahlenverbot E-37 (4.7 Regel 1); keine globale Einlöse-Bremse (Flutter-Plan v2.1 6.5). Plan freigegeben, Prüfung am Code in F2-1R.
+- **NE-19 (Runde 2)** Bestätigt: Kürzungsregel E-36 (4.2.3) und Zahlenverbot E-37 (4.7 Regel 1); keine globale Einlöse-Bremse (Flutter-Plan v2.2 6.5). Plan freigegeben, Prüfung am Code in F2-1R.
 
 Aus den Nutzerentscheidungen vom 2026-10-14:
 - **NE-20** Physio-KI (PB-5) mit vier Aufgaben – Kurzbriefing je Patient, beim Anlegen von Übungen helfen (inkl. KI-Bild), Plan-Anpassungen vorschlagen (nur Vorschlag, der Physio entscheidet), Fachfragen beantworten (mit Quelle, ohne Gewähr) – kommt in **Ausschnitt 3** zusammen mit der Manny-KI (PB-9).
@@ -60,6 +72,7 @@ Aus den Nutzerentscheidungen vom 2026-10-14:
 - **NE-22 (C-3)** Stimmung wird nur erfasst und dem Physio gezeigt; die App reagiert gegenüber dem Patienten nicht. Daraus folgt für diesen Plan: Stimmungswerte gehen **nicht** in den Kontext der Patienten-KI (Manny), damit Manny nicht darauf reagiert (Brief v2 V2-57).
 - **NE-23** Feed erst ab Ausschnitt 4 (F-2); nicht Teil dieses Plans.
 - **NE-24 (Flutter-Plan N-14, 2026-10-14)** „Zeit“ einer Übung = Dauer je Satz in Sekunden (`duration_sec`); Schätzregel mit der Pause des Physios (`pause_sec`, sonst 60 s); Kürzung E-36 halbiert die Dauer je Satz in Sekunden (`max(1, abrunden(Dauer / 2))`). **E-28 = Schmerz 6.** Warnzeichen aus dem Tages-Check-up: Schmerz ≥ 7, Anstieg ≥ 3 zum Check-up des Vortags, Schwellung 3 (gleicher fester Hinweis); Stimmungs-Nachricht ab 5 aufeinanderfolgenden Tagen mit Check-up und Stimmung ≤ 2, an jedem weiteren Tag erneut, Lücke unterbricht, Patient erfährt nichts. Schwellung 0–3 und Einschränkungen als Einzelwert-Skala im Tages-Check-up.
+- **NE-25 (Flutter-Plan N-16, 2026-10-14)** Stimmungskette und Anstiegsregel zählen **je Verletzung** (neue Verletzung → Zählung beginnt neu, Vortag einer anderen Verletzung zählt nicht). Mehrere Stimmungs-Warnzeichen aus einem verspäteten Check-up: je Tag ein Warnzeichen, beim Physio **eine** gemeinsame Meldung. Nachträgliche Warnzeichen durch verspätete Check-ups sind gewollt. Für diesen Plan ändert sich dadurch nur die Beschreibung in 4.3; Chat-Warnzeichen sind nicht betroffen.
 
 **Vor KI-1/KI-2 zu entscheiden (blockierend):** E-7, E-15, E-27, E-30, E-31. E-28 und O-2 sind entschieden (NE-24). **Vor KI-P1/KI-P2 (Physio-KI):** E-38, E-39, E-42; vor dem KI-Bild-Teil zusätzlich E-40.
 
@@ -67,7 +80,7 @@ Aus den Nutzerentscheidungen vom 2026-10-14:
 
 ## 1. Kurzfassung
 
-| Thema | v2.4 |
+| Thema | v2.5 |
 |---|---|
 | Zielbild | M-1 Chat mit Akte-Wissen · M-2 „Heute“ zusammenstellen · M-3 Übung begleiten · M-4 persönliche Pfad-Texte · **Physio-KI** (PB-5): Kurzbriefing, Übung per KI, Plan-Vorschläge, Fachfragen |
 | Harte Grenze | Jede KI-Auswahl wird **deterministisch gegen die Freigabe validiert** (S8b, Server und App, gemeinsame Fixtures); zusätzlich prüft eine **Freitextprüfung** jeden KI-Text (Begründung, Blasen, Übungs-Sätze, Chat) auf Zahlen/Umfangsangaben und nicht freigegebene Übungen (K-1) |
@@ -94,16 +107,16 @@ Aus den Nutzerentscheidungen vom 2026-10-14:
 
 | AK | Umsetzung | Paket | Prüfung |
 |---|---|---|---|
-| M-1 AK 1 (Wissen aus Framework) | Kontext 4.1 | KI-2, KI-3 | Eval „Kontextnutzung Akte“; Unit-Test Kontextbau (Felder, Escaping, Kürzung) |
+| M-1 AK 1 (Wissen aus Framework) | Kontext 4.1 | KI-1, KI-2, KI-3 | Eval „Kontextnutzung Akte“; Unit-Test Kontextbau (Felder, Escaping, Kürzung); DB-K15 (Kontextquelle `app.manny_context_facts` ohne Stimmung, Fragen, Notizen) |
 | M-1 AK 2 (außerhalb Freigabe → kein Inhalt, Verweis an Behandler) | 4.2 Chat, `refer_to_treater`, Freitextprüfung 4.7 | KI-2, KI-3, KI-5 | Eval „Weiterleitung“, „keine Übung erfinden“; Widget-Test Behandler-Karte (mit/ohne Behandler der Rolle) |
 | M-1 AK 3 (Warnzeichen → fester Hinweis + beim Physio) | 4.3 | KI-1, KI-2, KI-5 | DB-K04 bis DB-K07; Widget-Test Karte offline; Integration KI-7 „Warnzeichen erscheint in Physio-Liste“ |
 | M-2 AK 1 (nur aktuelle Phase, innerhalb Grenzen, automatisch geprüft, Abweichung = Fehler) | S8b 4.2 | KI-2V, KI-2 | Unit-Tests Validator (gemeinsame Fixtures Dart/Server); Eval „Freigabe-Treue“ mit Schwelle 0 |
 | M-2 AK 2 (Schmerz → leichtere Variante oder weniger Umfang, gesagt) | 4.2 Regel 7, Kürzungsregel 4.2.3 | KI-2V, KI-3 | Unit-Tests Kürzungsregel; Eval „Schmerz-Reduktion“ |
 | M-2 AK 3 (ein Satz Begründung) | 4.2 Regel 6, 4.7 | KI-2, KI-5 | Validator; Eval „Begründungssatz“; Widget-Test Anzeige/Rückfallsatz |
-| M-3 AK 1 (Schritt für Schritt, Sätze/Wdh. mitzählen) | Zählen: Flutter-Plan v2.1 8.5 (Ausschnitt 2, L4); Schritt-Führung 4.6 | L4 / KI-6 | **Unit-Tests** Schrittzerlegung (Zeilen, Absätze, leere Zeilen, eine Zeile), Zähler (Sätze × Wdh., nur Dauer, nur Sätze); **Widget-Tests** Weiter/Zurück, Zähler, Ende, Abbruch |
-| M-3 AK 2 (Schmerz → nur freigegebene leichtere Variante oder Abbruch) | Flutter-Plan v2.1 8.5 (Ausschnitt 2, L4); KI ändert daran nichts | L4 / KI-6 | **Widget-Tests**: mit Variante → genau zwei Optionen; ohne Variante → nur Abbruch; nie andere Übung; Freitext läuft durch Vorprüfung |
+| M-3 AK 1 (Schritt für Schritt, Sätze/Wdh. mitzählen) | Zählen: Flutter-Plan v2.2 8.5 (Ausschnitt 2, L4); Schritt-Führung 4.6 | L4 / KI-6 | **Unit-Tests** Schrittzerlegung (Zeilen, Absätze, leere Zeilen, eine Zeile), Zähler (Sätze × Wdh., nur Dauer, nur Sätze); **Widget-Tests** Weiter/Zurück, Zähler, Ende, Abbruch |
+| M-3 AK 2 (Schmerz → nur freigegebene leichtere Variante oder Abbruch) | Flutter-Plan v2.2 8.5 (Ausschnitt 2, L4); KI ändert daran nichts | L4 / KI-6 | **Widget-Tests**: mit Variante → genau zwei Optionen; ohne Variante → nur Abbruch; nie andere Übung; Freitext läuft durch Vorprüfung |
 | M-4 AK (Bezug auf echten Verlauf; Rückfall feste Texte) | 4.5 | KI-2, KI-6 | Eval „Pfad-Texte“; Widget-Test Rückfall bei Fehler/offline/ohne Einwilligung; Freitextprüfung |
-| PB-5 / Kurzbriefing (drei Sätze, nur Verlauf, Check-ups, Warnzeichen, nie Chat) | 4.8.1, 4.8.2 | KI-P1, KI-P2, KI-P3 | DB-K12, DB-K13, DB-K15; statische Regel; Eval „Briefing: Faktentreue“ und „Briefing: kein Chat“; Widget-Test Kachel 1 (Laden, Fehler, ohne KI → Kachel leer mit Hinweis) |
+| PB-5 / Kurzbriefing (drei Sätze, nur Verlauf, Check-ups, Warnzeichen, nie Chat) | 4.8.1, 4.8.2 | KI-P1, KI-P2, KI-P3 | DB-K12, DB-K13; statische Regel; Eval „Briefing: Faktentreue“ und „Briefing: kein Chat“; Widget-Test Kachel 1 (Laden, Fehler, ohne KI → Kachel leer mit Hinweis) |
 | PB-5 / Übung per KI (füllt Baukasten vor, KI-Bild auf Wunsch, nichts aktiv ohne Physio) | 4.8.3 | KI-P2, KI-P3 | Server-Test: Entwurf wird nicht gespeichert; Widget-Test: erst „Speichern“ des Physios legt die Übung an; Eval „Übungsentwurf“; KI-Bild erst nach E-40 |
 | PB-5 / Plan-Vorschläge (nur Vorschlag, Übernahme nur per Tipp) | 4.8.4 | KI-P2, KI-P3 | Validator (IDs gehören zum aktuellen Plan); Server-Test `physio_endpoints_no_plan_write` + statische Regel (4.8.2); Widget-Test: ohne Tipp keine Planänderung, mit Tipp `save_plan` aus der Physio-Sitzung |
 | PB-5 / Fachfragen (mit Quelle, ohne Gewähr) | 4.8.5 | KI-P2, KI-P3 | Server-Test: Antwort ohne Quelle wird nicht angezeigt [Vorschlag]; Widget-Test Hinweis „keine Gewähr“; Eval „Fachfragen: Quelle“ – Quellenart offen (E-41) |
@@ -149,24 +162,24 @@ messages  user: <framework planVersion=… stand=…> … </framework>       -- 
           user: aktuelle Nachricht                                    (+ automatisches Caching oben)
 ```
   Höchstens 4 Breakpoints je Anfrage (Skill); hier 2 explizite + automatisches Caching. Wirksamkeit über `usage.cache_read_input_tokens` messen (Skill); Mindestlänge des Präfixes ist modellabhängig (Skill), ein kurzer Framework-Block wird ggf. nicht gecacht.
-- Framework-Block: **freigegebene** Übungen (Flutter-Plan v2.1 6.7) mit `plan_item_id`, Name, Kurzbeschreibung, Grenzen, Belastungshinweis, Material, Ort, leichtere Variante (E-30); Behandler nur Rolle und Name; Krankengeschichte und Verlauf im Umfang E-32. Freitexte als Daten (v1.2 6.7). Kürzung je Bereich mit Kennzeichnung (KR-16).
-- **Datenquellen aus Ausschnitt 2 (Flutter-Plan v2.1):** Tages-Check-ups (`daily_checkups`: Schmerz, Wohlbefinden, Motivation, Schwellung 0–3, Einschränkungs-Stufe keine/leicht/deutlich/stark), Check-ups nach der Einheit (`session_checkups` und Positionen: Bewertung, leicht/passend/schwer/Schmerz, „Gewicht erhöht“, Grund für Übersprungenes), Übungsergebnisse (`exercise_results`), aktuelle Verletzung (`injuries`). Ersetzt „Befinden“ aus v2.2.
-- **Nicht im Manny-Kontext:** Stimmung (`daily_checkups.mood`) und Warnzeichen der Art `mood_low_streak` (NE-22, C-3: keine Reaktion gegenüber dem Patienten); Fragen an den Physio (`patient_questions`, kein Chat-Bezug, Annahme KA-15); Notizen der Praxis (`practice_notes`, Patient sieht sie nicht, PB-C). **Technisch erzwungen (MINOR-6):** Die Patienten-Edge-Functions lesen Patientendaten für den Kontext **ausschließlich** über die Sicht `app.manny_context_facts(patient_id)` (`security_invoker`, `SELECT` nur für die Rolle der Funktionen), die `daily_checkups.mood`, `patient_questions`, `practice_notes` und Warnzeichen mit `reason_code = 'mood_low_streak'` nicht enthält. Prüfung: DB-K15 (Sicht) und statische Regel (Code von `manny-*` liest keine andere Patiententabelle).
+- Framework-Block: **freigegebene** Übungen (Flutter-Plan v2.2 6.7) mit `plan_item_id`, Name, Kurzbeschreibung, Grenzen, Belastungshinweis, Material, Ort, leichtere Variante (E-30); Behandler nur Rolle und Name; Krankengeschichte und Verlauf im Umfang E-32. Freitexte als Daten (v1.2 6.7). Kürzung je Bereich mit Kennzeichnung (KR-16).
+- **Datenquellen aus Ausschnitt 2 (Flutter-Plan v2.2):** Tages-Check-ups (`daily_checkups`: Schmerz, Wohlbefinden, Motivation, Schwellung 0–3, Einschränkungs-Stufe keine/leicht/deutlich/stark), Check-ups nach der Einheit (`session_checkups` und Positionen: Bewertung, leicht/passend/schwer/Schmerz, „Gewicht erhöht“, Grund für Übersprungenes), Übungsergebnisse (`exercise_results`), aktuelle Verletzung (`injuries`). Ersetzt „Befinden“ aus v2.2.
+- **Nicht im Manny-Kontext:** Stimmung (`daily_checkups.mood`) und Warnzeichen der Art `mood_low_streak` (NE-22, C-3: keine Reaktion gegenüber dem Patienten); Fragen an den Physio (`patient_questions`, kein Chat-Bezug, Annahme KA-15); Notizen der Praxis (`practice_notes`, Patient sieht sie nicht, PB-C). **Technisch erzwungen (MINOR-6):** Die Patienten-Edge-Functions lesen Patientendaten für den Kontext **ausschließlich** über die Sicht `app.manny_context_facts` (Sicht mit Spalte `patient_id`, abgefragt mit `WHERE patient_id = <Patient der Sitzung>`; keine parametrisierte Funktion; `security_invoker`, `SELECT` nur für die Rolle der Funktionen), die `daily_checkups.mood`, `patient_questions`, `practice_notes` und Warnzeichen mit `reason_code = 'mood_low_streak'` nicht enthält. Prüfung: DB-K15 (Sicht) und statische Regel (Code von `manny-*` liest keine andere Patiententabelle).
 
 ### 4.2 Manny innerhalb der Freigabe (M-2)
 
-**Endpunkt `manny-today`** (ohne Stream). Eingabe vom Gerät: Zeitwahl, heute erledigt, ggf. nicht synchronisierter Tages-Check-up (nur Schmerz und die in E-32 genannten Werte, ohne Stimmung), **`planVersion`**, die das Gerät gerade anzeigt, **`local_day`** (lokaler Tag des Geräts, Datumsbasis Flutter-Plan v2.1 6.7; außerhalb ±1 Tag um das UTC-Datum des Servers → `invalid_local_day`), `clientRequestId`. Server: S1 JWT → S1b gebundener, aktiver Patient → S2 KI-Einwilligung → S5 Limits → S6 Kontext → S7 Claude mit `output_config.format` (Skill), Schema:
+**Endpunkt `manny-today`** (ohne Stream). Eingabe vom Gerät: Zeitwahl, heute erledigt, ggf. nicht synchronisierter Tages-Check-up (nur Schmerz und die in E-32 genannten Werte, ohne Stimmung), **`planVersion`**, die das Gerät gerade anzeigt, **`local_day`** (lokaler Tag des Geräts, Datumsbasis Flutter-Plan v2.2 6.7; außerhalb ±1 Tag um das UTC-Datum des Servers → `invalid_local_day`; als sofortiger Aufruf gilt für `manny-today` diese Grenze, nicht die Warteschlangen-Grenze aus Flutter-Plan v2.2 6.7 Nr. 3), `clientRequestId`. Server: S1 JWT → S1b gebundener, aktiver Patient → S2 KI-Einwilligung → S5 Limits → S6 Kontext → S7 Claude mit `output_config.format` (Skill), Schema:
 `{ items: [{ plan_item_id, sets, reps, duration_sec, use_easier_variant }], reason, reduced_for_pain }` (`duration_sec` = Dauer je Satz in Sekunden, NE-24) → S8b → S8c → Antwort.
 
 #### 4.2.1 S8b Validierung gegen die Freigabe (K-m2)
 1. **Planversion:** `planVersion` des Geräts = aktuelle Version des Plans; sonst `stale_plan` (App lädt neu und fragt erneut, kein KI-Ergebnis anzeigen).
 2. **Nicht leer:** `items` enthält mindestens eine Position.
-3. Jede `plan_item_id` gehört zur **aktuellen Phase** der aktuellen Version **und ist freigeschaltet** (`isReleased(item, plan, local_day)`, Flutter-Plan v2.1 6.7: `release = active`, oder vorbereitet mit `release_on ≤ local_day` bzw. erreichter Phase). Maßgeblich ist der **`local_day` des Geräts**, nie das Serverdatum (MAJOR-2); gleiche Fixtures Dart/Server einschließlich „Mitternacht/Zeitzone“ (`app/test/fixtures/local_day/`); keine doppelten.
+3. Jede `plan_item_id` gehört zur **aktuellen Phase** der aktuellen Version **und ist freigeschaltet** (`isReleased(item, plan, local_day)`, Flutter-Plan v2.2 6.7: `release = active`, oder vorbereitet mit `release_on ≤ local_day` bzw. erreichter Phase). Maßgeblich ist der **`local_day` des Geräts**, nie das Serverdatum (MAJOR-2); gleiche Fixtures Dart/Server einschließlich „Mitternacht/Zeitzone“ (`supabase/tests/fixtures/local_day/`, angelegt in Flutter-Plan L2); keine doppelten.
 4. **Grenzen** (E-27, Obergrenzen): je Dimension `sets`, `reps`, `duration_sec`:
    - Grenze des Physios gesetzt → KI-Wert `null` (= Physio-Wert übernehmen) oder `1 ≤ Wert ≤ Grenze`;
    - Grenze des Physios **`null`** → KI-Wert **muss `null` sein** (Dimension nicht freigegeben, nicht einführbar).
 5. `use_easier_variant = true` nur, wenn der Physio für genau diese Position eine leichtere Variante freigegeben hat (E-30); deren Grenzen gelten dann nach Regel 4.
-6. **Gesamtdauer** nach der Dauer-Schätzregel aus Flutter-Plan v2.1, 8.4 (`estimateMinutes` mit `duration_sec` je Satz und Pause `pause_sec` bzw. 60 s, NE-24; gleiche Implementierung in Dart und Server, gleiche Fixtures) ≤ Zeitwahl; bei `reduced_for_pain` ≤ gekürztes Zeitbudget (4.2.3).
+6. **Gesamtdauer** nach der Dauer-Schätzregel aus Flutter-Plan v2.2, 8.4 (`estimateMinutes` mit `duration_sec` je Satz und Pause `pause_sec` bzw. 60 s, NE-24; gleiche Implementierung in Dart und Server, gleiche Fixtures) ≤ Zeitwahl; bei `reduced_for_pain` ≤ gekürztes Zeitbudget (4.2.3).
 7. **Schmerz** (NEU-8): Unterhalb der Schwelle E-28 (Schmerz < 6) muss `reduced_for_pain = false` sein. Ab der Schwelle (Schmerz ≥ 6) muss `reduced_for_pain = true` sein **und** jede Position die **Kürzungsgrenzen aus 4.2.3** einhalten: (a) hat der Physio eine leichtere Variante freigegeben, ist `use_easier_variant = true` Pflicht; (b) sonst darf die KI je Position höchstens die gekürzten Werte aus 4.2.3 Schritt 2 verwenden (weniger ist erlaubt); (c) die Gesamtdauer (Regel 6) ≤ gekürztes Zeitbudget. Die KI darf also weniger als das Ersatzprogramm wählen, nie mehr.
 8. `reason`: genau ein Satz, höchstens 140 Zeichen [Vorschlag: eine Zeile auf einem 390-dp-Bildschirm in zwei Zeilen], besteht S8c.
 
@@ -182,11 +195,11 @@ Deterministische Funktion `fallbackToday(phaseItems, timeChoice, pain)` in `lib/
      - `sets` gesetzt → Sätze auf `max(1, aufrunden(Sätze / 2))`; Wiederholungen und Dauer unverändert;
      - keine `sets`, aber `duration_sec` → Dauer je Satz auf `max(1, abrunden(Dauer / 2))` **Sekunden** (NE-24);
      - keine `sets`, keine Dauer, aber `reps` → Wiederholungen auf `max(1, aufrunden(Wdh. / 2))`;
-     - keine Grenze gesetzt → Position unverändert, zählt mit der Dauer-Schätzung (Flutter-Plan v2.1 8.4, 5 Minuten) gegen das Budget;
+     - keine Grenze gesetzt → Position unverändert, zählt mit der Dauer-Schätzung (Flutter-Plan v2.2 8.4, 5 Minuten) gegen das Budget;
   3. Positionen der Reihe nach aufnehmen, bis das Budget erreicht ist (mindestens eine);
   4. fester Hinweis über der Liste, sinngemäß „Weil dein Schmerz heute höher ist, habe ich dein Programm gekürzt.“ (Wortlaut KI-D/E-17).
 - Begründung: halbe Zeit und halbe Sätze sind einfach erklärbar und bleiben immer innerhalb der Physio-Grenzen (nur Unterschreitung, E-27); leichtere Varianten haben Vorrang, weil der Physio sie ausdrücklich freigegeben hat.
-- **Geändert in v2.3:** Die Kürzung gilt **schon in Ausschnitt 2** (ohne KI), weil der freigegebene Ablauf 4b (Tages-Check-up, Schritt 4) sie verlangt; gebaut in Flutter-Plan v2.1 L5 (8.7); E-28 ist entschieden (Schmerz 6). Schmerzwert ist der Schmerz aus dem heutigen Tages-Check-up; ohne Check-up keine Kürzung. Die Schwelle kommt mit dem Framework aufs Gerät, damit die Kürzung offline wirkt.
+- **Geändert in v2.3:** Die Kürzung gilt **schon in Ausschnitt 2** (ohne KI), weil der freigegebene Ablauf 4b (Tages-Check-up, Schritt 4) sie verlangt; gebaut in Flutter-Plan v2.2 L5 (8.7); E-28 ist entschieden (Schmerz 6). Schmerzwert ist der Schmerz aus dem heutigen Tages-Check-up; ohne Check-up keine Kürzung. Die Schwelle kommt mit dem Framework aufs Gerät, damit die Kürzung offline wirkt.
 - **Dauer-Zweig (O-17, entschieden NE-24):** „Zeit“ ist die Dauer je Satz in Sekunden; Schritt 2 halbiert sie auf `max(1, abrunden(Dauer / 2))` Sekunden. Die Anpassung der freigegebenen Regel E-36 ist vom Nutzer bestätigt.
 
 **Chat (M-1):** Regeln im System-Prompt (nur Übungen aus dem Framework, keine neuen; Medikament/Diagnose/neue Übung → kein Inhalt, Verweis). Werkzeug `refer_to_treater` (`strict: true`, `{role, reason_code}`) → App zeigt Behandler-Karte aus der Akte; ohne Behandler der Rolle „deinen Physio fragen“ (E-34). Der Chat ändert „Heute“ nicht selbst.
@@ -202,12 +215,12 @@ Schreibwege:
 - **Zusammenführung:** eindeutiger Schlüssel `(patient_id, client_message_id, layer)` → wiederholtes Senden ist idempotent; die Physio-Ansicht zeigt je `client_message_id` **eine** Meldung mit der höchsten Stufe und den Schichten, die sie erkannt haben.
 - Krise/Selbstgefährdung (`krise`) wird ebenso gemeldet (NE-15); Text und Gesprächsinhalt nie.
 - Die App zeigt beim Patienten weiter Karte und festen Text (v1.2 6.3/6.4) und den Hinweis, dass der Physio ein Warnzeichen sieht (Wortlaut E-17).
-- Warnzeichen aus dem Tages-Check-up bleiben beim Trigger aus Ausschnitt 2 (`source = 'checkup'`, Flutter-Plan v2.1 6.9, Regeln entschieden NE-24): Schmerz ≥ 7, Anstieg ≥ 3 zum Check-up des Vortags und Schwellung 3 mit `notify_patient = true` (gleicher fester Hinweis); Stimmungs-Nachricht ab dem 5. aufeinanderfolgenden Tag mit Check-up und Stimmung ≤ 2 und an jedem weiteren solchen Tag erneut (`reason_code = 'mood_low_streak'`, ohne Details, `notify_patient = false`; ein Tag ohne Check-up unterbricht). Der Chat ändert an diesen Regeln nichts. Die Chat-Warnzeichen setzen `notify_patient = true` nur dort, wo die App heute schon Karte und festen Text zeigt (v1.2 6.3/6.4); an deren Verhalten ändert sich nichts.
+- Warnzeichen aus dem Tages-Check-up bleiben beim Trigger aus Ausschnitt 2 (`source = 'checkup'`, Flutter-Plan v2.2 6.9, Regeln entschieden NE-24): Schmerz ≥ 7, Anstieg ≥ 3 zum Check-up des Vortags und Schwellung 3 mit `notify_patient = true` (gleicher fester Hinweis); Stimmungs-Nachricht ab dem 5. aufeinanderfolgenden Tag mit Check-up und Stimmung ≤ 2 und an jedem weiteren solchen Tag erneut (`reason_code = 'mood_low_streak'`, ohne Details, `notify_patient = false`; ein Tag ohne Check-up unterbricht). Kette und Vortag zählen **je Verletzung**; mehrere Stimmungs-Warnzeichen aus einem verspäteten Check-up erscheinen beim Physio als **eine** Meldung (`trigger_checkup_id`, NE-25). Der Chat ändert an diesen Regeln nichts. Die Chat-Warnzeichen setzen `notify_patient = true` nur dort, wo die App heute schon Karte und festen Text zeigt (v1.2 6.3/6.4); an deren Verhalten ändert sich nichts.
 
 ### 4.4 Der Physio sieht den Chat nicht; Bindung an die Identität (M-6, NE-14)
 - Tabellen `chat_messages`, `chat_summaries`, `manny_bubbles`, `ai_usage`, `ai_events`: Spalten `patient_id` **und** `owner_uid` (Auth-Identität, die die Daten erzeugt hat). RLS für `authenticated`: `owner_uid = app.uid() AND patient_id = app.current_patient_id()`; **keine** Physio-Policy; Schreiben nur über die Edge Functions (Rolle der Funktion).
-- **Neubindung** (`redeem_invitation` → `ok_rebound`, Flutter-Plan v2.1 6.4): `app.on_rebind(old_uid)` **löscht** alle Chat-Daten mit `owner_uid = old_uid` (NE-14); das alte Auth-Konto wird gelöscht. Die neue Identität beginnt ein leeres Gespräch. Damit kann auch ein Physio, der selbst einen neuen Code einlöst, keinen alten Chat lesen; der Patient bemerkt den Zugangsverlust auf seinem Gerät und sieht auf dem neuen Gerät den Hinweis (Flutter-Plan v2.1 7.2).
-- `warning_signs` bleibt bei Neubindung erhalten (gehört zum Patienten, nicht zum Chat; enthält keinen Text). Ebenso Check-ups, Übungsergebnisse und Fragen (gehören zum Patienten, Flutter-Plan v2.1 DB-T34).
+- **Neubindung** (`redeem_invitation` → `ok_rebound`, Flutter-Plan v2.2 6.4): `app.on_rebind(old_uid)` **löscht** alle Chat-Daten mit `owner_uid = old_uid` (NE-14); das alte Auth-Konto wird gelöscht. Die neue Identität beginnt ein leeres Gespräch. Damit kann auch ein Physio, der selbst einen neuen Code einlöst, keinen alten Chat lesen; der Patient bemerkt den Zugangsverlust auf seinem Gerät und sieht auf dem neuen Gerät den Hinweis (Flutter-Plan v2.2 7.2).
+- `warning_signs` bleibt bei Neubindung erhalten (gehört zum Patienten, nicht zum Chat; enthält keinen Text). Ebenso Check-ups, Übungsergebnisse und Fragen (gehören zum Patienten, Flutter-Plan v2.2 DB-T34).
 - `patient_id` der Chat-Tabellen bleibt der Patient; ein Bezug zur Verletzung (`injury_id`) ist für Chat-Daten nicht vorgesehen (Annahme KA-16), damit der Chat über eine neue Verletzung hinweg weiterläuft.
 - Statische Regel: `lib/physio/**` nennt keine Chat-Tabellen und importiert kein Chat-Modell. Server-Logs ohne Inhalt.
 - Die Einwilligung (Ausschnitt 2, A-1) und die KI-Einwilligung (E-31) nennen das ausdrücklich, einschließlich Krisen (NE-15).
@@ -216,7 +229,7 @@ Schreibwege:
 Mechanik v1.2 5.5 (vorab erzeugt, gespeichert, synchrone Anzeige, fester Text als Rückfall); Kontext aus echtem Verlauf; strukturierte Ausgabe `{occasion, text, fact_id?}`; Prüfungen: ≤ 2 Sätze, Wortlisten, **Freitextprüfung 4.7**; ohne Einwilligung, offline, Fehler, Limit → fester Text.
 
 ### 4.6 Übung begleiten (M-3) – Vorschlag E-33
-**Abgrenzung zu Ausschnitt 2 (neu):** Die geführte Session mit Zähler, Halte-/Dauer-/Pausen-Timer, Gesamtzeit, Überspringen, Beenden und „Schmerz melden“ (nur freigegebene leichtere Variante oder Abbruch) ist deterministisch Teil von Ausschnitt 2 (Flutter-Plan v2.1 8.5, T-1/T-2/T-5). Ausschnitt 4 ergänzt nur die Schritt-Führung aus der Beschreibung und KI-Motivationssätze; die Sicherheitslogik bei Schmerz bleibt die aus Ausschnitt 2.
+**Abgrenzung zu Ausschnitt 2 (neu):** Die geführte Session mit Zähler, Halte-/Dauer-/Pausen-Timer, Gesamtzeit, Überspringen, Beenden und „Schmerz melden“ (nur freigegebene leichtere Variante oder Abbruch) ist deterministisch Teil von Ausschnitt 2 (Flutter-Plan v2.2 8.5, T-1/T-2/T-5). Ausschnitt 4 ergänzt nur die Schritt-Führung aus der Beschreibung und KI-Motivationssätze; die Sicherheitslogik bei Schmerz bleibt die aus Ausschnitt 2.
 Führung deterministisch: Schritte = nicht leere Zeilen der Physio-Beschreibung (KA-12); Zähler aus den Grenzen der Position; Schmerz → nur freigegebene leichtere Variante (falls vorhanden) oder Abbruch, aus den Daten; Freitext durch die Red-Flag-Vorprüfung. KI nur für vorab erzeugte Motivationssätze, die die **Freitextprüfung 4.7** bestehen müssen; sonst feste Sätze. Tests: 2.1.
 
 ### 4.7 Freitextprüfung S8c für jeden KI-Text (K-1, E-35)
@@ -245,7 +258,7 @@ Stimmung darf im Briefing vorkommen (C-3: „dem Physio zeigen“); sie geht dor
 #### 4.8.2 Technische Trennung vom Manny-Chat
 - Die Physio-Endpunkte lesen **mit dem JWT des aufrufenden Physios** (RLS gilt). `authenticated` hat `SELECT` auf den Chat-Tabellen (der Patient braucht es, 4.4); für Physios gibt es dort **keine Policy**, der Schutz liegt also allein bei RLS (`owner_uid`- und Patientenbindung) und wird von DB-K01 geprüft (0 Zeilen für Physios) → Chat-Inhalte sind für diese Endpunkte unerreichbar, auch bei Fehlern im Funktionscode. Abweichung von KA-13 (Service-Rolle) nur für die Patienten-Endpunkte; für Physio-Endpunkte gilt KA-13 **nicht**.
 - Schreiben (Nutzung, Ereignisse ohne Inhalt) nur über eine enge Definer-Funktion `app.record_physio_ai_usage(kind, tokens…)` ohne Textparameter (DB-K14).
-- **Keine Planänderung durch den Server:** Der Physio-JWT hat `EXECUTE` auf `save_plan` (der Physio braucht es); die Datenbank kann daher nicht verhindern, dass Funktionscode mit diesem JWT `save_plan` aufruft. Gesichert wird das im Code und durch Tests: statische Regel (Code von `physio-*` nennt `save_plan`, `assign_exercise`, `set_current_phase` und keine Schreibzugriffe auf Plan-Tabellen) und Server-Test `physio_endpoints_no_plan_write` mit aufzeichnendem Datenbank-Client (6.2).
+- **Keine Planänderung durch den Server:** Der Physio-JWT hat `EXECUTE` auf `save_plan` (der Physio braucht es); die Datenbank kann daher nicht verhindern, dass Funktionscode mit diesem JWT `save_plan` aufruft. Gesichert wird das im Code und durch Tests: statische Regel (Code von `physio-*` nennt weder `save_plan`, `assign_exercise` noch `set_current_phase` und enthält keine Schreibzugriffe auf Plan-Tabellen) und Server-Test `physio_endpoints_no_plan_write` mit aufzeichnendem Datenbank-Client (6.2).
 - Kontextbau über eine Definer-freie SQL-Funktion bzw. Sicht `app.physio_briefing_facts(patient_id)` (`security_invoker`), die nur die Tabellen aus 4.8.1 liest; DB-K12 prüft per `pg_depend`, dass keine Sicht und keine Funktion der Physio-KI von Chat-Tabellen abhängt.
 - Statische Regel: Funktionscode `supabase/functions/physio-*` nennt keine Chat-Tabellen (Code-Suche, wie `lib/physio/**`).
 
@@ -256,7 +269,7 @@ Stimmung darf im Briefing vorkommen (C-3: „dem Physio zeigen“); sie geht dor
 - Kennzeichnung als KI-Text (Wortlaut über KI-L).
 
 #### 4.8.4 Übung per KI
-- Endpunkt `physio-exercise-draft`: aus der Beschreibung ein Entwurf im Schema der Baukasten-Felder (Name, Beschreibung, Zeit, Sätze/Wdh., Gewicht, Pause, Material, Ort, Kurzanleitung). **Nichts wird gespeichert:** Der Entwurf füllt nur das Formular; aktiv wird die Übung erst, wenn der Physio sie speichert (normaler Schreibweg, Flutter-Plan v2.1 6.11). „Damit anfangen“ und Zuweisung bleiben Physio-Entscheidungen; die KI setzt sie nicht.
+- Endpunkt `physio-exercise-draft`: aus der Beschreibung ein Entwurf im Schema der Baukasten-Felder (Name, Beschreibung, Zeit, Sätze/Wdh., Gewicht, Pause, Material, Ort, Kurzanleitung). **Nichts wird gespeichert:** Der Entwurf füllt nur das Formular; aktiv wird die Übung erst, wenn der Physio sie speichert (normaler Schreibweg, Flutter-Plan v2.2 6.11). „Damit anfangen“ und Zuweisung bleiben Physio-Entscheidungen; die KI setzt sie nicht.
 - **KI-Bild:** Claude erzeugt keine Bilder. Nötig ist ein Bilddienst; **Anbieter, Kosten, Region und Nutzungsrechte sind offen (E-40)**. Bis zur Entscheidung entfällt der Bild-Teil; der Rest der Aufgabe ist unabhängig davon. Ein erzeugtes Bild würde wie ein Upload behandelt (Vorschau im Formular, Speichern erst durch den Physio, Bucket `exercise-images`).
 
 #### 4.8.5 Plan-Vorschläge
@@ -322,10 +335,10 @@ Methodik unverändert. Neue Kategorien (Train/Val/Test, Freigabe E-9):
 | Plan-Vorschläge (Physio-KI) | [Vorschlag] in KI-4 festlegen | gültige IDs, Begründung faktentreu, kein Vorschlag ohne Anlass |
 | Fachfragen: Quelle (Physio-KI) | [Vorschlag] in KI-4 festlegen, nach E-41 | Quelle vorhanden und passend (Judge) |
 
-Synthetische Akten im Schema von Ausschnitt 2 **v2.1** (`ki/evals/akten/*.json`, inkl. Check-ups mit Schwellung und Einschränkungs-Stufe, Übungsergebnisse, Verletzungen).
+Synthetische Akten im Schema von Ausschnitt 2 **v2.2** (`ki/evals/akten/*.json`, inkl. Check-ups mit Schwellung und Einschränkungs-Stufe, Übungsergebnisse, Verletzungen).
 
 ### 6.2 Tests ohne KI
-Unit-Tests (Dart und Server, gemeinsame Fixtures): Validator S8b (jede Regel 1–8 einzeln, positiv und negativ; Regel 3 mit den Fixtures „Mitternacht/Zeitzone“ aus Flutter-Plan v2.1 6.7, `invalid_local_day`), Kürzungsregel 4.2.3 (10/20/30 Minuten, mit/ohne Variante, Sätze 1/3/5, nur `duration_sec` gerade/ungerade/1 s, Schmerz 5/6/7), Freitextprüfung 4.7, `estimateMinutes` (alle Zweige, `pause_sec` gesetzt/leer), Kontextbau, Zusammenführung Warnzeichen. **Server-Tests ohne DB-Recht als Garantie (MINOR-6):** `physio_endpoints_no_plan_write` (aufzeichnender Datenbank-Client: kein Aufruf von `save_plan`, `assign_exercise`, `set_current_phase`, kein Schreiben in Plan-Tabellen), `manny_context_only_from_view` (Kontextbau fragt nur `app.manny_context_facts` ab); dazu statische Regeln (Code-Suche in `supabase/functions/`). Widget-Tests: 2.1. Server-Tests mit gefälschtem Claude-Client (v1.2 7.4).
+Unit-Tests (Dart und Server, gemeinsame Fixtures): Validator S8b (jede Regel 1–8 einzeln, positiv und negativ; Regel 3 mit den Fixtures „Mitternacht/Zeitzone“ aus Flutter-Plan v2.2 6.7, `invalid_local_day`), Kürzungsregel 4.2.3 (10/20/30 Minuten, mit/ohne Variante, Sätze 1/3/5, nur `duration_sec` gerade/ungerade/1 s, Schmerz 5/6/7), Freitextprüfung 4.7, `estimateMinutes` (alle Zweige, `pause_sec` gesetzt/leer), Kontextbau, Zusammenführung Warnzeichen. **Server-Tests ohne DB-Recht als Garantie (MINOR-6):** `physio_endpoints_no_plan_write` (aufzeichnender Datenbank-Client: kein Aufruf von `save_plan`, `assign_exercise`, `set_current_phase`, kein Schreiben in Plan-Tabellen), `manny_context_only_from_view` (Kontextbau fragt nur `app.manny_context_facts` ab); dazu statische Regeln (Code-Suche in `supabase/functions/`). Widget-Tests: 2.1. Server-Tests mit gefälschtem Claude-Client (v1.2 7.4).
 
 ### 6.3 Benannte DB-Tests (Ergänzung zu Flutter-Plan 10.2, gleiche Nachbildung)
 
@@ -341,8 +354,8 @@ Unit-Tests (Dart und Server, gemeinsame Fixtures): Validator S8b (jede Regel 1�
 | DB-K08 | `chat_no_direct_write` | `authenticated` kann in Chat-Tabellen nicht direkt schreiben |
 | DB-K09 | `easier_variant_same_phase` | `save_plan` lehnt eine leichtere Variante aus anderer Phase/anderem Plan ab |
 | DB-K10 | `delete_includes_chat` | `delete_my_data` löscht Chat-Tabellen. **Mit zwei Verbindungen** (Shell-Test wie Flutter DB-T31, NEU-3): A setzt `deleting` und löscht; B schreibt währenddessen eine Chat-Nachricht bzw. ruft `report_chat_warning` → B wartet bzw. scheitert mit `42501`; danach keine Zeile von B |
-| DB-K11 | `lock_trigger_on_chat_tables` | Schreibsperre (Flutter-Plan v2.1 6.3) liegt auf allen Chat-Tabellen und `warning_signs`; Schreiben bei Status `deleting`/`access_deleted` → `42501`; Löschen bei `deleting` erlaubt (NEU-3) |
-| DB-K12 | `physio_ai_no_chat_dependency` | keine Sicht und keine Funktion der Physio-KI (und keine Kachel-Sicht aus Flutter-Plan v2.1 6.12) hängt laut `pg_depend` von Chat-Tabellen ab |
+| DB-K11 | `lock_trigger_on_chat_tables` | Schreibsperre (Flutter-Plan v2.2 6.3) liegt auf allen Chat-Tabellen und `warning_signs`; Schreiben bei Status `deleting`/`access_deleted` → `42501`; Löschen bei `deleting` erlaubt (NEU-3) |
+| DB-K12 | `physio_ai_no_chat_dependency` | keine Sicht und keine Funktion der Physio-KI (und keine Kachel-Sicht aus Flutter-Plan v2.2 6.12) hängt laut `pg_depend` von Chat-Tabellen ab |
 | DB-K13 | `briefing_facts_practice_scope` | `app.physio_briefing_facts` liefert für Physio der Praxis Daten, für fremde Praxis 0 Zeilen, für Patienten/anonym `42501` bzw. 0 |
 | DB-K14 | `physio_ai_usage_fn_no_text` | Katalogprüfung: `app.record_physio_ai_usage` hat keinen Parameter vom Typ `text`/`jsonb`/`varchar`; `EXECUTE` nur für `authenticated` mit Physio-Prüfung (Patient/anonym → `42501`). Das Planschreib-Verbot ist kein DB-Test (4.8.2, 6.2) |
 | DB-K15 | `manny_context_view_without_mood` | Sicht `app.manny_context_facts`: laut `pg_depend` (Spaltenabhängigkeiten) keine Abhängigkeit von `daily_checkups.mood`, `patient_questions`, `practice_notes`; Datentest mit Testakte (Stimmung 1, Stimmungskette, Frage, Notiz) → keine dieser Angaben und kein `mood_low_streak` in der Ausgabe; `SELECT` nur für die Rolle der Funktionen, `authenticated`/`anon` → `permission denied` |
@@ -356,9 +369,9 @@ Nur Testdaten (E-11), MDR nicht behandelt (NE-11). Einwilligungen: Physio-Sicht 
 ---
 
 ## 8. Löschkonzept
-v1.2 Abschnitt 9 und Flutter-Plan v2.1 6.13/8.10 gelten (Löschumfang inkl. Check-ups, Übungsergebnisse, Fragen). Ausschnitt 3 ergänzt:
-- Typwert `deleting` existiert bereits (Flutter-Plan v2.1 6.2, K-m3). Weil Edge Functions lange Antworten streamen, setzt `delete_my_data()` ab Ausschnitt 3 **zuerst** in eigener kurzer Transaktion `status = 'deleting'` (sperrt S1b und S9), dann die Löschung wie in Ausschnitt 2 inkl. Chat-Tabellen, `ai_usage` (oder Anonymisierung, E-22) und `ai_events`.
-- **Sperre auch für Chat und Warnzeichen** (NEU-3): Der Trigger `app.lock_patient_for_write()` (Flutter-Plan v2.1 6.3) liegt auch auf `chat_messages`, `chat_summaries`, `manny_bubbles`, `ai_usage`, `ai_events` und `warning_signs`. Edge Functions schreiben im Namen des Patienten und unterliegen ihm; INSERT/UPDATE nur bei `active`, DELETE bei `active` oder `deleting`. Damit schreibt S9 nur bei `status = 'active'` (DB-K10, DB-K11).
+v1.2 Abschnitt 9 und Flutter-Plan v2.2 6.13/8.10 gelten (Löschumfang inkl. Check-ups, Übungsergebnisse, Fragen). Ausschnitt 3 ergänzt:
+- Typwert `deleting` existiert bereits (Flutter-Plan v2.2 6.2, K-m3). Weil Edge Functions lange Antworten streamen, setzt `delete_my_data()` ab Ausschnitt 3 **zuerst** in eigener kurzer Transaktion `status = 'deleting'` (sperrt S1b und S9), dann die Löschung wie in Ausschnitt 2 inkl. Chat-Tabellen, `ai_usage` (oder Anonymisierung, E-22) und `ai_events`.
+- **Sperre auch für Chat und Warnzeichen** (NEU-3): Der Trigger `app.lock_patient_for_write()` (Flutter-Plan v2.2 6.3) liegt auch auf `chat_messages`, `chat_summaries`, `manny_bubbles`, `ai_usage`, `ai_events` und `warning_signs`. Edge Functions schreiben im Namen des Patienten und unterliegen ihm; INSERT/UPDATE nur bei `active`, DELETE bei `active` oder `deleting`. Damit schreibt S9 nur bei `status = 'active'` (DB-K10, DB-K11).
 - Laufender Stream wird in der App vor dem Löschen abgebrochen; `OutboxSender.pauseAndDrain()` wie Ausschnitt 2 (umfasst `report_chat_warning`).
 - Warnzeichen aus dem Chat folgen O-9 (werden mit den Patientendaten gelöscht).
 - Physio-KI: zwischengespeicherte Kurzbriefings bzw. Vorschläge (falls E-45 so entschieden) sind abgeleitete Patientendaten und werden mit `delete_my_data` gelöscht; Nutzungsdaten ohne Text bleiben anonymisiert (E-22).
@@ -532,6 +545,9 @@ Status: **erledigt** · **offen** · **neu** · **ruht** · **Annahme**
 ---
 
 ## 15. Änderungsprotokoll
+
+### v2.4 → v2.5 (Re-Review S3-RR, NE-25)
+Siehe Tabelle am Anfang des Dokuments.
 
 ### v2.3 → v2.4 (Review S3-3, NE-24)
 Siehe Tabelle am Anfang des Dokuments.
