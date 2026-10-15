@@ -19,7 +19,6 @@ import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
 import 'package:curaone/ui/home/home_shell.dart';
@@ -453,7 +452,6 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await _today(tester, source: _Pending());
       expect(find.bySemanticsLabel(S.loading), findsOneWidget);
-      expect(find.byType(MessagesButton), findsNothing);
       expect(find.byType(MannyButton), findsNothing);
       expect(find.text(S.trainingLog), findsNothing);
       expect(find.byType(FloatingNav), findsOneWidget);
@@ -468,13 +466,12 @@ void main() {
         await _today(tester, source: source);
         expect(find.text(S.todayLoadError), findsOneWidget);
         expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-        expect(find.byType(MessagesButton), findsNothing);
         expect(find.byType(MannyButton), findsNothing);
         await _tap(tester, find.text(S.retry));
         expect(source.calls, 2);
         expect(find.text(S.todayLoadError), findsNothing);
         expect(find.text(S.todayTitle('Jakob')), findsOneWidget);
-        expect(find.byType(MessagesButton), findsOneWidget);
+        expect(find.byType(MannyButton), findsOneWidget);
         await disposeApp(tester);
       },
     );
@@ -673,7 +670,7 @@ void main() {
 
         await _tap(tester, _inCard('ex-kniebeuge', S.exerciseRemove));
         expect(h.controller.transient.undoWindowOpen, isTrue);
-        await _tap(tester, find.byType(MessagesButton));
+        await _tap(tester, find.byType(MannyButton));
         expect(h.controller.transient.undoWindowOpen, isFalse);
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
@@ -827,15 +824,11 @@ void main() {
 
   group('Button-Gruppe, Snackbar und Reserve (UI-71, UI-73, UI-31)', () {
     testWidgets(
-      'Nachrichten-Button 8 dp über dem Manny-Button, rechtsbündig; Primär 96 dp schmaler',
+      'Manny-Knopf unten bündig mit dem Primärbutton; Primär 96 dp schmaler',
       (WidgetTester tester) async {
         await _today(tester, size: Viewports.phone);
-        final Rect messages = _rectOf(tester, find.byType(MessagesButton));
         final Rect manny = _rectOf(tester, find.byType(MannyButton));
         final Rect primary = _primary(tester);
-        expect(manny.top - messages.bottom, closeTo(8, 0.01));
-        expect(messages.right, closeTo(manny.right, 0.01));
-        expect(messages.size, const Size(48, 48));
         expect(manny.size, const Size(56, 56));
         expect(manny.bottom, closeTo(primary.bottom, 0.01));
         expect(primary.width, closeTo(390 - 32 - 56 - 8, 0.01));
@@ -862,7 +855,7 @@ void main() {
     });
 
     testWidgets(
-      'Umbruchszustand: Reihe höher als 56 dp, Nachrichten-Button folgt dem Manny-Button (UI-71)',
+      'Umbruchszustand: Reihe höher als 56 dp, der Manny-Knopf bleibt unten bündig (UI-71)',
       (WidgetTester tester) async {
         for (final double scale in <double>[1.3, 1.5, 2.0]) {
           await _today(tester, size: Viewports.small, textScale: scale);
@@ -872,16 +865,9 @@ void main() {
             greaterThan(56),
             reason: '„Training starten“ bricht bei ×$scale um',
           );
-          final Rect messages = _rectOf(tester, find.byType(MessagesButton));
           final Rect manny = _rectOf(tester, find.byType(MannyButton));
           expect(manny.size, const Size(56, 56), reason: 'bleibt bei ×$scale');
           expect(manny.bottom, closeTo(primary.bottom, 0.01));
-          expect(
-            manny.top - messages.bottom,
-            closeTo(8, 0.01),
-            reason: '×$scale',
-          );
-          expect(messages.right, closeTo(manny.right, 0.01));
           expect(primary.width, closeTo(224, 0.01));
           await disposeApp(tester);
         }
@@ -904,7 +890,7 @@ void main() {
         expect(row.top - snackbar.bottom, closeTo(12, 0.5));
         expect(snackbar.overlaps(row), isFalse);
         expect(
-          snackbar.overlaps(_rectOf(tester, find.byType(MessagesButton))),
+          snackbar.overlaps(_rectOf(tester, find.byType(MannyButton))),
           isFalse,
         );
         await _closeLater(tester);
@@ -951,37 +937,35 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Fokusreihenfolge: Liste, Nachrichten, „Training starten“, Manny, Nav',
-      (WidgetTester tester) async {
-        await _today(tester);
-        final List<String> order = <String>[];
-        for (int i = 0; i < 40; i++) {
-          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-          await tester.pump();
-          final String? label = _focusedLabel();
-          if (label != null && !order.contains(label)) order.add(label);
-          if (label == S.navPath || label == S.navToday) {
-            if (order.contains(S.navToday) && order.contains(S.navPath)) break;
-          }
+    testWidgets('Fokusreihenfolge: Liste, „Training starten“, Manny, Nav', (
+      WidgetTester tester,
+    ) async {
+      await _today(tester);
+      final List<String> order = <String>[];
+      for (int i = 0; i < 40; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        final String? label = _focusedLabel();
+        if (label != null && !order.contains(label)) order.add(label);
+        if (label == S.navPath || label == S.navToday) {
+          if (order.contains(S.navToday) && order.contains(S.navPath)) break;
         }
-        int at(String l) => order.indexOf(l);
-        expect(at(S.messagesButton), greaterThan(at(S.customAddLabel)));
-        expect(at(S.trainingLog), greaterThan(at(S.messagesButton)));
-        expect(at(S.mannyChatOpen), greaterThan(at(S.trainingLog)));
-        expect(at(S.navPath), greaterThan(at(S.mannyChatOpen)));
-        // Zeitwahl und Aktionen der Liste stehen vor „Eigene Übung“.
-        expect(
-          at(S.timeChoiceLabel(10)),
-          lessThan(at(S.exerciseSwapLabel(S.exSquatName))),
-        );
-        expect(
-          at(S.exerciseRemoveLabel(S.exSquatName)),
-          lessThan(at(S.customAddLabel)),
-        );
-        await disposeApp(tester);
-      },
-    );
+      }
+      int at(String l) => order.indexOf(l);
+      expect(at(S.trainingLog), greaterThan(at(S.customAddLabel)));
+      expect(at(S.mannyChatOpen), greaterThan(at(S.trainingLog)));
+      expect(at(S.navPath), greaterThan(at(S.mannyChatOpen)));
+      // Zeitwahl und Aktionen der Liste stehen vor „Eigene Übung“.
+      expect(
+        at(S.timeChoiceLabel(10)),
+        lessThan(at(S.exerciseSwapLabel(S.exSquatName))),
+      );
+      expect(
+        at(S.exerciseRemoveLabel(S.exSquatName)),
+        lessThan(at(S.customAddLabel)),
+      );
+      await disposeApp(tester);
+    });
 
     testWidgets(
       'Sheet offen: Gruppe weder in der Semantik noch fokussierbar (UI-70)',
@@ -991,10 +975,8 @@ void main() {
         List<String> labels() =>
             tapTargets(tester).map((TapTarget t) => t.label).toList();
         expect(labels(), contains(S.mannyChatOpen));
-        expect(labels(), contains(S.messagesButton));
         await _tap(tester, find.text(S.trainingLog));
         expect(labels(), isNot(contains(S.mannyChatOpen)));
-        expect(labels(), isNot(contains(S.messagesButton)));
         expect(labels(), isNot(contains(S.navPath)));
         expect(labels(), contains(S.trainingSheetConfirm));
         for (int i = 0; i < 12; i++) {
@@ -1002,7 +984,6 @@ void main() {
           await tester.pump();
           expect(<String?>[
             S.mannyChatOpen,
-            S.messagesButton,
             S.navPath,
             S.navToday,
             S.trainingLog,
@@ -1018,7 +999,7 @@ void main() {
       (WidgetTester tester) async {
         await _today(tester, size: Viewports.small, textScale: 2);
         expect(tester.takeException(), isNull);
-        expect(find.byType(MessagesButton), findsOneWidget);
+        expect(find.byType(MannyButton), findsOneWidget);
         expect(find.text(S.todayTitle('Jakob')), findsOneWidget);
         await disposeApp(tester);
       },

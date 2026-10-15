@@ -464,4 +464,8 @@ abstract final class WorldGeometry {
   // Schleier unter der Leiste: 70 % `world-floor`, 150 dp hoch (Brief 4.1,
   // Höhe in `CuraSize.navVeilHeight`).
   static const double navVeilAlpha = 0.70;
+
+  // Pfad-Linie auf der Welt (Brief 7.1): erreichte Strecke in `nav-ink`,
+  // künftige gepunktet mit dieser Deckkraft.
+  static const double pathLineFutureAlpha = 0.55;
 }

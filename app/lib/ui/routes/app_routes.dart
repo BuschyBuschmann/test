@@ -9,7 +9,6 @@ import '../chat/manny_chat_screen.dart';
 import '../home/home_shell.dart';
 import '../messages/example_chat_screen.dart';
 import '../messages/example_contacts.dart';
-import '../messages/messages_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/privacy_placeholder_page.dart';
 import 'cura_page_route.dart';
@@ -26,7 +25,7 @@ abstract final class AppRoutes {
     (BuildContext context) => OnboardingFlow(initialStep: step, notice: notice),
   );
 
-  /// Home mit den Tabs Pfad und Heute; öffnet auf Pfad (A-1).
+  /// Home mit den Zielen Pfad, Heute, Chats und Profil; öffnet auf Pfad (A-1).
   static Route<void> home(BuildContext context) =>
       curaPageRoute<void>(context, (BuildContext context) => const HomeShell());
 
@@ -41,12 +40,8 @@ abstract final class AppRoutes {
   static Route<void> mannyChat(BuildContext context) =>
       MannyChatScreen.route(context);
 
-  /// Vollbild-Route Nachrichten (Ergänzung 2, 3.3): Beispielkontakte.
-  static Route<void> messages(BuildContext context) =>
-      MessagesScreen.route(context);
-
   /// Vollbild-Route Beispiel-Chat eines Kontakts (Ergänzung 2, 3.4); wird
-  /// über die Nachrichten gelegt.
+  /// über die Home-Route gelegt (Ziel Chats).
   static Route<void> exampleChat(
     BuildContext context,
     ExampleContact contact,

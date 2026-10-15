@@ -11,7 +11,11 @@ import 'package:flutter/widgets.dart';
 
 abstract final class ProbeKeys {
   static const ValueKey<String> nav = ValueKey<String>('overlay:nav');
-  static const ValueKey<String> cluster = ValueKey<String>('overlay:cluster');
+
+  /// Manny-Knopf auf dem Pfad (Brief 5): schwebt über dem Inhalt.
+  static const ValueKey<String> mannyButton = ValueKey<String>(
+    'overlay:manny-button',
+  );
   static const ValueKey<String> primaryRow = ValueKey<String>(
     'overlay:primary-row',
   );

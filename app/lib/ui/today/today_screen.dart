@@ -6,12 +6,11 @@
 //   · CA. N MIN (Übungskarten mit Tauschen/Entfernen, Leerkarte „Heute noch
 //   nichts geplant.“) und „+ Eigene Übung“.
 // - Fest über der Nav (nur im Standard-Zustand, A-43): die Primärbutton-Reihe
-//   („Training eintragen“ / „Heute erledigt“ + Manny-Button) und der
-//   Nachrichten-Button 8 dp über der Oberkante des Manny-Buttons
-//   (`PrimaryActionRow`). Die Scroll-Reserve am Listenende ist aus der
-//   **gemessenen** Höhe der Gruppe gerechnet (Gruppe + Nav samt Abstand +
-//   16 dp + 8 dp Luft), nicht aus festen Pixelwerten; die Snackbar steht 12 dp
-//   über der Gruppe (`HomeShellState.todayGroupHeight`). Solange eine Snackbar
+//   („Training eintragen“ / „Heute erledigt“ + Manny-Knopf, `PrimaryActionRow`;
+//   den Nachrichten-Knopf gibt es nicht mehr, F2-R3). Die Scroll-Reserve am
+//   Listenende ist aus der **gemessenen** Höhe der Reihe gerechnet (Reihe + Nav
+//   samt Abstand + 16 dp + 8 dp Luft), nicht aus festen Pixelwerten; die
+//   Snackbar steht 12 dp über der Reihe (`HomeShellState.todayGroupHeight`). Solange eine Snackbar
 //   steht, kommt ihre gemessene Höhe samt 12 dp dazu (`snackbarHeight`), damit
 //   sie den letzten Eintrag nie überdeckt.
 // - „Training eintragen“ öffnet das Sheet „Wie willst du trainieren?“; es merkt
@@ -20,7 +19,7 @@
 //   „Eingetragen. Rückgängig“ (8 s). „Entfernen“ zeigt „Entfernt. Rückgängig“.
 //   Nach jeder Aktion, die einen Tageswechsel ausgelöst hat, übernimmt
 //   `HomeShellState.dayChanged` die Folgen (Routen schließen, Snackbar, Ansage).
-// - Laden und Fehler (Brief 6.3) ohne Button-Gruppe; der Fehler nutzt die
+// - Laden und Fehler (Brief 6.3) ohne Primärbutton-Reihe; der Fehler nutzt die
 //   gemeinsame Fehleransicht mit „Nochmal versuchen“.
 //
 // Die Logik (Tagesprogramm, Eintragen, Rückgängig, Tageswechsel) kommt
@@ -44,7 +43,6 @@ import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
-import '../components/action_cluster.dart';
 import '../components/category_card.dart';
 import '../components/cura_chip.dart';
 import '../components/cura_label.dart';
@@ -85,13 +83,11 @@ class _TodayScreenState extends State<TodayScreen> {
   FocusNode _swapNode(String id) =>
       _swapFocus.putIfAbsent(id, () => FocusNode(debugLabel: 'Tauschen $id'));
 
-  /// Gemessene Höhe der Button-Gruppe (Reihe samt Nachrichten-Button).
+  /// Gemessene Höhe der Primärbutton-Reihe (mit dem Manny-Knopf).
   double _groupHeight = 0;
 
-  /// Mindesthöhe der Gruppe vor der ersten Messung: Manny-Button plus Abstand
-  /// plus Nachrichten-Button.
-  static const double _groupMinHeight =
-      CuraSize.mannyChatButton + CuraSpace.clusterGap + CuraSize.messagesButton;
+  /// Mindesthöhe der Reihe vor der ersten Messung: der Manny-Knopf.
+  static const double _groupMinHeight = CuraSize.mannyChatButton;
 
   @override
   void dispose() {
@@ -465,14 +461,6 @@ class _TodayScreenState extends State<TodayScreen> {
                   onOpenChat: shell.openChat,
                   startFocusNode: _startFocus,
                   chatFocusNode: shell.chatButtonFocus,
-                  messagesButton: KeyedSubtree(
-                    key: ProbeKeys.cluster,
-                    child: ActionCluster(
-                      mode: ActionClusterMode.today,
-                      onOpenMessages: shell.openMessages,
-                      messagesFocusNode: shell.messagesButtonFocus,
-                    ),
-                  ),
                 ),
               ),
             ),

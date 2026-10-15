@@ -1,33 +1,32 @@
-// `PathScreen` (Brief 6.2, Ergänzung 1, 3.1/3.5, Ergänzung 2, 3.1, Plan 4.5,
-// 4.6, 7.2, 7.3): der Tab „Pfad“.
+// `PathScreen` (Design-Brief v2, 7.1; Ergänzung 1, 3.1/3.5, Plan 4.5, 4.6, 7.2,
+// 7.3): das Ziel „Pfad“.
 //
-// - Kopfzeile fix (`PathHeader`), darunter der Pfad scrollt (Zukunft oben,
-//   oben und unten gepolstert, unten mit der Reserve für die Button-Gruppe).
-//   Ab Textskalierung 1,5 bleibt nur eine feste schmale Zeile stehen („Woche N“
-//   links, „Deine Daten“ rechts, höchstens 64 dp, Marker `header`); Phase,
-//   „Beispielpfad“, Freezes und Streak wandern als erstes Element in die
-//   Scrollfläche (Marker `scroll-header`): bei 320 × 568 und 200 % verbrauchte
-//   der volle Kopf sonst mehr als die Hälfte des Bildschirms, und Units der
-//   rechten Bahn ließen sich nicht mehr frei von Kopf, Button-Gruppe und Nav
-//   scrollen (UI-33, UI-34, F-1). `padTop` zieht die Höhe des mitlaufenden
-//   Teils ab (F-2).
+// - Kopf-Karte (`HeaderCard`): „Woche N“, „Phase M · Verletzung“, Chips
+//   Freeze, Streak und „Beispielpfad“ (die beiden ersten sind antippbar und
+//   erklären sich per `NodeHint`), der Wochenbalken „N von 7 Tagen“ und der
+//   Einstieg „Deine Daten“. Sie steht fest oben; darunter scrollt der Pfad
+//   (Zukunft oben, oben und unten gepolstert, unten mit der Reserve für den
+//   Manny-Knopf). Ab Textskalierung 1,5 läuft die Kopf-Karte als erstes
+//   Element in der Scrollfläche mit (Marker `scroll-header`): bei 320 × 568 und
+//   200 % verbrauchte sie sonst mehr als die Hälfte des Bildschirms (UI-33,
+//   UI-34, F-1). `padTop` zieht die Höhe des mitlaufenden Teils ab (F-2).
 //   Beim Öffnen und nach einer Neuberechnung (Profil, Fortschritt) steht die
-//   aktuelle Unit auf 55 % der Sichtfläche (`jumpTo`, keine Animation).
-// - Manny sitzt auf der aktuellen Unit und öffnet bei einem Tipp den
-//   Manny-Chat (Tab bleibt); die Blase und der `NodeHint` sind **feste
+//   aktuelle Kugel auf 55 % der Sichtfläche (`jumpTo`, keine Animation).
+// - Manny steht neben der aktuellen Kugel und öffnet bei einem Tipp den
+//   Manny-Chat (Ziel bleibt); die Blase und der `NodeHint` sind **feste
 //   Overlays über der Liste** (nicht in der Liste), damit die Prüfungen sie
 //   in der Ruhelage sehen. Sie werden beim Erscheinen platziert und
-//   überdecken die Button-Gruppe nie (Rückfallketten in
-//   `overlay_placement.dart`); scrollt der Nutzer, schließen beide (der
-//   Bezug zu Manny bzw. zur Unit ginge sonst verloren).
-// - Blasen und Feier beim Sichtbarwerden des Tabs (`onPathVisible`): einmal
+//   überdecken den Manny-Knopf nie (Rückfallketten in `overlay_placement.dart`);
+//   scrollt der Nutzer, schließen beide (der Bezug zu Manny bzw. zur Kugel
+//   ginge sonst verloren).
+// - Blasen und Feier beim Sichtbarwerden des Ziels (`onPathVisible`): einmal
 //   pro Anlass und Tag; die Feier mit einmaligem Ring-Puls erst, wenn das
 //   Rückgängig-Fenster zu ist (Logik aus U1b, hier nur genutzt).
-// - Unit-Tipps: aktuell → Tab Heute; gesperrt oder erledigt → `NodeHint`
-//   (schließt Tipp irgendwo, Scrollen, Escape/Zurück, Tabwechsel, nach 5 s,
+// - Kugel-Tipps: aktuell → Ziel Heute; gesperrt oder erledigt → `NodeHint`
+//   (schließt Tipp irgendwo, Scrollen, Escape/Zurück, Zielwechsel, nach 5 s,
 //   bei aktivem Screenreader nicht automatisch).
-// - Laden und Fehler (Brief 6.2, Erratum E-4: Pfad-Tab-Fehler behält „Dein
-//   Pfad konnte nicht geladen werden.“) ohne Button-Gruppe (A-43).
+// - Laden und Fehler (Brief 6.2, Erratum E-4: Pfad-Fehler behält „Dein Pfad
+//   konnte nicht geladen werden.“) ohne Manny-Knopf (A-43).
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -42,6 +41,8 @@ import '../../logic/manny_occasions.dart'
 import '../../logic/path_generator.dart';
 import '../../logic/path_layout.dart';
 import '../../logic/path_model.dart';
+import '../../logic/plural.dart';
+import '../../logic/profile_summary.dart';
 import '../../logic/streak.dart';
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
@@ -50,12 +51,13 @@ import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
-import '../components/action_cluster.dart';
 import '../components/floating_nav.dart';
+import '../components/header_card.dart';
+import '../components/header_icon_button.dart';
+import '../components/manny_chat_button.dart';
 import '../components/manny_bubble.dart';
 import '../components/node_hint.dart';
 import '../components/path_outlook.dart';
-import '../components/path_header.dart';
 import '../components/probe_keys.dart';
 import '../components/size_reporter.dart';
 import '../home/home_shell.dart';
@@ -199,9 +201,7 @@ class _PathScreenState extends State<PathScreen> {
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     // Läuft die Kopfzeile in der Scrollfläche mit, erst nach ihrer Messung und
     // der folgenden Mittenlage platzieren (sonst stünde die Blase falsch).
-    final bool scrollsAlong =
-        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
-        CuraSize.textScaleScrollAlong;
+    final bool scrollsAlong = _headerScrollsAlong(context);
     if ((_recenterPending || (scrollsAlong && _headerH < 1)) &&
         _visitRetries < 10) {
       _visitRetries++;
@@ -424,9 +424,24 @@ class _PathScreenState extends State<PathScreen> {
     return Size(w, h);
   }
 
+  /// Die Kopf-Karte läuft in der Scrollfläche mit: ab Textskalierung 1,5 und,
+  /// bei vergrößerter Schrift, auf kurzen Bildschirmen (unter 600 dp Höhe). Die
+  /// Karte ist mit Chips und Wochenbalken hoch; fest nähme sie dort den Platz
+  /// des Pfads (F-1, F-2).
+  bool _headerScrollsAlong(BuildContext context) {
+    final double scale = MediaQuery.textScalerOf(context)
+        .scale(CuraSize.hairline);
+    return scale >= CuraSize.textScaleScrollAlong ||
+        (scale > CuraSize.hairline &&
+            MediaQuery.sizeOf(context).height <
+                CuraSize.pathHeaderAlongMaxHeight);
+  }
+
+  /// Rechteck des Manny-Knopfes in den Koordinaten der Sichtfläche (`null`,
+  /// solange er nicht gebaut ist).
   Rect? _clusterNow() {
     final HomeShellState shell = HomeShellScope.of(context);
-    final Rect? global = ActionCluster.rectOf(shell.clusterKey);
+    final Rect? global = MannyButton.rectOf(shell.mannyButtonKey);
     final RenderObject? viewport = _viewportKey.currentContext
         ?.findRenderObject();
     if (global == null || viewport is! RenderBox || !viewport.attached) {
@@ -443,12 +458,17 @@ class _PathScreenState extends State<PathScreen> {
   /// „Deine Daten“) liegt über der Sichtfläche, nicht in ihr.
   double get _overlayTop => kOverlayTopLimit;
 
-  Rect _mannyRect(PathLayout layout, PathProgress progress) {
+  MannyPlacement _mannyPlacement(PathLayout layout, PathProgress progress) {
     final NodePlacement p = layout.placements[progress.mannyIndex];
-    return MannyPerch.drawRect(
+    final MannyPlacement m = MannyPerch.place(
       center: p.center,
       diameter: p.diameter,
-    ).shift(Offset(0, _contentTop - _offset));
+      width: _viewport.width,
+    );
+    return MannyPlacement(
+      draw: m.draw.shift(Offset(0, _contentTop - _offset)),
+      right: m.right,
+    );
   }
 
   BubblePlacement? _planBubble(
@@ -461,15 +481,16 @@ class _PathScreenState extends State<PathScreen> {
     final CuraTypography type = CuraTypography.of(context);
     final TextScaler scaler = MediaQuery.textScalerOf(context);
     final String text = _controller.bubbleText(decision);
-    final NodePlacement unit = layout.placements[progress.mannyIndex];
+    final MannyPlacement manny = _mannyPlacement(layout, progress);
     return placeBubble(
-      manny: _mannyRect(layout, progress),
+      manny: manny.draw,
+      // Links der Kugel stünde die Blase rechts von Manny über der Kugel.
+      allowSide: manny.right,
       viewport: _viewport,
       cluster: allowScroll ? _clusterNow() : _cluster,
       textScale: _textScale,
       measure: (BubbleArrow arrow, double maxWidth) =>
           _bubbleSize(text, arrow, maxWidth, type, scaler),
-      mannyBelowExtra: unit.diameter - CuraSize.mannyPerchOverlap,
       scrollOffset: _offset,
       allowScroll: allowScroll,
       topLimit: _overlayTop,
@@ -548,10 +569,11 @@ class _PathScreenState extends State<PathScreen> {
   // -------------------------------------------------------------------------
 
   PathLayoutMetrics _metrics(double gap) => PathLayoutMetrics(
-    small: CuraSize.unitSmall,
-    medium: CuraSize.unitMedium,
-    large: CuraSize.unitLarge,
-    boss: CuraSize.unitBoss,
+    small: CuraSize.orbDay,
+    medium: CuraSize.orbWeekGoal,
+    large: CuraSize.orbPhaseEnd,
+    boss: CuraSize.orbBoss,
+    current: CuraSize.orbCurrent,
     sideMargin: CuraSpace.pageMargin,
     verticalGap: gap,
     outlookMaxWidth: CuraSize.outlookMaxWidth,
@@ -588,6 +610,54 @@ class _PathScreenState extends State<PathScreen> {
     }
   }
 
+  /// Die Kopf-Karte des Pfads (Brief 7.1, V2-35).
+  Widget _headerCard(
+    PathProgress progress,
+    AppState state,
+    StreakView streak,
+    HomeShellState shell,
+  ) {
+    final bool frozen = streak.display == StreakDisplay.frozen;
+    final int day = dayInPathWeek(
+      state.onboarding.injuryDate,
+      _controller.today,
+    );
+    return HeaderCard(
+      title: S.weekTitle(progress.week),
+      subtitle: phaseLine(progress.phase, state.onboarding.injuryType),
+      trailing: HeaderIconButton(
+        icon: Icons.person_outline_rounded,
+        tooltip: S.dataSheetOpen,
+        focusNode: shell.dataButtonFocus,
+        onHeaderCard: true,
+        onPressed: shell.openDataSheet,
+      ),
+      chips: <Widget>[
+        HeaderChip(
+          icon: Icons.ac_unit_rounded,
+          label: '${streak.freezes}',
+          semanticLabel: S.freezesLabel(streak.freezes),
+          onPressed: (Rect r) => _onStatPressed(kStatFreezeHintId, r),
+        ),
+        HeaderChip(
+          icon: Icons.local_fire_department_rounded,
+          label: frozen
+              ? '${streak.count} ${S.streakFrozenWord}'
+              : '${streak.count}',
+          semanticLabel: frozen
+              ? S.streakFrozenLabel(tage(streak.count))
+              : S.streakLabel(tage(streak.count)),
+          onPressed: (Rect r) => _onStatPressed(kStatStreakHintId, r),
+        ),
+        const HeaderChip(
+          icon: Icons.info_outline_rounded,
+          label: S.samplePathChip,
+        ),
+      ],
+      progress: HeaderProgress(value: day / 7, label: S.weekProgress(day)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     switch (widget.load) {
@@ -608,28 +678,20 @@ class _PathScreenState extends State<PathScreen> {
     _progress = progress;
     final StreakView streak = StreakEngine.view(state.streak);
     final HomeShellState shell = HomeShellScope.of(context);
-    final double textScale = MediaQuery.textScalerOf(context)
-        .scale(CuraSize.hairline);
-    final bool headerScrolls = textScale >= CuraSize.textScaleScrollAlong;
-    // Ab 1,5 bleibt nur eine schmale Zeile fest („Woche N“, „Deine Daten“);
-    // Phase, Beispielpfad, Freezes und Streak laufen in der Scrollfläche mit.
-    final Widget header = FocusTraversalOrder(
+    final bool headerScrolls = _headerScrollsAlong(context);
+    // Bei großer Schrift läuft die Kopf-Karte als erstes Element mit.
+    final Widget headerCard = FocusTraversalOrder(
       order: const NumericFocusOrder(HomeShellState.focusOrderHeader),
-      child: headerScrolls
-          ? PathHeaderBar(
-              week: progress.week,
-              onOpenData: shell.openDataSheet,
-              dataFocusNode: shell.dataButtonFocus,
-            )
-          : PathHeader(
-              week: progress.week,
-              phaseLine: phaseLine(progress.phase, state.onboarding.injuryType),
-              streak: streak,
-              onOpenData: shell.openDataSheet,
-              dataFocusNode: shell.dataButtonFocus,
-              onFreezeTap: (Rect r) => _onStatPressed(kStatFreezeHintId, r),
-              onStreakTap: (Rect r) => _onStatPressed(kStatStreakHintId, r),
-            ),
+      child: _headerCard(progress, state, streak, shell),
+    );
+    final Widget header = Padding(
+      padding: const EdgeInsets.fromLTRB(
+        CuraSize.cardMargin,
+        CuraSpace.s2,
+        CuraSize.cardMargin,
+        CuraSpace.s2,
+      ),
+      child: headerCard,
     );
     if (!headerScrolls && _headerH != 0) _headerH = 0;
     return TapAnywhereDismiss(
@@ -643,27 +705,16 @@ class _PathScreenState extends State<PathScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                KeyedSubtree(
-                  key: ProbeKeys.header,
-                  child: KeyedSubtree(key: _headerKey, child: header),
-                ),
+                if (!headerScrolls)
+                  KeyedSubtree(
+                    key: ProbeKeys.header,
+                    child: KeyedSubtree(key: _headerKey, child: header),
+                  ),
                 Expanded(
                   child: _viewportArea(
                     context,
                     progress,
-                    scrollHeader: headerScrolls
-                        ? PathHeaderInfo(
-                            phaseLine: phaseLine(
-                              progress.phase,
-                              state.onboarding.injuryType,
-                            ),
-                            streak: streak,
-                            onFreezeTap: (Rect r) =>
-                                _onStatPressed(kStatFreezeHintId, r),
-                            onStreakTap: (Rect r) =>
-                                _onStatPressed(kStatStreakHintId, r),
-                          )
-                        : null,
+                    scrollHeader: headerScrolls ? header : null,
                   ),
                 ),
               ],
@@ -697,7 +748,7 @@ class _PathScreenState extends State<PathScreen> {
     final Rect anchor =
         root.globalToLocal(anchorGlobal.topLeft) & anchorGlobal.size;
     final HomeShellState shell = HomeShellScope.of(context);
-    final Rect? clusterGlobal = ActionCluster.rectOf(shell.clusterKey);
+    final Rect? clusterGlobal = MannyButton.rectOf(shell.mannyButtonKey);
     final Rect? cluster = clusterGlobal == null
         ? null
         : root.globalToLocal(clusterGlobal.topLeft) & clusterGlobal.size;
@@ -772,41 +823,49 @@ class _PathScreenState extends State<PathScreen> {
     final CuraTypography type = CuraTypography.of(context);
     final TextScaler scaler = MediaQuery.textScalerOf(context);
     final double textScale = scaler.scale(CuraSize.hairline);
+    // Der unterste Teil des Pfads lässt sich über den Manny-Knopf scrollen:
+    // Leiste, Abstand, Knopf, Seitenrand.
     final double reserve =
         FloatingNav.occupiedHeight(context) +
-        CuraSpace.pageMargin +
+        CuraSize.mannyButtonNavGap +
         CuraSize.mannyChatButton +
-        CuraSpace.clusterGap +
-        CuraSize.messagesButton +
         CuraSpace.pageMargin;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints box) {
         final Size viewport = box.biggest;
         final double width = viewport.width;
 
-        // Beschriftungen unter mittleren, großen und Boss-Units.
-        double labelHeight = 0;
+        // Beschriftungen unter Wochenziel, Phasen-Abschluss und Boss als
+        // Label-Chip (Text plus Innenabstand des Chips).
+        const double chipPadH = CuraSize.statPillPaddingH;
+        const double chipPadV = CuraSize.statPillPaddingV;
+        Size chipSize(String t) {
+          final Size m = _measureText(
+            t,
+            type.chip,
+            width - 2 * CuraSpace.pageMargin - 2 * chipPadH,
+            scaler,
+          );
+          final double w = m.width + 2 * chipPadH;
+          final double h = m.height + 2 * chipPadV;
+          return Size(w, h);
+        }
+
+        double chipHeight = 0;
         for (final PathUnit u in progress.units) {
           final String? t = _labelText(u);
           if (t == null) continue;
-          labelHeight = math.max(
-            labelHeight,
-            _measureText(
-              t,
-              type.caption,
-              width - 2 * CuraSpace.pageMargin,
-              scaler,
-            ).height,
-          );
+          chipHeight = math.max(chipHeight, chipSize(t).height);
         }
-        // Lichter Abstand: Manny und die Beschriftung der Unit darüber müssen
-        // zwischen zwei Units passen.
+        // Lichter Abstand zweier Kugeln: der Label-Chip unter der oberen muss
+        // dazwischen passen. Manny steht neben der Kugel und braucht keinen
+        // Platz dazwischen.
         final double gap = math.max(
           CuraSize.pathUnitGapMin,
-          MannyPerch.aboveUnit() +
-              CuraSize.pathUnitAir +
+          CuraSize.pathUnitAir +
               CuraSize.pathLabelGap +
-              labelHeight,
+              chipHeight +
+              CuraSize.pathUnitAir,
         );
         final PathLayout layout = layoutPath(
           units: progress.units,
@@ -818,18 +877,14 @@ class _PathScreenState extends State<PathScreen> {
               ? _outlookHeight(width, type, scaler)
               : null,
           leadingExtent: _headerH,
+          currentIndex: progress.currentIndex,
         );
         final List<PathLabel> labels = <PathLabel>[];
         for (int i = 0; i < progress.units.length; i++) {
           final String? t = _labelText(progress.units[i]);
           if (t == null) continue;
           final NodePlacement p = layout.placements[i];
-          final Size s = _measureText(
-            t,
-            type.caption,
-            width - 2 * CuraSpace.pageMargin,
-            scaler,
-          );
+          final Size s = chipSize(t);
           final double left = (p.center.x - s.width / 2).clamp(
             CuraSpace.pageMargin,
             math.max(

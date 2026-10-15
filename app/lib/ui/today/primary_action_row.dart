@@ -1,18 +1,13 @@
-// `PrimaryActionRow` (Ergänzung 2, Abschnitt 2 und 3.1, Plan 4.6): die feste
-// Primärbutton-Reihe des Tabs Heute. „Training eintragen“ (Primär) bzw. „Heute
-// erledigt“ (deaktiviert, mit Haken) teilt sich die Reihe mit dem
-// Manny-Button: Breite des Primärbuttons = verfügbare Breite − 8 − 56 (bei
+// `PrimaryActionRow` (Ergänzung 2, Abschnitt 2 und 3.1, Plan 4.6; Brief v2, 5):
+// die feste Primärbutton-Reihe des Tabs Heute. „Training eintragen“ (Primär)
+// bzw. „Heute erledigt“ (deaktiviert, mit Haken) teilt sich die Reihe mit dem
+// Manny-Knopf: Breite des Primärbuttons = verfügbare Breite − 8 − 56 (bei
 // 320 dp genau 224 dp, 96 dp nach Seitenrändern), Höhe 56 dp, unten bündig.
 // Bricht der Text um (große Schrift), wächst nur der Primärbutton; der
-// Manny-Button bleibt unten bündig.
+// Manny-Knopf bleibt unten bündig. Den Nachrichten-Knopf gibt es nicht mehr
+// (Nachrichten sind das Ziel Chats).
 //
-// Der Nachrichten-Button (`ActionCluster`, Modus `today`) sitzt **8 dp über der
-// Oberkante des Manny-Buttons** (UI-71), rechtsbündig mit ihm: beide stehen in
-// einer Spalte rechts neben dem Primärbutton, nicht über der ganzen Reihe. So
-// folgt der Nachrichten-Button dem Manny-Button auch im Umbruchszustand.
-//
-// Fokusreihenfolge (Ergänzung 2, 4): Nachrichten-Button, „Training eintragen“,
-// Manny-Button, danach die Nav.
+// Fokusreihenfolge: „Training eintragen“, Manny-Knopf, danach die Leiste.
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -42,7 +37,6 @@ class PrimaryActionRow extends StatelessWidget {
     required this.state,
     required this.onStart,
     required this.onOpenChat,
-    required this.messagesButton,
     this.startFocusNode,
     this.chatFocusNode,
   });
@@ -51,8 +45,6 @@ class PrimaryActionRow extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onOpenChat;
 
-  /// Der Nachrichten-Button (`ActionCluster`, Modus `today`).
-  final Widget messagesButton;
   final FocusNode? startFocusNode;
   final FocusNode? chatFocusNode;
 
@@ -89,23 +81,9 @@ class PrimaryActionRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: CuraSpace.clusterGap),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: <Widget>[
-            FocusTraversalOrder(
-              order: const NumericFocusOrder(HomeShellState.focusOrderCluster),
-              child: messagesButton,
-            ),
-            const SizedBox(height: CuraSpace.clusterGap),
-            FocusTraversalOrder(
-              order: const NumericFocusOrder(HomeShellState.focusOrderManny),
-              child: MannyButton(
-                onPressed: onOpenChat,
-                focusNode: chatFocusNode,
-              ),
-            ),
-          ],
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(HomeShellState.focusOrderManny),
+          child: MannyButton(onPressed: onOpenChat, focusNode: chatFocusNode),
         ),
       ],
     );

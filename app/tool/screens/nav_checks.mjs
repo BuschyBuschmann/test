@@ -2,7 +2,8 @@
 // Browser-Prüfungen der Navigation (U2b, U2c, Plan 4.3, 12.5): Browser-Zurück =
 // Android-Zurück (`page.goBack()`), Reload im Onboarding, Tabwechsel, Zeitsprung
 // über Mitternacht mit der Fake-Uhr (`page.clock.install` + `runFor`), Manny-
-// Chat und Nachrichten über die Button-Gruppe (Abschnitt 5), Pfad-Abläufe (U3a,
+// Chat über den Manny-Knopf, Chats und Profil als Ziele der Leiste mit
+// Manny-Look-Wechsel (Abschnitt 5, F2-R3), Pfad-Abläufe (U3a,
 // Abschnitt 6): Zurück schließt zuerst die Blase, dann den Hinweis; Manny-Tipp
 // öffnet den Chat; Tipp auf die aktuelle Unit wechselt auf Heute; Hinweis an
 // einer gesperrten Unit (Escape, Zurück, 5 s); Heute-Abläufe (U3b, Abschnitt 7):
@@ -53,8 +54,9 @@ const ctxOptions = {
 };
 const FIXTURE = fs.readFileSync(path.join(appRoot, 'test', 'fixtures', 'state_v1.json'), 'utf8');
 
-/** Flutter-Web setzt Beschriftungen als Textinhalt der `flt-semantics`-Knoten. */
-const textNode = (page, text) => page.getByText(text, { exact: false }).first();
+/** Flutter-Web setzt Beschriftungen als Textinhalt der `flt-semantics`-Knoten; Radio- und Schalter-Rollen tragen sie als `aria-label`. */
+const textNode = (page, text) =>
+  page.getByText(text, { exact: false }).or(page.getByLabel(text, { exact: false })).first();
 /** Wartet, bis im Semantik-Baum ein Knoten mit diesem (Teil-)Text steht. */
 async function seen(page, text, timeout = 8000) {
   try {
@@ -79,7 +81,7 @@ const button = (page, name) =>
   page
     .locator('flt-semantics[role="button"]', {
       hasText:
-        name === 'Heute' || name === 'Pfad' || name === 'Hinzufügen' || name === 'Schließen' || name === 'Eintragen'
+        name === 'Heute' || name === 'Pfad' || name === 'Chats' || name === 'Profil' || name === 'Fertig' || name === 'Hinzufügen' || name === 'Schließen' || name === 'Eintragen'
           ? new RegExp(`^${name}$`)
           : name,
     })
@@ -264,41 +266,70 @@ const browser = await launch();
   await ctx.close();
 }
 
-// 5. Manny-Chat und Nachrichten (U2c, Ergänzung 2, UI-86) -----------------------
-// Öffnen über die Button-Gruppe auf dem Pfad, Browser-Zurück = Android-Zurück:
-// Chat → Pfad; Nachrichten → Beispiel-Chat → Nachrichten → Pfad.
+// 5. Manny-Chat, Chats und Profil (F2-R3, Brief v2, 5, 7.6, 7.7; V2-19, V2-68) ---
+// Manny-Knopf auf dem Pfad, Ziele Chats und Profil der Leiste, Browser-Zurück =
+// Android-Zurück (Chat → Pfad; Beispiel-Chat → Chats → Pfad), Manny-Look-Wechsel
+// im Profil ohne Neustart.
 {
   const ctx = await browser.newContext(ctxOptions);
-  await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
+  await ctx.addInitScript((doc) => { if (!localStorage.getItem('curaone.state.v1')) localStorage.setItem('curaone.state.v1', JSON.stringify(doc)); }, FIXTURE);
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T12:00:00+02:00' });
   const page = s.page;
-  check('Chat-Ablauf: Home auf Pfad, Button-Gruppe vorhanden', (await seen(page, 'Woche 5')) && (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0);
-  await shot(page, 'pfad-gruppe');
+  check('Chat-Ablauf: Home auf Pfad, Manny-Knopf und vier Ziele in der Leiste', (await seen(page, 'Woche 5')) && (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Pfad').count()) > 0 && (await button(page, 'Heute').count()) > 0 && (await button(page, 'Chats').count()) > 0 && (await button(page, 'Profil').count()) > 0);
+  check('Kein Nachrichten-Knopf mehr', (await button(page, 'Nachrichten').count()) === 0);
+  await shot(page, 'pfad-manny-knopf');
 
   await click(page, 'Manny, Chat öffnen');
-  check('Manny-Button öffnet den Manny-Chat (Kopf „Dein Reha-Begleiter“)', await seen(page, 'Dein Reha-Begleiter'));
+  check('Manny-Knopf öffnet den Manny-Chat (Kopf „Dein Reha-Begleiter“)', await seen(page, 'Dein Reha-Begleiter'));
   check('Manny-Chat: Beispielverlauf mit Namen aus dem Onboarding', await seen(page, 'Moin Jakob. Wie läuft dein Tag?'));
   check('Manny-Chat: Hinweiszeile, Leiste und Disclaimer sichtbar', (await seen(page, 'Schreiben kann ich bald, heute noch nicht.', 2000)) && (await seen(page, 'Manny ersetzt keine medizinische Beratung.', 2000)));
-  check('Manny-Chat: keine Button-Gruppe, keine Nav', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Pfad').count()) === 0);
+  check('Manny-Chat: kein Manny-Knopf, keine Leiste (V2-19)', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Pfad').count()) === 0 && (await button(page, 'Chats').count()) === 0);
   await shot(page, 'chat-manny');
   await page.goBack();
   await page.waitForTimeout(700);
-  check('Browser-Zurück im Manny-Chat → Pfad (Tab bleibt)', (await seen(page, 'Woche 5')) && (await gone(page, 'Dein Reha-Begleiter')));
+  check('Browser-Zurück im Manny-Chat → Pfad (Ziel bleibt)', (await seen(page, 'Woche 5')) && (await gone(page, 'Dein Reha-Begleiter')));
 
-  await click(page, 'Nachrichten');
-  check('Nachrichten-Button öffnet die Nachrichten (Beispiel-Hinweis)', await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.'));
-  check('Nachrichten: sechs Beispielkontakte', (await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()) === 6, String(await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()));
-  await shot(page, 'nachrichten');
+  await click(page, 'Chats');
+  check('Ziel Chats: Beispieldaten gekennzeichnet, Manny angeheftet', (await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.')) && (await seen(page, 'Angeheftet')));
+  check('Chats: kein Manny-Knopf (nur Pfad und Heute)', (await button(page, 'Manny, Chat öffnen').count()) === 0);
+  check('Chats: sechs Beispielkontakte', (await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()) === 6, String(await page.locator('flt-semantics[role="button"]', { hasText: 'Beispielkontakt' }).count()));
+  await shot(page, 'chats');
   await click(page, 'Beispielkontakt Praxis Müller');
-  check('Zeile öffnet den Beispiel-Chat („Physio · Beispiel“)', await seen(page, 'Physio · Beispiel'));
+  check('Zeile öffnet den Beispiel-Chat („Physio · Beispiel“), ohne Leiste', (await seen(page, 'Physio · Beispiel')) && (await button(page, 'Chats').count()) === 0);
   check('Beispiel-Chat: Hinweis „Nur zum Ansehen.“, kein Disclaimer', (await seen(page, 'Beispiel-Chat. Nur zum Ansehen.', 2000)) && (await page.getByText('Manny ersetzt keine medizinische Beratung.').count()) === 0);
   await shot(page, 'beispiel-chat');
   await page.goBack();
   await page.waitForTimeout(700);
-  check('Browser-Zurück im Beispiel-Chat → Nachrichten', (await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.')) && (await gone(page, 'Physio · Beispiel')));
+  check('Browser-Zurück im Beispiel-Chat → Chats', (await seen(page, 'Beispiel-Ansicht. Echte Chats folgen.')) && (await gone(page, 'Physio · Beispiel')));
   await page.goBack();
   await page.waitForTimeout(700);
-  check('Browser-Zurück in den Nachrichten → Pfad (Ausgangs-Tab)', (await seen(page, 'Woche 5')) && (await gone(page, 'Beispiel-Ansicht. Echte Chats folgen.')));
+  check('Browser-Zurück in Chats → Pfad (Ausgangs-Ziel)', (await seen(page, 'Woche 5')) && (await gone(page, 'Beispiel-Ansicht. Echte Chats folgen.')));
+
+  // Profil: Zeilen, Manny-Look-Wechsel sofort und ohne Neustart (V2-68).
+  await click(page, 'Profil');
+  check('Ziel Profil: Zeilen Deine Daten, Manny-Look, Darstellung, Hilfe und Datenschutz', (await button(page, 'Deine Daten').count()) > 0 && (await button(page, 'Manny-Look, Mit Brille').count()) > 0 && (await button(page, 'Darstellung').count()) > 0 && (await button(page, 'Hilfe und Datenschutz').count()) > 0);
+  await shot(page, 'profil');
+  await click(page, 'Manny-Look, Mit Brille');
+  check('Manny-Look: Sheet mit beiden Karten und „Gilt für die ganze App.“', (await seen(page, 'Gilt für die ganze App.')) && (await seen(page, 'Manny mit Brille, ausgewählt, 1 von 2')));
+  check('Manny-Look: Leiste unter dem Sheet nicht bedienbar (V2-19)', (await button(page, 'Chats').count()) === 0);
+  await textNode(page, 'Manny ohne Brille').click({ force: true });
+  await page.waitForTimeout(500);
+  check('Manny-Look: Wechsel sofort, ohne Neustart („Ohne Brille“ ausgewählt)', await seen(page, 'Manny ohne Brille, ausgewählt, 2 von 2'));
+  await shot(page, 'profil-look-sheet');
+  await click(page, 'Fertig');
+  check('Manny-Look: Fertig schließt das Sheet', await gone(page, 'Gilt für die ganze App.'));
+  check('Manny-Look: Zeile zeigt den neuen Wert', await seen(page, 'Manny-Look, Ohne Brille'));
+  await page.reload();
+  await seen(page, 'Woche 5', 15000);
+  await click(page, 'Profil');
+  check('Manny-Look: Wahl bleibt nach Reload', await seen(page, 'Manny-Look, Ohne Brille'));
+
+  await click(page, 'Darstellung');
+  check('Darstellung: Welt, Thema und Schalter', (await seen(page, 'Automatisch, ausgewählt')) && (await seen(page, 'System, ausgewählt')) && (await seen(page, 'Transparenz reduzieren, Aus')) && (await seen(page, 'Ton, An')) && (await seen(page, 'Vibration, An')));
+  await click(page, 'Nacht');
+  check('Darstellung: Welt Nacht wirkt sofort', await seen(page, 'Nacht, ausgewählt'));
+  await shot(page, 'profil-darstellung');
+  await click(page, 'Fertig');
   await ctx.close();
 }
 
@@ -343,7 +374,10 @@ const browser = await launch();
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 
-  // Erledigte Unit.
+  // Erledigte Unit: liegt unter der aktuellen Kugel, erst in die Sicht scrollen.
+  await page.mouse.move(195, 400);
+  await page.mouse.wheel(0, 300);
+  await page.waitForTimeout(500);
   await click(page, 'Woche 5, Trainingstag 1, erledigt');
   check('Unit-Tipp (erledigt): „Erledigt. Das hast du geschafft.“', await seen(page, 'Erledigt. Das hast du geschafft.'));
   await page.keyboard.press('Escape');
@@ -442,11 +476,11 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
 {
   const { ctx, page } = await openHeute('2026-10-07T12:00:00+02:00');
   check('Heute: Datum, Zeitwahl und Übungen (Wdh. und Dauer)', (await seen(page, 'Mittwoch, 7. Oktober')) && (await seen(page, 'Kniebeuge am Stuhl, 3 mal 12 Wiederholungen, 6 Minuten')) && (await seen(page, 'Beispieltermin, Physio, Physiotherapie, Praxis Müller, 17:00 Uhr')));
-  check('Heute: Button-Gruppe (Manny, Nachrichten) und „Training eintragen“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) > 0 && (await button(page, 'Training eintragen').count()) > 0);
+  check('Heute: Manny-Knopf und „Training eintragen“', (await button(page, 'Manny, Chat öffnen').count()) > 0 && (await button(page, 'Nachrichten').count()) === 0 && (await button(page, 'Training eintragen').count()) > 0);
   await shot(page, 'heute-standard');
   await click(page, 'Training eintragen');
   check('Training eintragen öffnet das Sheet „Wie willst du trainieren?“ (nur Manuell aktiv)', (await seen(page, 'Wie willst du trainieren?')) && (await seen(page, 'Manuell, Ich trainiere selbst und trage es ein, Auswahl, ausgewählt')) && (await seen(page, 'Passiv, folgt, noch nicht verfügbar')));
-  check('Sheet offen: Button-Gruppe ist aus der Semantik (nicht bedienbar)', (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0);
+  check('Sheet offen: Manny-Knopf ist aus der Semantik (nicht bedienbar)', (await button(page, 'Manny, Chat öffnen').count()) === 0);
   await shot(page, 'heute-sheet');
   await click(page, 'Eintragen');
   check('Eintragen: Sheet zu, „Heute erledigt“, Snackbar „Eingetragen.“ mit Rückgängig (UI-37)', (await seen(page, 'Eingetragen.')) && (await seen(page, 'Heute erledigt')) && (await gone(page, 'Wie willst du trainieren?')));
@@ -535,8 +569,8 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
       (await seen(page, '7. September 2026')),
   );
   check(
-    'Deine Daten: Button-Gruppe und Nav sind aus der Semantik (unter dem Scrim)',
-    (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Nachrichten').count()) === 0,
+    'Deine Daten: Manny-Knopf und Leiste sind aus der Semantik (unter dem Scrim)',
+    (await button(page, 'Manny, Chat öffnen').count()) === 0 && (await button(page, 'Chats').count()) === 0,
   );
   await shot(page, 'daten-sheet');
   const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();

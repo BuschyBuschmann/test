@@ -1,6 +1,6 @@
 // Manny-Chat, Nachrichten und Beispiel-Chats im Ablauf der echten App (U2c,
 // Ergänzung 2, UI-70 bis UI-72, UI-76 bis UI-82, UI-86, UI-89, A-38, A-39):
-// Button-Gruppe auf dem Pfad, Öffnen, Zurück, Escape, Fokusrückgabe, Tageswechsel
+// Manny-Knopf auf dem Pfad, Öffnen, Zurück, Escape, Fokusrückgabe, Tageswechsel
 // bei offenem Chat, Rückgängig-Fenster, Speicherfreiheit, Tab-Reihenfolge.
 import 'dart:convert';
 
@@ -13,16 +13,12 @@ import 'package:curaone/logic/chat_model.dart';
 import 'package:curaone/logic/manny_occasions.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/chat/manny_chat_screen.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/chat_composer.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
-import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/opaque_surface.dart';
-import 'package:curaone/ui/components/path_node.dart';
 import 'package:curaone/ui/components/path_outlook.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
@@ -30,7 +26,9 @@ import 'package:curaone/ui/messages/chat_bubble.dart';
 import 'package:curaone/ui/messages/contact_row.dart';
 import 'package:curaone/ui/messages/example_chat_screen.dart';
 import 'package:curaone/ui/messages/example_contacts.dart';
-import 'package:curaone/ui/messages/messages_screen.dart';
+import 'package:curaone/ui/messages/chats_screen.dart';
+import 'package:curaone/ui/components/header_card.dart';
+import 'package:curaone/ui/components/orb_node.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 import 'package:flutter/material.dart';
@@ -94,8 +92,9 @@ Future<void> _openChat(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _openMessages(WidgetTester tester) async {
-  await tester.tap(find.byType(MessagesButton));
+/// Wechselt auf das Ziel Chats (Leiste).
+Future<void> _openChats(WidgetTester tester) async {
+  await tester.tap(_navEntry(S.navChats));
   await tester.pumpAndSettle();
 }
 
@@ -128,9 +127,9 @@ Finder _row(ExampleContact c) => find.byWidgetPredicate(
 );
 
 void main() {
-  group('Button-Gruppe auf dem Pfad (UI-70 bis UI-72, Plan 4.6)', () {
-    testWidgets('Manny-Button 56 dp, Nachrichten-Button 48 dp, rechts 16 dp, '
-        'Manny 16 dp über der Nav, Nachrichten 8 dp darüber, rechtsbündig', (
+  group('Manny-Knopf auf dem Pfad (UI-70 bis UI-72, Brief 5)', () {
+    testWidgets('Manny-Knopf 56 dp, rechts 18 dp, 16 dp über der Leiste; sein '
+        'Rechteck steht für Blase und Hinweis bereit', (
       WidgetTester tester,
     ) async {
       await _home(tester);
@@ -138,42 +137,45 @@ void main() {
       final double navTop =
           tester.view.physicalSize.height - FloatingNav.occupiedHeight(context);
       final Rect manny = tester.getRect(find.byType(MannyButton));
-      final Rect messages = tester.getRect(find.byType(MessagesButton));
       expect(manny.size, const Size(56, 56));
-      expect(messages.size, const Size(48, 48));
-      expect(manny.right, 390 - 16);
-      expect(messages.right, manny.right);
+      expect(manny.right, 390 - 18);
       expect(manny.bottom, navTop - 16);
-      expect(manny.top - messages.bottom, 8);
-      // Nav und Gruppe überschneiden sich nicht.
       expect(
         manny.bottom,
         lessThanOrEqualTo(tester.getRect(find.byType(FloatingNav)).top),
       );
-      // Tooltips und Labels.
       expect(find.byTooltip(S.mannyChatOpen), findsOneWidget);
-      expect(find.byTooltip(S.messagesButton), findsOneWidget);
-      // Das Rechteck der Gruppe steht für Blase und Hinweis bereit.
-      final Rect? cluster = ActionCluster.rectOf(_shell(tester).clusterKey);
-      expect(cluster, isNotNull);
-      expect(cluster!.contains(manny.center), isTrue);
-      expect(cluster.contains(messages.center), isTrue);
+      expect(find.byTooltip(S.messagesButton), findsNothing);
+      final Rect? rect = MannyButton.rectOf(_shell(tester).mannyButtonKey);
+      expect(rect, manny);
       await disposeApp(tester);
     });
 
-    testWidgets('Manny-Button öffnet den Manny-Chat, Nachrichten-Button die '
-        'Nachrichten; der Tab bleibt', (WidgetTester tester) async {
+    testWidgets('Manny-Knopf öffnet den Manny-Chat; das Ziel bleibt Pfad', (
+      WidgetTester tester,
+    ) async {
       await _home(tester);
       await _openChat(tester);
       expect(find.byType(MannyChatScreen), findsOneWidget);
       expect(_shell(tester).activeTab, HomeTab.path);
       await _back(tester);
       expect(find.byType(MannyChatScreen), findsNothing);
-      await _openMessages(tester);
-      expect(find.byType(MessagesScreen), findsOneWidget);
-      await _back(tester);
-      expect(find.byType(MessagesScreen), findsNothing);
       expect(_shell(tester).activeTab, HomeTab.path);
+      await disposeApp(tester);
+    });
+
+    testWidgets('Manny-Knopf nur auf Pfad und Heute (V2-21): nicht auf Chats '
+        'und Profil', (WidgetTester tester) async {
+      await _home(tester);
+      expect(find.byType(MannyButton), findsOneWidget);
+      await _openChats(tester);
+      expect(find.byType(MannyButton), findsNothing);
+      await tester.tap(_navEntry(S.navProfile));
+      await tester.pumpAndSettle();
+      expect(find.byType(MannyButton), findsNothing);
+      await tester.tap(_navEntry(S.navToday));
+      await tester.pumpAndSettle();
+      expect(find.byType(MannyButton), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -187,20 +189,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MannyChatScreen), findsOneWidget);
       await _back(tester);
-      _shell(tester).messagesButtonFocus.requestFocus();
+      _shell(tester).chatButtonFocus.requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
-      expect(find.byType(MessagesScreen), findsOneWidget);
+      expect(find.byType(MannyChatScreen), findsOneWidget);
       await disposeApp(tester);
     });
 
     testWidgets('unter einem Sheet: weder Semantik noch Fokus noch Tipp '
-        '(UI-70)', (WidgetTester tester) async {
+        '(UI-70, V2-19)', (WidgetTester tester) async {
       final SemanticsHandle h = tester.ensureSemantics();
       await _home(tester);
       expect(find.bySemanticsLabel(S.mannyChatOpen), findsOneWidget);
-      expect(find.bySemanticsLabel(S.messagesButton), findsOneWidget);
 
       final BuildContext context = tester.element(find.byType(HomeShell));
       Navigator.of(context).push<void>(
@@ -214,18 +215,19 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      // Die Gruppe bleibt sichtbar (unter dem Scrim), ist aber nicht bedienbar.
+      // Der Knopf und die Leiste bleiben sichtbar (unter dem Scrim), sind aber
+      // nicht bedienbar.
       expect(find.byType(MannyButton), findsOneWidget);
       expect(_semanticLabels(tester), isNot(contains(S.mannyChatOpen)));
-      expect(_semanticLabels(tester), isNot(contains(S.messagesButton)));
+      expect(_semanticLabels(tester), isNot(contains(S.navToday)));
       // Tastatur: Tab bleibt im Sheet.
       for (int i = 0; i < 4; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
         expect(_focusInside(find.byType(MannyButton)), isFalse);
-        expect(_focusInside(find.byType(MessagesButton)), isFalse);
+        expect(_focusInside(find.byType(FloatingNav)), isFalse);
       }
-      // Tipp auf die Stelle der Gruppe trifft den Scrim, nicht den Button.
+      // Tipp auf die Stelle des Knopfes trifft den Scrim, nicht den Knopf.
       await tester.tapAt(tester.getCenter(find.byType(MannyButton)));
       await tester.pumpAndSettle();
       expect(find.byType(MannyChatScreen), findsNothing);
@@ -234,8 +236,8 @@ void main() {
     });
 
     testWidgets(
-      'Tab-Reihenfolge Pfad: Kopf, Ausblick, Units, Nachrichten-Button, '
-      'Manny-Button, Nav (UI-89, Ergänzung 2, 4)',
+      'Tab-Reihenfolge Pfad: Kopf-Karte, Ausblick, Kugeln, Manny-Knopf, '
+      'Leiste (UI-89)',
       (WidgetTester tester) async {
         await _home(tester);
         final List<String> seen = <String>[];
@@ -243,15 +245,12 @@ void main() {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.pump();
           final String kind;
-          if (_focusInside(find.byType(HeaderIconButton)) ||
-              _focusInside(find.byType(StatPill))) {
+          if (_focusInside(find.byType(HeaderCard))) {
             kind = 'header';
           } else if (_focusInside(find.byType(PathOutlook))) {
             kind = 'outlook';
-          } else if (_focusInside(find.byType(PathNode))) {
+          } else if (_focusInside(find.byType(OrbNode))) {
             kind = 'unit';
-          } else if (_focusInside(find.byType(MessagesButton))) {
-            kind = 'messages';
           } else if (_focusInside(find.byType(MannyButton))) {
             kind = 'chat';
           } else if (_focusInside(find.byType(FloatingNav))) {
@@ -266,7 +265,6 @@ void main() {
           'header',
           'outlook',
           'unit',
-          'messages',
           'chat',
           'nav',
         ], reason: '$seen');
@@ -312,7 +310,6 @@ void main() {
       // Keine Nav, keine Button-Gruppe, kein Blur (UI-85).
       expect(find.byType(FloatingNav), findsNothing);
       expect(find.byType(MannyButton), findsNothing);
-      expect(find.byType(MessagesButton), findsNothing);
       expect(find.byType(BackdropFilter), findsNothing);
       await disposeApp(tester);
     });
@@ -474,7 +471,7 @@ void main() {
         tester.platformDispatcher.textScaleFactorTestValue = scale;
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
         await pumpCura(tester, h.controller, size: size);
-        await _openMessages(tester);
+        await _openChats(tester);
         final ExampleContact c = _contact('physio-mueller');
         await tester.scrollUntilVisible(
           _row(c),
@@ -529,72 +526,96 @@ void main() {
     });
   });
 
-  group('Nachrichten und Beispiel-Chats (UI-79, UI-80)', () {
-    testWidgets('Kopf, Karte, vier Abschnitte als Überschriften, sechs '
-        'Kontakte, kein Badge, keine Suche', (WidgetTester tester) async {
-      final SemanticsHandle h = tester.ensureSemantics();
-      await _home(tester);
-      await _openMessages(tester);
-      expect(find.text('Nachrichten'), findsOneWidget);
-      expect(
-        find.text('Beispiel-Ansicht. Echte Chats folgen.'),
-        findsOneWidget,
-      );
-      for (final String s in <String>[
-        'PHYSIO',
-        'FAMILIE',
-        'FREUNDE',
-        'ÄRZTE',
-      ]) {
-        expect(find.text(s), findsOneWidget);
-      }
-      for (final String s in <String>[
-        'Physio',
-        'Familie',
-        'Freunde',
-        'Ärzte',
-      ]) {
+  group('Ziel Chats und Beispiel-Chats (UI-79, UI-80, V2-54)', () {
+    testWidgets(
+      'Kopf-Karte, Manny angeheftet oben, Beispieldaten gekennzeichnet, '
+      'vier Abschnitte, sechs Kontakte, kein Badge, keine Suche',
+      (WidgetTester tester) async {
+        final SemanticsHandle h = tester.ensureSemantics();
+        await _home(tester);
+        await _openChats(tester);
+        expect(_shell(tester).activeTab, HomeTab.chats);
+        expect(find.byType(ChatsScreen), findsOneWidget);
         expect(
-          tester
-              .getSemantics(find.bySemanticsLabel(s))
-              .getSemanticsData()
-              .flagsCollection
-              .isHeader,
-          isTrue,
-          reason: 'Überschrift $s',
-        );
-      }
-      expect(find.byType(ContactRow), findsNWidgets(6));
-      for (final ExampleContact c in kExampleContacts) {
-        expect(find.text(c.name), findsOneWidget);
-        expect(find.text(c.dayShort()), findsWidgets);
-        expect(
-          find.bySemanticsLabel(exampleContactLabel(c, 'Jakob')),
+          find.descendant(
+            of: find.byType(HeaderCard),
+            matching: find.text(S.chatsTitle),
+          ),
           findsOneWidget,
         );
+        // Manny steht als oberste Unterhaltung, angeheftet (Symbol und Text).
+        expect(find.text(S.chatTitle), findsOneWidget);
+        expect(find.text(S.chatsPinned), findsOneWidget);
+        expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
+        expect(find.bySemanticsLabel(S.chatsMannyRowLabel), findsOneWidget);
+        final double mannyTop = tester.getTopLeft(find.text(S.chatTitle)).dy;
+        for (final ExampleContact c in kExampleContacts) {
+          expect(
+            tester.getTopLeft(find.text(c.name)).dy,
+            greaterThan(mannyTop),
+            reason: '${c.name} unter Manny',
+          );
+        }
+        // Beispieldaten sind gekennzeichnet.
+        expect(find.text(S.chatsExampleLabel.toUpperCase()), findsOneWidget);
+        expect(find.text(S.messagesNotice), findsOneWidget);
+        for (final String s in <String>[
+          'PHYSIO',
+          'FAMILIE',
+          'FREUNDE',
+          'ÄRZTE',
+        ]) {
+          expect(find.text(s), findsOneWidget);
+        }
+        expect(find.byType(ContactRow), findsNWidgets(6));
+        for (final ExampleContact c in kExampleContacts) {
+          expect(find.text(c.name), findsOneWidget);
+          expect(
+            find.bySemanticsLabel(exampleContactLabel(c, 'Jakob')),
+            findsOneWidget,
+          );
+          expect(
+            tester.getSize(_row(c)).height,
+            greaterThanOrEqualTo(CuraSize.contactRowMin),
+          );
+        }
+        // Keine Suche, kein „Neuer Chat“, kein Badge in der Leiste.
+        expect(find.byType(TextField), findsNothing);
+        expect(find.textContaining('Neuer Chat'), findsNothing);
+        expect(find.bySemanticsLabel(RegExp(r'ungelesen')), findsNothing);
+        // Kopf-Karte und Leiste sind die Blur-Flächen (höchstens 3).
         expect(
-          tester.getSize(_row(c)).height,
-          greaterThanOrEqualTo(CuraSize.contactRowMin),
+          find.byType(BackdropFilter).evaluate().length,
+          lessThanOrEqualTo(3),
         );
-      }
-      // Keine Suche, kein „Neuer Chat“, kein Badge.
-      expect(find.byType(TextField), findsNothing);
-      expect(find.byIcon(Icons.search_rounded), findsNothing);
-      expect(find.textContaining('Neuer Chat'), findsNothing);
-      expect(find.byType(BackdropFilter), findsNothing);
+        expect(find.byType(FloatingNav), findsOneWidget);
+        h.dispose();
+        await disposeApp(tester);
+      },
+    );
+
+    testWidgets('Manny-Zeile öffnet den Manny-Chat; Zurück → Chats, Fokus auf '
+        'der Zeile', (WidgetTester tester) async {
+      await _home(tester);
+      await _openChats(tester);
+      await tester.tap(find.text(S.chatTitle));
+      await tester.pumpAndSettle();
+      expect(find.byType(MannyChatScreen), findsOneWidget);
       expect(find.byType(FloatingNav), findsNothing);
-      h.dispose();
+      await _back(tester);
+      expect(find.byType(MannyChatScreen), findsNothing);
+      expect(_shell(tester).activeTab, HomeTab.chats);
+      expect(_focusInside(find.byType(ChatsScreen)), isTrue);
       await disposeApp(tester);
     });
 
-    testWidgets('jede Zeile öffnet ihren Beispiel-Chat; Zurück → Übersicht '
-        '(Fokus auf der Zeile) → Pfad (Fokus auf dem Nachrichten-Button)', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('jede Zeile öffnet ihren Beispiel-Chat; Zurück → Chats (Fokus '
+        'auf der Zeile)', (WidgetTester tester) async {
       await _home(tester);
-      await _openMessages(tester);
+      await _openChats(tester);
       for (final ExampleContact c in kExampleContacts) {
         await tester.ensureVisible(_row(c));
+        await tester.pumpAndSettle();
         await tester.tap(_row(c));
         await tester.pumpAndSettle();
         expect(find.byType(ExampleChatScreen), findsOneWidget, reason: c.id);
@@ -614,19 +635,16 @@ void main() {
           expect(find.text(l.text), findsOneWidget);
         }
         expect(find.byType(BackdropFilter), findsNothing);
-        // Zurück: Übersicht, Fokus auf der Zeile.
+        expect(find.byType(FloatingNav), findsNothing, reason: 'V2-19');
+        // Zurück: Chats, Fokus auf der Zeile.
         await _back(tester);
         expect(find.byType(ExampleChatScreen), findsNothing);
-        expect(find.byType(MessagesScreen), findsOneWidget);
+        expect(find.byType(ChatsScreen), findsOneWidget);
         expect(_focusInside(_row(c)), isTrue, reason: 'Fokus auf ${c.id}');
       }
+      expect(_shell(tester).activeTab, HomeTab.chats);
       await _back(tester);
-      expect(find.byType(MessagesScreen), findsNothing);
       expect(_shell(tester).activeTab, HomeTab.path);
-      expect(
-        FocusManager.instance.primaryFocus,
-        _shell(tester).messagesButtonFocus,
-      );
       await disposeApp(tester);
     });
 
@@ -636,7 +654,7 @@ void main() {
     ) async {
       final SemanticsHandle h = tester.ensureSemantics();
       await _home(tester);
-      await _openMessages(tester);
+      await _openChats(tester);
       await tester.tap(_row(_contact('physio-mueller')));
       await tester.pumpAndSettle();
       expect(
@@ -677,38 +695,31 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('von Heute aus geöffnet: Zurück → Übersicht → Tab Heute '
-        '(UI-80)', (WidgetTester tester) async {
+    testWidgets('Zurück (Android) auf Chats führt zum Pfad (V2-15, Plan 3.3)', (
+      WidgetTester tester,
+    ) async {
       await _home(tester);
-      await tester.tap(_navEntry(S.navToday));
-      await tester.pumpAndSettle();
-      expect(_shell(tester).activeTab, HomeTab.today);
-
-      final Future<void> done = _shell(tester).openMessages();
-      await tester.pumpAndSettle();
-      expect(find.byType(MessagesScreen), findsOneWidget);
-      await tester.tap(_row(_contact('familie-tim')));
-      await tester.pumpAndSettle();
-      expect(find.byType(ExampleChatScreen), findsOneWidget);
+      await _openChats(tester);
       await _back(tester);
-      expect(find.byType(MessagesScreen), findsOneWidget);
-      await _back(tester);
-      await done;
-      expect(find.byType(MessagesScreen), findsNothing);
-      expect(_shell(tester).activeTab, HomeTab.today);
+      expect(_shell(tester).activeTab, HomeTab.path);
       await disposeApp(tester);
     });
 
-    testWidgets('Tab-Reihenfolge Nachrichten: Zurück, dann die Zeilen in '
+    testWidgets('Tab-Reihenfolge Chats: Kopf-Karte, Manny, dann die Zeilen in '
         'Reihenfolge (UI-89)', (WidgetTester tester) async {
       await _home(tester);
-      await _openMessages(tester);
-      expect(_focusInside(find.byType(HeaderIconButton)), isTrue);
-      for (final ExampleContact c in kExampleContacts) {
+      await _openChats(tester);
+      final List<String> seen = <String>[];
+      for (int i = 0; i < 30; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
-        expect(_focusInside(_row(c)), isTrue, reason: c.id);
+        for (final ExampleContact c in kExampleContacts) {
+          if (_focusInside(_row(c)) && !seen.contains(c.id)) seen.add(c.id);
+        }
       }
+      expect(seen, <String>[
+        for (final ExampleContact c in kExampleContacts) c.id,
+      ]);
       await disposeApp(tester);
     });
 
@@ -716,8 +727,13 @@ void main() {
       WidgetTester tester,
     ) async {
       await _home(tester);
-      await _openMessages(tester);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await _openChats(tester);
+      await tester.ensureVisible(_row(_contact('physio-mueller')));
+      await tester.pumpAndSettle();
+      final ContactRow row = tester.widget<ContactRow>(
+        _row(_contact('physio-mueller')),
+      );
+      row.focusNode!.requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
@@ -747,23 +763,21 @@ void main() {
         FocusManager.instance.primaryFocus,
         _shell(tester).chatButtonFocus,
       );
-      // Zurück-Pfeil.
-      await _openMessages(tester);
+      // Zurück-Pfeil im Beispiel-Chat: Fokus zurück auf die Zeile in Chats.
+      await _openChats(tester);
+      await tester.tap(_row(_contact('freunde-lena')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(HeaderIconButton));
       await tester.pumpAndSettle();
-      expect(find.byType(MessagesScreen), findsNothing);
-      expect(
-        FocusManager.instance.primaryFocus,
-        _shell(tester).messagesButtonFocus,
-      );
+      expect(find.byType(ExampleChatScreen), findsNothing);
+      expect(_focusInside(_row(_contact('freunde-lena'))), isTrue);
       // Escape im Beispiel-Chat schließt nur den Beispiel-Chat.
-      await _openMessages(tester);
       await tester.tap(_row(_contact('freunde-lena')));
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(find.byType(ExampleChatScreen), findsNothing);
-      expect(find.byType(MessagesScreen), findsOneWidget);
+      expect(find.byType(ChatsScreen), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -818,12 +832,12 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('Nachrichten öffnen beenden das Rückgängig-Fenster ebenfalls', (
+    testWidgets('Wechsel auf Chats beendet das Rückgängig-Fenster ebenfalls', (
       WidgetTester tester,
     ) async {
       final Harness h = await _home(tester);
       h.controller.logTraining(forDay: h.controller.today);
-      await _openMessages(tester);
+      await _openChats(tester);
       expect(h.controller.transient.undoWindowOpen, isFalse);
       await disposeApp(tester);
     });
@@ -848,33 +862,32 @@ void main() {
     });
 
     testWidgets('Browser-Zurück entspricht Android-Zurück: Beispiel-Chat → '
-        'Nachrichten → Pfad, die App schließt nicht', (
-      WidgetTester tester,
-    ) async {
+        'Chats → Pfad, die App schließt nicht', (WidgetTester tester) async {
       final SystemPopRecorder pop = SystemPopRecorder(tester);
       await _home(tester);
-      await _openMessages(tester);
+      await _openChats(tester);
+      await tester.ensureVisible(_row(_contact('freunde-basti')));
+      await tester.pumpAndSettle();
       await tester.tap(_row(_contact('freunde-basti')));
       await tester.pumpAndSettle();
       await _back(tester);
-      expect(find.byType(MessagesScreen), findsOneWidget);
+      expect(find.byType(ChatsScreen), findsOneWidget);
       await _back(tester);
       expect(find.byType(HomeShell), findsOneWidget);
+      expect(_shell(tester).activeTab, HomeTab.path);
       expect(pop.count, 0);
       await disposeApp(tester);
     });
   });
 
   group('Tageswechsel bei offenem Chat (A-39, UI-86)', () {
-    for (final String which in <String>['Manny-Chat', 'Nachrichten']) {
+    for (final String which in <String>['Manny-Chat']) {
       testWidgets('$which offen, +1 Tag, Fortsetzen: keine Snackbar, keine '
           'Ansage; danach Heute ohne Snackbar', (WidgetTester tester) async {
         final Harness h = await _home(tester);
         await tester.tap(_navEntry(S.navToday));
         await tester.pumpAndSettle();
-        final Future<void> done = which == 'Manny-Chat'
-            ? _shell(tester).openChat()
-            : _shell(tester).openMessages();
+        final Future<void> done = _shell(tester).openChat();
         await tester.pumpAndSettle();
         tester.takeAnnouncements();
 
@@ -898,8 +911,8 @@ void main() {
       final Harness h = await _home(tester);
       await tester.tap(_navEntry(S.navToday));
       await tester.pumpAndSettle();
-      _shell(tester).openMessages();
-      await tester.pumpAndSettle();
+      await _openChats(tester);
+      await tester.ensureVisible(_row(_contact('aerzte-weber')));
       await tester.tap(_row(_contact('aerzte-weber')));
       await tester.pumpAndSettle();
       tester.takeAnnouncements();
@@ -924,7 +937,7 @@ void main() {
       await _openChat(tester);
       await tester.tap(find.byType(ChatComposer));
       await _back(tester);
-      await _openMessages(tester);
+      await _openChats(tester);
       for (final ExampleContact c in kExampleContacts) {
         await tester.ensureVisible(_row(c));
         await tester.tap(_row(c));

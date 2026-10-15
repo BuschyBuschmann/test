@@ -9,9 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import '../logic/path_model.dart' show UnitStatus;
 import '../theme/world_painter.dart';
-import '../ui/components/action_circle.dart';
 import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
 import '../ui/components/header_card.dart';
@@ -19,7 +17,6 @@ import '../ui/components/manny_bubble.dart';
 import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
 import '../ui/components/orb_node.dart';
-import '../ui/components/path_node.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/status_chip.dart';
 import '../ui/components/world_label_chip.dart';
@@ -173,7 +170,6 @@ TextProbe probeTexts({Element? root, required Size view}) {
         w is OrbNode ||
         w is CuraSnackbar ||
         w is CuraDialog ||
-        w is ActionCircle ||
         w is NodeHint ||
         w is CategoryIconTile ||
         w is OpaqueSurface) {
@@ -182,10 +178,6 @@ TextProbe probeTexts({Element? root, required Size view}) {
       // Primär und Glas haben eine eigene Fläche (auch deaktiviert); der
       // Umriss behält den Untergrund dahinter.
       g = w.variant == PillButtonVariant.outline ? ground : TextGround.opaque;
-    } else if (w is PathNode) {
-      // Erledigte und aktuelle Units haben eine deckende Füllung (`text-1`,
-      // `accent`); gesperrte sind Glas (Brief 5.5).
-      g = w.status == UnitStatus.locked ? TextGround.glass : TextGround.opaque;
     } else if (w is CuraSheetFrame) {
       // Sheet: `card` zu 100 % opak, kein Blur (Brief v2, 4).
       g = TextGround.opaque;

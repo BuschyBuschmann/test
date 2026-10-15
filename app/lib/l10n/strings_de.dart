@@ -571,4 +571,83 @@ abstract final class S {
   static const String injuryMuscle = 'Muskelfaserriss';
   static const String injuryOther = 'Anderes / selbst eingeben';
   static const String injuryOtherLabel = 'Was ist passiert?';
+
+  // -------------------------------------------------------------------------
+  // L1 / F2-R3: Leiste mit vier Zielen, Pfad-Kopf, Chats, Profil, Darstellung
+  // -------------------------------------------------------------------------
+  static const String navChats = 'Chats';
+  static const String navProfile = 'Profil';
+
+  /// Wochenbalken der Pfad-Kopf-Karte (Brief 7.1): „4 von 7 Tagen“.
+  static String weekProgress(int day) => '$day von 7 Tagen';
+
+  /// Chip in der Kopf-Karte des Pfads, solange der Pfad ein Beispiel ist.
+  static const String samplePathChip = samplePathLabel;
+
+  // Chats (Brief 7.7). Alle weiteren Zeilen sind Beispieldaten.
+  static const String chatsTitle = 'Chats';
+  static const String chatsExampleLabel = 'Beispieldaten';
+  static const String chatsPinned = 'Angeheftet';
+
+  /// Manny-Zeile: „Manny, dein Reha-Begleiter, angeheftet. Öffnet den Chat.“
+  static const String chatsMannyRowLabel =
+      'Manny, dein Reha-Begleiter, angeheftet. Öffnet den Chat.';
+
+  // Profil (Brief 7.6).
+  static String profileSubtitle(String injury, int phase, int week) =>
+      '$injury · Phase $phase · Woche $week';
+  static const String profileTileStreak = 'Streak';
+  static const String profileTileDays = 'Trainingstage';
+  static const String profileTileFreezes = 'Freezes';
+
+  /// Screenreader-Label einer Kachel: „Streak: 12“.
+  static String profileTileLabel(String title, int value) => '$title: $value';
+  static const String profileListLabel = 'Einstellungen';
+  static const String profileRowData = 'Deine Daten';
+  static const String profileRowLook = 'Manny-Look';
+  static const String profileRowDisplay = 'Darstellung';
+  static const String profileRowHelp = 'Hilfe und Datenschutz';
+
+  /// Zeile mit Wert: „Manny-Look, Mit Brille“.
+  static String profileRowLabel(String title, String? value) =>
+      value == null ? title : '$title, $value';
+
+  // Sheet „Manny-Look“ (Ergänzung 1, 6b).
+  static const String lookSheetTitle = 'Manny-Look';
+  static const String lookSheetHint = 'Gilt für die ganze App.';
+  static const String done = 'Fertig';
+
+  // Darstellung (Brief 3.1, 3.2, 3.5, 7.6).
+  static const String displayTitle = 'Darstellung';
+  static const String displayWorldLabel = 'Welt';
+  static const String displayWorldHint =
+      'Automatisch folgt der Tageszeit. Du kannst auch eine feste Welt wählen.';
+  static const String worldAutomatic = 'Automatisch';
+  static const String worldMorning = 'Morgen';
+  static const String worldMidday = 'Mittag';
+  static const String worldEvening = 'Abend';
+  static const String worldNight = 'Nacht';
+  static const String displayThemeLabel = 'Thema';
+  static const String displayThemeHint =
+      'Die Flächen folgen dem System oder deiner Wahl, unabhängig von der Welt.';
+  static const String themeSystem = 'System';
+  static const String themeLight = 'Hell';
+  static const String themeDark = 'Dunkel';
+  static const String displayOptionsLabel = 'Weitere Einstellungen';
+  static const String displayReduceTransparency = 'Transparenz reduzieren';
+  static const String displayReduceTransparencyHint =
+      'Flächen werden deckend, ohne Weichzeichner.';
+  static const String displaySound = 'Ton';
+  static const String displaySoundHint = 'Wirkt, sobald es Töne gibt.';
+  static const String displayVibration = 'Vibration';
+  static const String displayVibrationHint =
+      'Wirkt, sobald es Rückmeldungen gibt.';
+  static const String switchOn = 'An';
+  static const String switchOff = 'Aus';
+
+  /// Gruppen- und Optionslabels für den Screenreader.
+  static String displayChoiceLabel(String title, bool selected) =>
+      '$title, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}';
+  static String displaySwitchLabel(String title, bool on) =>
+      '$title, ${on ? switchOn : switchOff}';
 }

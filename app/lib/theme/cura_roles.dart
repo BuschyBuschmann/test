@@ -117,7 +117,14 @@ extension CuraColorRoles on CuraColors {
 
   /// Text der Kopf-Karte: immer `#FFFFFF`, kein Grauton.
   Color get headerInk => Palette.headerInk;
-  Color get headerChipFill => _white(Palette.headerChipFillAlpha);
+
+  /// Rand und Druck-Überlagerung auf der Kopf-Karte (Weiß 18 %).
+  Color get headerEdge => _white(Palette.headerChipFillAlpha);
+
+  /// Füllung der Chips in der Kopf-Karte: dunkle Tönung, damit weißer Text
+  /// 4,5:1 sicher erreicht (Brief 3.1, V2-3).
+  Color get headerChipFill =>
+      Palette.headerChipShade.withValues(alpha: Palette.headerChipShadeAlpha);
   Color get headerTrack => _white(Palette.headerTrackAlpha);
 
   // --- Buttons (Brief 4) ----------------------------------------------------

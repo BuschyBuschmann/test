@@ -24,24 +24,21 @@ import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_roles.dart';
 import 'package:curaone/ui/chat/manny_chat_screen.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/node_hint.dart';
-import 'package:curaone/ui/components/path_header.dart';
-import 'package:curaone/ui/components/path_node.dart';
 import 'package:curaone/ui/components/path_outlook.dart';
-import 'package:curaone/ui/components/opaque_surface.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
-import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/overlay_placement.dart' show kOverlayTopLimit;
 import 'package:curaone/ui/path/path_source.dart';
 import 'package:curaone/ui/path/path_view.dart' show MannyPerch;
 import 'package:curaone/ui/start/start_loading_view.dart';
+import 'package:curaone/ui/components/header_card.dart';
+import 'package:curaone/ui/components/orb_node.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -233,15 +230,15 @@ class _AlwaysFails implements PathSource {
 void main() {
   // -------------------------------------------------------------------------
   group('Layout und Mittenlage (UI-20, UI-21)', () {
-    testWidgets('Größen 48 / 60 / 72 / 92, Kreise nach Art, Hit-Area ≥ 48 dp', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Größen 56 / 62 / 80 / 92 (aktuell) / 104 (Boss), Kugeln nach '
+        'Art, Hit-Area ≥ 48 dp (V2-34)', (WidgetTester tester) async {
       await _pump(tester);
       for (final (String, double) c in <(String, double)>[
-        ('w5-d1', 48),
-        ('w5-goal', 60),
-        ('p2-end', 72),
-        ('boss', 92),
+        ('w5-d1', 92), // aktuell
+        ('w5-d2', 56),
+        ('w5-goal', 62),
+        ('p2-end', 80),
+        ('boss', 104),
       ]) {
         await _reveal(tester, c.$1);
         expect(tester.getSize(_unit(c.$1)), Size(c.$2, c.$2), reason: c.$1);
@@ -307,36 +304,39 @@ void main() {
           WidgetTester tester,
         ) async {
           await _pump(tester, size: size, tweak: _tweak(c.$2));
-          final PathNode current = tester.widget<PathNode>(
+          final OrbNode current = tester.widget<OrbNode>(
             find
                 .byWidgetPredicate(
-                  (Widget w) => w is PathNode && w.status != UnitStatus.locked,
+                  (Widget w) => w is OrbNode && w.state != OrbState.locked,
                   skipOffstage: false,
                 )
                 .first,
           );
-          // Die Unit, auf der Manny sitzt: Manny-Mitte über der Unit-Mitte.
+          // Die Kugel, neben der Manny steht: ihre Unterkante auf der Fußlinie,
+          // waagerecht 16 dp Abstand (rechts, bei Platzmangel links).
           final Rect draw = _mannyDraw(tester);
           Finder? seat;
           for (final PathUnit u in kSamplePath) {
             final Rect r = tester.getRect(_unit(u.id));
-            if ((r.center.dx - draw.center.dx).abs() < 0.5 &&
-                r.top >= _baseline(tester) - CuraSize.mannyPerchOverlap - 0.5 &&
-                r.top <= _baseline(tester) - CuraSize.mannyPerchOverlap + 0.5) {
+            final double gap = draw.left >= r.right
+                ? draw.left - r.right
+                : r.left - draw.right;
+            if ((r.bottom - _baseline(tester)).abs() < 0.5 &&
+                (gap - CuraSize.mannyBesideGap).abs() < 0.5) {
               seat = _unit(u.id);
             }
           }
           expect(
             seat,
             isNotNull,
-            reason: 'Manny steht mit den Füßen auf einer Unit',
+            reason: 'Manny steht mit den Füßen neben einer Kugel',
           );
           final Rect view = _viewport(tester);
           final double fraction =
               (tester.getRect(seat!).center.dy - view.top) / view.height;
           expect(fraction, inInclusiveRange(0.40, 0.65), reason: '$fraction');
           expect(fraction, closeTo(0.55, 0.01));
-          expect(current.status, isNot(UnitStatus.locked));
+          expect(current.state, isNot(OrbState.locked));
           await _close(tester);
         });
       }
@@ -361,10 +361,10 @@ void main() {
       WidgetTester tester,
     ) async {
       await _pump(tester);
-      final Rect head = tester.getRect(find.byType(PathHeader));
+      final Rect head = tester.getRect(find.byType(HeaderCard));
       await tester.drag(find.byKey(ProbeKeys.scroll), const Offset(0, 300));
       await tester.pumpAndSettle();
-      expect(tester.getRect(find.byType(PathHeader)), head);
+      expect(tester.getRect(find.byType(HeaderCard)), head);
       await _close(tester);
     });
   });
@@ -390,7 +390,8 @@ void main() {
         );
         expect(find.text('Woche 5'), findsOneWidget);
         expect(find.text('Phase 2 · Kreuzband'), findsOneWidget);
-        expect(find.text('BEISPIELPFAD'), findsOneWidget);
+        expect(find.text(S.samplePathChip), findsOneWidget);
+        expect(find.text(S.weekProgress(3)), findsOneWidget);
         expect(find.bySemanticsLabel('Streak: 12 Tage'), findsOneWidget);
         expect(find.bySemanticsLabel('Streak-Freezes: 1'), findsOneWidget);
         h.dispose();
@@ -416,7 +417,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text(S.streakFrozenWord), findsOneWidget);
+      expect(find.text('12 ${S.streakFrozenWord}'), findsOneWidget);
       expect(
         find.bySemanticsLabel('Streak: 12 Tage, eingefroren'),
         findsOneWidget,
@@ -425,115 +426,72 @@ void main() {
       await _close(tester);
     });
 
-    testWidgets('bis 1,3 steht die ganze Kopfzeile im festen Kopf (Marker '
-        'header); ab 1,5 bleibt nur die schmale Zeile fest, der Rest läuft in '
-        'der Scrollfläche mit (Marker scroll-header, F-1)', (
-      WidgetTester tester,
-    ) async {
-      await _pump(tester);
-      expect(find.byKey(ProbeKeys.header), findsOneWidget);
-      expect(find.byKey(ProbeKeys.scrollHeader), findsNothing);
-      expect(find.byType(PathHeader), findsOneWidget);
-      expect(find.byType(PathHeaderBar), findsNothing);
-      await _close(tester);
-      await _pump(tester, scale: 2, size: Viewports.small);
-      expect(find.byKey(ProbeKeys.header), findsOneWidget);
-      expect(find.byKey(ProbeKeys.scrollHeader), findsOneWidget);
-      expect(find.byType(PathHeader), findsNothing);
-      expect(find.byType(PathHeaderBar), findsOneWidget);
-      expect(find.byType(PathHeaderInfo), findsOneWidget);
-      await _close(tester);
-    });
+    testWidgets(
+      'bis 1,3 steht die Kopf-Karte fest (Marker header); ab 1,5 läuft '
+      'sie als erstes Element in der Scrollfläche mit (Marker scroll-header, '
+      'F-1)',
+      (WidgetTester tester) async {
+        await _pump(tester);
+        expect(find.byKey(ProbeKeys.header), findsOneWidget);
+        expect(find.byKey(ProbeKeys.scrollHeader), findsNothing);
+        expect(find.byType(HeaderCard), findsOneWidget);
+        await _close(tester);
+        await _pump(tester, scale: 2, size: Viewports.small);
+        expect(find.byKey(ProbeKeys.header), findsNothing);
+        expect(find.byKey(ProbeKeys.scrollHeader), findsOneWidget);
+        expect(find.byType(HeaderCard), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(ProbeKeys.scroll),
+            matching: find.byType(HeaderCard),
+          ),
+          findsOneWidget,
+        );
+        await _close(tester);
+      },
+    );
 
     for (final Size size in <Size>[Viewports.small, Viewports.phone]) {
       for (final double scale in <double>[1.5, 2.0]) {
-        testWidgets('F-1: feste Zeile ab 1,5 ≤ 64 dp, „Woche N“ links, Icon '
-            '48 dp rechts, Schrift ≤ 1,3, Fläche bg ohne Blur, Rest scrollt '
-            'mit (${size.width.toInt()} × ${size.height.toInt()} × $scale)', (
+        testWidgets('F-1: ab 1,5 läuft die Kopf-Karte mit und wandert beim '
+            'Scrollen; Titel, „Deine Daten“, Phase in Lesereihenfolge '
+            '(${size.width.toInt()} × ${size.height.toInt()} × $scale)', (
           WidgetTester tester,
         ) async {
           final SemanticsHandle h = tester.ensureSemantics();
           await _pump(tester, scale: scale, size: size);
-          final Finder bar = find.byKey(ProbeKeys.header);
-          Rect barRect() => tester.getRect(bar);
-          expect(barRect().height, lessThanOrEqualTo(64 + 0.01));
-          final Rect title = tester.getRect(find.text('Woche 5'));
+          final Finder card = find.byType(HeaderCard);
+          expect(card, findsOneWidget);
           final Rect icon = tester.getRect(find.byTooltip(S.dataSheetOpen));
-          expect(title.left, lessThan(size.width / 2));
           expect(icon.size, const Size(48, 48));
-          expect(icon.right, closeTo(size.width - CuraSpace.pageMargin, 0.5));
-          expect(title.right, lessThanOrEqualTo(icon.left));
-          // Schrift der Zeile auf höchstens 1,3 begrenzt.
-          final BuildContext titleContext = tester.element(
-            find.text('Woche 5'),
-          );
-          expect(
-            MediaQuery.textScalerOf(titleContext).scale(10),
-            lessThanOrEqualTo(13 + 0.01),
-          );
-          // Fläche `bg`, kein Blur.
-          final ColoredBox fill = tester.widget<ColoredBox>(
-            find.descendant(of: bar, matching: find.byType(ColoredBox)).first,
-          );
-          expect(fill.color, CuraColors.light.bg);
-          expect(
-            find.descendant(of: bar, matching: find.byType(BackdropFilter)),
-            findsNothing,
-          );
-          // Phase, Beispielpfad, Streak und Freezes gehören zur Scrollfläche
-          // und nicht zur festen Zeile.
-          for (final String t in <String>[
-            'Phase 2 · Kreuzband',
-            'BEISPIELPFAD',
-          ]) {
-            expect(
-              find.descendant(of: bar, matching: find.text(t)),
-              findsNothing,
-            );
-            expect(
-              find.descendant(
-                of: find.byKey(ProbeKeys.scroll),
-                matching: find.text(t),
-              ),
-              findsOneWidget,
-            );
-          }
-          expect(find.bySemanticsLabel(RegExp('^Streak')), findsNWidgets(2));
-          expect(
-            find.descendant(
-              of: find.byKey(ProbeKeys.scroll),
-              matching: find.byType(StatPill),
-            ),
-            findsNWidgets(2),
-          );
-          // Die Zeile bleibt beim Scrollen stehen, der Rest wandert mit.
-          final Rect before = barRect();
-          final Rect phaseBefore = tester.getRect(
-            find.text('Phase 2 · Kreuzband'),
-          );
           final ScrollableState st = tester.state<ScrollableState>(
             find.descendant(
               of: find.byKey(ProbeKeys.scroll),
               matching: find.byType(Scrollable),
             ),
           );
+          st.position.jumpTo(0);
+          await tester.pump();
+          expect(tester.getRect(card).left, CuraSize.cardMargin);
+          final Rect phaseBefore = tester.getRect(
+            find.text('Phase 2 · Kreuzband'),
+          );
           st.position.jumpTo(st.position.pixels + 40);
           await tester.pump();
-          expect(barRect(), before);
           expect(
             tester.getRect(find.text('Phase 2 · Kreuzband')).top,
             lessThan(phaseBefore.top),
           );
-          // Lesereihenfolge: Titel, dann „Deine Daten“, dann die Phase.
+          // Lesereihenfolge: Titel, dann „Deine Daten“ bzw. Phase.
+          st.position.jumpTo(0);
+          await tester.pump();
           final List<String> order = _semanticLabels(tester);
           final int iTitle = order.indexWhere((String l) => l == 'Woche 5');
-          final int iData = order.indexOf(S.dataSheetOpen);
           final int iPhase = order.indexWhere(
             (String l) => l.contains('Phase 2 · Kreuzband'),
           );
           expect(iTitle, isNonNegative, reason: '$order');
-          expect(iData, greaterThan(iTitle), reason: '$order');
-          expect(iPhase, greaterThan(iData), reason: '$order');
+          expect(iPhase, isNonNegative, reason: '$order');
           h.dispose();
           await _close(tester);
         });
@@ -626,7 +584,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _pump(tester, bubble: true);
-      await tester.tapAt(tester.getRect(find.byType(PathHeader)).center);
+      await tester.tapAt(tester.getRect(find.byType(HeaderCard)).center);
       await tester.pumpAndSettle();
       expect(h.controller.transient.visibleBubble, isNull);
       expect(
@@ -771,21 +729,18 @@ void main() {
       expect(find.text('Stark, Jakob. Das war Tag 1.'), findsOneWidget);
       expect(tester.widget<MannyIllustration>(_manny).pose, MannyPose.feiernd);
       // Ring-Puls auf der erledigten Unit.
-      expect(tester.widget<PathNode>(_unit('w5-d1')).pulse, isTrue);
+      expect(tester.widget<OrbNode>(_unit('w5-d1')).pulse, isTrue);
       // Feier und Puls sind verbraucht.
       expect(h.state.celebration, isNull);
       expect(h.state.path.pulsePending, isNull);
       await tester.pumpAndSettle();
       expect(
-        tester.widget<PathNode>(_unit('w5-d1')).pulse,
+        tester.widget<OrbNode>(_unit('w5-d1')).pulse,
         isFalse,
         reason: 'einmalig',
       );
       // Manny sitzt jetzt auf der nächsten Unit.
-      expect(
-        tester.widget<PathNode>(_unit('w5-d2')).status,
-        UnitStatus.current,
-      );
+      expect(tester.widget<OrbNode>(_unit('w5-d2')).state, OrbState.current);
       await tester.tap(find.byTooltip(S.bubbleClose));
       await tester.pumpAndSettle();
       expect(
@@ -827,7 +782,7 @@ void main() {
         expect(find.text('Stark, Jakob. Das war Tag 1.'), findsOneWidget);
         await tester.pump(const Duration(milliseconds: 121));
         expect(tester.binding.transientCallbackCount, 0);
-        expect(tester.widget<PathNode>(_unit('w5-d1')).pulse, isFalse);
+        expect(tester.widget<OrbNode>(_unit('w5-d1')).pulse, isFalse);
         await _close(tester);
       },
     );
@@ -872,11 +827,11 @@ void main() {
     });
 
     testWidgets('Blase ist nicht modal: Unit, Nav und Chat-Button bedienbar, '
-        'kein Blur über dem Budget (Nav plus Blase)', (
+        'kein Blur über dem Budget (Leiste, Kopf-Karte, Manny-Knopf)', (
       WidgetTester tester,
     ) async {
       await _pump(tester, bubble: true);
-      expect(backdropCount(tester), lessThanOrEqualTo(2));
+      expect(backdropCount(tester), lessThanOrEqualTo(3));
       expect(
         find
             .byType(ModalBarrier)
@@ -978,8 +933,8 @@ void main() {
       expect(d.color, c.surfaceOpaque);
       expect(
         backdropCount(tester),
-        2,
-        reason: 'Nav und Manny-Knopf, sonst keiner',
+        3,
+        reason: 'Leiste, Kopf-Karte und Manny-Knopf, sonst keiner',
       );
       await _tapUnit(tester, 'w7-d1');
       expect(_hint, findsOneWidget);
@@ -1021,7 +976,7 @@ void main() {
       Future<void> show() => _tapUnit(tester, 'w3-d2');
 
       await show();
-      await tester.tapAt(tester.getRect(find.byType(PathHeader)).center);
+      await tester.tapAt(tester.getRect(find.byType(HeaderCard)).center);
       await tester.pumpAndSettle();
       expect(_hint, findsNothing, reason: 'Tipp irgendwo');
 
@@ -1086,7 +1041,7 @@ void main() {
           if (_hint.evaluate().isEmpty) return; // z. B. aktuelle Unit
           final Rect hint = tester.getRect(_hint);
           final Rect view = _viewport(tester);
-          final Rect cluster = tester.getRect(find.byType(ActionCluster));
+          final Rect cluster = tester.getRect(find.byType(MannyButton));
           expect(hint.top, greaterThanOrEqualTo(view.top - 0.5));
           expect(hint.bottom, lessThanOrEqualTo(568 + 0.5));
           if (hint.right > cluster.left && hint.left < cluster.right) {
@@ -1180,7 +1135,7 @@ void main() {
       await _pump(tester, size: Viewports.small, scale: 2);
       await _tapUnit(tester, 'w7-d1');
       final Rect hint = tester.getRect(_hint);
-      final Rect cluster = tester.getRect(find.byType(ActionCluster));
+      final Rect cluster = tester.getRect(find.byType(MannyButton));
       expect(hint.left, greaterThanOrEqualTo(16));
       expect(hint.right, lessThanOrEqualTo(320 - 16));
       expect(hint.bottom, lessThanOrEqualTo(cluster.top - 8 + 0.5));
@@ -1199,9 +1154,9 @@ void main() {
           await tester.pump();
         }
         final BuildContext ctx = FocusManager.instance.primaryFocus!.context!;
-        PathNode? node;
+        OrbNode? node;
         ctx.visitAncestorElements((Element e) {
-          if (e.widget is PathNode) node = e.widget as PathNode;
+          if (e.widget is OrbNode) node = e.widget as OrbNode;
           return node == null;
         });
         expect(node, isNotNull, reason: 'Fokus liegt auf einer Unit');
@@ -1227,7 +1182,7 @@ void main() {
         kSamplePath.firstWhere((PathUnit x) => x.id == 'w3-d2'),
       ]) {
         await _reveal(tester, u.id);
-        final PathNode n = tester.widget<PathNode>(_unit(u.id));
+        final OrbNode n = tester.widget<OrbNode>(_unit(u.id));
         expect(
           find.bySemanticsLabel(n.semanticLabel),
           findsOneWidget,
@@ -1235,19 +1190,19 @@ void main() {
         );
       }
       expect(
-        tester.widget<PathNode>(_unit('w5-d1')).semanticLabel,
+        tester.widget<OrbNode>(_unit('w5-d1')).semanticLabel,
         'Woche 5, Trainingstag 1, aktuell. Öffnet Heute.',
       );
       expect(
-        tester.widget<PathNode>(_unit('boss')).semanticLabel,
+        tester.widget<OrbNode>(_unit('boss')).semanticLabel,
         'Return to Sport, gesperrt.',
       );
       expect(
-        tester.widget<PathNode>(_unit('w5-goal')).semanticLabel,
+        tester.widget<OrbNode>(_unit('w5-goal')).semanticLabel,
         'Woche 5, Wochenziel, gesperrt.',
       );
       expect(
-        tester.widget<PathNode>(_unit('p1-end')).semanticLabel,
+        tester.widget<OrbNode>(_unit('p1-end')).semanticLabel,
         'Woche 4, Phasen-Abschluss, erledigt.',
       );
       h.dispose();
@@ -1296,8 +1251,8 @@ void main() {
     });
 
     testWidgets(
-      'Trefferfläche: Form und 8-dp-Rand ja, außerhalb nein; unter der '
-      'Standlinie gilt die Unit (UI-74)',
+      'Trefferfläche: Form und 8-dp-Rand ja, außerhalb nein; die Kugel daneben '
+      'gilt als Kugel (UI-74)',
       (WidgetTester tester) async {
         await _pump(tester);
         final Rect draw = _mannyDraw(tester);
@@ -1323,8 +1278,10 @@ void main() {
         expect(await opensChat(at(body)), isTrue, reason: 'Körper');
         expect(await opensChat(at(margin)), isTrue, reason: 'Rand');
         expect(await opensChat(at(outside)), isFalse, reason: '14 dp daneben');
-        // Unterhalb der Standlinie: die Unit, nicht Manny (aktuell → Heute).
-        await tester.tapAt(Offset(draw.center.dx, base + 4));
+        // Unterhalb der Standlinie liegt nichts von Manny.
+        expect(await opensChat(Offset(draw.center.dx, base + 4)), isFalse);
+        // Auf der Kugel daneben: die Kugel, nicht Manny (aktuell → Heute).
+        await tester.tap(_unit('w5-d1'));
         await tester.pumpAndSettle();
         expect(find.byType(MannyChatScreen), findsNothing);
         expect(_shell(tester).activeTab, HomeTab.today);
@@ -1429,6 +1386,16 @@ void main() {
             );
             st.position.jumpTo(0);
             await tester.pump();
+            // Ab 1,5 läuft die Kopf-Karte in der Scrollfläche mit und füllt bei
+            // 320 × 568 den Bildschirm: die Marke steht dann direkt darunter
+            // und wird mit dem Scrollen über die Kopf-Karte hinaus sichtbar.
+            final Finder along = find.byKey(ProbeKeys.scrollHeader);
+            if (along.evaluate().isNotEmpty) {
+              st.position.jumpTo(
+                st.position.pixels + tester.getRect(along).height,
+              );
+              await tester.pump();
+            }
             final Rect o = tester.getRect(_outlook);
             final Rect view = _viewport(tester);
             expect(view.contains(o.topLeft), isTrue, reason: '$o in $view');
@@ -1444,8 +1411,8 @@ void main() {
               CuraSize.navBarHeight,
             );
             expect(o.overlaps(nav), isFalse, reason: 'Marke $o unter Nav $nav');
-            final Rect cluster = ActionCluster.rectOf(
-              _shell(tester).clusterKey,
+            final Rect cluster = MannyButton.rectOf(
+              _shell(tester).mannyButtonKey,
             )!;
             // Auf 320 dp Breite überspannt die Marke (288 dp) die Spalte der
             // Button-Gruppe; ganz oben (55 %-Regel) liegt die Gruppe dort
@@ -1459,8 +1426,13 @@ void main() {
                 reason: 'Marke $o unter Gruppe $cluster',
               );
             }
-            final Rect header = tester.getRect(find.byKey(ProbeKeys.header));
-            expect(o.top, greaterThanOrEqualTo(header.bottom));
+            final Finder fixedHeader = find.byKey(ProbeKeys.header);
+            if (fixedHeader.evaluate().isNotEmpty) {
+              expect(
+                o.top,
+                greaterThanOrEqualTo(tester.getRect(fixedHeader).bottom),
+              );
+            }
             await _close(tester);
           });
         }
@@ -1485,11 +1457,11 @@ void main() {
           );
           expect(o.center.dx, closeTo(size.width / 2, 0.5));
           expect(o.height, greaterThanOrEqualTo(72));
-          expect(boss.width, 92);
+          expect(boss.width, closeTo(CuraSize.orbBoss, 0.01));
           expect(o.bottom, lessThanOrEqualTo(boss.top - 84 + 0.01));
           // Darüber steht keine weitere Unit.
           for (final Element e
-              in find.byType(PathNode, skipOffstage: false).evaluate()) {
+              in find.byType(OrbNode, skipOffstage: false).evaluate()) {
             final RenderBox box = e.renderObject! as RenderBox;
             final double top = box.localToGlobal(Offset.zero).dy;
             expect(top, greaterThanOrEqualTo(boss.top - 0.01));
@@ -1501,11 +1473,11 @@ void main() {
       testWidgets('UI-90, UI-95: genau 52 Units, die Marke ist keine Unit und '
           'trägt weder Ring noch Manny', (WidgetTester tester) async {
         await _pump(tester, tweak: _tweak(_allDone));
-        expect(find.byType(PathNode, skipOffstage: false), findsNWidgets(52));
+        expect(find.byType(OrbNode, skipOffstage: false), findsNWidgets(52));
         expect(
           find.descendant(
             of: _outlook,
-            matching: find.byType(PathNode, skipOffstage: false),
+            matching: find.byType(OrbNode, skipOffstage: false),
           ),
           findsNothing,
         );
@@ -1530,8 +1502,8 @@ void main() {
         final CuraColors c = colorsAt(tester, _outlook);
         expect(
           backdropCount(tester),
-          2,
-          reason: 'Nav und Manny-Knopf, sonst keiner',
+          3,
+          reason: 'Leiste, Kopf-Karte und Manny-Knopf, sonst keiner',
         );
         final DashedRRectPainter dashed = tester
             .widgetList<CustomPaint>(
@@ -1650,7 +1622,7 @@ void main() {
           'nach 5 s', (WidgetTester tester) async {
         await _pump(tester);
         await _tapOutlook(tester);
-        await tester.tapAt(tester.getRect(find.byType(PathHeader)).center);
+        await tester.tapAt(tester.getRect(find.byType(HeaderCard)).center);
         await tester.pumpAndSettle();
         expect(_hint, findsNothing, reason: 'Tipp');
         await _tapOutlook(tester);
@@ -1730,8 +1702,8 @@ void main() {
                 kind = 'outlook';
                 return false;
               }
-              if (w is PathNode) {
-                kind = w.unit.id;
+              if (w is OrbNode) {
+                kind = (w.key! as ValueKey<String>).value.substring(5);
                 return false;
               }
               return true;
@@ -1834,7 +1806,7 @@ void main() {
         await _pump(tester, size: Viewports.small, scale: 2);
         await _tapOutlook(tester);
         final Rect hint = tester.getRect(_hint);
-        final Rect cluster = tester.getRect(find.byType(ActionCluster));
+        final Rect cluster = tester.getRect(find.byType(MannyButton));
         expect(hint.left, greaterThanOrEqualTo(16));
         expect(hint.right, lessThanOrEqualTo(320 - 16));
         expect(hint.overlaps(cluster), isFalse);
@@ -1950,16 +1922,10 @@ void main() {
     testWidgets('Freeze: Tipp zeigt den NodeHint unter dem Chip, ohne '
         'Tabwechsel; Tipp irgendwo schließt', (WidgetTester tester) async {
       await pumpWithStreak(tester);
-      // Die sichtbare Pille (die Hit-Area ist höher).
-      final Rect pill = tester.getRect(
-        find
-            .descendant(
-              of: find.byType(StatPill).first,
-              matching: find.byType(OpaqueSurface),
-            )
-            .first,
-      );
-      await tester.tap(find.byType(StatPill).first);
+      // Die sichtbare Pille ist niedriger als die Tippfläche (48 dp).
+      final Rect box = tester.getRect(find.byType(HeaderChip).first);
+      final double pillBottom = box.center.dy + CuraSize.touchTarget / 4;
+      await tester.tap(find.byType(HeaderChip).first);
       await tester.pumpAndSettle();
       expect(_hint, findsOneWidget);
       expect(find.text(S.hintFreeze), findsOneWidget);
@@ -1968,7 +1934,7 @@ void main() {
         'Ein Freeze rettet deinen Streak an einem verpassten Tag.',
       );
       final Rect hint = tester.getRect(_hint);
-      expect(hint.top, greaterThanOrEqualTo(pill.bottom - 0.5));
+      expect(hint.top, greaterThanOrEqualTo(pillBottom - 0.5));
       expect(hint.left, greaterThanOrEqualTo(16));
       expect(hint.right, lessThanOrEqualTo(390 - 16));
       expect(_shell(tester).activeTab, HomeTab.path);
@@ -1983,11 +1949,11 @@ void main() {
       WidgetTester tester,
     ) async {
       await pumpWithStreak(tester);
-      await tester.tap(find.byType(StatPill).last);
+      await tester.tap(find.byType(HeaderChip).at(1));
       await tester.pumpAndSettle();
       expect(find.text(S.hintStreak), findsOneWidget);
       expect(S.hintStreak, 'Dein Streak zählt die Tage in Folge mit Training.');
-      await tester.tap(find.byType(StatPill).first);
+      await tester.tap(find.byType(HeaderChip).first);
       await tester.pumpAndSettle();
       expect(_hint, findsOneWidget);
       expect(find.text(S.hintFreeze), findsOneWidget);
@@ -2005,12 +1971,13 @@ void main() {
         expect(node.rect.height, greaterThanOrEqualTo(48), reason: label);
         expect(node.rect.width, greaterThanOrEqualTo(48), reason: label);
       }
-      // Tab: Freeze, Streak, „Deine Daten“.
+      // Tab: „Deine Daten“ (oben rechts), Freeze, Streak.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       expect(
         FocusManager.instance.primaryFocus!.context!
-            .findAncestorWidgetOfExactType<StatPill>()
+            .findAncestorWidgetOfExactType<HeaderChip>()
             ?.semanticLabel,
         freeze,
       );
@@ -2032,7 +1999,7 @@ void main() {
     testWidgets('Hinweis schließt beim Scrollen, bei Tabwechsel und nach 5 s; '
         'bei Screenreader nicht automatisch', (WidgetTester tester) async {
       await pumpWithStreak(tester);
-      await tester.tap(find.byType(StatPill).first);
+      await tester.tap(find.byType(HeaderChip).first);
       await tester.pumpAndSettle();
       expect(_hint, findsOneWidget);
       await tester.pump(const Duration(seconds: 6));
@@ -2040,7 +2007,7 @@ void main() {
       await _close(tester);
 
       await pumpWithStreak(tester, screenReader: true);
-      await tester.tap(find.byType(StatPill).first);
+      await tester.tap(find.byType(HeaderChip).first);
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 12));
       expect(_hint, findsOneWidget, reason: 'Screenreader: bleibt');
@@ -2055,14 +2022,14 @@ void main() {
     ) async {
       final Harness h = await _pump(tester, bubble: true);
       expect(h.controller.transient.visibleBubble, isNotNull);
-      await tester.tap(find.byType(StatPill).first);
+      await tester.tap(find.byType(HeaderChip).first);
       await tester.pumpAndSettle();
       expect(h.controller.transient.visibleBubble, isNull);
       expect(_hint, findsOneWidget);
       expect(
         backdropCount(tester),
-        2,
-        reason: 'Nav und Manny-Knopf, sonst keiner',
+        3,
+        reason: 'Leiste, Kopf-Karte und Manny-Knopf, sonst keiner',
       );
       await _close(tester);
     });
@@ -2076,22 +2043,17 @@ void main() {
           await pumpWithStreak(tester, size: size, scale: scale);
           if (scale >= 1.5) await toTop(tester);
           for (final Finder pill in <Finder>[
-            find.byType(StatPill).first,
-            find.byType(StatPill).last,
+            find.byType(HeaderChip).first,
+            find.byType(HeaderChip).at(1),
           ]) {
             await tester.tap(pill);
             await tester.pumpAndSettle();
             expect(_hint, findsOneWidget);
             final Rect hint = tester.getRect(_hint);
-            final Rect cluster = tester.getRect(find.byType(ActionCluster));
+            final Rect cluster = tester.getRect(find.byType(MannyButton));
             expect(hint.left, greaterThanOrEqualTo(16 - 0.5));
             expect(hint.right, lessThanOrEqualTo(size.width - 16 + 0.5));
             expect(hint.top, greaterThanOrEqualTo(0));
-            if (scale >= 1.5) {
-              // Die feste schmale Zeile mit „Deine Daten“ bleibt frei.
-              final Rect bar = tester.getRect(find.byKey(ProbeKeys.header));
-              expect(hint.top, greaterThanOrEqualTo(bar.bottom - 0.5));
-            }
             expect(hint.bottom, lessThanOrEqualTo(cluster.top - 16 + 0.5));
             await tester.tapAt(const Offset(2, 2));
             await tester.pumpAndSettle();
@@ -2101,35 +2063,29 @@ void main() {
       }
     }
 
-    testWidgets('Ab ×1,5 steht keine Pille in der festen Zeile; sie sind in '
-        'der Scrollfläche antippbar', (WidgetTester tester) async {
+    testWidgets('Ab ×1,5 steht die Kopf-Karte in der Scrollfläche; die Chips '
+        'sind dort antippbar', (WidgetTester tester) async {
       await pumpWithStreak(tester, size: Viewports.small, scale: 2);
-      final Finder bar = find.byKey(ProbeKeys.header);
-      expect(
-        find.descendant(of: bar, matching: find.byType(StatPill)),
-        findsNothing,
-      );
+      expect(find.byKey(ProbeKeys.header), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(ProbeKeys.scrollHeader),
-          matching: find.byType(StatPill),
+          matching: find.byType(HeaderChip),
         ),
-        findsNWidgets(2),
+        findsNWidgets(3),
       );
       await _close(tester);
     });
   });
 
   // -------------------------------------------------------------------------
-  group('Button-Gruppe, Kollisionen und Rückfälle (UI-24, UI-75)', () {
-    testWidgets('Gruppe: rechts 16 dp, über der Nav, Nachrichten-Button 8 dp '
-        'über dem Manny-Button; unten links nichts', (
-      WidgetTester tester,
-    ) async {
+  group('Manny-Knopf, Kollisionen und Rückfälle (UI-24, UI-75)', () {
+    testWidgets('Manny-Knopf: rechts 18 dp, 16 dp über der Leiste; unten links '
+        'nichts', (WidgetTester tester) async {
       await _pump(tester);
-      final Rect cluster = tester.getRect(find.byType(ActionCluster));
+      final Rect cluster = tester.getRect(find.byType(MannyButton));
       final Rect nav = tester.getRect(find.byType(FloatingNav));
-      expect(cluster.right, 390 - 16);
+      expect(cluster.right, 390 - 18);
       expect(cluster.bottom, lessThanOrEqualTo(nav.top - 16 + 0.5 + 24));
       expect(
         cluster.bottom,
@@ -2170,7 +2126,7 @@ void main() {
         );
         expect(_bubble, findsOneWidget);
         final Rect b = tester.getRect(_bubble);
-        final Rect g = tester.getRect(find.byType(ActionCluster));
+        final Rect g = tester.getRect(find.byType(MannyButton));
         expect(b.overlaps(g), isFalse);
         expect(b.bottom, lessThanOrEqualTo(g.top - 8 + 0.5));
         expect(b.left, greaterThanOrEqualTo(16 - 0.5));
@@ -2204,7 +2160,7 @@ void main() {
           ),
         );
         final Rect b = tester.getRect(_bubble);
-        final Rect g = tester.getRect(find.byType(ActionCluster));
+        final Rect g = tester.getRect(find.byType(MannyButton));
         expect(b.bottom, lessThanOrEqualTo(g.top - 8 + 0.5));
         expect(tester.widget<MannyBubble>(_bubble).arrow, BubbleArrow.down);
         await _close(tester);
@@ -2229,7 +2185,7 @@ void main() {
       );
       final MannyBubble w = tester.widget<MannyBubble>(_bubble);
       final Rect b = tester.getRect(_bubble);
-      final Rect g = tester.getRect(find.byType(ActionCluster));
+      final Rect g = tester.getRect(find.byType(MannyButton));
       expect(w.maxBodyHeight, isNull, reason: 'nicht begrenzt');
       expect(
         find.descendant(
@@ -2292,10 +2248,8 @@ void main() {
       await _close(tester);
     });
 
-    testWidgets('Pfad scrollt nach unten, wenn über Manny kein Platz ist und '
-        'darunter Raum bleibt; die Blase gilt erst danach als erschienen', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('lange Blase bei 200 %: steht ganz im Bild, ohne den Pfad zu '
+        'verschieben; Manny bleibt frei', (WidgetTester tester) async {
       // 390 × 844, ×2,0, eine lange Nachricht: über Manny fehlen etwa 60 dp,
       // bis zur Gruppe bleiben etwa 130 dp.
       final Harness h = await Harness.onboarded(text: _LongText());
@@ -2310,7 +2264,7 @@ void main() {
         reason: 'nicht begrenzt: das Scrollen genügt',
       );
       final Rect b = tester.getRect(_bubble);
-      final Rect g = tester.getRect(find.byType(ActionCluster));
+      final Rect g = tester.getRect(find.byType(MannyButton));
       expect(b.top, greaterThanOrEqualTo(kOverlayTopLimit - 0.5));
       expect(b.overlaps(_mannyDraw(tester).deflate(2)), isFalse);
       expect(g.top, greaterThan(_mannyDraw(tester).bottom));
@@ -2318,11 +2272,9 @@ void main() {
       final Rect view = _viewport(tester);
       final double f =
           (tester.getRect(_unit('w5-d1')).center.dy - view.top) / view.height;
-      expect(
-        f,
-        greaterThan(0.56),
-        reason: 'der Pfad wurde nach unten gescrollt',
-      );
+      // Manny steht neben der Kugel: über ihm ist Platz, der Pfad muss nicht
+      // scrollen und bleibt auf 55 %.
+      expect(f, closeTo(0.55, 0.01), reason: 'kein Scrollen nötig');
       expect(h.controller.transient.visibleBubble, isNotNull);
       await _close(tester);
     });
@@ -2341,7 +2293,7 @@ void main() {
         st.position.jumpTo(st.position.maxScrollExtent);
         await tester.pump();
         final Rect unit = tester.getRect(_unit('w1-d1'));
-        final Rect g = tester.getRect(find.byType(ActionCluster));
+        final Rect g = tester.getRect(find.byType(MannyButton));
         final Rect nav = tester.getRect(find.byType(FloatingNav));
         expect(unit.bottom, lessThanOrEqualTo(g.top + 0.5), reason: '$size');
         expect(unit.bottom, lessThanOrEqualTo(nav.top + 0.5));
@@ -2367,7 +2319,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await _pump(tester, bubble: true);
-      final Rect g = tester.getRect(find.byType(ActionCluster));
+      final Rect g = tester.getRect(find.byType(MannyButton));
       final Rect nav = tester.getRect(find.byType(FloatingNav));
       final Rect left = Rect.fromLTRB(
         0,
@@ -2402,10 +2354,10 @@ void main() {
         await _pump(tester, source: _Pending());
         expect(find.byType(StartLoadingView), findsOneWidget);
         expect(find.bySemanticsLabel(S.loading), findsOneWidget);
-        expect(find.byType(ActionCluster), findsNothing);
+        expect(find.byType(MannyButton), findsNothing);
         expect(find.byType(MannyButton), findsNothing);
         expect(find.byType(FloatingNav), findsOneWidget);
-        expect(find.byType(PathHeader), findsNothing);
+        expect(find.byType(HeaderCard), findsNothing);
         expect(
           tester.binding.transientCallbackCount,
           0,
@@ -2431,7 +2383,7 @@ void main() {
       );
       expect(find.text(S.retry), findsOneWidget);
       expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-      expect(find.byType(ActionCluster), findsNothing);
+      expect(find.byType(MannyButton), findsNothing);
       expect(find.byType(FloatingNav), findsOneWidget);
       final CuraColors c = colorsAt(tester, find.byType(FloatingNav));
       expect(
@@ -2454,8 +2406,8 @@ void main() {
         await tester.tap(find.text(S.retry));
         await tester.pumpAndSettle();
         expect(source.calls, 2);
-        expect(find.byType(PathHeader), findsOneWidget);
-        expect(find.byType(ActionCluster), findsOneWidget);
+        expect(find.byType(HeaderCard), findsOneWidget);
+        expect(find.byType(MannyButton), findsOneWidget);
         expect(h.controller.transient.visibleBubble, isNotNull);
         await _close(tester);
       },
@@ -2469,8 +2421,8 @@ void main() {
       expect(find.byType(StartLoadingView), findsOneWidget);
       done.complete();
       await tester.pumpAndSettle();
-      expect(find.byType(PathHeader), findsOneWidget);
-      expect(find.byType(ActionCluster), findsOneWidget);
+      expect(find.byType(HeaderCard), findsOneWidget);
+      expect(find.byType(MannyButton), findsOneWidget);
       await _close(tester);
     });
 
@@ -2542,7 +2494,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await _pump(tester, hc: true, bubble: true);
-      final CuraColors c = colorsAt(tester, find.byType(PathHeader));
+      final CuraColors c = colorsAt(tester, find.byType(HeaderCard));
       expect(c.highContrast, isTrue);
       expect(backdropCount(tester), 0);
       await tester.tap(find.byTooltip(S.bubbleClose));

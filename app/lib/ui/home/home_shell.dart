@@ -1,45 +1,52 @@
-// `HomeShell` (Plan 4.1, 4.3, 4.6): die Home-Route mit den Tabs Pfad und Heute
-// in einem `IndexedStack` (Scrollposition bleibt erhalten), schwebender Nav und
-// dem Snackbar-Host. Jeder Tab läuft in `TickerMode`: der inaktive Tab hält
-// keine Animation (UI-8) und nimmt weder Fokus noch Semantik an.
+// `HomeShell` (Design-Brief v2, 5; Plan 3.3, 4.1, 4.3, 4.6): die Home-Route mit
+// den vier Zielen Pfad, Heute, Chats und Profil in einem `IndexedStack`
+// (Scroll-Position und Zustand bleiben je Ziel erhalten), der schwebenden
+// Leiste und dem Snackbar-Host. Jedes Ziel läuft in `TickerMode`: das inaktive
+// hält keine Animation (UI-8) und nimmt weder Fokus noch Semantik an.
 //
-// - Zurück (Android-Taste, Browser-Zurück): auf Heute → Tab Pfad; auf Pfad
-//   erst eine sichtbare Manny-Blase bzw. einen `NodeHint` schließen, sonst die
-//   App schließen (`SystemNavigator.pop`; auf iOS und im Web wirkungslos).
-//   Sheets und Dialoge schließt ihre eigene Route.
+// - Die Ziele sind eine Liste ([HomeDestination]): ein fünftes Ziel (Feed, ab
+//   Ausschnitt 4) kommt an Position 3 dazu, indem ein Eintrag in den Enum, in
+//   [HomeShellState._item] und in [HomeShellState._page] tritt; bis dahin gibt
+//   es kein Feed-Ziel und keinen Platzhalter (V2-15).
+// - Leiste (Brief 4.1): sichtbar nur auf der Home-Route. Session, Chat-
+//   Vollbilder, Onboarding, Sheets und Dialoge sind Routen **über** der Home-
+//   Route: sie decken die Leiste samt Manny-Knopf ab (Scrim, keine Semantik,
+//   kein Fokus; V2-19). Der Beginn eines Scrolls im Inhalt macht die Leiste
+//   aktiv ([NavActivity]).
+// - Zurück (Android-Taste, Browser-Zurück): auf Heute, Chats und Profil → Ziel
+//   Pfad; auf Pfad erst eine sichtbare Manny-Blase bzw. einen `NodeHint`
+//   schließen, sonst die App schließen (`SystemNavigator.pop`; auf iOS und im
+//   Web wirkungslos). Sheets und Dialoge schließt ihre eigene Route.
 // - Tageswechsel (Ergänzung 1, 3.4; Plan 4.6): geprüft beim Fortsetzen der App
-//   (`AppLifecycleListener.onResume`) und bei jedem Tabwechsel. Reihenfolge:
+//   (`AppLifecycleListener.onResume`) und bei jedem Zielwechsel. Reihenfolge:
 //   Zustand anwenden (Controller), alle Heute-Routen schließen und das Ende der
 //   Entfernung abwarten, dann prüfen, ob Heute aktiv **und** die Home-Route
 //   oberste Route ist; nur dann Snackbar „Neuer Tag, neues Programm.“ und Ansage.
-// - Tabwechsel beendet das Rückgängig-Fenster, den `NodeHint` und die Snackbar;
+// - Zielwechsel beendet das Rückgängig-Fenster, den `NodeHint` und die Snackbar;
 //   verlässt man den Pfad, schließt auch die Blase (zählt als gezeigt).
-// - Button-Gruppe (Ergänzung 2, Plan 4.6): `ActionCluster` im Modus `path`
-//   über dem Pfad-Tab (rechts 16 dp, Manny-Button 16 dp über der Nav,
-//   Nachrichten-Button rechtsbündig 8 dp darüber). Auf Heute übernimmt U3b die
-//   Gruppe; [openChat] und [openMessages] gelten für beide Tabs. Die Gruppe
-//   liegt im Stack der Home-Route: Vollbild-Routen, Sheets und Dialoge liegen
-//   als Routen darüber (Scrim, Semantik und Fokus der Gruppe sind dort blockiert).
-// - Öffnen von Manny-Chat und Nachrichten: vorher das Rückgängig-Fenster
-//   beenden, `NodeHint` und Blase schließen (zählt als gezeigt) und die
-//   Snackbar schließen; nach dem Schließen der Route kehrt der Fokus an den
-//   auslösenden Button zurück (A-38: auch bei Öffnen über Manny auf dem Pfad,
-//   der keine eigene Fokusstation hat).
-// - Pfad-Tab (U3a): `PathScreen` ersetzt den Platzhalter. Die Button-Gruppe
-//   steht nur, wenn der Pfad **bereit** ist (Plan 4.6, A-43: nicht in Laden und
-//   Fehler). Der Ladezustand kommt aus der `PathSource`; „Nochmal versuchen“
-//   bereitet den Pfad erneut vor. Escape und Zurück schließen zuerst Blase und
-//   Hinweis ([dismissPathOverlays]).
+// - Manny-Knopf (Brief 5): Kopf, 56 dp, rechts 18 dp, 16 dp über der Leiste,
+//   nur auf **Pfad** (hier) und **Heute** (in der Primärbutton-Reihe des
+//   Tabs). Die frühere Button-Gruppe mit Nachrichten-Knopf entfällt: Nachrichten
+//   sind das Ziel Chats, Manny zusätzlich dort angeheftet. Auf dem Pfad steht
+//   der Knopf nur, wenn der Pfad **bereit** ist (A-43: nicht in Laden und
+//   Fehler). Vollbild-Routen, Sheets und Dialoge liegen als Routen darüber.
+// - Öffnen von Manny-Chat und Beispiel-Chats ([openFullscreen]): vorher das
+//   Rückgängig-Fenster beenden, `NodeHint` und Blase schließen (zählt als
+//   gezeigt) und die Snackbar schließen; nach dem Schließen der Route kehrt der
+//   Fokus an den auslösenden Knopf bzw. die Zeile zurück (A-38: auch bei
+//   Öffnen über Manny auf dem Pfad, der keine eigene Fokusstation hat).
+// - Pfad (U3a): `PathScreen`. Der Ladezustand kommt aus der `PathSource`;
+//   „Nochmal versuchen“ bereitet den Pfad erneut vor. Escape und Zurück
+//   schließen zuerst Blase und Hinweis ([dismissPathOverlays]).
 // - Deine Daten (U4): [openDataSheet] öffnet das Sheet über der Home-Route (die
-//   Button-Gruppe bleibt darunter, unter dem Scrim); der Fokus kehrt an das Icon
-//   der Pfad-Kopfzeile zurück ([dataButtonFocus]).
-// - Heute (U3b): `TodayScreen` ersetzt den zweiten Platzhalter. Er baut die
-//   Primärbutton-Reihe mit dem Manny-Button und den Nachrichten-Button darüber
-//   selbst (nur im Standard-Zustand, A-43) und meldet die gemessene Höhe der
-//   Gruppe über [todayGroupHeight]: Die Snackbar auf Heute steht 12 dp über der
-//   Gruppe. Laden und Fehler kommen wie beim Pfad aus einer Quelle
-//   (`TodaySource`). Der Tageswechsel schließt Snackbar, Rückgängig-Fenster und
-//   alle Heute-Routen, bevor er die Bedingung prüft ([dayChanged]).
+//   Leiste bleibt darunter, unter dem Scrim); der Fokus kehrt an das Symbol in
+//   der Kopf-Karte des Pfads ([dataButtonFocus]) bzw. die Profil-Zeile zurück.
+// - Heute (U3b): `TodayScreen` baut die Primärbutton-Reihe mit dem Manny-Knopf
+//   selbst (nur im Standard-Zustand, A-43) und meldet deren gemessene Höhe über
+//   [todayGroupHeight]: die Snackbar auf Heute steht 12 dp über der Reihe.
+//   Laden und Fehler kommen wie beim Pfad aus einer Quelle (`TodaySource`). Der
+//   Tageswechsel schließt Snackbar, Rückgängig-Fenster und alle Heute-Routen,
+//   bevor er die Bedingung prüft ([dayChanged]).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -47,17 +54,20 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/strings_de.dart';
+import '../../logic/profile_summary.dart';
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/tokens.dart';
-import '../components/action_cluster.dart';
 import '../components/cura_snackbar.dart';
 import '../components/floating_nav.dart';
+import '../components/manny_chat_button.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
 import '../data_sheet/data_sheet.dart';
+import '../profile/profile_screen.dart';
 import '../routes/app_routes.dart';
+import '../messages/chats_screen.dart';
 import '../path/path_screen.dart';
 import '../path/path_source.dart';
 import '../routes/route_focus.dart';
@@ -65,10 +75,18 @@ import '../today/today_screen.dart';
 import '../today/today_source.dart';
 import 'today_route_registry.dart';
 
-/// Tab-Indizes der Home-Route.
+/// Ziele der Leiste in ihrer Reihenfolge (V2-15). Ein Eintrag steht für Symbol,
+/// Label und Seite; die Position ist der Index im Enum.
+enum HomeDestination { path, today, chats, profile }
+
+/// Indizes der Ziele der Home-Route. Sie folgen der Reihenfolge von
+/// [HomeDestination] (kommt Feed an Position 3 dazu, rücken Chats und Profil
+/// von selbst nach).
 abstract final class HomeTab {
-  static const int path = 0;
-  static const int today = 1;
+  static int get path => HomeDestination.path.index;
+  static int get today => HomeDestination.today.index;
+  static int get chats => HomeDestination.chats.index;
+  static int get profile => HomeDestination.profile.index;
 }
 
 /// Stellt Tabs, Snackbar und das Register der Heute-Routen bereit.
@@ -112,14 +130,14 @@ class HomeShellState extends State<HomeShell> {
   late final AppLifecycleListener _lifecycle;
   int _tab = HomeTab.path;
 
-  /// Rechteck der Button-Gruppe für Blase und Hinweis (Plan 4.6).
-  final GlobalKey clusterKey = GlobalKey();
+  /// Rechteck des Manny-Knopfes auf dem Pfad für Blase und Hinweis (Plan 4.6).
+  final GlobalKey mannyButtonKey = GlobalKey();
 
-  /// Fokusrückgabe nach Chat bzw. Nachrichten (A-38).
+  /// Aktivität des Inhalts (Beginn eines Scrolls) für die Leiste (Brief 4.1).
+  final NavActivity navActivity = NavActivity();
+
+  /// Fokusrückgabe nach dem Manny-Chat (A-38).
   final FocusNode chatButtonFocus = FocusNode(debugLabel: 'Manny-Button');
-  final FocusNode messagesButtonFocus = FocusNode(
-    debugLabel: 'Nachrichten-Button',
-  );
 
   /// Fokusrückgabe nach „Deine Daten“ (Icon in der Pfad-Kopfzeile).
   final FocusNode dataButtonFocus = FocusNode(debugLabel: 'Deine Daten');
@@ -137,9 +155,9 @@ class HomeShellState extends State<HomeShell> {
   TodayLoadState _todayLoad = TodayLoadState.ready;
   int _todayAttempt = 0;
 
-  /// Gemessene Höhe der Button-Gruppe auf Heute (Reihe samt Nachrichten-Button
-  /// über dem Manny-Button); 0 solange sie nicht gebaut ist. Der Snackbar-Host
-  /// liest sie (Snackbar 12 dp über der Gruppe, Plan 4.6, UI-73).
+  /// Gemessene Höhe der Primärbutton-Reihe auf Heute (mit dem Manny-Knopf); 0
+  /// solange sie nicht gebaut ist. Der Snackbar-Host liest sie (Snackbar 12 dp
+  /// über der Reihe, Plan 4.6, UI-73).
   final ValueNotifier<double> todayGroupHeight = ValueNotifier<double>(0);
 
   /// Gemessene Höhe der sichtbaren Snackbar (0 ohne Snackbar): Heute vergrößert
@@ -147,7 +165,7 @@ class HomeShellState extends State<HomeShell> {
   /// überdeckt.
   final ValueNotifier<double> snackbarHeight = ValueNotifier<double>(0);
 
-  /// Aktiver Tab (`HomeTab.path` oder `HomeTab.today`).
+  /// Aktives Ziel (ein Wert aus [HomeTab]).
   int get activeTab => _tab;
 
   /// Der Pfad ist bereit (nicht Laden, nicht Fehler).
@@ -230,8 +248,8 @@ class HomeShellState extends State<HomeShell> {
     snackbar.dispose();
     todayGroupHeight.dispose();
     snackbarHeight.dispose();
+    navActivity.dispose();
     chatButtonFocus.dispose();
-    messagesButtonFocus.dispose();
     dataButtonFocus.dispose();
     _pageFocus.dispose();
     super.dispose();
@@ -328,7 +346,7 @@ class HomeShellState extends State<HomeShell> {
   /// verschwindet. Beim Schließen kehrt der Fokus an das Icon zurück (mit
   /// `mounted`-Prüfung in `pushReturningFocus`). Hat das Speichern einen
   /// Tageswechsel ausgelöst, setzt die Shell dessen Folgen um.
-  Future<void> openDataSheet() async {
+  Future<void> openDataSheet({FocusNode? trigger}) async {
     final AppController c = _controller;
     c.transient.endUndoWindow();
     c.transient.dismissHint();
@@ -338,7 +356,7 @@ class HomeShellState extends State<HomeShell> {
         await pushReturningFocus<ProfileUpdateResult?>(
           Navigator.of(context),
           DataSheet.route(context),
-          trigger: dataButtonFocus,
+          trigger: trigger ?? dataButtonFocus,
         );
     if (result != null && result.dayChanged && mounted) {
       unawaited(dayChanged());
@@ -356,22 +374,21 @@ class HomeShellState extends State<HomeShell> {
   }
 
   // -------------------------------------------------------------------------
-  // Manny-Chat und Nachrichten (Ergänzung 2, Plan 4.1, 4.4)
+  // Manny-Chat und Beispiel-Chats (Ergänzung 2, Plan 4.1, 4.4)
   // -------------------------------------------------------------------------
 
-  /// Öffnet den Manny-Chat (Manny-Button, später auch Manny auf dem Pfad);
-  /// der Tab bleibt unverändert. Endet mit dem Schließen der Route.
-  Future<void> openChat() =>
-      _openFullscreen(AppRoutes.mannyChat(context), chatButtonFocus);
+  /// Öffnet den Manny-Chat (Manny-Knopf, Manny auf dem Pfad, angehefteter
+  /// Eintrag in Chats); das Ziel bleibt unverändert. Endet mit dem Schließen
+  /// der Route. Der Fokus kehrt an [trigger] zurück (Standard: Manny-Knopf).
+  Future<void> openChat({FocusNode? trigger}) =>
+      openFullscreen(AppRoutes.mannyChat(context), trigger ?? chatButtonFocus);
 
-  /// Öffnet die Nachrichten-Übersicht (Nachrichten-Button).
-  Future<void> openMessages() =>
-      _openFullscreen(AppRoutes.messages(context), messagesButtonFocus);
-
-  Future<void> _openFullscreen(Route<void> route, FocusNode trigger) {
+  /// Öffnet eine Vollbild-Route (Chat) über der Home-Route: ohne Leiste und
+  /// ohne Manny-Knopf. Vorher endet das Rückgängig-Fenster (UI-39), Hinweis und
+  /// Blase schließen, die Snackbar verschwindet: unter der neuen Route wäre sie
+  /// nicht erreichbar. Danach kehrt der Fokus an [trigger] zurück.
+  Future<void> openFullscreen(Route<void> route, FocusNode trigger) {
     final AppController c = _controller;
-    // Das Rückgängig-Fenster endet (UI-39), Hinweis und Blase schließen, die
-    // Snackbar verschwindet: unter der neuen Route wäre sie nicht erreichbar.
     c.transient.endUndoWindow();
     c.transient.dismissHint();
     _closeBubble(c);
@@ -384,7 +401,7 @@ class HomeShellState extends State<HomeShell> {
   }
 
   void _onBack() {
-    if (_tab == HomeTab.today) {
+    if (_tab != HomeTab.path) {
       selectTab(HomeTab.path);
       return;
     }
@@ -408,18 +425,17 @@ class HomeShellState extends State<HomeShell> {
     );
   }
 
-  /// Fokusreihenfolge innerhalb der Home-Route: Kopf (z. B. „Deine Daten“),
-  /// Inhalt (Pfad: Units), Button-Gruppe, Nav. Ohne explizite Reihenfolge
-  /// stünden Units, die oberhalb des Sichtfensters liegen, vor dem Kopf (die
-  /// Lesereihenfolge folgt den Rechtecken).
+  /// Fokusreihenfolge innerhalb der Home-Route: Kopf (Kopf-Karte), Inhalt (Pfad:
+  /// Kugeln), Manny-Knopf, Leiste. Ohne explizite Reihenfolge stünden Kugeln,
+  /// die oberhalb des Sichtfensters liegen, vor dem Kopf (die Lesereihenfolge
+  /// folgt den Rechtecken).
   static const double focusOrderHeader = 1;
   static const double _focusOrderContent = 2;
-  static const double focusOrderCluster = 3;
 
-  /// Heute (Ergänzung 2, 4): Nachrichten-Button (3), „Training eintragen“,
-  /// Manny-Button, dann die Nav.
-  static const double focusOrderStart = 3.1;
+  /// Pfad: Manny-Knopf nach dem Inhalt. Heute (Primärbutton-Reihe):
+  /// „Training eintragen“, dann der Manny-Knopf, dann die Leiste.
   static const double focusOrderManny = 3.2;
+  static const double focusOrderStart = 3.1;
   static const double _focusOrderNav = 4;
 
   @override
@@ -456,8 +472,8 @@ class HomeShellState extends State<HomeShell> {
                     child: ValueListenableBuilder<double>(
                       valueListenable: todayGroupHeight,
                       builder: (BuildContext context, double group, _) {
-                        // Heute: 12 dp über der Button-Gruppe; sonst über der
-                        // Nav (Pfad: keine Snackbar, Plan 4.6).
+                        // Heute: 12 dp über der Primärbutton-Reihe; sonst über
+                        // der Leiste (Pfad: keine Snackbar, Plan 4.6).
                         final double above =
                             _tab == HomeTab.today &&
                                 _todayLoad == TodayLoadState.ready
@@ -477,21 +493,20 @@ class HomeShellState extends State<HomeShell> {
                   ),
                   if (_tab == HomeTab.path && _pathLoad == PathLoadState.ready)
                     Positioned(
-                      right: CuraSpace.pageMargin,
+                      right: CuraSize.mannyButtonSideMargin,
                       bottom:
                           FloatingNav.occupiedHeight(context) +
-                          CuraSpace.pageMargin,
+                          CuraSize.mannyButtonNavGap,
                       child: FocusTraversalOrder(
-                        order: const NumericFocusOrder(focusOrderCluster),
+                        order: const NumericFocusOrder(focusOrderManny),
                         child: KeyedSubtree(
-                          key: ProbeKeys.cluster,
-                          child: ActionCluster(
-                            mode: ActionClusterMode.path,
-                            rectKey: clusterKey,
-                            onOpenChat: openChat,
-                            onOpenMessages: openMessages,
-                            chatFocusNode: chatButtonFocus,
-                            messagesFocusNode: messagesButtonFocus,
+                          key: ProbeKeys.mannyButton,
+                          child: KeyedSubtree(
+                            key: mannyButtonKey,
+                            child: MannyButton(
+                              onPressed: openChat,
+                              focusNode: chatButtonFocus,
+                            ),
                           ),
                         ),
                       ),
@@ -502,37 +517,38 @@ class HomeShellState extends State<HomeShell> {
                       order: const NumericFocusOrder(_focusOrderNav),
                       child: KeyedSubtree(
                         key: ProbeKeys.nav,
-                        child: FloatingNav(
-                          currentIndex: _tab,
-                          onSelected: selectTab,
-                          items: const <NavItem>[
-                            NavItem(
-                              icon: Icons.route_rounded,
-                              label: S.navPath,
-                            ),
-                            NavItem(
-                              icon: Icons.event_available_rounded,
-                              label: S.navToday,
-                            ),
-                          ],
+                        child: ListenableBuilder(
+                          listenable: _controller,
+                          builder: (BuildContext context, Widget? _) {
+                            final String initial = nameInitial(
+                              _controller.state.onboarding.firstName,
+                            );
+                            return FloatingNav(
+                              currentIndex: _tab,
+                              onSelected: selectTab,
+                              activity: navActivity,
+                              items: <NavItem>[
+                                for (final HomeDestination d
+                                    in HomeDestination.values)
+                                  _item(d, initial),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),
                   ),
                 ],
-                child: IndexedStack(
-                  index: _tab,
-                  sizing: StackFit.expand,
-                  children: <Widget>[
-                    _tabPage(
-                      HomeTab.path,
-                      PathScreen(load: _pathLoad, onRetry: retryPath),
-                    ),
-                    _tabPage(
-                      HomeTab.today,
-                      TodayScreen(load: _todayLoad, onRetry: retryToday),
-                    ),
-                  ],
+                child: NavScrollListener(
+                  activity: navActivity,
+                  child: IndexedStack(
+                    index: _tab,
+                    sizing: StackFit.expand,
+                    children: <Widget>[
+                      for (final HomeDestination d in HomeDestination.values)
+                        _tabPage(d.index, _page(d)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -541,4 +557,36 @@ class HomeShellState extends State<HomeShell> {
       ),
     );
   }
+
+  /// Die Seite eines Ziels.
+  Widget _page(HomeDestination d) => switch (d) {
+    HomeDestination.path => PathScreen(load: _pathLoad, onRetry: retryPath),
+    HomeDestination.today => TodayScreen(load: _todayLoad, onRetry: retryToday),
+    HomeDestination.chats => const ChatsScreen(),
+    HomeDestination.profile => const ProfileScreen(),
+  };
+
+  /// Eintrag der Leiste für ein Ziel (Symbol und Label; Chats mit Zähler,
+  /// Profil mit der Initiale als Avatar).
+  NavItem _item(HomeDestination d, String initial) => switch (d) {
+    HomeDestination.path => const NavItem(
+      icon: Icons.route_rounded,
+      label: S.navPath,
+    ),
+    HomeDestination.today => const NavItem(
+      icon: Icons.event_available_rounded,
+      label: S.navToday,
+    ),
+    // Der Zähler erscheint, sobald es echte Chats mit ungelesenen
+    // Nachrichten gibt (V2-20); die Beispieldaten haben keine.
+    HomeDestination.chats => const NavItem(
+      icon: Icons.chat_bubble_outline_rounded,
+      label: S.navChats,
+    ),
+    HomeDestination.profile => NavItem(
+      icon: Icons.person_outline_rounded,
+      label: S.navProfile,
+      avatarInitials: initial.isEmpty ? null : initial,
+    ),
+  };
 }

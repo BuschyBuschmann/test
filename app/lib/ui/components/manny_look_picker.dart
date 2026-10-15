@@ -4,7 +4,7 @@
 // im Profil; die Einbindung in die Screens folgt in F2-R3/R4.
 //
 // Karte: Manny `normal` (Leinwand bis 190 dp, auf die Kartenbreite begrenzt),
-// Name, Radio-Kreis 28 dp, darunter „Ausgewählt“ bei der gewählten Karte;
+// Name, darunter der Radio-Kreis 28 dp und „Ausgewählt“ bei der gewählten Karte;
 // Mindesthöhe 300 dp. Gewählt: Rand 3 dp Mandarine, Fläche `#FFF1E4`, gefüllter
 // Kreis mit Haken und der Text „Ausgewählt“ (nie nur Farbe). Nicht gewählt:
 // Rand 3 dp neutral (`border-control`), leerer Kreis. Reihenfolge: Mit Brille
@@ -249,14 +249,11 @@ class _LookCard extends StatelessWidget {
                 child: Center(child: FittedBox(child: picture)),
               ),
               const SizedBox(height: CuraSpace.s3),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Flexible(child: name),
-                  const SizedBox(width: CuraSpace.s2),
-                  radio,
-                ],
-              ),
+              // Name über dem Radio-Kreis: nebeneinander bricht „Ohne Brille“ in
+              // der halben Kartenbreite (390 dp, auch im Sheet) auf zwei Zeilen.
+              name,
+              const SizedBox(height: CuraSpace.s2),
+              radio,
               const SizedBox(height: CuraSpace.s1),
               state,
             ],

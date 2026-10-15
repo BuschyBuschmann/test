@@ -101,6 +101,15 @@ abstract final class CuraSize {
   static const double exerciseTile = 56;
   static const double listRowMinHeight = 56;
 
+  /// Schalter-Spur und -Knopf (Darstellung): Spur 52 × 32, Knopf 24.
+  static const double switchTrackWidth = 52;
+  static const double switchTrackHeight = 32;
+  static const double switchKnob = 24;
+  static const double switchTrackPadding = 4;
+
+  /// Symbol-Kachel einer Listenzeile (Profil) und Abstand zum Text.
+  static const double listRowTile = 48;
+
   // Leiste: Labels skalieren bis 130 % (Brief 3.3); Maße oben (`navBar*`).
   static const double navLabelMaxTextScale = 1.3;
 
@@ -115,22 +124,27 @@ abstract final class CuraSize {
   static const double textFieldHeight = 56;
   static const double micButton = 56;
 
-  // Pfad-Units (Durchmesser) und Ring.
+  // Platzhalter-Kreise der Ladeansicht und Mindesthöhe des Ausblicks (die
+  // Pfad-Kugeln selbst messen `orb*`).
   static const double unitSmall = 48;
   static const double unitMedium = 60;
   static const double unitLarge = 72;
   static const double unitBoss = 92;
+
+  // Pfad-Kugeln: Ring um die aktuelle Kugel (Durchmesser siehe `orb*`).
   static const double unitRingGap = 9;
   static const double unitRingWidth = 1.5;
 
   // Pfad-Layout (Brief 5.5, 6.2; pfad-v4.png, Plan 4.6, 7.3). Ablage der
   // Brief-Werte, keine neuen Design-Tokens.
-  /// Manny sitzt mit den Füßen so weit auf der Unit (Überlappung der
-  /// Fußunterkante mit dem oberen Rand des Kreises).
-  static const double mannyPerchOverlap = 6;
+  /// Manny steht **neben** der aktuellen Kugel (Brief 7.1), die Füße auf Höhe
+  /// ihrer Unterkante. Waagerechter Abstand zwischen Kugel und Zeichnung:
+  /// Trefferrand (8) plus Mindestabstand der Ziele (8), damit die Tippfläche
+  /// Mannys die der Kugel nicht berührt.
+  static const double mannyBesideGap = 16;
 
-  /// Kleinster lichter Abstand zweier Units (pfad-v4.png). Der Pfad vergrößert
-  /// ihn, damit Manny und die Beschriftung darüber Platz haben.
+  /// Kleinster lichter Abstand zweier Kugeln. Der Pfad vergrößert ihn, damit
+  /// der Label-Chip unter einer Kugel Platz hat.
   static const double pathUnitGapMin = 84;
 
   /// Abstand zwischen Unit und ihrer Beschriftung (`caption`).
@@ -171,16 +185,11 @@ abstract final class CuraSize {
   /// im Widget in eine weitere Zeile um.
   static const double measureSlack = 1;
 
-  // Kopfzeile Pfad (Ergänzung 1, 3.1). Umbruch-Layout, wenn der Textblock
-  // links weniger als 150 dp bekäme.
-  static const double pathHeaderWrapMinText = 150;
+  /// Kopf-Karte des Pfads läuft bei vergrößerter Schrift mit, wenn der
+  /// Bildschirm niedriger ist als dieser Wert.
+  static const double pathHeaderAlongMaxHeight = 600;
 
-  /// Ab Textskalierung 1,5 bleibt oben nur eine feste schmale Zeile stehen
-  /// („Woche N“ links, „Deine Daten“ rechts): höchstens 64 dp hoch, ihre
-  /// Schrift auf höchstens 1,3 begrenzt. Phase, „Beispielpfad“, Streak und
-  /// Freezes laufen in der Scrollfläche mit.
-  static const double pathBarHeight = 64;
-  static const double pathBarMaxTextScale = 1.3;
+  // Chips der Kopf-Karte und Label-Chips (Innenabstand, Symbol).
   static const double statPillGap = 4;
   static const double statPillPaddingH = 12;
   static const double statPillPaddingV = 6;
@@ -233,9 +242,10 @@ abstract final class CuraSize {
   static const double mannyChoiceStackBelowWidth = 360;
   static const double mannyChoiceStackAboveTextScale = 1.3;
 
-  // Manny-Knopf (Brief 5) und Nachrichten-Knopf der Button-Gruppe.
+  // Manny-Knopf (Brief 5): Kopf, 56 dp, rechts 18 dp, 16 dp über der Leiste.
   static const double mannyChatButton = 56;
-  static const double messagesButton = 48;
+  static const double mannyButtonSideMargin = 18;
+  static const double mannyButtonNavGap = 16;
   static const double mannyHitMargin = 8;
   static const double sendCircle = 40; // Hit-Area 48
   static const double sendCircleHitArea = 48;
@@ -250,6 +260,8 @@ abstract final class CuraSize {
   static const double bubblePaddingHorizontal = 16;
 
   // Avatare und Embleme.
+  /// Avatar-Kugel in der Kopf-Karte des Profils (Brief 7.6).
+  static const double avatarOrb = 56;
   static const double avatar = 48;
   static const double avatarHeader = 36; // Kopf: 32 bis 36
   static const double avatarHeaderMin = 32;

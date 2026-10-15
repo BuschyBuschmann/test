@@ -8,14 +8,12 @@ import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/injury_type.dart';
 import 'package:curaone/logic/migrations.dart' show encodeDocument;
 import 'package:curaone/state/app_controller.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/choice_card.dart';
 import 'package:curaone/ui/components/cura_snackbar.dart';
 import 'package:curaone/ui/components/date_card.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
@@ -24,6 +22,7 @@ import 'package:curaone/ui/onboarding/step4_date.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
+import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
@@ -533,8 +532,7 @@ void main() {
         await pumpCura(tester, h.controller);
         void expectNone() {
           expect(find.byType(MannyButton), findsNothing);
-          expect(find.byType(MessagesButton), findsNothing);
-          expect(find.byType(ActionCluster), findsNothing);
+          expect(find.byType(FloatingNav), findsNothing);
         }
 
         expectNone();
@@ -708,7 +706,7 @@ void main() {
         expect(raw.deletes, 0, reason: 'bei Lesefehlern nichts löschen');
         // Keine Button-Gruppe beim StartGate-Fehler (A-43).
         expect(find.byType(MannyButton), findsNothing);
-        expect(find.byType(MessagesButton), findsNothing);
+        expect(find.byType(FloatingNav), findsNothing);
 
         await tester.tap(find.text(S.retry));
         await tester.pumpAndSettle();

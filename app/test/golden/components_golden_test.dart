@@ -12,7 +12,6 @@ import 'package:curaone/logic/manny_look.dart';
 import 'package:curaone/logic/world_time.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_typography.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/choice_card.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/cura_label.dart';
@@ -26,7 +25,6 @@ import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/step_progress.dart';
@@ -138,7 +136,6 @@ Widget _controls() => _withWorld(
               onPressed: () {},
             ),
             const SizedBox(width: 8),
-            MessagesButton(onPressed: () {}),
             const SizedBox(width: 8),
             MannyButton(onPressed: () {}),
           ],
@@ -244,13 +241,9 @@ Widget _navBoard() => _withWorld(
         ),
       ),
       Positioned(
-        right: 16,
+        right: 18,
         bottom: 24 + 72 + 16,
-        child: ActionCluster(
-          mode: ActionClusterMode.path,
-          onOpenChat: () {},
-          onOpenMessages: () {},
-        ),
+        child: MannyButton(onPressed: () {}),
       ),
     ],
   ),

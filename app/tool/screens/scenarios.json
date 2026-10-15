@@ -20,7 +20,7 @@
     "cmp-controls",
     "cmp-surfaces",
     "cmp-manny",
-    "cmp-nav-cluster",
+    "cmp-nav-manny",
     "cmp-snackbar",
     "cmp-pipette",
     "ob1-empty",
@@ -99,24 +99,28 @@
     "data-sheet-keyboard",
     "chat-manny",
     "chat-manny-scale15",
-    "messages",
-    "messages-scale15",
+    "chats",
+    "chats-scale15",
+    "profile",
+    "profile-look-sheet",
+    "profile-display-sheet",
     "example-chat-physio",
     "example-chat-family",
     "example-chat-doctor"
   ],
-  "fixedScale": ["chat-manny-scale15", "messages-scale15", "path-header-wrap", "today-wrap"],
+  "fixedScale": ["chat-manny-scale15", "chats-scale15", "path-header-wrap", "today-wrap"],
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
     "scenarios": [
       "cmp-forms",
       "cmp-surfaces",
-      "cmp-nav-cluster",
+      "cmp-nav-manny",
       "ob1-name",
       "path-active",
       "today-standard",
       "chat-manny",
-      "messages",
+      "chats",
+      "profile",
       "data-sheet"
     ]
   },
@@ -125,7 +129,7 @@
       { "name": "568x320", "w": 568, "h": 320 },
       { "name": "844x390", "w": 844, "h": 390 }
     ],
-    "scenarios": ["cmp-forms", "cmp-nav-cluster", "path-active", "today-standard", "chat-manny", "messages"]
+    "scenarios": ["cmp-forms", "cmp-nav-manny", "path-active", "today-standard", "chat-manny", "chats"]
   },
   "simulations": {
     "viewport": { "name": "390x844", "w": 390, "h": 844 },
@@ -134,14 +138,14 @@
       "types": ["protanopia", "deuteranopia", "tritanopia"],
       "scenarios": [
         "cmp-forms",
-        "cmp-nav-cluster",
+        "cmp-nav-manny",
         "cmp-surfaces",
         "ob3-acl",
         "path-active",
         "path-frozen",
         "today-standard",
         "today-friday",
-        "messages"
+        "chats"
       ]
     }
   },

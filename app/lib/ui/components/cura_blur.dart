@@ -9,6 +9,12 @@
 // Bei `blurEnabled == false` (Hoher Kontrast/Transparenz reduzieren) wird
 // nichts weichgezeichnet und kein Platz belegt; die Fläche des Kindes ist
 // dann opak.
+//
+// Nicht sichtbare Flächen belegen keinen Platz: Die Home-Route hält alle Ziele
+// im Baum (Scroll-Position), jedes mit eigener Kopf-Karte. Ein inaktives Ziel
+// und eine von einer opaken Route verdeckte Route laufen in `TickerMode(enabled:
+// false)`; dort gibt ein `CuraBlur` seinen Platz zurück, damit Leiste, Kopf-Karte
+// und Manny-Knopf des sichtbaren Ziels ihn bekommen (V2-10).
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/scheduler.dart';
@@ -130,8 +136,9 @@ class _CuraBlurState extends State<CuraBlur> {
       _giveBack();
       _budget = next;
     }
-    // Hoher Kontrast an/aus ändert das Theme und kommt hier an.
-    if (_wanted) {
+    // Hoher Kontrast an/aus ändert das Theme und kommt hier an; ein Wechsel des
+    // sichtbaren Ziels (`TickerMode`) ebenso.
+    if (_wanted && TickerMode.valuesOf(context).enabled) {
       _acquire();
     } else {
       _giveBack();

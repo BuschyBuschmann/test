@@ -26,7 +26,6 @@ import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
 import '../theme/cura_typography.dart';
 import '../theme/tokens.dart' show BlurTokens;
-import '../ui/components/action_cluster.dart';
 import '../ui/components/choice_card.dart';
 import '../ui/components/content_frame.dart';
 import '../ui/components/cura_dialog.dart';
@@ -41,7 +40,6 @@ import '../ui/components/manny.dart';
 import '../ui/components/manny_bubble.dart';
 import '../ui/components/manny_chat_button.dart';
 import '../ui/components/manny_look_picker.dart';
-import '../ui/components/messages_button.dart';
 import '../ui/components/mic_button.dart';
 import '../ui/components/pill_button.dart';
 import '../ui/components/probe_keys.dart';
@@ -60,7 +58,7 @@ import 'preview_texts.dart';
 /// (schwebt über dem Inhalt), `probe:` als Messpunkt für die Pipette.
 abstract final class PreviewKeys {
   static const ValueKey<String> nav = ProbeKeys.nav;
-  static const ValueKey<String> cluster = ProbeKeys.cluster;
+  static const ValueKey<String> mannyButton = ProbeKeys.mannyButton;
   static const ValueKey<String> primaryRow = ProbeKeys.primaryRow;
   static const ValueKey<String> bubble = ProbeKeys.bubble;
   static const ValueKey<String> hint = ProbeKeys.hint;
@@ -180,7 +178,7 @@ class Scenario {
     this.maxBackdrops = BlurTokens.maxPerScreen,
     this.expectsPrimary = false,
     this.expectsNav = false,
-    this.expectsCluster = false,
+    this.expectsMannyButton = false,
     this.expectsHeader = false,
     this.expectsChatFooter = false,
     this.tablet = false,
@@ -213,12 +211,12 @@ class Scenario {
   /// Fortschrittsanzeigen als laufende Animation erlaubt.
   final bool loops;
 
-  /// Das Szenario enthält Nav, Button-Gruppe, Kopf bzw. Chat-Fuß mit dem
-  /// jeweiligen Marker (`overlay:nav`, `overlay:cluster`, `header`,
+  /// Das Szenario enthält Nav, Manny-Knopf, Kopf bzw. Chat-Fuß mit dem
+  /// jeweiligen Marker (`overlay:nav`, `overlay:manny-button`, `header`,
   /// `overlay:chat-footer`). Fehlt der Marker, ist das ein harter Befund der
   /// Matrix; ohne Flag würde die jeweilige Prüfung still entfallen.
   final bool expectsNav;
-  final bool expectsCluster;
+  final bool expectsMannyButton;
   final bool expectsHeader;
   final bool expectsChatFooter;
 
@@ -417,7 +415,6 @@ Widget _controls(BuildContext context, ScenarioEnv env) {
             tooltip: PreviewTexts.yourData,
             onPressed: _noop,
           ),
-          MessagesButton(onPressed: _noop),
           MannyButton(onPressed: _noop),
         ],
       ),
@@ -506,15 +503,13 @@ Widget _manny(BuildContext context, ScenarioEnv env) {
   );
 }
 
-/// Nav und Button-Gruppe (Modus Pfad) über scrollenden Auswahlkarten: Reserve
-/// am Listenende wie in Ergänzung 2, 3.1 (Nav + 16 + 56 + 8 + 48 + 16).
-Widget _navCluster(BuildContext context, ScenarioEnv env) {
+/// Leiste (vier Ziele) und Manny-Knopf über scrollenden Auswahlkarten: Reserve
+/// am Listenende wie auf dem Pfad (Leiste + 16 + 56 + 16).
+Widget _navManny(BuildContext context, ScenarioEnv env) {
   final double nav = FloatingNav.occupiedHeight(context);
   const double reserve =
-      CuraSpace.pageMargin +
+      CuraSize.mannyButtonNavGap +
       CuraSize.mannyChatButton +
-      CuraSpace.clusterGap +
-      CuraSize.messagesButton +
       CuraSpace.pageMargin;
   return _screen(
     body: _scrollBody(<Widget>[
@@ -533,15 +528,11 @@ Widget _navCluster(BuildContext context, ScenarioEnv env) {
         child: KeyedSubtree(key: PreviewKeys.nav, child: _NavDemo()),
       ),
       Positioned(
-        right: CuraSpace.pageMargin,
-        bottom: nav + CuraSpace.pageMargin,
+        right: CuraSize.mannyButtonSideMargin,
+        bottom: nav + CuraSize.mannyButtonNavGap,
         child: KeyedSubtree(
-          key: PreviewKeys.cluster,
-          child: ActionCluster(
-            mode: ActionClusterMode.path,
-            onOpenChat: _noop,
-            onOpenMessages: _noop,
-          ),
+          key: PreviewKeys.mannyButton,
+          child: MannyButton(onPressed: _noop),
         ),
       ),
     ],
@@ -566,6 +557,16 @@ class _NavDemoState extends State<_NavDemo> {
         NavItem(
           icon: Icons.event_available_rounded,
           label: PreviewTexts.todayTab,
+        ),
+        NavItem(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: PreviewTexts.chatsTab,
+          badgeCount: 2,
+        ),
+        NavItem(
+          icon: Icons.person_outline_rounded,
+          label: PreviewTexts.profileTab,
+          avatarInitials: PreviewTexts.profileInitial,
         ),
       ],
     );
@@ -832,18 +833,16 @@ AppSeed _shellToday(ScenarioEnv env) =>
     AppSeed(state: _completedState(env), taps: const <String>[S.navToday]);
 
 // ---------------------------------------------------------------------------
-// App-Szenarien (U2c): Manny-Chat, Nachrichten, Beispiel-Chats
+// App-Szenarien (U2c, F2-R3): Manny-Chat, Chats, Beispiel-Chats, Profil
 // ---------------------------------------------------------------------------
-// Sie öffnen den Chat über die echten Wege (Manny-Button bzw. Nachrichten-
-// Button und Kontaktzeile auf dem Pfad), nicht über eine Abkürzung.
+// Sie öffnen die Ansichten über die echten Wege (Manny-Knopf auf dem Pfad,
+// Ziele der Leiste, Zeilen der Listen), nicht über eine Abkürzung.
 
 AppSeed _chatManny(ScenarioEnv env) =>
     AppSeed(state: _completedState(env), taps: const <String>[S.mannyChatOpen]);
 
-AppSeed _messages(ScenarioEnv env) => AppSeed(
-  state: _completedState(env),
-  taps: const <String>[S.messagesButton],
-);
+AppSeed _chats(ScenarioEnv env) =>
+    AppSeed(state: _completedState(env), taps: const <String>[S.navChats]);
 
 AppSeed _exampleChat(ScenarioEnv env, String contactId) {
   final ExampleContact contact = kExampleContacts.firstWhere(
@@ -852,7 +851,7 @@ AppSeed _exampleChat(ScenarioEnv env, String contactId) {
   return AppSeed(
     state: _completedState(env),
     taps: <String>[
-      S.messagesButton,
+      S.navChats,
       exampleContactLabel(contact, PreviewTexts.nameValue),
     ],
   );
@@ -866,6 +865,48 @@ AppSeed _exampleChatFamily(ScenarioEnv env) =>
 
 AppSeed _exampleChatDoctor(ScenarioEnv env) =>
     _exampleChat(env, 'aerzte-weber');
+
+/// Profil mit Streak 12 und erledigten Trainingstagen (Kacheln mit Werten).
+AppState _profileState(ScenarioEnv env) {
+  final LocalDay today = _today(env);
+  return _completedState(env).copyWith(
+    onboarding: OnboardingState(
+      completed: true,
+      step: kLastOnboardingStep,
+      name: PreviewTexts.nameValue,
+      injuryType: InjuryType.acl,
+      injuryDate: today.addDays(-30),
+    ),
+    streak: StreakState(
+      count: 12,
+      freezes: 1,
+      lastTrainingDay: today.addDays(-1),
+      evaluatedThrough: today.addDays(-1),
+    ),
+    manny: MannyState(
+      lastShown: <MannyOccasion, LocalDay>{MannyOccasion.fact: today},
+    ),
+    day: DayProgramState(dayKey: today),
+  );
+}
+
+AppSeed _profile(ScenarioEnv env) =>
+    AppSeed(state: _profileState(env), taps: const <String>[S.navProfile]);
+
+/// Sheet „Manny-Look“ über dem Profil (Mit Brille gewählt).
+AppSeed _profileLook(ScenarioEnv env) => AppSeed(
+  state: _profileState(env),
+  taps: <String>[
+    S.navProfile,
+    S.profileRowLabel(S.profileRowLook, S.mannyLookWith),
+  ],
+);
+
+/// Sheet „Darstellung“ über dem Profil.
+AppSeed _profileDisplay(ScenarioEnv env) => AppSeed(
+  state: _profileState(env),
+  taps: <String>[S.navProfile, S.profileRowLabel(S.profileRowDisplay, null)],
+);
 
 // ---------------------------------------------------------------------------
 // App-Szenarien (U3a): Pfad (Plan 12.4)
@@ -1395,11 +1436,11 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-surfaces', builder: _surfaces, tablet: true),
   Scenario(id: 'cmp-manny', builder: _manny),
   Scenario(
-    id: 'cmp-nav-cluster',
-    builder: _navCluster,
+    id: 'cmp-nav-manny',
+    builder: _navManny,
     maxBackdrops: BlurTokens.maxPerScreen,
     expectsNav: true,
-    expectsCluster: true,
+    expectsMannyButton: true,
     tablet: true,
   ),
   Scenario(
@@ -1502,7 +1543,7 @@ final List<Scenario> kScenarios = <Scenario>[
     id: 'shell-tab-path',
     app: _shellPath,
     expectsNav: true,
-    expectsCluster: true,
+    expectsMannyButton: true,
   ),
   Scenario(id: 'shell-tab-today', app: _shellToday, expectsNav: true),
   // Pfad (U3a): in Laden und Fehler steht keine Button-Gruppe (A-43).
@@ -1631,19 +1672,35 @@ final List<Scenario> kScenarios = <Scenario>[
     expectsChatFooter: true,
     fixedTextScale: 1.5,
   ),
+  // Ziele der Leiste (F2-R3): Kopf-Karte, Leiste, Blur ≤ 3.
   Scenario(
-    id: 'messages',
-    app: _messages,
-    maxBackdrops: 0,
+    id: 'chats',
+    app: _chats,
+    expectsNav: true,
     expectsHeader: true,
     tablet: true,
   ),
   Scenario(
-    id: 'messages-scale15',
-    app: _messages,
-    maxBackdrops: 0,
+    id: 'chats-scale15',
+    app: _chats,
+    expectsNav: true,
     expectsHeader: true,
     fixedTextScale: 1.5,
+  ),
+  Scenario(
+    id: 'profile',
+    app: _profile,
+    expectsNav: true,
+    expectsHeader: true,
+    tablet: true,
+  ),
+  // Sheets über dem Profil: opak, ohne Blur; Leiste und Kopf-Karte liegen
+  // unter dem Scrim. Primärbutton ist „Fertig“.
+  Scenario(id: 'profile-look-sheet', app: _profileLook, expectsPrimary: true),
+  Scenario(
+    id: 'profile-display-sheet',
+    app: _profileDisplay,
+    expectsPrimary: true,
   ),
   Scenario(
     id: 'example-chat-physio',
@@ -1680,7 +1737,7 @@ Scenario _pathScenario(
   id: id,
   app: seed,
   expectsNav: true,
-  expectsCluster: true,
+  expectsMannyButton: true,
   expectsHeader: true,
   tablet: tablet,
   fixedTextScale: fixedTextScale,
@@ -1699,7 +1756,6 @@ Scenario _todayScenario(
   id: id,
   app: seed,
   expectsNav: true,
-  expectsCluster: true,
   expectsPrimary: true,
   tablet: tablet,
   fixedTextScale: fixedTextScale,

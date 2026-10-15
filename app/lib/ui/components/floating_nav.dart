@@ -64,7 +64,9 @@ class NavActivity extends ChangeNotifier {
 }
 
 /// Ruft [NavActivity.poke] beim Beginn eines Scrolls der Kinder auf (nur das
-/// äußerste Scrollen eines Pfads, Tiefe 0).
+/// äußerste Scrollen eines Pfads, Tiefe 0). Programmatische Sprünge (die
+/// Mittenlage des Pfads) zählen nicht: nur ein Scroll durch den Nutzer
+/// (Ziehen) macht die Leiste aktiv.
 class NavScrollListener extends StatelessWidget {
   const NavScrollListener({
     super.key,
@@ -79,7 +81,7 @@ class NavScrollListener extends StatelessWidget {
   Widget build(BuildContext context) {
     return NotificationListener<ScrollStartNotification>(
       onNotification: (ScrollStartNotification n) {
-        if (n.depth == 0) activity.poke();
+        if (n.depth == 0 && n.dragDetails != null) activity.poke();
         return false;
       },
       child: child,
@@ -343,7 +345,9 @@ class _NavEntry extends StatelessWidget {
                   minHeight: CuraSize.navTabHeight,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: CuraSpace.s2),
+                  // 4 dp: bei vier Zielen, 320 dp und 200 % Schrift lägen die
+                  // Pillen sonst weniger als 8 dp auseinander.
+                  padding: const EdgeInsets.symmetric(horizontal: CuraSpace.s1),
                   child: MediaQuery.withClampedTextScaling(
                     maxScaleFactor: CuraSize.navLabelMaxTextScale,
                     child: Column(

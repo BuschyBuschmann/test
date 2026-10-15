@@ -129,6 +129,11 @@ abstract final class Palette {
   // --- Kopf-Karte (Brief 3.1): Text immer `#FFFFFF`; Chips darin Weiß 18 %.
   static const Color headerInk = Color(0xFFFFFFFF);
   static const double headerChipFillAlpha = 0.18;
+  // Chips in der Kopf-Karte: dunkle Tönung (Schwarz 22 %) statt Weiß 18 %. Weißer
+  // Text auf Weiß 18 % über dem Glas erreicht in der Welt Mittag nur etwa
+  // 3,9:1 (gemessen); auf der dunkleren Tönung über 8:1.
+  static const Color headerChipShade = Color(0xFF000000);
+  static const double headerChipShadeAlpha = 0.22;
   static const double headerTrackAlpha = 0.30;
 
   // --- Leiste (Brief 4.1) ----------------------------------------------------------------

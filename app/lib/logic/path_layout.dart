@@ -21,6 +21,7 @@ class PathLayoutMetrics {
     required this.boss,
     required this.sideMargin,
     required this.verticalGap,
+    this.current,
     this.outlookMaxWidth = 300,
     this.outlookGap = 84,
   });
@@ -30,6 +31,10 @@ class PathLayoutMetrics {
   final double medium;
   final double large;
   final double boss;
+
+  /// Durchmesser der **aktuellen** Kugel (Brief 4: 92 dp, größer als ihre Art);
+  /// `null` = sie misst wie ihre Art. Der Boss bleibt immer bei [boss].
+  final double? current;
 
   /// Seitenrand (Brief 7: 16 dp).
   final double sideMargin;
@@ -43,6 +48,13 @@ class PathLayoutMetrics {
   /// Kleinster lichter Abstand zwischen Boss-Oberkante und Unterkante des
   /// Ausblicks (Ergänzung 3, 2.2: `pathUnitGapMin`, 84 dp).
   final double outlookGap;
+
+  /// Durchmesser der Unit [kind]; [isCurrent] nimmt [current], falls gesetzt.
+  double diameterFor(UnitKind kind, {bool isCurrent = false}) {
+    final double? c = current;
+    if (isCurrent && c != null && kind != UnitKind.boss) return c;
+    return diameterOf(kind);
+  }
 
   double diameterOf(UnitKind kind) {
     switch (kind) {
@@ -156,6 +168,7 @@ class PathLayout {
 /// oben nicht tiefer steht als nötig (sonst stünde die Marke ab 150 % Schrift
 /// in der Endlage halb hinter Nav und Button-Gruppe). Die Koordinaten des
 /// Layouts beginnen weiter am Anfang des Pfads, nicht des Kopfes.
+/// [currentIndex] ist die aktuelle Unit (sie misst `metrics.current`).
 PathLayout layoutPath({
   required List<PathUnit> units,
   required double width,
@@ -164,10 +177,12 @@ PathLayout layoutPath({
   double bottomReserve = 0,
   double? outlookHeight,
   double leadingExtent = 0,
+  int? currentIndex,
 }) {
   final int n = units.length;
   final List<double> diameters = <double>[
-    for (final PathUnit u in units) metrics.diameterOf(u.kind),
+    for (int i = 0; i < n; i++)
+      metrics.diameterFor(units[i].kind, isCurrent: i == currentIndex),
   ];
 
   // Polster, damit jede Unit auf 55 % gescrollt werden kann.

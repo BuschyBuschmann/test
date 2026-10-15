@@ -1,13 +1,16 @@
-// `PathView` (Plan 3, 9): der scrollende Inhalt des Pfads: Linien (ein
-// `CustomPainter`, für den Screenreader ausgeblendet), die Units als Widgets
-// (von oben nach unten: Lese- und Fokusreihenfolge), die Beschriftungen unter
-// mittleren, großen und Boss-Units, und Manny auf seiner Unit.
+// `PathView` (Design-Brief v2, 7.1; Plan 3, 9): der scrollende Inhalt des Pfads
+// auf der Welt: eine geschwungene Linie (ein `CustomPainter`, für den
+// Screenreader ausgeblendet), die Kugeln (`OrbNode`) als Widgets (von oben nach
+// unten: Lese- und Fokusreihenfolge), die Beschriftungen unter Wochenziel,
+// Phasen-Abschluss und Boss als **Label-Chip** (`WorldLabelChip`, Text steht nie
+// direkt auf der Welt, V2-5) und Manny **neben der aktuellen Kugel**.
 //
-// Z-Reihenfolge: Linien unten, Units, dann Manny **direkt hinter seiner
-// Unit**: er liegt über ihr und über allem, was darunter folgt, und kommt so
-// in der Lesereihenfolge an der richtigen Stelle. Manny nimmt nur Tipps auf
-// seiner Form (plus 8 dp Rand, bis zur Standlinie) an; was die Form nicht
-// trifft, fällt auf die Unit darunter durch (UI-59, UI-74).
+// Manny steht rechts von der aktuellen Kugel, bei Platzmangel links; die Füße
+// stehen auf der Höhe ihrer Unterkante. Er liegt direkt hinter seiner Kugel in
+// der Z-Reihenfolge und damit an der richtigen Stelle der Lesereihenfolge. Manny
+// nimmt nur Tipps auf seiner Form (plus 8 dp Rand, bis zur Standlinie) an; was
+// die Form nicht trifft, fällt auf die Fläche darunter durch (UI-59, UI-74).
+// In der Welt Nacht steht hinter ihm der Halo (Ergänzung 1, 6.4).
 import 'dart:math' as math;
 import 'dart:ui' show PathMetric, Tangent;
 
@@ -16,15 +19,16 @@ import 'package:flutter/material.dart';
 import '../../logic/path_generator.dart';
 import '../../logic/path_layout.dart';
 import '../../logic/path_model.dart';
+import '../../state/world_scope.dart';
 import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
-import '../../theme/cura_roles.dart';
-import '../../theme/cura_typography.dart';
+import '../../theme/world_tokens.dart';
 import '../components/manny.dart';
-import '../components/path_node.dart';
+import '../components/orb_node.dart';
 import '../components/path_outlook.dart';
+import '../components/world_label_chip.dart';
 
-/// Beschriftung unter einer Unit (`caption`, `text-3`).
+/// Beschriftung unter einer Kugel: der Label-Chip samt Rechteck.
 class PathLabel {
   const PathLabel({
     required this.index,
@@ -33,11 +37,23 @@ class PathLabel {
   });
 
   final int index;
+
+  /// Rechteck des Chips (nicht nur des Textes).
   final Rect rect;
   final String text;
 }
 
-/// Zeichenfläche und Lage Mannys auf einer Unit.
+/// Lage Mannys neben der aktuellen Kugel.
+class MannyPlacement {
+  const MannyPlacement({required this.draw, required this.right});
+
+  /// Die gezeichnete Form (ohne Trefferrand).
+  final Rect draw;
+
+  /// Manny steht rechts von der Kugel (sonst links).
+  final bool right;
+}
+
 class MannyPerch {
   const MannyPerch._();
 
@@ -45,27 +61,36 @@ class MannyPerch {
   static double feetFromTop(double height) =>
       MannyIllustration.feetFromTop(height);
 
-  /// Die gezeichnete Form (ohne Trefferrand) für eine Unit mit [center] und
-  /// [diameter]: Füße auf dem oberen Rand des Kreises.
-  static Rect drawRect({
+  /// Lage für eine Kugel mit [center] und [diameter] bei der Pfad-Breite
+  /// [width]: rechts, wenn dort die Zeichnung samt Seitenrand Platz hat, sonst
+  /// links. Die Füße stehen auf der Unterkante der Kugel.
+  static MannyPlacement place({
     required math.Point<double> center,
     required double diameter,
+    required double width,
     double height = CuraSize.mannyPathHeight,
   }) {
     final Size size = MannyIllustration.sizeFor(MannyCrop.full, height);
-    final double baseline =
-        center.y - diameter / 2 + CuraSize.mannyPerchOverlap;
-    return Rect.fromLTWH(
-      center.x - size.width / 2,
-      baseline - feetFromTop(height),
-      size.width,
-      size.height,
+    final double baseline = center.y + diameter / 2;
+    final double top = baseline - feetFromTop(height);
+    final double rightLeft = center.x + diameter / 2 + CuraSize.mannyBesideGap;
+    final bool right =
+        rightLeft + size.width <= width - CuraSpace.pageMargin + 0.01;
+    final double left = right
+        ? rightLeft
+        : center.x - diameter / 2 - CuraSize.mannyBesideGap - size.width;
+    return MannyPlacement(
+      draw: Rect.fromLTWH(left, top, size.width, size.height),
+      right: right,
     );
   }
 
-  /// Wie weit Manny über den Kreis hinausragt (für den Abstand der Units).
-  static double aboveUnit([double height = CuraSize.mannyPathHeight]) =>
-      feetFromTop(height) - CuraSize.mannyPerchOverlap;
+  /// Wie weit Manny über die Kugel hinausragt (nach oben): die Zeichnung
+  /// beginnt nie höher als die Kugel (Abstand der Kugeln unverändert).
+  static double aboveUnit(
+    double diameter, [
+    double height = CuraSize.mannyPathHeight,
+  ]) => math.max(0, feetFromTop(height) - diameter);
 }
 
 class PathView extends StatelessWidget {
@@ -96,14 +121,30 @@ class PathView extends StatelessWidget {
   final String? pulseUnitId;
   final VoidCallback? onPulseDone;
 
+  static OrbKind orbKindOf(UnitKind kind) => switch (kind) {
+    UnitKind.trainingDay => OrbKind.day,
+    UnitKind.weekGoal => OrbKind.weekGoal,
+    UnitKind.phaseEnd => OrbKind.phaseEnd,
+    UnitKind.boss => OrbKind.boss,
+  };
+
+  static OrbState orbStateOf(UnitStatus status) => switch (status) {
+    UnitStatus.done => OrbState.done,
+    UnitStatus.current => OrbState.current,
+    UnitStatus.locked => OrbState.locked,
+  };
+
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
-    final CuraTypography type = CuraTypography.of(context);
+    final WorldPalette world = WorldScope.paletteOf(context);
     final int n = progress.units.length;
     final Map<int, PathLabel> labelOf = <int, PathLabel>{
       for (final PathLabel l in labels) l.index: l,
     };
+    // Die Linie liegt auf der Welt: `nav-ink` der Welt (dunkel am Tag, hell in
+    // der Nacht), künftige Strecken schwächer; Hoher Kontrast `text-1`.
+    final Color line = colors.highContrast ? colors.text1 : world.navInk;
     final List<Widget> children = <Widget>[
       Positioned.fill(
         child: ExcludeSemantics(
@@ -113,8 +154,10 @@ class PathView extends StatelessWidget {
                 layout: layout,
                 statuses: progress.statuses,
                 labelRects: <Rect>[for (final PathLabel l in labels) l.rect],
-                doneColor: colors.text1,
-                futureColor: colors.futureLine,
+                doneColor: line,
+                futureColor: line.withValues(
+                  alpha: WorldGeometry.pathLineFutureAlpha,
+                ),
               ),
             ),
           ),
@@ -122,7 +165,7 @@ class PathView extends StatelessWidget {
       ),
     ];
     // Der Ausblick ist das oberste Element: zuerst in Lese- und Fokus-
-    // reihenfolge, dann der Boss und die übrigen Units von oben nach unten.
+    // reihenfolge, dann der Boss und die übrigen Kugeln von oben nach unten.
     final OutlookPlacement? outlook = layout.outlook;
     if (outlook != null) {
       children.add(
@@ -152,11 +195,10 @@ class PathView extends StatelessWidget {
           top: box.top,
           width: box.width,
           height: box.height,
-          child: PathNode(
+          child: OrbNode(
             key: ValueKey<String>('unit:${unit.id}'),
-            unit: unit,
-            status: status,
-            diameter: p.diameter,
+            kind: orbKindOf(unit.kind),
+            state: orbStateOf(status),
             semanticLabel: unitSemanticsLabel(unit, status),
             onPressed: () => onUnitPressed(i),
             pulse: unit.id == pulseUnitId,
@@ -170,14 +212,7 @@ class PathView extends StatelessWidget {
           Positioned(
             left: label.rect.left,
             top: label.rect.top,
-            width: label.rect.width,
-            child: ExcludeSemantics(
-              child: Text(
-                label.text,
-                textAlign: TextAlign.center,
-                style: type.caption.copyWith(color: colors.text2),
-              ),
-            ),
+            child: ExcludeSemantics(child: WorldLabelChip(label.text)),
           ),
         );
       }
@@ -193,10 +228,11 @@ class PathView extends StatelessWidget {
   }
 
   Widget _manny(NodePlacement p) {
-    final Rect draw = MannyPerch.drawRect(
+    final Rect draw = MannyPerch.place(
       center: p.center,
       diameter: p.diameter,
-    );
+      width: width,
+    ).draw;
     final EdgeInsets insets = MannyIllustration.tapInsets(draw.size);
     return Positioned(
       left: draw.left - insets.left,
@@ -212,10 +248,10 @@ class PathView extends StatelessWidget {
   }
 }
 
-/// Zeichnet die Verbindungen: erreichte Strecken hell und durchgezogen
-/// (`text-1`, 3 dp, runde Enden), zukünftige gepunktet (Weiß 22 %, 3 dp). Die
-/// Linien laufen um die Units und die Beschriftungen herum (die gesperrten
-/// Units sind durchscheinend, dahinter darf keine Linie stehen).
+/// Zeichnet die Verbindungen: erreichte Strecken durchgezogen (3 dp, runde
+/// Enden), zukünftige gepunktet. Die Linien laufen um die Kugeln und die
+/// Label-Chips herum (die Kugeln sind teils durchscheinend, dahinter darf keine
+/// Linie stehen).
 class _PathLinesPainter extends CustomPainter {
   _PathLinesPainter({
     required this.layout,

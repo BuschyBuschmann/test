@@ -3,20 +3,17 @@
 // Reload-Prüfungen im Browser.
 import 'package:curaone/dev/preview_app.dart';
 import 'package:curaone/l10n/strings_de.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
-import 'package:curaone/ui/components/messages_button.dart';
+import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:curaone/ui/components/node_hint.dart';
-import 'package:curaone/ui/components/path_header.dart';
-import 'package:curaone/ui/components/opaque_surface.dart';
+import 'package:curaone/ui/components/header_card.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
-import 'package:curaone/ui/components/stat_pill.dart';
 import 'package:curaone/ui/start/start_loading_view.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:flutter/material.dart';
@@ -137,7 +134,7 @@ void main() {
 
     final Finder bubble = find.byType(MannyBubble);
     final Finder hint = find.byType(NodeHint);
-    final Finder cluster = find.byType(ActionCluster);
+    final Finder cluster = find.byType(MannyButton);
 
     ScrollableState pathScroll(WidgetTester tester) =>
         tester.state<ScrollableState>(
@@ -147,7 +144,7 @@ void main() {
           ),
         );
 
-    testWidgets('path-loading: Ladeansicht ohne Button-Gruppe', (
+    testWidgets('path-loading: Ladeansicht ohne Manny-Knopf', (
       WidgetTester tester,
     ) async {
       await path(tester, 'path-loading');
@@ -157,7 +154,7 @@ void main() {
     });
 
     testWidgets('path-error: Fehlertext des Pfad-Tabs (E-4), „Nochmal '
-        'versuchen“, ohne Button-Gruppe', (WidgetTester tester) async {
+        'versuchen“, ohne Manny-Knopf', (WidgetTester tester) async {
       await path(tester, 'path-error');
       expect(find.text(S.pathLoadError), findsOneWidget);
       expect(find.text(S.retry), findsOneWidget);
@@ -182,7 +179,7 @@ void main() {
     ) async {
       final SemanticsHandle h = tester.ensureSemantics();
       await path(tester, 'path-frozen');
-      expect(find.text(S.streakFrozenWord), findsOneWidget);
+      expect(find.text('12 ${S.streakFrozenWord}'), findsOneWidget);
       expect(
         find.bySemanticsLabel('Streak: 12 Tage, eingefroren'),
         findsOneWidget,
@@ -282,44 +279,50 @@ void main() {
       final Rect unit = tester.getRect(
         find.byKey(const ValueKey<String>('unit:p3-end'), skipOffstage: false),
       );
-      expect(manny.center.dx, closeTo(unit.center.dx, 1));
-      // Die Füße (Fußlinie) stehen 6 dp tief auf der Unit; unter der Fußlinie
-      // bleibt der Rand der Leinwand (8 dp bei 193 dp Höhe).
+      // Manny steht neben der Kugel (rechts, bei Platzmangel links), die Füße
+      // auf ihrer Unterkante; unter der Fußlinie bleibt der Rand der Leinwand
+      // (8 dp bei 193 dp Höhe).
       final double belowFeet =
           CuraSize.mannyPathHeight -
           MannyIllustration.feetFromTop(CuraSize.mannyPathHeight);
-      expect(manny.bottom - belowFeet, closeTo(unit.top + 6, 1));
+      expect(manny.bottom - belowFeet, closeTo(unit.bottom, 1));
+      final bool right = manny.left >= unit.right;
+      expect(
+        right ? manny.left - unit.right : unit.left - manny.right,
+        // Das Rechteck von `path-manny` enthält den 8-dp-Trefferrand.
+        closeTo(CuraSize.mannyBesideGap - CuraSize.mannyHitMargin, 1),
+      );
     });
 
-    testWidgets('path-header-wrap: feste Skalierung 1,2, Umbruch-Layout bei '
-        '320 dp', (WidgetTester tester) async {
+    testWidgets('path-header-wrap: feste Skalierung 1,2, Kopf-Karte bei '
+        '320 dp: Chips umbrechen, nichts ragt heraus', (
+      WidgetTester tester,
+    ) async {
       await path(tester, 'path-header-wrap', size: Viewports.small);
       final MediaQueryData mq = MediaQuery.of(
-        tester.element(find.byType(PathHeader)),
+        tester.element(find.byType(HeaderCard)),
       );
       expect(mq.textScaler.scale(10), closeTo(12, 1e-9));
+      final Rect card = tester.getRect(find.byType(HeaderCard));
+      expect(card.left, CuraSize.cardMargin);
+      expect(card.right, Viewports.small.width - CuraSize.cardMargin);
+      final List<Rect> chips = <Rect>[
+        for (final Element e in find.byType(HeaderChip).evaluate())
+          tester.getRect(find.byWidget(e.widget)),
+      ];
+      expect(chips, hasLength(3));
+      for (final Rect c in chips) {
+        expect(c.left, greaterThanOrEqualTo(card.left));
+        expect(c.right, lessThanOrEqualTo(card.right));
+      }
       final Rect icon = tester.getRect(find.byType(HeaderIconButton));
-      final Rect pill = tester.getRect(find.byType(StatPill).first);
-      expect(
-        pill.top,
-        greaterThan(icon.center.dy),
-        reason: 'Pillen in Zeile 2',
-      );
-      // Die sichtbare Pille steht am Seitenrand; die Hit-Area ist je Seite 4 dp
-      // schmaler (SK-1).
-      final Rect visible = tester.getRect(
-        find
-            .descendant(
-              of: find.byType(StatPill).first,
-              matching: find.byType(OpaqueSurface),
-            )
-            .first,
-      );
-      expect(visible.left, 16);
+      expect(icon.right, lessThanOrEqualTo(card.right));
+      expect(icon.top, greaterThanOrEqualTo(card.top));
+      await disposeApp(tester);
     });
 
     testWidgets('path-cluster-bubble: Pfad ganz unten, Blase vorhanden und '
-        'über der Gruppe', (WidgetTester tester) async {
+        'über dem Manny-Knopf', (WidgetTester tester) async {
       await path(tester, 'path-cluster-bubble', size: Viewports.small);
       final ScrollableState st = pathScroll(tester);
       expect(st.position.pixels, closeTo(st.position.maxScrollExtent, 1));
@@ -334,7 +337,9 @@ void main() {
         'nahe der Gruppe', (WidgetTester tester) async {
       await path(tester, 'path-cluster-hint', size: Viewports.small);
       final ScrollableState st = pathScroll(tester);
-      expect(st.position.pixels, closeTo(st.position.maxScrollExtent, 40));
+      // Der Hinweis darf den Pfad beim Platzieren ein Stück nach oben schieben
+      // (mit den größeren Kugeln der aktuellen Unit bis etwa 200 dp).
+      expect(st.position.pixels, closeTo(st.position.maxScrollExtent, 220));
       expect(hint, findsOneWidget);
       expect(find.text(S.hintDone), findsOneWidget);
       expect(
@@ -381,7 +386,7 @@ void main() {
       expect(find.text('Mittwoch, 7. Oktober'), findsOneWidget);
       expect(find.text(S.apptPhysioTitle), findsOneWidget);
       expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
-      expect(find.byType(MessagesButton), findsOneWidget);
+      expect(find.byType(MannyButton), findsOneWidget);
       expect(find.byKey(ProbeKeys.primaryRow), findsOneWidget);
       await disposeApp(tester);
     });
@@ -430,17 +435,17 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('today-loading / today-error: ohne Button-Gruppe', (
+    testWidgets('today-loading / today-error: ohne Primärbutton-Reihe', (
       WidgetTester tester,
     ) async {
       await today(tester, 'today-loading');
-      expect(find.byType(MessagesButton), findsNothing);
+      expect(find.byType(MannyButton), findsNothing);
       expect(find.byType(FloatingNav), findsOneWidget);
       await disposeApp(tester);
       await today(tester, 'today-error');
       expect(find.text(S.todayLoadError), findsOneWidget);
       expect(find.text(S.retry), findsOneWidget);
-      expect(find.byType(MessagesButton), findsNothing);
+      expect(find.byType(MannyButton), findsNothing);
       await disposeApp(tester);
     });
 

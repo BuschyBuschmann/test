@@ -28,6 +28,17 @@ class MannyButton extends StatelessWidget {
   final bool autofocus;
   final FocusNode? focusNode;
 
+  /// Rechteck des Knopfes in globalen Koordinaten (für Blase und Hinweis, die
+  /// ihm ausweichen); `null`, solange er nicht gebaut ist. [key] gehört einem
+  /// Vorfahren des Knopfes.
+  static Rect? rectOf(GlobalKey key) {
+    final RenderObject? object = key.currentContext?.findRenderObject();
+    if (object is! RenderBox || !object.attached || !object.hasSize) {
+      return null;
+    }
+    return object.localToGlobal(Offset.zero) & object.size;
+  }
+
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);

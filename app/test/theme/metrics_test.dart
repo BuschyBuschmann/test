@@ -41,9 +41,10 @@ void main() {
     expect(CuraRadius.nodeHint, 16);
   });
 
-  test('Ergänzung 2: Button-Gruppe, Abstände, Ränder (MINOR-6)', () {
+  test('Brief v2, 5: Manny-Knopf, Abstände, Ränder (MINOR-6)', () {
     expect(CuraSize.mannyChatButton, 56);
-    expect(CuraSize.messagesButton, 48);
+    expect(CuraSize.mannyButtonSideMargin, 18);
+    expect(CuraSize.mannyButtonNavGap, 16);
     expect(CuraSpace.clusterGap, 8);
     expect(CuraSpace.snackbarGap, 12);
     expect(CuraSpace.pageMargin, 16); // Rand

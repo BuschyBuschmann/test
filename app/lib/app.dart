@@ -122,6 +122,9 @@ class CuraApp extends StatelessWidget {
               navigatorKey: navigatorKey,
               title: S.appTitle,
               theme: CuraTheme.build(),
+              // Die Themen wechselt `CuraThemeSelector`; MaterialApp blendet nichts
+              // über (V2-26).
+              themeAnimationDuration: Duration.zero,
               locale: const Locale('de'),
               supportedLocales: const <Locale>[Locale('de')],
               localizationsDelegates: GlobalMaterialLocalizations.delegates,

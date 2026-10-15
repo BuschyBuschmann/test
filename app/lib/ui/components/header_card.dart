@@ -19,6 +19,7 @@ import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
 import '../../theme/world_tokens.dart';
 import 'cura_blur.dart';
+import 'cura_pressable.dart';
 
 class HeaderCard extends StatelessWidget {
   const HeaderCard({
@@ -28,6 +29,7 @@ class HeaderCard extends StatelessWidget {
     this.chips = const <Widget>[],
     this.progress,
     this.trailing,
+    this.leading,
   });
 
   final String title;
@@ -41,6 +43,9 @@ class HeaderCard extends StatelessWidget {
 
   /// Schaltfläche oben rechts (z. B. „Deine Daten“).
   final Widget? trailing;
+
+  /// Avatar-Kugel links neben Titel und Untertitel (Profil, Brief 7.6).
+  final Widget? leading;
 
   /// Füllung der Kopf-Karte: `header-tint` mit Deckkraft, bei Hohem Kontrast
   /// zu 100 %.
@@ -58,6 +63,7 @@ class HeaderCard extends StatelessWidget {
     final BorderRadius shape = BorderRadius.circular(CuraRadius.headerCard);
     final Widget titleText = Semantics(
       header: true,
+      container: true,
       child: MediaQuery.withClampedTextScaling(
         maxScaleFactor: CuraSize.headerTitleMaxTextScale,
         child: Text(
@@ -66,6 +72,19 @@ class HeaderCard extends StatelessWidget {
         ),
       ),
     );
+    final Widget? subtitleText = subtitle == null
+        ? null
+        : Align(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 1,
+            child: Semantics(
+              container: true,
+              child: Text(
+                subtitle!,
+                style: type.secondary.copyWith(color: colors.headerInk),
+              ),
+            ),
+          );
     return CuraBlur(
       borderRadius: shape,
       sigma: BlurTokens.headerSigma,
@@ -75,9 +94,7 @@ class HeaderCard extends StatelessWidget {
           borderRadius: shape,
           border: Border.all(
             // Hoher Kontrast: weißer Rand (≥ 4,3:1 gegen die opake Tönung).
-            color: colors.highContrast
-                ? colors.headerInk
-                : colors.headerChipFill,
+            color: colors.highContrast ? colors.headerInk : colors.headerEdge,
             width: colors.highContrast
                 ? CuraSize.controlBorder
                 : CuraSize.hairline,
@@ -89,22 +106,39 @@ class HeaderCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              if (trailing == null)
-                titleText
-              else
+              if (leading != null)
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    Expanded(child: titleText),
-                    const SizedBox(width: CuraSpace.s2),
-                    trailing!,
+                    leading!,
+                    const SizedBox(width: CuraSpace.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[titleText, ?subtitleText],
+                      ),
+                    ),
+                    if (trailing != null) ...<Widget>[
+                      const SizedBox(width: CuraSpace.s2),
+                      trailing!,
+                    ],
                   ],
-                ),
-              if (subtitle != null)
-                Text(
-                  subtitle!,
-                  style: type.secondary.copyWith(color: colors.headerInk),
-                ),
+                )
+              else ...<Widget>[
+                if (trailing == null)
+                  titleText
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(child: titleText),
+                      const SizedBox(width: CuraSpace.s2),
+                      trailing!,
+                    ],
+                  ),
+                ?subtitleText,
+              ],
               if (chips.isNotEmpty) ...<Widget>[
                 const SizedBox(height: CuraSpace.s3),
                 Wrap(
@@ -127,12 +161,17 @@ class HeaderCard extends StatelessWidget {
 
 /// Chip in der Kopf-Karte (Streak „Flamme 12“, Freeze „❄ 1“): Symbol **und**
 /// Text, Weiß 18 % auf dem Glas, Text `#FFFFFF` 13 sp/700, Radius Pille.
-class HeaderChip extends StatelessWidget {
+///
+/// Mit [onPressed] ist der Chip eine Schaltfläche (Pfad: ein Tipp erklärt
+/// Freeze bzw. Streak): die sichtbare Pille bleibt, die Tippfläche misst
+/// mindestens 48 × 48 dp. Der Rückruf bekommt das Rechteck der Pille (global).
+class HeaderChip extends StatefulWidget {
   const HeaderChip({
     super.key,
     required this.icon,
     required this.label,
     this.semanticLabel,
+    this.onPressed,
   });
 
   final IconData icon;
@@ -141,39 +180,81 @@ class HeaderChip extends StatelessWidget {
   /// Screenreader-Text, wenn er vom sichtbaren Text abweicht.
   final String? semanticLabel;
 
+  /// Tipp auf den Chip (Rechteck der Tippfläche, global); `null` = reine
+  /// Anzeige.
+  final ValueChanged<Rect>? onPressed;
+
+  @override
+  State<HeaderChip> createState() => _HeaderChipState();
+}
+
+class _HeaderChipState extends State<HeaderChip> {
+  final GlobalKey _pillKey = GlobalKey();
+
+  void _tap() {
+    // Das Rechteck der ganzen Tippfläche (mindestens 48 dp): der Hinweis steht
+    // darunter und überdeckt sie nicht.
+    final RenderObject? box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return;
+    widget.onPressed?.call(box.localToGlobal(Offset.zero) & box.size);
+  }
+
   @override
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
-    return Semantics(
-      container: true,
-      label: semanticLabel ?? label,
-      excludeSemantics: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.headerChipFill,
-          borderRadius: BorderRadius.circular(CuraRadius.pill),
+    final Widget pill = DecoratedBox(
+      key: _pillKey,
+      decoration: BoxDecoration(
+        color: colors.headerChipFill,
+        borderRadius: BorderRadius.circular(CuraRadius.pill),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: CuraSize.statPillPaddingH,
+          vertical: CuraSize.statPillPaddingV,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: CuraSize.statPillPaddingH,
-            vertical: CuraSize.statPillPaddingV,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(icon, size: CuraSize.statPillIcon, color: colors.headerInk),
-              const SizedBox(width: CuraSize.statPillGap),
-              Flexible(
-                child: Text(
-                  label,
-                  style: type.chip.copyWith(color: colors.headerInk),
-                ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              widget.icon,
+              size: CuraSize.statPillIcon,
+              color: colors.headerInk,
+            ),
+            const SizedBox(width: CuraSize.statPillGap),
+            Flexible(
+              child: Text(
+                widget.label,
+                style: type.chip.copyWith(color: colors.headerInk),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+    final String label = widget.semanticLabel ?? widget.label;
+    if (widget.onPressed == null) {
+      return Semantics(
+        container: true,
+        label: label,
+        excludeSemantics: true,
+        child: pill,
+      );
+    }
+    return CuraPressable(
+      onPressed: _tap,
+      semanticLabel: label,
+      ringRadius: CuraRadius.pill,
+      builder: (BuildContext context, bool pressed) {
+        return ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: CuraSize.touchTarget,
+            minHeight: CuraSize.touchTarget,
+          ),
+          child: Center(widthFactor: 1, heightFactor: 1, child: pill),
+        );
+      },
     );
   }
 }
@@ -195,15 +276,14 @@ class HeaderProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final CuraTypography type = CuraTypography.of(context);
-    return Semantics(
-      container: true,
-      label: label,
-      excludeSemantics: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          DecoratedBox(
+    // Der Balken ist Zier (der Wert steht als Text); der Text trägt die Semantik
+    // als eigenen, eng gefassten Knoten.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        ExcludeSemantics(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: colors.headerTrack,
               borderRadius: BorderRadius.circular(CuraRadius.pill),
@@ -229,10 +309,22 @@ class HeaderProgress extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: CuraSpace.s1),
-          Text(label, style: type.secondary.copyWith(color: colors.headerInk)),
-        ],
-      ),
+        ),
+        const SizedBox(height: CuraSpace.s1),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          widthFactor: 1,
+          child: Semantics(
+            container: true,
+            label: label,
+            excludeSemantics: true,
+            child: Text(
+              label,
+              style: type.secondary.copyWith(color: colors.headerInk),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

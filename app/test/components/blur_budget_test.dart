@@ -146,4 +146,21 @@ void main() {
     final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
     expect(f.filter.toString(), contains('30'));
   });
+
+  testWidgets('ein CuraBlur in TickerMode(enabled: false) belegt keinen Platz '
+      '(inaktives Ziel der Leiste)', (WidgetTester tester) async {
+    Widget tree({required bool firstEnabled}) => BlurBudgetScope(
+      child: Column(
+        children: <Widget>[
+          TickerMode(enabled: firstEnabled, child: _blur(0)),
+          for (int i = 1; i < 4; i++) _blur(i),
+        ],
+      ),
+    );
+    // Das erste ist inaktiv und belegt nichts; die drei sichtbaren bekommen
+    // ihren Platz (ohne diese Regel hielte das inaktive den ersten Platz).
+    await pumpApp(tester, tree(firstEnabled: false));
+    expect(_budget(tester).used, 3);
+    expect(find.byType(BackdropFilter), findsNWidgets(3));
+  });
 }

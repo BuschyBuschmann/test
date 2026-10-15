@@ -67,6 +67,8 @@ class _DialogPage extends StatelessWidget {
           ),
           child: Material(
             type: MaterialType.transparency,
+            // Ein Themenwechsel überblendet den Textstil nicht (V2-26).
+            animationDuration: Duration.zero,
             child: Center(child: child),
           ),
         ),

@@ -70,6 +70,8 @@ class _PreviewScriptState extends State<PreviewScript> {
   late bool _scrollEndPending = widget.scrollPathToEnd;
   late bool _afterPending = widget.afterTaps != null;
   int _endJumps = 0;
+  int _found = 0;
+  static const int _stableFrames = 6;
   static const int _endJumpFrames = 4;
 
   @override
@@ -120,9 +122,16 @@ class _PreviewScriptState extends State<PreviewScript> {
     } else if (_pending.isNotEmpty) {
       final VoidCallback? action = _find(_pending.first);
       if (action != null) {
-        _pending.removeAt(0);
-        action();
+        // Erst tippen, wenn der Baustein einige Frames lang steht: die Mittenlage
+        // des Pfads und die Messung der mitlaufenden Kopf-Karte verschieben ihn
+        // in den ersten Frames noch.
+        if (++_found >= _stableFrames) {
+          _found = 0;
+          _pending.removeAt(0);
+          action();
+        }
       } else {
+        _found = 0;
         _scrollForward();
       }
     } else if (_afterPending) {
@@ -147,7 +156,19 @@ class _PreviewScriptState extends State<PreviewScript> {
       final Widget w = e.widget;
       if (w is Offstage && w.offstage) return;
       if (w is CuraPressable && w.semanticLabel == label) {
-        found = w.onPressed;
+        // Wie der Nutzer: erst in den Blick scrollen (Pfad-Kugeln außerhalb der
+        // Sichtfläche), dann tippen.
+        final VoidCallback? press = w.onPressed;
+        found = press == null
+            ? null
+            : () {
+                Scrollable.ensureVisible(
+                  e,
+                  duration: Duration.zero,
+                  alignment: 0.5,
+                );
+                press();
+              };
         return;
       }
       // Primärbuttons tragen ihr Label als Text („Training eintragen“).

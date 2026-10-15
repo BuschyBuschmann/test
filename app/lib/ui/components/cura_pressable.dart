@@ -20,6 +20,7 @@ class CuraPressable extends StatefulWidget {
     this.ringRadius = CuraRadius.pill,
     this.enabled = true,
     this.selected,
+    this.toggled,
     this.onAccessibilityFocus,
   });
 
@@ -47,6 +48,9 @@ class CuraPressable extends StatefulWidget {
 
   /// Zustand „ausgewählt“ für den Screenreader (Tabs); `null` = nicht relevant.
   final bool? selected;
+
+  /// Zustand „an/aus“ für den Screenreader (Schalter); `null` = kein Schalter.
+  final bool? toggled;
 
   /// Der Screenreader-Fokus erreicht den Baustein (z. B. macht die Leiste
   /// sich dann aktiv, Brief 4.1).
@@ -86,6 +90,7 @@ class _CuraPressableState extends State<CuraPressable> {
         button: true,
         enabled: _active,
         selected: widget.selected,
+        toggled: widget.toggled,
         onDidGainAccessibilityFocus: widget.onAccessibilityFocus,
         label: label,
         excludeSemantics: widget.excludeChildSemantics ?? label != null,

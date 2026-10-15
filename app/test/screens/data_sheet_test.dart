@@ -28,7 +28,6 @@ import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/probe_keys.dart';
@@ -365,7 +364,7 @@ void main() {
     });
 
     testWidgets('UI-47: eine sichtbare Blase schließt beim Öffnen (zählt als '
-        'gezeigt); mit Sheet höchstens 2 BackdropFilter, auch mit Dialog', (
+        'gezeigt); mit Sheet höchstens 3 BackdropFilter, auch mit Dialog', (
       WidgetTester tester,
     ) async {
       final Harness h = await _pumpPath(
@@ -382,16 +381,20 @@ void main() {
         kToday,
         reason: 'weggetippt zählt als gezeigt',
       );
-      expect(backdropCount(tester), 2, reason: 'Nav und Sheet');
+      expect(
+        backdropCount(tester),
+        3,
+        reason: 'Leiste, Kopf-Karte und Manny-Knopf; das Sheet ist opak',
+      );
       await _openDelete(tester);
-      expect(backdropCount(tester), 2, reason: 'Dialog ohne Blur');
+      expect(backdropCount(tester), 3, reason: 'Dialog ohne Blur');
       await tester.tap(_cancel);
       await _settle(tester);
       await _makeDirty(tester);
       await tester.tap(_closeX);
       await _settle(tester);
       expect(find.byType(DiscardDialog), findsOneWidget);
-      expect(backdropCount(tester), 2);
+      expect(backdropCount(tester), 3);
       await disposeApp(tester);
     });
 
@@ -407,7 +410,7 @@ void main() {
       );
       await _openSheet(tester);
       expect(find.byType(MannyBubble), findsNothing);
-      expect(backdropCount(tester), lessThanOrEqualTo(2));
+      expect(backdropCount(tester), lessThanOrEqualTo(3));
       expect(h.controller.transient.visibleBubble, isNull);
       await disposeApp(tester);
     });
@@ -1311,13 +1314,12 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  group('Button-Gruppe unter dem Scrim (UI-70)', () {
+  group('Manny-Knopf unter dem Scrim (UI-70)', () {
     testWidgets('bei offenem Sheet und Dialog: weder Semantik-Knoten noch '
         'fokussierbar noch per Tipp erreichbar', (WidgetTester tester) async {
       final SemanticsHandle semantics = tester.ensureSemantics();
       await _pumpPath(tester);
       final Rect chat = tester.getRect(find.byType(MannyButton));
-      final Rect messages = tester.getRect(find.byType(MessagesButton));
       expect(find.bySemanticsLabel(S.mannyChatOpen), findsOneWidget);
       await _openSheet(tester);
 
@@ -1345,7 +1347,6 @@ void main() {
 
       void expectBlocked() {
         expect(hasLabel(S.mannyChatOpen), isFalse);
-        expect(hasLabel(S.messagesButton), isFalse);
         expect(hasLabel(S.dataSheetOpen) && hasLabel(S.navToday), isFalse);
       }
 
@@ -1357,10 +1358,9 @@ void main() {
         final BuildContext? ctx = FocusManager.instance.primaryFocus?.context;
         if (ctx == null) continue;
         expect(ctx.findAncestorWidgetOfExactType<MannyButton>(), isNull);
-        expect(ctx.findAncestorWidgetOfExactType<MessagesButton>(), isNull);
       }
       // Tipp auf die Stelle der Gruppe trifft den Scrim/das Sheet, kein Chat.
-      for (final Rect r in <Rect>[chat, messages]) {
+      for (final Rect r in <Rect>[chat]) {
         await tester.tapAt(r.center);
         await _settle(tester);
         expect(find.byType(MannyChatScreen), findsNothing);

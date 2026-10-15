@@ -77,9 +77,10 @@ class BubblePlacement {
 
 /// Wählt Seite und Lage der Blase.
 ///
-/// [manny] ist die gezeichnete Form; [mannyBelowExtra] der Teil der Unit
-/// unterhalb der Standlinie (er darf beim Scrollen nicht in die Gruppe
-/// geraten). [scrollOffset] ist der aktuelle Offset (der Pfad kann nur bis 0
+/// [manny] ist die gezeichnete Form; [mannyBelowExtra] ein Teil unterhalb der
+/// Standlinie, der beim Scrollen nicht in den Manny-Knopf geraten darf (Manny
+/// steht neben der Kugel, meist 0). [allowSide] ist `false`, wenn rechts von
+/// Manny die Kugel steht (Manny links): dann steht die Blase über Manny. [scrollOffset] ist der aktuelle Offset (der Pfad kann nur bis 0
 /// zurück). Mit [allowScroll] darf die Platzierung den Pfad scrollen lassen
 /// (nur beim Erscheinen der Blase; danach folgt sie Manny nur noch).
 ///
@@ -100,13 +101,15 @@ BubblePlacement placeBubble({
   bool allowScroll = false,
   double topLimit = kOverlayTopLimit,
   double? scrollBottomLimit,
+  bool allowSide = true,
 }) {
   final double bottomLimit = bottomLimitFor(viewport, cluster);
   const double margin = CuraSpace.pageMargin;
 
   // 1. Rechts neben Manny.
   final double spaceRight = viewport.width - margin - manny.right;
-  if (textScale < CuraSize.bubbleAboveTextScale &&
+  if (allowSide &&
+      textScale < CuraSize.bubbleAboveTextScale &&
       MannyBubble.arrowFor(spaceRight) == BubbleArrow.left) {
     final double maxW = math.min(
       CuraComponent.bubbleMaxWidth,

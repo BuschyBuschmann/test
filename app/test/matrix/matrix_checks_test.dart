@@ -11,7 +11,6 @@ import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/world_background.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/routes/cura_sheet_route.dart';
 
 import 'dart:async';
@@ -51,7 +50,7 @@ Scenario _scenario({
   builder: (BuildContext c, ScenarioEnv e) => const SizedBox(),
   expectsPrimary: primary,
   expectsNav: nav,
-  expectsCluster: cluster,
+  expectsMannyButton: cluster,
   expectsHeader: header,
   expectsChatFooter: chatFooter,
 );
@@ -253,7 +252,7 @@ void main() {
             right: 16,
             bottom: 106,
             child: KeyedSubtree(
-              key: PreviewKeys.cluster,
+              key: PreviewKeys.mannyButton,
               child: const SizedBox(width: 56, height: 112),
             ),
           ),
@@ -307,7 +306,7 @@ void main() {
               right: 16,
               bottom: -20,
               child: KeyedSubtree(
-                key: PreviewKeys.cluster,
+                key: PreviewKeys.mannyButton,
                 child: const SizedBox(width: 56, height: 112),
               ),
             ),
@@ -329,7 +328,7 @@ void main() {
               right: 16,
               top: 400,
               child: KeyedSubtree(
-                key: PreviewKeys.cluster,
+                key: PreviewKeys.mannyButton,
                 child: const SizedBox(width: 56, height: 112),
               ),
             ),
@@ -722,7 +721,7 @@ void main() {
     testWidgets(
       'Nav: bekannte Eigenheit der Leitlinie ist ausgenommen, der Rest nicht',
       (WidgetTester tester) async {
-        final Scenario nav = scenarioById('cmp-nav-cluster')!;
+        final Scenario nav = scenarioById('cmp-nav-manny')!;
         await pumpScenario(tester, nav);
         // Die rohe Leitlinie meldet im aktiven Nav-Eintrag ca. 2,27:1 (Icon-Pixel als Text) ...
         final Evaluation raw = await textContrastGuideline.evaluate(tester);
@@ -1057,32 +1056,6 @@ void main() {
         expect(byText('Weit unten').onScreen, isFalse);
       },
     );
-
-    testWidgets('ActionCircle ist eine deckende Fläche', (
-      WidgetTester tester,
-    ) async {
-      await pump(
-        tester,
-        Stack(
-          children: <Widget>[
-            const Positioned.fill(child: WorldBackground()),
-            Positioned(
-              left: 8,
-              top: 8,
-              child: MessagesButton(onPressed: () {}),
-            ),
-          ],
-        ),
-      );
-      final TextProbe p = probe(tester);
-      final Iterable<ProbedText> icons = p.texts.where(
-        (ProbedText t) => t.isIcon,
-      );
-      expect(icons, isNotEmpty);
-      for (final ProbedText t in icons) {
-        expect(t.ground, TextGround.opaque);
-      }
-    });
 
     testWidgets(
       'Text unter einer anderen Route (Scrim) zählt nicht als sichtbar',
@@ -1783,71 +1756,7 @@ void _u3aMatrixTests(
     });
 
     group('checkTodayGroup', () {
-      Widget group({
-        double gap = 8,
-        double messagesRight = 16,
-        double primaryBottom = 100,
-        double primaryWidth = 294,
-      }) => Stack(
-        children: <Widget>[
-          Positioned(
-            left: 16,
-            bottom: 100,
-            width: 358,
-            height: 56,
-            child: KeyedSubtree(
-              key: PreviewKeys.primaryRow,
-              child: const SizedBox.expand(),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            bottom: primaryBottom,
-            width: primaryWidth,
-            height: 56,
-            child: KeyedSubtree(
-              key: PreviewKeys.primary,
-              child: const SizedBox.expand(),
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 100,
-            child: MannyButton(onPressed: () {}),
-          ),
-          Positioned(
-            right: messagesRight,
-            bottom: 100 + 56 + gap,
-            width: 56,
-            height: 56,
-            child: KeyedSubtree(
-              key: PreviewKeys.cluster,
-              child: const SizedBox.expand(),
-            ),
-          ),
-        ],
-      );
-
-      testWidgets('richtige Anordnung: kein Befund; jede Abweichung einzeln '
-          'ein Befund', (WidgetTester tester) async {
-        final Scenario s = _scenario();
-        await pump(tester, group());
-        expect(checkTodayGroup(tester, s), isEmpty);
-        await pump(tester, group(gap: 14));
-        expect(checkTodayGroup(tester, s), hasLength(1));
-        await pump(tester, group(messagesRight: 30));
-        expect(checkTodayGroup(tester, s), hasLength(1));
-        await pump(tester, group(primaryBottom: 110));
-        expect(checkTodayGroup(tester, s), isNotEmpty);
-        await pump(tester, group(primaryWidth: 280));
-        expect(checkTodayGroup(tester, s), hasLength(1));
-      });
-
-      testWidgets('fehlt der Manny-Button, ist das ein harter Befund', (
-        WidgetTester tester,
-      ) async {
-        await pump(
-          tester,
+      Widget group({double primaryBottom = 100, double primaryWidth = 294}) =>
           Stack(
             children: <Widget>[
               Positioned(
@@ -1861,20 +1770,67 @@ void _u3aMatrixTests(
                 ),
               ),
               Positioned(
-                right: 16,
-                bottom: 164,
-                width: 56,
+                left: 16,
+                bottom: primaryBottom,
+                width: primaryWidth,
                 height: 56,
                 child: KeyedSubtree(
-                  key: PreviewKeys.cluster,
+                  key: PreviewKeys.primary,
                   child: const SizedBox.expand(),
                 ),
               ),
+              Positioned(
+                right: 16,
+                bottom: 100,
+                child: MannyButton(onPressed: () {}),
+              ),
             ],
-          ),
-        );
-        expect(checkTodayGroup(tester, _scenario()), isNotEmpty);
+          );
+
+      testWidgets('richtige Anordnung: kein Befund; jede Abweichung einzeln '
+          'ein Befund', (WidgetTester tester) async {
+        final Scenario s = _scenario();
+        await pump(tester, group());
+        expect(checkTodayGroup(tester, s), isEmpty);
+        await pump(tester, group(primaryBottom: 110));
+        expect(checkTodayGroup(tester, s), isNotEmpty);
+        await pump(tester, group(primaryWidth: 280));
+        expect(checkTodayGroup(tester, s), hasLength(1));
       });
+
+      testWidgets(
+        'ohne Manny-Knopf ist es nicht die Reihe von Heute (Onboarding): kein Befund',
+        (WidgetTester tester) async {
+          await pump(
+            tester,
+            Stack(
+              children: <Widget>[
+                Positioned(
+                  left: 16,
+                  bottom: 100,
+                  width: 358,
+                  height: 56,
+                  child: KeyedSubtree(
+                    key: PreviewKeys.primaryRow,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                Positioned(
+                  right: 16,
+                  bottom: 164,
+                  width: 56,
+                  height: 56,
+                  child: KeyedSubtree(
+                    key: PreviewKeys.mannyButton,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ],
+            ),
+          );
+          expect(checkTodayGroup(tester, _scenario()), isEmpty);
+        },
+      );
     });
   });
 }

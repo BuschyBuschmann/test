@@ -217,6 +217,37 @@ class _OrbNodeState extends State<OrbNode> with SingleTickerProviderStateMixin {
   }
 }
 
+/// Die gemalte Kugel ohne Bedienung (Avatar-Kugel im Profil): Radialverlauf,
+/// Glanz, Innenschatten, Kante und Bodenschatten wie bei `OrbNode`. [child]
+/// (Initiale, Symbol) steht mittig.
+class OrbSphere extends StatelessWidget {
+  const OrbSphere({
+    super.key,
+    required this.diameter,
+    required this.shades,
+    this.child,
+  });
+
+  final double diameter;
+  final OrbShades shades;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: diameter,
+      child: CustomPaint(
+        painter: _OrbPainter(
+          colors: CuraColors.of(context),
+          shades: shades,
+          pressed: false,
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+}
+
 /// Die Kugel: Bodenschatten, Radialverlauf, Innenschatten, Glanz, Kante.
 class _OrbPainter extends CustomPainter {
   _OrbPainter({

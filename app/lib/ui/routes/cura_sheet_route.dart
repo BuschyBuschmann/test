@@ -144,6 +144,8 @@ class _SheetPlacement extends StatelessWidget {
       removeBottom: true,
       child: Material(
         type: MaterialType.transparency,
+        // Ein Themenwechsel überblendet den Textstil nicht (V2-26).
+        animationDuration: Duration.zero,
         child: Padding(
           padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
           child: Align(
@@ -274,6 +276,13 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
   Widget build(BuildContext context) {
     final CuraColors colors = CuraColors.of(context);
     final bool compact = CuraSheetScope.compactOf(context);
+    // Bei großer Schrift (ab 150 %) läuft der Kopf wie im kompakten Zustand
+    // mit dem Inhalt; fest nähme er mit Griff und Fußleiste den Scrollbereich
+    // (ein Schalter mit Hinweis passte sonst nie ganz ins Sichtfenster).
+    final bool headerAlong =
+        compact ||
+        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+            CuraSize.textScaleScrollAlong;
     const BorderRadius shape = BorderRadius.vertical(
       top: Radius.circular(CuraRadius.sheet),
     );
@@ -303,7 +312,7 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                if (compact)
+                if (headerAlong)
                   const SizedBox.shrink()
                 else
                   GestureDetector(
@@ -328,10 +337,12 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
                       children: <Widget>[
                         // Das kompakte Sheet reicht bis an den oberen Rand: der
                         // Kopf rückt unter die Statusleiste (F-6).
-                        if (compact)
+                        if (headerAlong)
                           Padding(
                             padding: EdgeInsets.only(
-                              top: MediaQuery.paddingOf(context).top,
+                              top: compact
+                                  ? MediaQuery.paddingOf(context).top
+                                  : 0,
                             ),
                             child: widget.header,
                           )

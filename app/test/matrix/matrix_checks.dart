@@ -798,17 +798,17 @@ List<Finding> checkPrimary(WidgetTester tester, Scenario scenario) {
 /// die Button-Gruppe. Gemessen an den Overlays; scrollender Inhalt darf
 /// darunter laufen. Zusätzlich: Gruppe vollständig sichtbar, nicht über der
 /// Nav; Blase und Hinweis überdecken die Gruppe nicht. Setzt das Szenario
-/// `expectsCluster`/`expectsNav`, ist ein fehlender Marker ein harter
+/// `expectsMannyButton`/`expectsNav`, ist ein fehlender Marker ein harter
 /// Befund (kein stilles Überspringen, R-U2 MAJOR-3).
 List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
   final Map<String, Rect> o = overlayRects();
-  final Rect? cluster = o['cluster'];
+  final Rect? cluster = o['manny-button'];
   final List<Finding> out = <Finding>[];
-  if (scenario.expectsCluster && cluster == null) {
+  if (scenario.expectsMannyButton && cluster == null) {
     out.add(
       const Finding(
         'Marker fehlt',
-        'overlay:cluster (Szenario erwartet die Button-Gruppe)',
+        'overlay:manny-button (Szenario erwartet den Manny-Knopf)',
       ),
     );
   }
@@ -847,7 +847,7 @@ List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
     // Für Heute gelten [checkTodayGroup] und die Erreichbarkeit.
     final bool today = o.containsKey('primary-row');
     for (final MapEntry<String, Rect> e in o.entries) {
-      if (e.key == 'nav' || e.key == 'cluster') continue;
+      if (e.key == 'nav' || e.key == 'manny-button') continue;
       if (today && e.key == 'primary-row') continue;
       if (e.value.overlaps(left)) {
         out.add(
@@ -881,55 +881,36 @@ List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
   return out;
 }
 
-/// Button-Gruppe auf Heute (UI-71, UI-73, UI-37/41 präzisiert): Der
-/// Nachrichten-Button sitzt rechtsbündig **8 dp über der Oberkante des
-/// Manny-Buttons** (auch im Umbruchszustand von „Training starten“, wenn die
-/// Reihe höher als 56 dp ist); der Manny-Button steht unten bündig mit dem
-/// Primärbutton; dessen Breite ist die Breite des Rahmens − 96 dp (Seitenränder
-/// 2 × 16, Manny-Button 56, Abstand 8); eine Snackbar steht 12 dp über der
-/// Oberkante der Gruppe. Gilt nur, wenn die Reihe (`overlay:primary-row`) im
-/// Baum steht.
+/// Primärbutton-Reihe auf Heute (UI-71, UI-73; Nachrichten-Knopf entfällt seit
+/// F2-R3): der Manny-Knopf steht unten bündig mit dem Primärbutton; dessen Breite
+/// ist die Breite des Rahmens − 96 dp (Seitenränder 2 × 16, Manny-Knopf 56,
+/// Abstand 8); eine Snackbar steht 12 dp über der Oberkante der Reihe. Gilt nur,
+/// wenn die Reihe (`overlay:primary-row`) im Baum steht.
 List<Finding> checkTodayGroup(WidgetTester tester, Scenario scenario) {
   final Map<String, Rect> o = overlayRects();
   final Rect? row = o['primary-row'];
-  final Rect? messages = o['cluster'];
-  if (row == null || messages == null) return const <Finding>[];
+  if (row == null) return const <Finding>[];
   final Finder manny = find.byElementPredicate(
     (Element e) => e.widget is MannyButton && !isBuriedRoute(e),
   );
   final Finder primary = find.byElementPredicate(
     (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),
   );
-  if (manny.evaluate().isEmpty || primary.evaluate().isEmpty) {
+  // Ohne Manny-Knopf ist es nicht die Reihe von Heute (das Onboarding nutzt
+  // den Marker für seine Fußleiste).
+  if (manny.evaluate().isEmpty) return const <Finding>[];
+  if (primary.evaluate().isEmpty) {
     return const <Finding>[
-      Finding('Button-Gruppe Heute', 'Manny-Button oder Primärbutton fehlt'),
+      Finding('Primärbutton-Reihe Heute', 'Primärbutton fehlt'),
     ];
   }
   final Rect m = tester.getRect(manny.first);
   final Rect p = tester.getRect(primary.first);
   final List<Finding> out = <Finding>[];
   const double tol = 0.6;
-  final double gap = m.top - messages.bottom;
-  if ((gap - CuraSpace.clusterGap).abs() > tol) {
-    out.add(
-      Finding(
-        'Nachrichten-Button 8 dp über dem Manny-Button',
-        '${gap.toStringAsFixed(1)} dp zwischen $messages und $m '
-            '(Primärbutton ${p.height.toStringAsFixed(0)} dp hoch)',
-      ),
-    );
-  }
-  if ((messages.right - m.right).abs() > tol) {
-    out.add(
-      Finding(
-        'Nachrichten-Button rechtsbündig mit dem Manny-Button',
-        'rechts $messages gegen $m',
-      ),
-    );
-  }
   if ((m.bottom - p.bottom).abs() > tol) {
     out.add(
-      Finding('Manny-Button unten bündig mit dem Primärbutton', '$m gegen $p'),
+      Finding('Manny-Knopf unten bündig mit dem Primärbutton', '$m gegen $p'),
     );
   }
   final double frame = viewSize(tester).width < CuraSize.lineLengthMax
@@ -954,8 +935,8 @@ List<Finding> checkTodayGroup(WidgetTester tester, Scenario scenario) {
     if ((above - CuraSpace.snackbarGap).abs() > tol) {
       out.add(
         Finding(
-          'Snackbar 12 dp über der Gruppe',
-          '${above.toStringAsFixed(1)} dp zwischen $snackbar und der Gruppe $row',
+          'Snackbar 12 dp über der Reihe',
+          '${above.toStringAsFixed(1)} dp zwischen $snackbar und der Reihe $row',
         ),
       );
     }
