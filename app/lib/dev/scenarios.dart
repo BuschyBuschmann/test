@@ -292,23 +292,27 @@ String _styleCaption(MapEntry<String, TextStyle> e) =>
 Widget _typo(BuildContext context, ScenarioEnv env) {
   final CuraColors c = CuraColors.of(context);
   final CuraTypography t = CuraTypography.of(context);
+  // Die Schriftmuster stehen auf einer Karte (V2-5: kein Text direkt auf der
+  // Welt).
   return _screen(
     body: SingleChildScrollView(
       key: PreviewKeys.scroll,
       padding: const EdgeInsets.all(CuraSpace.pageMargin),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          for (final MapEntry<String, TextStyle> e
-              in t.all.entries) ...<Widget>[
-            Text(_styleCaption(e), style: t.caption.copyWith(color: c.text2)),
-            Text(
-              _sampleFor(e.key),
-              style: e.value.copyWith(color: e.value.color ?? c.text1),
-            ),
-            const SizedBox(height: CuraSpace.s3),
+      child: GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            for (final MapEntry<String, TextStyle> e
+                in t.all.entries) ...<Widget>[
+              Text(_styleCaption(e), style: t.caption.copyWith(color: c.text2)),
+              Text(
+                _sampleFor(e.key),
+                style: e.value.copyWith(color: e.value.color ?? c.text1),
+              ),
+              const SizedBox(height: CuraSpace.s3),
+            ],
           ],
-        ],
+        ),
       ),
     ),
   );
@@ -686,22 +690,28 @@ LocalDay _today(ScenarioEnv env) => LocalDay.from(env.now);
 /// Verletzungsdatum der Beispiel-Szenarien: 3. September 2026.
 const LocalDay _exampleInjuryDay = LocalDay(2026, 9, 3);
 
+/// Zustand des Onboardings; [step] ist der Zustandsschritt 0 … 4 (0 = Look,
+/// 1 Name, 2 Datenschutz, 3 Verletzungstyp, 4 Datum). Die Kennungen `ob1-*` bis
+/// `ob4-*` der Szenarien stammen aus den vier Schritten von Ausschnitt 1 und
+/// bleiben stabil: `ob1-*` = Name (jetzt Schritt 2), `ob2` = Datenschutz (3),
+/// `ob3-*` = Verletzungstyp (4), `ob4-*` = Datum (5); `ob0-*` ist der neue
+/// Look-Schritt.
 AppState _onboardingState(
   ScenarioEnv env, {
-  int step = 0,
+  int step = 1,
   String name = '',
   InjuryType? type,
   String other = '',
   LocalDay? date,
   bool consent = false,
   bool completed = false,
+  MannyLook look = MannyLook.defaultLook,
 }) {
   return AppState.initial(_today(env)).copyWith(
+    mannyLook: look,
     onboarding: OnboardingState(
       completed: completed,
-      // Seite (0..3) → Zustandsschritt seit Schema 2 (Look-Schritt davor,
-      // bis F2-R4 ohne eigene Seite).
-      step: step + 1,
+      step: step,
       name: name,
       injuryType: type,
       injuryOther: other,
@@ -718,7 +728,7 @@ AppState _onboardingState(
 
 AppState _completedState(ScenarioEnv env) => _onboardingState(
   env,
-  step: 3,
+  step: kLastOnboardingStep,
   name: PreviewTexts.nameValue,
   type: InjuryType.acl,
   date: _today(env).addDays(-30),
@@ -727,6 +737,23 @@ AppState _completedState(ScenarioEnv env) => _onboardingState(
 );
 
 AppSeed _obEmpty(ScenarioEnv env) => const AppSeed();
+
+/// Look-Schritt (Schritt 1 von 5) mit der Vorbelegung „Mit Brille“.
+AppSeed _obLook(ScenarioEnv env) =>
+    AppSeed(state: _onboardingState(env, step: 0));
+
+/// Look-Schritt mit gewähltem „Ohne Brille“.
+AppSeed _obLookWithout(ScenarioEnv env) =>
+    AppSeed(state: _onboardingState(env, step: 0, look: MannyLook.ohne));
+
+/// Name-Schritt in der Variante „Ohne Brille“ (V2-67).
+AppSeed _obNameWithout(ScenarioEnv env) => AppSeed(
+  state: _onboardingState(
+    env,
+    name: PreviewTexts.nameValue,
+    look: MannyLook.ohne,
+  ),
+);
 
 AppSeed _obName(ScenarioEnv env) =>
     AppSeed(state: _onboardingState(env, name: PreviewTexts.nameValue));
@@ -737,13 +764,13 @@ AppSeed _obNameKeyboard(ScenarioEnv env) => AppSeed(
 );
 
 AppSeed _obConsent(ScenarioEnv env) => AppSeed(
-  state: _onboardingState(env, step: 1, name: PreviewTexts.nameValue),
+  state: _onboardingState(env, step: 2, name: PreviewTexts.nameValue),
 );
 
 AppSeed _obInjuryNone(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
     env,
-    step: 2,
+    step: 3,
     name: PreviewTexts.nameValue,
     consent: true,
   ),
@@ -752,7 +779,7 @@ AppSeed _obInjuryNone(ScenarioEnv env) => AppSeed(
 AppSeed _obInjuryAcl(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
     env,
-    step: 2,
+    step: 3,
     name: PreviewTexts.nameValue,
     type: InjuryType.acl,
     consent: true,
@@ -763,7 +790,7 @@ AppSeed _obInjuryAcl(ScenarioEnv env) => AppSeed(
 AppSeed _obInjuryMuscle(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
     env,
-    step: 2,
+    step: 3,
     name: PreviewTexts.nameValue,
     type: InjuryType.muscle,
     consent: true,
@@ -772,7 +799,7 @@ AppSeed _obInjuryMuscle(ScenarioEnv env) => AppSeed(
 
 AppState _otherInjury(ScenarioEnv env) => _onboardingState(
   env,
-  step: 2,
+  step: 3,
   name: PreviewTexts.nameValue,
   type: InjuryType.other,
   other: PreviewTexts.injuryOtherValue,
@@ -787,7 +814,7 @@ AppSeed _obInjuryOtherKeyboard(ScenarioEnv env) =>
 AppSeed _obDateEmpty(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
     env,
-    step: 3,
+    step: 4,
     name: PreviewTexts.nameValue,
     type: InjuryType.acl,
     consent: true,
@@ -797,7 +824,7 @@ AppSeed _obDateEmpty(ScenarioEnv env) => AppSeed(
 AppSeed _obDate(ScenarioEnv env) => AppSeed(
   state: _onboardingState(
     env,
-    step: 3,
+    step: 4,
     name: PreviewTexts.nameValue,
     type: InjuryType.acl,
     date: _exampleInjuryDay,
@@ -814,7 +841,7 @@ AppSeed _obCorrupt(ScenarioEnv env) => const AppSeed(unreadable: true);
 
 /// Datenschutz-Platzhalterseite: Tipp auf den Link in Schritt 2.
 AppSeed _obPrivacy(ScenarioEnv env) => AppSeed(
-  state: _onboardingState(env, step: 1, name: PreviewTexts.nameValue),
+  state: _onboardingState(env, step: 2, name: PreviewTexts.nameValue),
   taps: const <String>[S.privacyLink],
 );
 
@@ -1453,6 +1480,25 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(
     id: 'ob1-empty',
     app: _obEmpty,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob0-look',
+    app: _obLook,
+    expectsPrimary: true,
+    expectsHeader: true,
+    tablet: true,
+  ),
+  Scenario(
+    id: 'ob0-look-ohne',
+    app: _obLookWithout,
+    expectsPrimary: true,
+    expectsHeader: true,
+  ),
+  Scenario(
+    id: 'ob1-name-ohne',
+    app: _obNameWithout,
     expectsPrimary: true,
     expectsHeader: true,
   ),

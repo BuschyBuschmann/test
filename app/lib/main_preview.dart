@@ -7,6 +7,9 @@
 //   scale     Textskalierung (linear), z. B. 2.0
 //   hc=1      Hoher Kontrast (Override im MaterialApp.builder)
 //   rm=1      Bewegung reduzieren (Override)
+//   world     Darstellung „Welt“: automatic (Standard), morning, midday,
+//             evening, night (App-Szenarien, wie im Profil gewählt)
+//   theme     Darstellung „Thema“: system (Standard), light, dark
 //   a11y=1    Semantik-Baum aktivieren (ARIA im Web)
 //   dumpText=1 JSON-Liste aller Texte nach dem Einschwingen ausgeben
 //   live      reserviert: echter Speicher, folgt mit dem StartGate (U2b)
@@ -60,6 +63,8 @@ Map<String, Object?> _environment(PreviewConfig config) {
       'scale': config.textScale,
       'hc': config.highContrast,
       'rm': config.reduceMotion,
+      'world': config.world.jsonName,
+      'theme': config.theme.name,
     },
     // Systemsignale des Browsers, ohne Override (Plan 12.5 b).
     'system': <String, Object?>{

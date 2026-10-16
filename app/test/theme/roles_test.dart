@@ -33,7 +33,7 @@ void main() {
     expect(CuraComponent.bubbleMaxWidth, 280);
     expect(CuraComponent.bubbleMinSideSpace, 140);
     expect(CuraComponent.bubbleArrow, 8);
-    expect(CuraComponent.stepSegments, 4);
+    expect(CuraComponent.stepSegments, 5);
     expect(CuraComponent.snackbarPadding, 16);
     expect(CuraComponent.choiceInnerMinHeight, 64 - 24);
   });

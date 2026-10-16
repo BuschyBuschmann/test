@@ -212,6 +212,12 @@ void main() {
       expect(registry.containsAll(ids(land['scenarios'])), isTrue);
       expect(registry.containsAll(ids(blind['scenarios'])), isTrue);
       expect(
+        registry.containsAll(
+          ids((json['worlds'] as Map<String, dynamic>)['scenarios']),
+        ),
+        isTrue,
+      );
+      expect(
         registry,
         contains((json['pipette'] as Map<String, dynamic>)['scenario']),
       );

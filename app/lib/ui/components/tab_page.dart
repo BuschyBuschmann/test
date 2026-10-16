@@ -23,6 +23,7 @@ class TabPage extends StatefulWidget {
     required this.header,
     required this.children,
     this.scrollController,
+    this.extraReserve = 0,
   });
 
   /// Die Kopf-Karte (`HeaderCard`).
@@ -33,6 +34,10 @@ class TabPage extends StatefulWidget {
 
   /// Eigener Controller (Tests lesen die Position); sonst ein interner.
   final ScrollController? scrollController;
+
+  /// Zusätzliche Reserve unter dem Inhalt (Heute: feste Primärbutton-Reihe
+  /// und Snackbar, jeweils aus gemessenen Höhen).
+  final double extraReserve;
 
   @override
   State<TabPage> createState() => _TabPageState();
@@ -56,7 +61,9 @@ class _TabPageState extends State<TabPage> {
         MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
         CuraSize.textScaleScrollAlong;
     final double reserve =
-        FloatingNav.occupiedHeight(context) + CuraSpace.pageMargin;
+        FloatingNav.occupiedHeight(context) +
+        CuraSpace.pageMargin +
+        widget.extraReserve;
     final Widget header = Padding(
       padding: const EdgeInsets.fromLTRB(
         CuraSize.cardMargin,

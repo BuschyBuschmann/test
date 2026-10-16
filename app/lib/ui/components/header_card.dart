@@ -30,6 +30,7 @@ class HeaderCard extends StatelessWidget {
     this.progress,
     this.trailing,
     this.leading,
+    this.top,
   });
 
   final String title;
@@ -46,6 +47,10 @@ class HeaderCard extends StatelessWidget {
 
   /// Avatar-Kugel links neben Titel und Untertitel (Profil, Brief 7.6).
   final Widget? leading;
+
+  /// Streifen über dem Titel (Onboarding: Fortschritt „Schritt N von 5“,
+  /// Ergänzung 1, 6a).
+  final Widget? top;
 
   /// Füllung der Kopf-Karte: `header-tint` mit Deckkraft, bei Hohem Kontrast
   /// zu 100 %.
@@ -106,6 +111,10 @@ class HeaderCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              if (top != null) ...<Widget>[
+                top!,
+                const SizedBox(height: CuraSpace.s3),
+              ],
               if (leading != null)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,

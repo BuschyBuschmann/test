@@ -249,15 +249,15 @@ void main() {
 
   group('StepProgress (Brief 5.8)', () {
     testWidgets(
-      'Text „Schritt X von 4“, vier Segmente 4 dp hoch, 4 dp Abstand, '
+      'Text „Schritt X von 5“, fünf Segmente 4 dp hoch, 4 dp Abstand, '
       'erledigt und aktuell accent, offen Weiß 18 %',
       (WidgetTester tester) async {
         await pumpApp(tester, _pad(const StepProgress(step: 3)));
         final Finder f = find.byType(StepProgress);
         final CuraColors c = colorsAt(tester, f);
-        expect(find.text('Schritt 3 von 4'), findsOneWidget);
+        expect(find.text('Schritt 3 von 5'), findsOneWidget);
         final TextStyle s = tester
-            .widget<Text>(find.text('Schritt 3 von 4'))
+            .widget<Text>(find.text('Schritt 3 von 5'))
             .style!;
         expect(s.fontSize, 14);
         expect(s.color, c.text2);
@@ -265,11 +265,12 @@ void main() {
           tester,
           f,
         ).where((BoxDecoration d) => d.color != null).toList();
-        expect(segs.length, 4);
+        expect(segs.length, 5);
         expect(segs.map((BoxDecoration d) => d.color).toList(), <Color?>[
           c.accent,
           c.accent,
           c.accent,
+          c.progressOff,
           c.progressOff,
         ]);
         expect(c.progressOff.a, closeTo(0.14, 0.005));
@@ -286,16 +287,16 @@ void main() {
     testWidgets('Screenreader liest nur den Text', (WidgetTester tester) async {
       final SemanticsHandle h = tester.ensureSemantics();
       await pumpApp(tester, _pad(const StepProgress(step: 2)));
-      expect(find.bySemanticsLabel('Schritt 2 von 4'), findsOneWidget);
+      expect(find.bySemanticsLabel('Schritt 2 von 5'), findsOneWidget);
       final Iterable<SemanticsNode> labeled = <SemanticsNode>[
-        tester.getSemantics(find.text('Schritt 2 von 4')),
+        tester.getSemantics(find.text('Schritt 2 von 5')),
       ];
-      expect(labeled.single.label, 'Schritt 2 von 4');
+      expect(labeled.single.label, 'Schritt 2 von 5');
       h.dispose();
     });
 
-    testWidgets('Schritt 1 bis 4 passen sich an', (WidgetTester tester) async {
-      for (int i = 1; i <= 4; i++) {
+    testWidgets('Schritt 1 bis 5 passen sich an', (WidgetTester tester) async {
+      for (int i = 1; i <= 5; i++) {
         await pumpApp(tester, _pad(StepProgress(step: i)));
         final CuraColors c = colorsAt(tester, find.byType(StepProgress));
         final int filled = decorationsUnder(
@@ -303,7 +304,7 @@ void main() {
           find.byType(StepProgress),
         ).where((BoxDecoration d) => d.color == c.accent).length;
         expect(filled, i);
-        expect(find.text('Schritt $i von 4'), findsOneWidget);
+        expect(find.text('Schritt $i von 5'), findsOneWidget);
       }
     });
   });

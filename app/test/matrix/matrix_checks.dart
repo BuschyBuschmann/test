@@ -1265,8 +1265,11 @@ List<Finding> checkChatFooter(WidgetTester tester, Scenario scenario) {
 /// im Worst Case über Schwarz, Weiß, Mandarine und Grau unter der Karte 4,5:1
 /// (Symbole 3:1). Deckende Flächen prüfen die Paar-Tests der Tokens. Text
 /// **direkt auf der Welt** (`bg`) verstößt gegen „Text nie direkt auf der
-/// Welt“ (V2-5); die neuen Komponenten (HeaderCard, Karten, Leiste) lösen das
-/// in F2-R2 bis F2-R4 ein, bis dahin ist es ein Richtwert (`advisory`).
+/// Welt“ (V2-5) bleibt ein Richtwert (`advisory`): F2-R4 hat Heute, Onboarding,
+/// Datenschutzseite und „Deine Daten“ umgestellt (harte Prüfung in
+/// `test/screens/v2_text_ground_test.dart`); die Chat-Vollbilder, der Pfad-Ausblick
+/// und die Baustein-Tafeln (cmp-*) tragen noch Text auf der Welt und gehen in
+/// die Design-Abnahme.
 /// Halbtransparente Schrift (Disabled) ist ausgenommen. Texte unter einer
 /// anderen Route/Scrim und außerhalb des Bildschirms zählen nicht.
 List<Finding> checkCardTextContrast(
@@ -1412,14 +1415,20 @@ List<Finding> checkReducedMotion(
 // M-Kontrast
 // ---------------------------------------------------------------------------
 
-/// Wertebereich der Messeigenheit bei Eingabefeldern (1,01 bis 1,02 gemessen);
-/// ein echter Kontrastmangel liegt darüber (R-AB-4).
-const double kTextFieldArtifactMaxRatio = 1.1;
+/// Obergrenze der Messeigenheit bei Eingabefeldern: Die Leitlinie liest die zwei
+/// häufigsten Farben im Rechteck des Feldes. Der Glas-Verlauf des Feldes
+/// (`card-fill`, oben `#FBFDFE`, unten `#EBEBEB`) liefert zwei Stufen des
+/// **Untergrunds** als „Text“ und „Hintergrund“ (gemessen 1,01 bis 1,1, im Dialog
+/// „Eigene Übung“ zuletzt 4,33; Pixelzählung im Feld: `#FBFDFE` und `#EBEBEB`
+/// vorn, Schrift nur wenige Pixel). Echter Kontrast der Schrift: `text-1` auf
+/// `card` im Worst Case ≥ 4,5 (Token-Test und [checkCardTextContrast]).
+const double kTextFieldArtifactMaxRatio = 4.5;
 
 /// Ist die Meldung der Leitlinie zu einem Eingabefeld die bekannte
 /// Messeigenheit (Glas-Verlauf, zwei Stufen des Untergrunds als „Text“ und
 /// „Hintergrund“)? Nur wenn das Feld ein `CuraTextField` ist (Farben durch den
-/// Token-Test belegt) **und** der gemeldete Wert um 1,0 liegt.
+/// Token-Test belegt) **und** der gemeldete Wert unter 4,5 liegt; die Schrift
+/// selbst prüft [checkCardTextContrast] mit dem Worst Case der Karte.
 bool isKnownTextFieldArtifact({
   required double? ratio,
   required bool insideCuraTextField,

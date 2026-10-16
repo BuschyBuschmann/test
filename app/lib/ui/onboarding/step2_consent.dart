@@ -1,4 +1,4 @@
-// Schritt 2: Datenschutz (Brief 6.1, UI-13). Glas-Karte mit drei
+// Schritt 3: Datenschutz (Brief 6.1, UI-13). Glas-Karte mit drei
 // Kurzabschnitten, Link „Datenschutzerklärung lesen“. Der Text ist
 // Platzhalter und wird vor dem echten Einsatz juristisch ersetzt (Brief 6.0).
 // Nicht überspringbar: „Verstanden, weiter“ speichert Zeitstempel und Version.
@@ -56,36 +56,36 @@ class Step2Consent extends StatelessWidget {
                 S.consentPlaceholderNote,
                 style: type.caption.copyWith(color: colors.text2),
               ),
+              const SizedBox(height: CuraSpace.s2),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: CuraPressable(
+                  onPressed: onOpenPrivacy,
+                  semanticLabel: S.privacyLink,
+                  ringRadius: CuraRadius.chipInner,
+                  builder: (BuildContext context, bool pressed) {
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minHeight: CuraSize.touchTarget,
+                      ),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Text(
+                          S.privacyLink,
+                          style: type.bodyStrong.copyWith(
+                            color: pressed ? colors.text1 : colors.accentText,
+                            decoration: TextDecoration.underline,
+                            decorationColor: pressed
+                                ? colors.text1
+                                : colors.accentText,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
-          ),
-        ),
-        const SizedBox(height: CuraSpace.s2),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: CuraPressable(
-            onPressed: onOpenPrivacy,
-            semanticLabel: S.privacyLink,
-            ringRadius: CuraRadius.chipInner,
-            builder: (BuildContext context, bool pressed) {
-              return ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minHeight: CuraSize.touchTarget,
-                ),
-                child: Center(
-                  widthFactor: 1,
-                  child: Text(
-                    S.privacyLink,
-                    style: type.bodyStrong.copyWith(
-                      color: pressed ? colors.text1 : colors.accentText,
-                      decoration: TextDecoration.underline,
-                      decorationColor: pressed
-                          ? colors.text1
-                          : colors.accentText,
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ),
       ],

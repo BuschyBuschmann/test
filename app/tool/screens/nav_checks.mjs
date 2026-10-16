@@ -13,7 +13,14 @@
 // Profil ändern und Speichern (Name auf Heute, bleibt nach Reload), Verwerfen
 // (Schließen, Browser-Zurück, Weiter bearbeiten, Verwerfen), Löschen →
 // Onboarding Schritt 1 (Zurück erreicht den Pfad nicht, Reload bleibt bei
-// Schritt 1, localStorage ist leer).
+// Schritt 1, localStorage ist leer). Das Onboarding hat fünf Schritte; Schritt 1
+// ist die Wahl „Wie soll Manny aussehen?“ (F2-R4, Ergänzung 1, 6a).
+//
+// Fake-Uhr und Klicks sind gegen die langsame Software-Darstellung der
+// Prüfumgebung abgesichert (`advanceClock`, `click`): Die erste Darstellung
+// eines Sheets oder Dialogs braucht in SwiftShader Sekunden; in dieser Zeit
+// verwirft Playwright `clock.runFor` still (siehe dort) und das Ziel liegt
+// noch außerhalb des Fensters.
 //
 //   export PATH=/opt/flutter/bin:$PATH
 //   flutter build web --release --no-web-resources-cdn -t lib/main_preview.dart
@@ -86,11 +93,92 @@ const button = (page, name) =>
           : name,
     })
     .first();
+/**
+ * Wartet, bis der Knoten innerhalb des Fensters steht und sich nicht mehr
+ * bewegt, und klickt dann. Grund: Sheets und Dialoge schieben sich ein
+ * (`dur-base`); die erste Darstellung braucht in der Software-Darstellung
+ * (SwiftShader, Shader-Übersetzung) Sekunden. Ein Klick, der in dieser Zeit
+ * erfolgt, trifft einen Knoten außerhalb des Fensters („Element is outside of
+ * the viewport“).
+ */
+async function settleBox(page, node, timeout = 8000) {
+  const vp = page.viewportSize();
+  let last = null;
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    const box = await node.boundingBox();
+    if (box) {
+      const inside = box.y >= 0 && box.y + box.height <= vp.height && box.x >= 0 && box.x + box.width <= vp.width;
+      const still = last && Math.abs(box.x - last.x) < 0.5 && Math.abs(box.y - last.y) < 0.5;
+      if (inside && still) return box;
+      last = box;
+    }
+    await page.waitForTimeout(150);
+  }
+  return null;
+}
+/**
+ * Holt einen Knoten in das Fenster, der in einem Flutter-Scrollbereich unterhalb
+ * (oder oberhalb) des sichtbaren Bereichs liegt. Playwrights Scroll-Hilfe
+ * („scrolling into view if needed“) kennt Flutters Bildlauf nicht: die
+ * `flt-semantics`-Knoten liegen im DOM ohne scrollbaren Vorfahren, der Klick
+ * endet mit „Element is outside of the viewport“. Das Skript rollt deshalb mit
+ * dem Mausrad über der Fenstermitte, bis der Knoten mit Abstand zum unteren
+ * Rand (Leiste, Fußleiste) im Fenster steht.
+ */
+async function scrollIntoWindow(page, node) {
+  const vp = page.viewportSize();
+  const margin = 200; // Leiste, Manny-Knopf und Primärbutton-Reihe unten
+  let moved = false;
+  let lastY = null;
+  for (let i = 0; i < 30; i++) {
+    const box = await node.boundingBox();
+    if (!box) return;
+    const below = box.y + box.height > vp.height || (moved && box.y + box.height > vp.height - margin);
+    const above = box.y < 0;
+    if (!below && !above) return;
+    if (lastY !== null && Math.abs(box.y - lastY) < 1) return; // Ende des Scrollwegs
+    lastY = box.y;
+    await page.mouse.move(vp.width / 2, vp.height / 2);
+    await page.mouse.wheel(0, below ? 200 : -200);
+    moved = true;
+    await page.waitForTimeout(250);
+  }
+}
 async function click(page, name) {
   const b = button(page, name);
   await b.waitFor({ state: 'attached', timeout: 8000 });
+  await scrollIntoWindow(page, b);
+  await settleBox(page, b);
   await b.click({ force: true });
   await page.waitForTimeout(450);
+}
+/** Wahl-Karte (Radio) über ihren Screenreader-Text. */
+async function clickRadio(page, label) {
+  const node = page.getByLabel(label, { exact: false }).first();
+  await node.waitFor({ state: 'attached', timeout: 8000 });
+  await settleBox(page, node);
+  await node.click({ force: true });
+  await page.waitForTimeout(450);
+}
+/**
+ * Stellt die Fake-Uhr um [ms] weiter und prüft den Sprung. `page.clock.runFor`
+ * wertet sein Skript über `safeNonStallingEvaluateInAllFrames` aus: Ist die
+ * Seite gerade beschäftigt (erste Darstellung eines Sheets in SwiftShader,
+ * mehrere Sekunden), verwirft Playwright den Aufruf **still**, ohne Fehler.
+ * Die Uhr läuft dann nur in Echtzeit weiter und der Tageswechsel bleibt aus
+ * (gemessen: 30 s Sprung = 2,6 s Vorschub; ein zweiter Aufruf wirkte voll). Das
+ * Skript wiederholt deshalb den Rest bis zum Ziel.
+ */
+async function advanceClock(page, ms) {
+  const target = (await page.evaluate(() => Date.now())) + ms;
+  for (let i = 0; i < 20; i++) {
+    const rest = target - (await page.evaluate(() => Date.now()));
+    if (rest <= 0) return true;
+    await page.clock.runFor(rest);
+    await page.waitForTimeout(300);
+  }
+  return (await page.evaluate(() => Date.now())) >= target;
 }
 async function shot(page, name) {
   await page.screenshot({ path: path.join(outDir, `${name}.png`) });
@@ -100,7 +188,7 @@ const historyLength = (page) => page.evaluate(() => history.length);
 
 const browser = await launch();
 
-// 1. Onboarding live: Weiter, Weiter, Zurück per Browser, Reload -------------
+// 1. Onboarding live: Look, Weiter, Zurück, Reload ---------------------------------
 {
   const ctx = await browser.newContext(ctxOptions);
   const s = await openScenario(
@@ -110,7 +198,14 @@ const browser = await launch();
     { clock: 'none' },
   );
   const page = s.page;
-  check('Start (live): Onboarding Schritt 1', await seen(page, 'Schritt 1 von 4'));
+  check('Start (live): Onboarding Schritt 1 von 5 „Wie soll Manny aussehen?“', (await seen(page, 'Schritt 1 von 5')) && (await seen(page, 'Wie soll Manny aussehen?')));
+  check('Look-Schritt: „Mit Brille“ vorgewählt, „Ohne Brille“ nicht (V2-66, V2-67)', (await seen(page, 'Manny mit Brille, ausgewählt, 1 von 2', 3000)) && (await seen(page, 'Manny ohne Brille, nicht ausgewählt, 2 von 2', 3000)));
+  check('Look-Schritt: Weiter ist aktiv, „Zurück“ steht daneben', (await button(page, 'Weiter').isEnabled()) && (await button(page, 'Zurück').count()) > 0);
+  await shot(page, 'ob-schritt1-look');
+  await clickRadio(page, 'Manny ohne Brille');
+  check('Wahl „Ohne Brille“ gilt sofort (ausgewählt)', await seen(page, 'Manny ohne Brille, ausgewählt, 2 von 2', 3000));
+  await click(page, 'Weiter');
+  check('Weiter → Schritt 2 von 5 (Name)', await seen(page, 'Schritt 2 von 5'));
   const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
   const hasInput = (await field.count()) > 0;
   check('Namensfeld im Semantik-Baum vorhanden', hasInput);
@@ -119,35 +214,41 @@ const browser = await launch();
     await page.keyboard.type('Jakob');
     await page.waitForTimeout(300);
   }
+  await shot(page, 'ob-schritt2-name');
   await click(page, 'Weiter');
-  check('Weiter → Schritt 2 von 4', await seen(page, 'Schritt 2 von 4'));
+  check('Weiter → Schritt 3 von 5 (Datenschutz)', await seen(page, 'Schritt 3 von 5'));
   await click(page, 'Verstanden, weiter');
-  check('Verstanden, weiter → Schritt 3 von 4', await seen(page, 'Schritt 3 von 4'));
-  await shot(page, 'ob-schritt3');
+  check('Verstanden, weiter → Schritt 4 von 5', await seen(page, 'Schritt 4 von 5'));
+  await shot(page, 'ob-schritt4');
 
   // Reload (live = localStorage): Fortsetzen am gespeicherten Schritt (UI-16).
   await page.reload();
-  check('Reload: Onboarding setzt bei Schritt 3 fort (UI-16)', await seen(page, 'Schritt 3 von 4', 15000));
+  check('Reload: Onboarding setzt bei Schritt 4 fort (UI-16)', await seen(page, 'Schritt 4 von 5', 15000));
   check('Reload: Manny-Text mit dem Namen', await seen(page, 'Jakob'));
-  await shot(page, 'ob-reload-schritt3');
+  await shot(page, 'ob-reload-schritt4');
 
-  // Browser-Zurück wie Android-Zurück: je Schritt einen Schritt (Plan 4.3, n6).
+  // „Zurück“ (Schaltfläche) und Browser-Zurück wie Android-Zurück: je Schritt
+  // einen Schritt (Plan 4.3, n6).
+  await click(page, 'Zurück');
+  check('Schaltfläche „Zurück“: Schritt 4 → Schritt 3', await seen(page, 'Schritt 3 von 5'));
   const before = await historyLength(page);
   await page.goBack();
   await page.waitForTimeout(700);
   check(
     'Browser-Zurück auf Schritt 3 → Schritt 2 (wie Android-Zurück)',
-    await seen(page, 'Schritt 2 von 4'),
+    await seen(page, 'Schritt 2 von 5'),
     `history.length ${before}`,
   );
-  await page.goBack();
-  await page.waitForTimeout(700);
-  check('Browser-Zurück auf Schritt 2 → Schritt 1', await seen(page, 'Schritt 1 von 4'));
   // Die Semantik-Eingabe spiegelt den Text erst, wenn das Feld Fokus hat.
   await page.locator('input[data-semantics-role="text-field"]:not([disabled])').first().click({ force: true });
   await page.waitForTimeout(400);
   const typed = await page.evaluate(() => document.activeElement?.value ?? null);
   check('Name blieb erhalten (Zurück behält Eingaben)', typed === 'Jakob', JSON.stringify(typed));
+  await page.goBack();
+  await page.waitForTimeout(700);
+  check('Browser-Zurück auf Schritt 2 → Schritt 1 mit erhaltener Wahl „Ohne Brille“ (V2-67)', (await seen(page, 'Schritt 1 von 5')) && (await seen(page, 'Manny ohne Brille, ausgewählt, 2 von 2', 3000)));
+  await page.reload();
+  check('Reload mitten im Onboarding: die Wahl „Ohne Brille“ bleibt (V2-67)', await seen(page, 'Manny ohne Brille, ausgewählt, 2 von 2', 15000));
 
   // Auf Schritt 1: Android-Zurück schließt die App (`SystemNavigator.pop`). Im Web
   // ist das `history.back()`: die Seite wird verlassen (Plan 4.3 nahm „bleibt
@@ -155,7 +256,7 @@ const browser = await launch();
   const urlBefore = page.url();
   await page.goBack();
   await page.waitForTimeout(800);
-  const stayed = page.url() === urlBefore && (await seen(page, 'Schritt 1 von 4', 1500));
+  const stayed = page.url() === urlBefore && (await seen(page, 'Schritt 1 von 5', 1500));
   console.log(
     `info    Browser-Zurück auf Schritt 1: ${stayed ? 'Seite bleibt stehen' : 'Seite wird verlassen'} (URL ${urlBefore} → ${page.url()})`,
   );
@@ -193,7 +294,7 @@ const browser = await launch();
   const s = await openScenario(ctx, base, { live: 1, a11y: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
   const page = s.page;
   check('Zeitsprung: Home geladen', await seen(page, 'Woche 5'));
-  await page.clock.runFor(30000); // 30 s: über Mitternacht
+  await advanceClock(page, 30000); // 30 s: über Mitternacht
   await page.waitForTimeout(300);
   const date = await page.evaluate(() => new Date().toString());
   check('page.clock: Datum ist der 8. Oktober', date.includes('Oct 08'), date.slice(0, 24));
@@ -205,7 +306,7 @@ const browser = await launch();
   await shot(page, 'tageswechsel-snackbar');
   // Mit aktivem Semantik-Baum (a11y=1) gilt `accessibleNavigation`: die Snackbar
   // schließt nicht von selbst (Ergänzung 1, 3.3). Das Verhalten steht hier fest.
-  await page.clock.runFor(8000);
+  await advanceClock(page, 8000);
   check(
     'a11y aktiv: Snackbar bleibt stehen (kein Timer bei accessibleNavigation)',
     await seen(page, 'Neuer Tag, neues Programm.', 1500),
@@ -219,11 +320,11 @@ const browser = await launch();
   await ctx.addInitScript((doc) => localStorage.setItem('curaone.state.v1', JSON.stringify(doc)), FIXTURE);
   const s = await openScenario(ctx, base, { live: 1 }, { clock: 'install', now: '2026-10-07T23:59:40+02:00' });
   const page = s.page;
-  await page.clock.runFor(30000);
+  await advanceClock(page, 30000);
   await page.mouse.click(284, 790); // Nav-Eintrag „Heute“
   await page.waitForTimeout(600);
   const withSnackbar = await page.screenshot();
-  await page.clock.runFor(6000);
+  await advanceClock(page, 6000);
   await page.waitForTimeout(500);
   const afterTimeout = await page.screenshot();
   await page.waitForTimeout(1200);
@@ -256,7 +357,7 @@ const browser = await launch();
     };
     window.__setVisibility('hidden');
   });
-  await page.clock.runFor(30000);
+  await advanceClock(page, 30000);
   await page.evaluate(() => window.__setVisibility('visible'));
   const resumed = await seen(page, 'Neuer Tag, neues Programm.', 10000);
   console.log(
@@ -296,7 +397,7 @@ const browser = await launch();
   await shot(page, 'chats');
   await click(page, 'Beispielkontakt Praxis Müller');
   check('Zeile öffnet den Beispiel-Chat („Physio · Beispiel“), ohne Leiste', (await seen(page, 'Physio · Beispiel')) && (await button(page, 'Chats').count()) === 0);
-  check('Beispiel-Chat: Hinweis „Nur zum Ansehen.“, kein Disclaimer', (await seen(page, 'Beispiel-Chat. Nur zum Ansehen.', 2000)) && (await page.getByText('Manny ersetzt keine medizinische Beratung.').count()) === 0);
+  check('Beispiel-Chat: Hinweis „Nur zum Ansehen.“, kein Disclaimer', (await seen(page, 'Beispiel-Chat. Nur zum Ansehen.', 8000)) && (await page.getByText('Manny ersetzt keine medizinische Beratung.').count()) === 0);
   await shot(page, 'beispiel-chat');
   await page.goBack();
   await page.waitForTimeout(700);
@@ -369,7 +470,7 @@ const browser = await launch();
 
   // Bei aktivem Screenreader schließt der Hinweis nicht von selbst.
   await click(page, 'Woche 5, Wochenziel, gesperrt');
-  await page.clock.runFor(6500);
+  await advanceClock(page, 6500);
   check('a11y aktiv: Hinweis bleibt über 5 s stehen', await seen(page, 'Kommt noch diese Woche', 1500));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
@@ -433,7 +534,7 @@ const browser = await launch();
     await p2.waitForTimeout(700);
     const withHint = await p2.screenshot();
     fs.writeFileSync(path.join(outDir, 'pfad-hinweis-ohne-a11y.png'), withHint);
-    await p2.clock.runFor(6000);
+    await advanceClock(p2, 6000);
     await p2.waitForTimeout(500);
     const afterTimeout = await p2.screenshot();
     await p2.waitForTimeout(1200);
@@ -530,7 +631,7 @@ async function openHeute(now, params = { live: 1, a11y: 1 }) {
   const { ctx, page } = await openHeute('2026-10-07T23:59:40+02:00');
   await click(page, 'Training eintragen');
   await seen(page, 'Wie willst du trainieren?');
-  await page.clock.runFor(30000); // 30 s: über Mitternacht
+  await advanceClock(page, 30000); // 30 s: über Mitternacht
   await page.waitForTimeout(300);
   await click(page, 'Eintragen');
   check('Über Mitternacht: Sheet zu, Snackbar „Neuer Tag, neues Programm.“, neues Datum, frisches Programm', (await seen(page, 'Neuer Tag, neues Programm.', 10000)) && (await seen(page, 'Donnerstag, 8. Oktober')) && (await seen(page, 'Training eintragen')) && (await gone(page, 'Wie willst du trainieren?')));
@@ -635,11 +736,11 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
   await click(page, 'Alle Daten löschen und neu starten');
   await seen(page, 'Alles löschen?');
   await click(page, 'Ja, alles löschen');
-  check('Ja, alles löschen: Onboarding Schritt 1 mit Hinweis „Alle Daten sind gelöscht.“', (await seen(page, 'Schritt 1 von 4')) && (await seen(page, 'Alle Daten sind gelöscht.')));
+  check('Ja, alles löschen: Onboarding Schritt 1 mit Hinweis „Alle Daten sind gelöscht.“', (await seen(page, 'Schritt 1 von 5')) && (await seen(page, 'Alle Daten sind gelöscht.')));
   await shot(page, 'daten-geloescht');
   check('Nach dem Löschen: kein Schlüssel des Zustands im localStorage (UI-51)', !(await storageKeys(page)).some((k) => k.includes('curaone.state.v1')));
   await page.reload();
-  check('Reload nach dem Löschen: weiter Schritt 1', await seen(page, 'Schritt 1 von 4'));
+  check('Reload nach dem Löschen: weiter Schritt 1', await seen(page, 'Schritt 1 von 5'));
   // Browser-Zurück auf Schritt 1 verlässt im Web die Seite (wie `SystemNavigator.pop`,
   // siehe Abschnitt 1); der Pfad und das Sheet sind nicht erreichbar.
   const urlBefore = page.url();
@@ -648,7 +749,7 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
   const stayed = page.url() === urlBefore;
   check(
     'Browser-Zurück erreicht Pfad und Sheet nicht',
-    !stayed || ((await seen(page, 'Schritt 1 von 4', 1500)) && (await button(page, 'Deine Daten').count()) === 0),
+    !stayed || ((await seen(page, 'Schritt 1 von 5', 1500)) && (await button(page, 'Deine Daten').count()) === 0),
     stayed ? 'bleibt bei Schritt 1' : 'verlässt die Seite wie die App-Schließen-Taste',
   );
   await ctx.close();

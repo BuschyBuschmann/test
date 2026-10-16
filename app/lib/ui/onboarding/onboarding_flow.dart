@@ -1,25 +1,31 @@
-// `OnboardingFlow` (Plan 4.1, 4.2, 4.3, 4.5; Brief 6.1): die vier Schritte in
-// **einer** Route. Gemeinsames Layout: oben Zurück-Pfeil (ab Schritt 2) und
-// `StepProgress`, darunter der scrollende Inhalt mit Manny und Sprechblase,
-// unten fest die Mikrofon-Zeile („Noch etwas hinzufügen?“) und der
-// Primärbutton. Seitenwechsel als Schiebung 24 dp plus Einblenden in
-// `dur-base` (bei Zurück in Gegenrichtung; bei reduzierter Bewegung sofort).
+// `OnboardingFlow` (Plan 4.1 bis 4.5; Design-Brief v2, Ergänzung 1, 6a): die
+// fünf Schritte in **einer** Route: 1 Look („Wie soll Manny aussehen?“), 2 Name,
+// 3 Datenschutz, 4 Verletzungstyp, 5 Datum. Gemeinsames Layout: oben die
+// Kopf-Karte (`HeaderCard`) mit dem Fortschritt „Schritt N von 5“ und dem Titel
+// (Text nur auf der Kopf-Karte, V2-5), darunter der scrollende Inhalt (ab Schritt
+// 2 Manny mit Sprechblase und, nach dem Inhalt, die Karte „Noch etwas
+// hinzufügen?“ mit dem Mikrofon), unten fest „Zurück“ (Glas, 112 dp) und
+// „Weiter“ (Primär, 56 dp) mit 12 dp Abstand. Seitenwechsel als Schiebung 24 dp
+// plus Einblenden in `dur-base` (bei Zurück in Gegenrichtung; bei reduzierter
+// Bewegung sofort).
 //
-// - Jede Eingabe wird sofort über den `AppController` gespeichert; ein Neustart
-//   setzt am gespeicherten Schritt fort (UI-16).
-// - Zurück (Android, Escape ausgenommen, Browser-Zurück): immer einen Schritt
-//   zurück, Eingaben bleiben; Mannys Blase zählt dort nicht als Overlay (N-13).
-//   Auf Schritt 1 schließt die App (`SystemNavigator.pop`). Escape schließt die
-//   Blase (Brief 8).
+// - Jede Eingabe wird sofort über den `AppController` gespeichert (auch der
+//   Look); ein Neustart setzt am gespeicherten Schritt fort (UI-16).
+// - Zurück (Android, Escape ausgenommen, Browser-Zurück, Schaltfläche): immer
+//   einen Schritt zurück, Eingaben bleiben; Mannys Blase zählt dort nicht als
+//   Overlay (N-13). Auf Schritt 1 schließt die App (`SystemNavigator.pop`).
+//   Escape schließt die Blase (Brief 8). Bei eingeblendeter Tastatur und wenig
+//   Platz steht nur „Weiter“ in der Leiste (die Taste Zurück des Systems bleibt).
 // - Vertrag (Review U1): `completeDeletion()` wird sofort nach dem ersten Frame
 //   gerufen, vor jeder Eingabe.
 // - Hinweise nach Löschen bzw. unlesbaren Daten erscheinen als Snackbar über der
-//   Mikrofon-Zeile (4 s, ohne Aktion).
-// - Der Manny-Button und die Button-Gruppe gibt es hier nicht (Ergänzung 2, K6).
+//   Leiste (4 s, ohne Aktion).
+// - Der Manny-Knopf und die Button-Gruppe gibt es hier nicht (Ergänzung 2, K6).
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/strings_de.dart';
+import '../../logic/app_state.dart' show kLastOnboardingStep;
 import '../../logic/manny_occasions.dart' show MannyPose;
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
@@ -29,9 +35,11 @@ import '../../theme/cura_motion.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
 import '../components/cura_snackbar.dart';
-import '../components/header_icon_button.dart';
+import '../components/glass_card.dart';
+import '../components/glass_pill.dart';
+import '../components/header_card.dart';
 import '../components/mic_button.dart';
-import '../components/pill_button.dart';
+import '../components/primary_pill.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
 import '../components/size_reporter.dart';
@@ -42,6 +50,7 @@ import 'step1_name.dart';
 import 'step2_consent.dart';
 import 'step3_injury.dart';
 import 'step4_date.dart';
+import 'step_look.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({
@@ -50,8 +59,7 @@ class OnboardingFlow extends StatefulWidget {
     this.notice = StartNotice.none,
   });
 
-  /// Zustandsschritt 0 … 4 (Schritt 0 = Look-Wahl, noch ohne Seite, siehe
-  /// [_lookSteps]); ohne Angabe der gespeicherte.
+  /// Zustandsschritt 0 … 4 (0 = Look-Wahl); ohne Angabe der gespeicherte.
   final int? initialStep;
 
   /// Hinweis nach dem Neustart (Snackbar).
@@ -62,14 +70,9 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
-  /// Übergang bis F2-R4: Der Zustand zählt seit Schema 2 fünf Schritte
-  /// (Schritt 0 = „Wie soll Manny aussehen?“, Ergänzung 1, 6a), die Seiten
-  /// sind noch die vier bisherigen. Seite = Zustandsschritt − 1; Schritt 0
-  /// zeigt die Seite „Name“ (der Look bleibt „Mit Brille“).
-  static const int _lookSteps = 1;
-
-  /// Letzte **Seite** (Index).
-  static const int _lastStep = 3;
+  /// Letzter Schritt (Index): 0 Look, 1 Name, 2 Datenschutz, 3 Verletzungstyp,
+  /// 4 Datum.
+  static const int _lastStep = kLastOnboardingStep;
 
   final SnackbarController _snackbar = SnackbarController();
 
@@ -91,8 +94,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final AppController? c = context
         .getInheritedWidgetOfExactType<AppScope>()
         ?.notifier;
-    _step = ((widget.initialStep ?? c?.state.onboarding.step ?? 0) - _lookSteps)
-        .clamp(0, _lastStep);
+    _step = (widget.initialStep ?? c?.state.onboarding.step ?? 0).clamp(
+      0,
+      _lastStep,
+    );
     _snackbar.addListener(_onSnackbar);
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterFirstFrame());
   }
@@ -161,19 +166,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   AppController get _controller => AppScope.of(context);
 
+  /// „Weiter“ ist im Look-Schritt und bei der Einwilligung immer aktiv (es gibt
+  /// immer eine Wahl), sonst ab gültiger Eingabe.
   bool _canContinue(AppController c) {
     final o = c.state.onboarding;
     return switch (_step) {
-      0 => o.firstName.isNotEmpty,
-      1 => true,
-      2 => o.injuryType != null,
-      _ => o.injuryDate != null,
+      1 => o.firstName.isNotEmpty,
+      3 => o.injuryType != null,
+      4 => o.injuryDate != null,
+      _ => true,
     };
   }
 
   void _goTo(int step) {
     _pageFocus.requestFocus();
-    _controller.setStep(step + _lookSteps);
+    _controller.setStep(step);
     setState(() {
       _direction = step > _step ? 1 : -1;
       _step = step;
@@ -186,13 +193,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final AppController c = _controller;
     if (!_canContinue(c)) return;
     switch (_step) {
-      case 0:
-        _goTo(1);
-      case 1:
-        c.acceptConsent();
-        _goTo(2);
+      case 0 || 1:
+        _goTo(_step + 1);
       case 2:
+        c.acceptConsent();
         _goTo(3);
+      case 3:
+        _goTo(4);
       default:
         if (c.completeOnboarding()) {
           Navigator.of(context).pushAndRemoveUntil<void>(
@@ -227,36 +234,47 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   String _bubbleText(int step, AppController c) {
     final String name = c.state.onboarding.firstName;
     return switch (step) {
-      0 => S.onboardingStep1,
-      1 => S.onboardingStep2(name),
-      2 => S.onboardingStep3(name),
+      1 => S.onboardingStep1,
+      2 => S.onboardingStep2(name),
+      3 => S.onboardingStep3(name),
       _ => S.onboardingStep4,
     };
   }
+
+  String _title(int step) => switch (step) {
+    0 => S.onboardingTitleLook,
+    1 => S.onboardingTitleName,
+    2 => S.onboardingTitleConsent,
+    3 => S.onboardingTitleInjury,
+    _ => S.onboardingTitleDate,
+  };
 
   Widget _stepPage(
     int step,
     bool current,
     double reserve, {
     required bool headerScrolls,
-    required bool compactFooter,
-    required bool micInScroll,
+    required bool backInScroll,
   }) {
     final AppController c = _controller;
-    final Widget prompt = OnboardingManny(
-      height: step == 0
-          ? CuraSize.mannyOnboardingStep1Height
-          : CuraSize.mannyOnboardingMaxHeight,
-      text: current && _micHint ? S.micHint : _bubbleText(step, c),
-      bubbleVisible: !current || _bubbleOpen,
-      onCloseBubble: _closeBubble,
-      pose: step == 0 ? MannyPose.gruessend : MannyPose.neutral,
-    );
+    // Der Look-Schritt hat weder Figur noch Blase: die Karten sind Manny.
+    final Widget? prompt = step == 0
+        ? null
+        : OnboardingManny(
+            height: step == 1
+                ? CuraSize.mannyOnboardingStep1Height
+                : CuraSize.mannyOnboardingMaxHeight,
+            text: current && _micHint ? S.micHint : _bubbleText(step, c),
+            bubbleVisible: !current || _bubbleOpen,
+            onCloseBubble: _closeBubble,
+            pose: step == 1 ? MannyPose.gruessend : MannyPose.neutral,
+          );
     final Widget content = switch (step) {
-      0 => Step1Name(prompt: prompt, onSubmit: _next),
-      1 => Step2Consent(prompt: prompt, onOpenPrivacy: _openPrivacy),
-      2 => Step3Injury(prompt: prompt),
-      _ => Step4Date(prompt: prompt),
+      0 => const StepLook(),
+      1 => Step1Name(prompt: prompt!, onSubmit: _next),
+      2 => Step2Consent(prompt: prompt!, onOpenPrivacy: _openPrivacy),
+      3 => Step3Injury(prompt: prompt!),
+      _ => Step4Date(prompt: prompt!),
     };
     // Die Scroll-Reserve unten wächst mit der gemessenen Höhe der Snackbar
     // (`reserve`); die Tastatur verkleinert den Scrollbereich selbst (das
@@ -276,43 +294,138 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Padding(
             key: const ValueKey<String>('onboarding-step-content'),
             padding: const EdgeInsets.fromLTRB(
-              CuraSpace.pageMargin,
+              CuraSize.cardMargin,
               CuraSpace.s2,
-              CuraSpace.pageMargin,
+              CuraSize.cardMargin,
               0,
             ),
             child: content,
           ),
-          // Kompakte Weiter-Leiste: der Text „Noch etwas hinzufügen?“ steht am
-          // Ende der Scrollfläche, unmittelbar vor der Mikrofon-Taste (auch
-          // in der Lesereihenfolge). Immer drei Kinder, der Inhalt trägt einen Schlüssel:
-          // wechseln Kopf und Hinweis gleichzeitig, paart Flutter ungeschlüsselte
-          // Kinder nicht mehr, und der Inhalt verlöre Zustand und Fokus
-          // (Textfeld, Tastatur).
-          compactFooter && current
-              ? _moreToAddText(withMic: micInScroll)
+          // Mikrofon-Karte am Ende des Inhalts (ab Schritt 2): der Text steht
+          // auf einer Karte (V2-5). Immer drei Kinder: der Inhalt trägt einen
+          // Schlüssel, sonst verlöre er beim Wechsel des Kopfes Zustand und
+          // Fokus (Textfeld, Tastatur).
+          step == 0
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    CuraSize.cardMargin,
+                    CuraSpace.s3,
+                    CuraSize.cardMargin,
+                    0,
+                  ),
+                  child: _moreToAddCard(),
+                ),
+          // Große Schrift: „Zurück“ steht am Ende des Inhalts, damit die feste
+          // Leiste nur „Weiter“ trägt und der Scrollbereich Platz behält.
+          backInScroll && current
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    CuraSize.cardMargin,
+                    CuraSpace.s3,
+                    CuraSize.cardMargin,
+                    0,
+                  ),
+                  child: GlassPill(label: S.back, onPressed: _back),
+                )
               : const SizedBox.shrink(),
         ],
       ),
     );
   }
 
-  String get _primaryLabel => _step == 1 ? S.consentAccept : S.next;
+  /// „Noch etwas hinzufügen?“ mit dem Mikrofon, auf einer Karte.
+  Widget _moreToAddCard() {
+    final CuraColors colors = CuraColors.of(context);
+    final CuraTypography type = CuraTypography.of(context);
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: CuraSize.cardPadding,
+        vertical: CuraSpace.s2,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Semantics(
+              container: true,
+              child: Text(
+                S.moreToAdd,
+                style: type.body.copyWith(color: colors.text1),
+              ),
+            ),
+          ),
+          const SizedBox(width: CuraSpace.s3),
+          MicButton(onPressed: _onMic),
+        ],
+      ),
+    );
+  }
 
-  /// Bricht der Button-Text in der kompakten Zeile (neben dem Mikrofon) mitten
-  /// im Wort, bekommt „Weiter“ die volle Breite und das Mikrofon steht in der
-  /// Scrollfläche bei „Noch etwas hinzufügen?“ (A-U3-RR R1). Gemessen: das
-  /// längste Wort des Textes samt Innenabstand gegen die Breite neben dem
-  /// Mikrofon.
-  bool _micInScroll(BuildContext context, bool compact) {
-    if (!compact) return false;
+  String get _primaryLabel => _step == 2 ? S.consentAccept : S.next;
+
+  /// Kopf in der Scrollfläche statt fest oben (A-U3 B1, gewählte Variante):
+  /// ab Textskalierung 1,5 oder bei einer Resthöhe unter 400 dp (Route ohne
+  /// Systemleisten und ohne Tastatur). Nichts geht verloren (Fortschrittstext,
+  /// Titel, Manny und Blase bleiben als Inhalt erreichbar), und die
+  /// Scrollfläche behält mindestens die Höhe, die Tastatur und Leiste übrig
+  /// lassen.
+  bool _headerScrolls(BuildContext context) {
+    final MediaQueryData m = MediaQuery.of(context);
+    final double rest =
+        m.size.height - m.padding.vertical - m.viewInsets.bottom;
+    return m.textScaler.scale(1) >= CuraSize.textScaleScrollAlong ||
+        rest < CuraSize.onboardingHeaderScrollMaxHeight;
+  }
+
+  /// Kopf-Karte mit Fortschritt und Titel (Ergänzung 1, 6a).
+  Widget _header(int step, {required bool fixed}) {
+    return KeyedSubtree(
+      key: fixed ? ProbeKeys.header : ProbeKeys.scrollHeader,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          CuraSize.cardMargin,
+          CuraSpace.s2,
+          CuraSize.cardMargin,
+          CuraSpace.s2,
+        ),
+        // Eigener Semantik-Knoten für den Fortschritt: sonst verschmilzt der
+        // Text mit anderen Texten außerhalb des Scrollbereichs.
+        child: HeaderCard(
+          top: Semantics(
+            container: true,
+            child: StepProgress(step: step + 1, onHeaderCard: true),
+          ),
+          title: _title(step),
+        ),
+      ),
+    );
+  }
+
+  /// Breite der „Zurück“-Schaltfläche (Brief 6a: 112 dp; bei großer Schrift so
+  /// breit wie ihr Text).
+  double _backWidth(BuildContext context) {
+    final TextStyle style = CuraTypography.of(context).button;
+    final TextPainter p = TextPainter(
+      text: TextSpan(text: S.back, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final double w = p.width + CuraSpace.s6 * 2 + CuraSize.measureSlack;
+    p.dispose();
+    return w > CuraSize.onboardingBackWidth ? w : CuraSize.onboardingBackWidth;
+  }
+
+  /// „Zurück“ und „Weiter“ stehen nebeneinander, solange das längste Wort des
+  /// Weiter-Textes in die Restbreite passt; sonst untereinander („Weiter“ in der Leiste, „Zurück“ am Ende des Inhalts).
+  /// Der Text bricht nie mitten im Wort.
+  bool _buttonsSideBySide(BuildContext context, double backWidth) {
     final double width =
         (MediaQuery.sizeOf(context).width > CuraSize.lineLengthMax
             ? CuraSize.lineLengthMax
             : MediaQuery.sizeOf(context).width) -
         CuraSpace.pageMargin * 2;
     final double room =
-        width - CuraSize.micButton - CuraSpace.s2 - CuraSpace.s6 * 2;
+        width - backWidth - CuraSize.onboardingButtonGap - CuraSpace.s6 * 2;
     final TextStyle style = CuraTypography.of(context).button;
     final TextScaler scaler = MediaQuery.textScalerOf(context);
     double longest = 0;
@@ -325,141 +438,45 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       if (p.width > longest) longest = p.width;
       p.dispose();
     }
-    return longest > room;
+    return longest + CuraSize.measureSlack <= room;
   }
 
-  Widget _moreToAddText({required bool withMic}) {
-    final CuraColors colors = CuraColors.of(context);
-    final CuraTypography type = CuraTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        CuraSpace.pageMargin,
-        CuraSpace.s4,
-        CuraSpace.pageMargin,
-        0,
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Semantics(
-              container: true,
-              child: Text(
-                S.moreToAdd,
-                style: type.body.copyWith(color: colors.text2),
-              ),
-            ),
-          ),
-          if (withMic) ...<Widget>[
-            const SizedBox(width: CuraSpace.s3),
-            MicButton(onPressed: _onMic),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Kopf in der Scrollfläche statt fest oben (A-U3 B1, gewählte Variante):
-  /// ab Textskalierung 1,5 oder bei einer Resthöhe unter 400 dp (Route ohne
-  /// Systemleisten und ohne Tastatur). Nichts geht verloren (Fortschrittstext,
-  /// Zurück-Pfeil, Manny und Blase bleiben als Inhalt erreichbar), und die
-  /// Scrollfläche behält mindestens die Höhe, die Tastatur und Weiter-Leiste
-  /// übrig lassen.
-  bool _headerScrolls(BuildContext context) {
-    final MediaQueryData m = MediaQuery.of(context);
-    final double rest =
-        m.size.height - m.padding.vertical - m.viewInsets.bottom;
-    return m.textScaler.scale(1) >= CuraSize.textScaleScrollAlong ||
-        rest < CuraSize.onboardingHeaderScrollMaxHeight;
-  }
-
-  Widget _header(int step, {required bool fixed}) {
-    return KeyedSubtree(
-      key: fixed ? ProbeKeys.header : ProbeKeys.scrollHeader,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          CuraSpace.s2,
-          CuraSpace.s2,
-          CuraSpace.pageMargin,
-          0,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            // Platz für den Pfeil bleibt auch auf Schritt 1 reserviert, damit
-            // die Fortschrittsanzeige nicht springt.
-            SizedBox.square(
-              dimension: CuraSize.touchTarget,
-              child: step == 0
-                  ? null
-                  : HeaderIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      tooltip: S.back,
-                      onPressed: _back,
-                    ),
-            ),
-            const SizedBox(width: CuraSpace.s2),
-            // Eigener Semantik-Knoten: sonst verschmilzt der Text mit anderen
-            // Texten außerhalb des Scrollbereichs.
-            Expanded(
-              child: Semantics(
-                container: true,
-                child: StepProgress(step: step + 1),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  /// „Zurück“ steht in der Scrollfläche statt in der Leiste: große Schrift, bei
+  /// der die zwei Buttons nicht nebeneinander passen.
+  bool _backInScroll(BuildContext context) =>
+      !_buttonsSideBySide(context, _backWidth(context));
 
   Widget _bottom(
     BuildContext context,
-    AppController c,
-    bool compact, {
-    required bool micInScroll,
+    AppController c, {
+    required bool compact,
   }) {
-    final CuraColors colors = CuraColors.of(context);
-    final CuraTypography type = CuraTypography.of(context);
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
-    final Widget primary = PillButton(
+    final bool keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    // Wenig Platz und Tastatur: nur „Weiter“; die Zurück-Taste des Systems
+    // bleibt.
+    final bool showBack = !(keyboard && compact);
+    final Widget primary = PrimaryPill(
       key: ProbeKeys.primary,
       label: _primaryLabel,
       onPressed: _canContinue(c) ? _next : null,
     );
-    final Widget mic = MicButton(onPressed: _onMic);
-    // Mit Tastatur, bei großer Schrift oder geringer Höhe bleibt wenig Platz:
-    // Mikrofon und Button teilen sich eine Zeile, der Text der Mikrofon-Zeile
-    // wandert ans Ende der Scrollfläche ([_moreToAddText]).
-    final Widget block = compact && micInScroll
+    final double backWidth = _backWidth(context);
+    final Widget block = !showBack || _backInScroll(context)
         ? primary
-        : compact
-        ? Row(
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              mic,
-              const SizedBox(width: CuraSpace.s2),
-              Expanded(child: primary),
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Semantics(
-                      container: true,
-                      child: Text(
-                        S.moreToAdd,
-                        style: type.body.copyWith(color: colors.text2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: CuraSpace.s3),
-                  mic,
-                ],
+              ConstrainedBox(
+                constraints: BoxConstraints(minWidth: backWidth),
+                child: GlassPill(
+                  label: S.back,
+                  expand: false,
+                  onPressed: _back,
+                ),
               ),
-              const SizedBox(height: CuraSpace.s3),
-              primary,
+              const SizedBox(width: CuraSize.onboardingButtonGap),
+              Expanded(child: primary),
             ],
           );
     return SizeReporter(
@@ -472,9 +489,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         key: ProbeKeys.primaryRow,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            CuraSpace.pageMargin,
+            CuraSize.cardMargin,
             CuraSpace.s2,
-            CuraSpace.pageMargin,
+            CuraSize.cardMargin,
             safeBottom > CuraSpace.pageMargin
                 ? safeBottom
                 : CuraSpace.pageMargin,
@@ -488,10 +505,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final AppController c = AppScope.of(context);
-    final bool keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     final bool headerScrolls = _headerScrolls(context);
-    final bool compactFooter = keyboard || headerScrolls;
-    final bool micInScroll = _micInScroll(context, compactFooter);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSnackbar());
     return PopScope(
       canPop: false,
@@ -537,19 +551,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           current,
                           _snackbarReserve,
                           headerScrolls: headerScrolls,
-                          compactFooter: compactFooter,
-                          micInScroll: micInScroll,
+                          backInScroll:
+                              _backInScroll(context) &&
+                              !(MediaQuery.viewInsetsOf(context).bottom > 0 &&
+                                  headerScrolls),
                         ),
                       ),
                     ),
                   ),
                   Builder(
-                    builder: (BuildContext context) => _bottom(
-                      context,
-                      c,
-                      compactFooter,
-                      micInScroll: micInScroll,
-                    ),
+                    builder: (BuildContext context) =>
+                        _bottom(context, c, compact: headerScrolls),
                   ),
                 ],
               ),

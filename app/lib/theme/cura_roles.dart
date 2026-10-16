@@ -255,6 +255,7 @@ abstract final class CuraComponent {
   static const double fieldRadius = CuraRadius.card;
   static const double fieldGap = CuraSpace.s2;
 
-  // Fortschrittsbalken (Brief 5.8).
-  static const int stepSegments = 4;
+  // Fortschrittsbalken (Brief 5.8, Ergänzung 1, 6a): das Onboarding hat seit
+  // dem Look-Schritt fünf Schritte.
+  static const int stepSegments = 5;
 }

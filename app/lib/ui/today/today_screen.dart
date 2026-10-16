@@ -1,10 +1,15 @@
-// `TodayScreen` (Brief 6.3, Ergänzung 1 3.3/3.4, Ergänzung 2 K3 bis K5,
-// Plan 4.5, 4.6, 7.4 bis 7.6): der Tab „Heute“.
+// `TodayScreen` (Design-Brief v2, 7.2; Brief 6.3, Ergänzung 1 3.3/3.4,
+// Ergänzung 2 K3 bis K5, Plan 4.5, 4.6, 7.4 bis 7.6): der Tab „Heute“.
 //
-// - Inhalt (scrollt): Datum, „Heute, [Name]“, Zeitwahl 10/20/30, TERMINE
-//   (Beispieltermine als `CategoryCard`s oder „Heute keine Termine.“), ÜBUNGEN
-//   · CA. N MIN (Übungskarten mit Tauschen/Entfernen, Leerkarte „Heute noch
-//   nichts geplant.“) und „+ Eigene Übung“.
+// - Kopf-Karte (`HeaderCard`, V2-5: kein Text direkt auf der Welt): „Heute,
+//   [Name]“, Datum und der Streak als Chip. Darunter scrollt der Inhalt
+//   (`TabPage`): Zeitwahl 10/20/30, Termine (Beispieltermine als
+//   `CategoryCard`s oder „Heute keine Termine.“ auf einer Karte), Übungen ·
+//   ca. N Min (Übungskarten mit Tauschen/Entfernen, Leerkarte „Heute noch
+//   nichts geplant.“) und „+ Eigene Übung“. Die Abschnittsüberschriften sind
+//   Label-Chips (erlaubter Untergrund für Text auf der Welt).
+//   Check-up-Karte, Session und Abhaken kommen in L3 bis L5; bis dahin gilt
+//   das Verhalten aus Ausschnitt 1 („Training eintragen“).
 // - Fest über der Nav (nur im Standard-Zustand, A-43): die Primärbutton-Reihe
 //   („Training eintragen“ / „Heute erledigt“ + Manny-Knopf, `PrimaryActionRow`;
 //   den Nachrichten-Knopf gibt es nicht mehr, F2-R3). Die Scroll-Reserve am
@@ -36,6 +41,8 @@ import '../../logic/clock.dart';
 import '../../logic/date_format.dart';
 import '../../logic/day_program.dart';
 import '../../logic/placeholder_pools.dart';
+import '../../logic/plural.dart';
+import '../../logic/streak.dart';
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../state/transient_ui.dart';
@@ -45,14 +52,16 @@ import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
 import '../components/category_card.dart';
 import '../components/cura_chip.dart';
-import '../components/cura_label.dart';
 import '../components/cura_snackbar.dart';
 import '../components/dashed_action.dart';
 import '../components/floating_nav.dart';
 import '../components/glass_card.dart';
+import '../components/header_card.dart';
 import '../components/probe_keys.dart';
 import '../components/size_reporter.dart';
+import '../components/tab_page.dart';
 import '../components/time_segment.dart';
+import '../components/world_label_chip.dart';
 import '../home/home_shell.dart';
 import '../path/path_error_view.dart';
 import '../routes/route_focus.dart';
@@ -339,106 +348,95 @@ class _TodayScreenState extends State<TodayScreen> {
         : (exercises.isEmpty
               ? TrainingButtonState.disabled
               : TrainingButtonState.start);
+    final StreakView streak = StreakEngine.view(state.streak);
+    final bool frozen = streak.display == StreakDisplay.frozen;
 
+    // Reserve unter dem Inhalt: Primärbutton-Reihe (gemessen) samt Luft; die
+    // Leiste samt Abstand legt `TabPage` selbst dazu.
     final double group = math.max(_groupHeight, _groupMinHeight);
-    final double reserveBase =
-        FloatingNav.occupiedHeight(context) +
-        CuraSpace.pageMargin +
-        group +
-        CuraSize.todayEndAir;
+    final double reserveBase = group + CuraSize.todayEndAir;
+
+    final Widget header = HeaderCard(
+      title: S.todayTitle(state.onboarding.firstName),
+      subtitle: formatDateLong(day),
+      chips: <Widget>[
+        HeaderChip(
+          icon: Icons.local_fire_department_rounded,
+          label: frozen
+              ? '${streak.count} ${S.streakFrozenWord}'
+              : '${streak.count}',
+          semanticLabel: frozen
+              ? S.streakFrozenLabel(tage(streak.count))
+              : S.streakLabel(tage(streak.count)),
+        ),
+      ],
+    );
 
     final List<Widget> content = <Widget>[
-      // Linksbündig und nur so breit wie der Text: ein Knoten über die ganze
-      // Breite täuscht Prüfungen, die den Untergrund aus dem Bild lesen.
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: Text(
-          formatDateLong(day),
-          style: type.secondary.copyWith(color: colors.text2),
-        ),
-      ),
-      Semantics(
-        header: true,
-        child: Text(
-          S.todayTitle(state.onboarding.firstName),
-          style: type.display.copyWith(color: colors.text1),
-        ),
-      ),
-      const SizedBox(height: CuraSpace.s4),
       TimeSegment(
         choices: kTimeChoices,
         selected: state.prefs.timeChoice,
         onSelected: _selectTime,
       ),
-      const SizedBox(height: CuraSpace.s6),
-      const CuraLabel(S.appointmentsHeading),
-      const SizedBox(height: CuraSpace.s3),
-      if (appointments.isEmpty)
-        Text(S.noAppointments, style: type.body.copyWith(color: colors.text2))
-      else
-        for (final Appointment a in appointments) ...<Widget>[
-          CategoryCard(
-            kind: _kindOf(a),
-            title: a.title,
-            meta: a.meta,
-            time: a.timeText,
-            semanticLabel: a.semanticsLabel,
-          ),
-          const SizedBox(height: CuraSpace.s3),
+      _section(
+        label: S.appointmentsHeading,
+        children: <Widget>[
+          if (appointments.isEmpty)
+            GlassCard(
+              child: Text(
+                S.noAppointments,
+                style: type.body.copyWith(color: colors.text1),
+              ),
+            )
+          else
+            for (final Appointment a in appointments)
+              CategoryCard(
+                kind: _kindOf(a),
+                title: a.title,
+                meta: a.meta,
+                time: a.timeText,
+                semanticLabel: a.semanticsLabel,
+              ),
         ],
-      const SizedBox(height: CuraSpace.s3),
-      CuraLabel(exercisesHeading(exercises)),
-      const SizedBox(height: CuraSpace.s3),
-      if (exercises.isEmpty) ...<Widget>[
-        GlassCard(
-          child: Text(
-            S.emptyExercises,
-            style: type.body.copyWith(color: colors.text1),
+      ),
+      _section(
+        label: exercisesHeading(exercises),
+        children: <Widget>[
+          if (exercises.isEmpty)
+            GlassCard(
+              child: Text(
+                S.emptyExercises,
+                style: type.body.copyWith(color: colors.text1),
+              ),
+            )
+          else
+            for (final DisplayedExercise e in exercises) _exerciseCard(e),
+          DashedAction(
+            label: S.customAdd,
+            semanticLabel: S.customAddLabel,
+            focusNode: _customFocus,
+            onPressed: _addCustom,
           ),
-        ),
-        const SizedBox(height: CuraSpace.s3),
-      ] else
-        for (final DisplayedExercise e in exercises) ...<Widget>[
-          _exerciseCard(e),
-          const SizedBox(height: CuraSpace.s3),
         ],
-      DashedAction(
-        label: S.customAdd,
-        semanticLabel: S.customAddLabel,
-        focusNode: _customFocus,
-        onPressed: _addCustom,
       ),
     ];
 
     return Stack(
       children: <Widget>[
         Positioned.fill(
-          child: SafeArea(
-            bottom: false,
-            // Solange eine Snackbar steht, gehört ihre gemessene Höhe samt
-            // 12 dp Abstand zur Reserve: sie überdeckt den letzten Eintrag nie.
-            child: ValueListenableBuilder<double>(
-              valueListenable: shell.snackbarHeight,
-              builder: (BuildContext context, double snack, Widget? child) {
-                final double reserve = snack > 0
+          // Solange eine Snackbar steht, gehört ihre gemessene Höhe samt
+          // 12 dp Abstand zur Reserve: sie überdeckt den letzten Eintrag nie.
+          child: ValueListenableBuilder<double>(
+            valueListenable: shell.snackbarHeight,
+            builder: (BuildContext context, double snack, Widget? _) {
+              return TabPage(
+                header: header,
+                extraReserve: snack > 0
                     ? reserveBase + CuraSpace.snackbarGap + snack
-                    : reserveBase;
-                return SingleChildScrollView(
-                  key: ProbeKeys.scroll,
-                  padding: EdgeInsets.fromLTRB(
-                    CuraSpace.pageMargin,
-                    CuraSpace.s6,
-                    CuraSpace.pageMargin,
-                    reserve,
-                  ),
-                  child: child,
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                    : reserveBase,
                 children: content,
-              ),
-            ),
+              );
+            },
           ),
         ),
         if (active)
@@ -465,6 +463,25 @@ class _TodayScreenState extends State<TodayScreen> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  /// Abschnitt mit Label-Chip als Überschrift (V2-5: Text auf der Welt steht
+  /// nur auf einem Label-Chip), darunter die Karten mit 12 dp Abstand.
+  Widget _section({required String label, required List<Widget> children}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: WorldLabelChip(label, header: true),
+        ),
+        const SizedBox(height: CuraSpace.s2),
+        for (int i = 0; i < children.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(height: CuraSpace.s3),
+          children[i],
+        ],
       ],
     );
   }

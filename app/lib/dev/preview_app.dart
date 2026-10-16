@@ -16,6 +16,7 @@ import '../data/data_eraser.dart';
 import '../data/prefs_state_store.dart';
 import '../data/state_store.dart';
 import '../logic/clock.dart';
+import '../logic/display_settings.dart';
 import '../logic/manny_text_source.dart';
 import '../logic/world_time.dart';
 import '../ui/path/path_source.dart';
@@ -48,10 +49,14 @@ class PreviewConfig {
     this.semantics = false,
     this.dumpText = false,
     this.live = false,
+    this.world = WorldChoice.automatic,
+    this.theme = ThemeChoice.system,
   });
 
   /// Liest die URL-Parameter `scenario`, `now`, `scale`, `hc`, `rm`, `a11y`,
-  /// `dumpText` (Plan 12.5). Ungültige Werte fallen auf den Standard zurück.
+  /// `dumpText`, `world` (automatic, morning, midday, evening, night) und
+  /// `theme` (system, light, dark) (Plan 12.5). Ungültige Werte fallen auf den
+  /// Standard zurück.
   factory PreviewConfig.fromQuery(Map<String, String> q) {
     bool flag(String key) => q[key] == '1' || q[key] == 'true';
     return PreviewConfig(
@@ -63,6 +68,8 @@ class PreviewConfig {
       semantics: flag('a11y'),
       dumpText: flag('dumpText'),
       live: flag('live'),
+      world: WorldChoice.fromJsonName(q['world']),
+      theme: ThemeChoice.fromJsonName(q['theme']),
     );
   }
 
@@ -79,6 +86,11 @@ class PreviewConfig {
   /// (`page.clock`). Das Szenario liefert dann nur noch die Kennung.
   final bool live;
 
+  /// Darstellung „Welt“ und „Thema“ des App-Szenarios (wie im Profil gewählt,
+  /// Brief v2 3.1/3.2); Baustein-Szenarien kennen nur Mittag und Hell.
+  final WorldChoice world;
+  final ThemeChoice theme;
+
   PreviewConfig copyWith({
     String? scenarioId,
     double? textScale,
@@ -94,6 +106,8 @@ class PreviewConfig {
       semantics: semantics,
       dumpText: dumpText,
       live: live,
+      world: world,
+      theme: theme,
     );
   }
 }
@@ -224,7 +238,10 @@ class _AppRuntime {
         _controller(clock, store, store),
         seed ?? const AppSeed(),
         null,
-        DisplayController(worldClock: WorldClock(clock)),
+        DisplayController(
+          worldClock: WorldClock(clock),
+          initial: DisplaySettings(world: config.world, theme: config.theme),
+        ),
       );
     }
     final DateTime now = seed.now ?? env.now;
@@ -248,7 +265,10 @@ class _AppRuntime {
             }
           : null,
       // Die Welt läuft auf der Uhr des Szenarios (deterministisch).
-      DisplayController(worldClock: WorldClock(() => clock.now)),
+      DisplayController(
+        worldClock: WorldClock(() => clock.now),
+        initial: DisplaySettings(world: config.world, theme: config.theme),
+      ),
       clock,
     );
   }
@@ -321,7 +341,11 @@ class _PreviewAppState extends State<PreviewApp> {
     final PreviewConfig b = widget.config;
     // Overrides (HC, RM, Skalierung) tauschen nur den Wrapper; ein anderes
     // Szenario, `live` oder `now` bauen die App neu auf.
-    if (a.scenarioId != b.scenarioId || a.live != b.live || a.now != b.now) {
+    if (a.scenarioId != b.scenarioId ||
+        a.live != b.live ||
+        a.now != b.now ||
+        a.world != b.world ||
+        a.theme != b.theme) {
       _runtime?.dispose();
       _runtime = null;
       _createRuntime();

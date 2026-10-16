@@ -40,10 +40,10 @@ import '../components/choice_card.dart';
 import '../components/cura_label.dart';
 import '../components/cura_text_field.dart';
 import '../components/date_card.dart';
-import '../components/header_icon_button.dart';
 import '../components/info_note.dart';
 import '../components/pill_button.dart';
 import '../components/probe_keys.dart';
+import '../components/sheet_title_bar.dart';
 import '../onboarding/step4_date.dart' show DatePickerRange;
 import '../routes/app_routes.dart';
 import '../routes/cura_sheet_route.dart';
@@ -214,45 +214,9 @@ class _DataSheetState extends State<DataSheet> {
             style: type.secondary.copyWith(color: colors.text2),
           );
           return CuraSheetFrame(
-            header: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                CuraSpace.pageMargin,
-                CuraSpace.s6,
-                CuraSpace.s2,
-                CuraSpace.s2,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Semantics(
-                          header: true,
-                          // Wie im Trainings-Sheet: der Titel skaliert bis 150 %.
-                          child: MediaQuery.withClampedTextScaling(
-                            maxScaleFactor: CuraSize.headerTitleMaxTextScale,
-                            child: Text(
-                              S.dataSheetTitle,
-                              style: type.title.copyWith(color: colors.text1),
-                            ),
-                          ),
-                        ),
-                        if (!compact) ...<Widget>[
-                          const SizedBox(height: CuraSpace.s1),
-                          subtitle,
-                        ],
-                      ],
-                    ),
-                  ),
-                  HeaderIconButton(
-                    icon: Icons.close_rounded,
-                    tooltip: S.close,
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                ],
-              ),
+            header: SheetTitleBar(
+              title: S.dataSheetTitle,
+              subtitle: compact ? null : S.dataSheetSubtitle,
             ),
             body: Padding(
               padding: const EdgeInsets.only(bottom: CuraSpace.s2),

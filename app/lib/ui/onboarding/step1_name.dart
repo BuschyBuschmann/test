@@ -1,4 +1,4 @@
-// Schritt 1: Manny und Name (Brief 6.1, UI-12). Die Tastatur öffnet sich erst
+// Schritt 2: Manny und Name (Brief 6.1, UI-12). Die Tastatur öffnet sich erst
 // beim Antippen des Feldes. Jede Eingabe wird sofort gespeichert (UI-16);
 // „Weiter“ gilt ab einem Zeichen nach dem Trimmen.
 import 'package:flutter/material.dart';
@@ -53,6 +53,7 @@ class _Step1NameState extends State<Step1Name> {
         const SizedBox(height: CuraSpace.s6),
         CuraTextField(
           label: S.nameLabel,
+          labelOnWorld: true,
           controller: _controller,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.done,

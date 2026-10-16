@@ -10,6 +10,7 @@ import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/logic/app_state.dart';
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/injury_type.dart';
+import 'package:curaone/logic/manny_look.dart';
 import 'package:curaone/logic/manny_state.dart';
 import 'package:curaone/logic/path_generator.dart';
 import 'package:curaone/logic/streak.dart';
@@ -1027,11 +1028,10 @@ void main() {
       expect(find.byType(HomeShell), findsNothing);
       expect(_sheet, findsNothing);
       expect(find.byType(DeleteDialog), findsNothing);
-      expect(find.text(S.stepOf(1, 4)), findsOneWidget);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        isEmpty,
-      );
+      expect(find.text(S.stepOf(1, 5)), findsOneWidget);
+      // Schritt 1 ist die Look-Wahl, auf die Vorbelegung zurückgesetzt.
+      expect(find.byType(TextField), findsNothing);
+      expect(rig.controller.state.mannyLook, MannyLook.brille);
       expect(find.text(S.dataDeleted), findsOneWidget);
       // Zurück erreicht Pfad und Sheet nicht: auf Schritt 1 schließt die App.
       await tester.binding.handlePopRoute();
@@ -1088,6 +1088,9 @@ void main() {
       await _openDelete(tester);
       await tester.tap(_confirm);
       await _settle(tester);
+      // Schritt 1 (Look-Wahl) bestätigen, dann der Name.
+      await tester.tap(find.widgetWithText(PillButton, S.next));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Mia');
       await tester.pump();
       await tester.tap(find.widgetWithText(PillButton, S.next));
@@ -1277,6 +1280,9 @@ void main() {
       await tester.tap(_confirm);
       await _settle(tester);
 
+      // Schritt 1 (Look-Wahl) bestätigen, dann der Name.
+      await tester.tap(find.widgetWithText(PillButton, S.next));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Mia');
       await tester.pump();
       await tester.tap(find.widgetWithText(PillButton, S.next));

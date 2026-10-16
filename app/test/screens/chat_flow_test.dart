@@ -794,7 +794,7 @@ void main() {
       AppRoutes.restartOnboarding(key.currentState!);
       await tester.pumpAndSettle();
       expect(find.byType(MannyChatScreen), findsNothing);
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await disposeApp(tester);
     });
@@ -971,6 +971,9 @@ void main() {
       expect((h.raw as InMemoryStore).raw, isNull);
 
       // Neues Onboarding: Mia, Einwilligung, ACL, Datum.
+      // Schritt 1 (Look-Wahl) bestätigen, dann der Name.
+      await tester.tap(find.widgetWithText(PillButton, S.next));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Mia');
       await tester.pump();
       await tester.tap(find.widgetWithText(PillButton, S.next));

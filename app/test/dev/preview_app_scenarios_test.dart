@@ -50,7 +50,7 @@ void main() {
       tester,
       const PreviewConfig(scenarioId: 'ob1-deleted-snackbar'),
     );
-    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('Schritt 1 von 5'), findsOneWidget);
     expect(find.text(S.dataDeleted), findsOneWidget);
     await disposeApp(tester);
   });
@@ -62,7 +62,7 @@ void main() {
       tester,
       const PreviewConfig(scenarioId: 'ob1-corrupt-snackbar'),
     );
-    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('Schritt 1 von 5'), findsOneWidget);
     expect(find.text(S.dataUnreadable), findsOneWidget);
     await disposeApp(tester);
   });
@@ -78,11 +78,11 @@ void main() {
     await disposeApp(tester);
   });
 
-  testWidgets('ob3-acl: Szenario setzt Zustand (Schritt 3, ACL gewählt)', (
+  testWidgets('ob3-acl: Szenario setzt Zustand (Schritt 4, ACL gewählt)', (
     WidgetTester tester,
   ) async {
     await _pump(tester, const PreviewConfig(scenarioId: 'ob3-acl'));
-    expect(find.text('Schritt 3 von 4'), findsOneWidget);
+    expect(find.text('Schritt 4 von 5'), findsOneWidget);
     expect(find.text(S.onboardingStep3('Jakob')), findsOneWidget);
   });
 
@@ -90,7 +90,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await _pump(tester, const PreviewConfig(scenarioId: 'ob3-muscle'));
-    expect(find.text('Schritt 3 von 4'), findsOneWidget);
+    expect(find.text('Schritt 4 von 5'), findsOneWidget);
     expect(find.text(S.injuryNoOwnPath), findsOneWidget);
     await disposeApp(tester);
   });
@@ -116,7 +116,7 @@ void main() {
       reason: 'Echte View bleibt unberührt, nur MediaQuery wird überschrieben',
     );
     expect(find.byKey(const ValueKey<String>('overlay:keyboard')), findsOne);
-    final Rect button = tester.getRect(find.byType(PillButton));
+    final Rect button = tester.getRect(find.widgetWithText(PillButton, S.next));
     expect(button.bottom, lessThanOrEqualTo(Viewports.phone.height - 300));
     await disposeApp(tester);
   });
@@ -385,7 +385,7 @@ void main() {
       await today(tester, 'today-standard');
       expect(find.text('Mittwoch, 7. Oktober'), findsOneWidget);
       expect(find.text(S.apptPhysioTitle), findsOneWidget);
-      expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 20 Min'), findsOneWidget);
       expect(find.byType(MannyButton), findsOneWidget);
       expect(find.byKey(ProbeKeys.primaryRow), findsOneWidget);
       await disposeApp(tester);
@@ -409,10 +409,10 @@ void main() {
       WidgetTester tester,
     ) async {
       await today(tester, 'today-10');
-      expect(find.text('ÜBUNGEN · CA. 10 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 10 Min'), findsOneWidget);
       await disposeApp(tester);
       await today(tester, 'today-30');
-      expect(find.text('ÜBUNGEN · CA. 30 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 30 Min'), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -508,7 +508,7 @@ void main() {
         expect(find.text('Donnerstag, 8. Oktober'), findsOneWidget);
         expect(find.text(S.newDaySnackbar), findsOneWidget);
         // Das Szenario hatte eine Übung entfernt: das neue Programm ist frisch.
-        expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
+        expect(find.text('Übungen · ca. 20 Min'), findsOneWidget);
         await tester.pump(const Duration(seconds: 10));
         await disposeApp(tester);
       },
@@ -595,16 +595,19 @@ void main() {
         live: true,
       );
       await _pump(tester, live);
+      // Schritt 1 (Look) → Schritt 2 (Name).
+      await tester.tap(find.widgetWithText(PillButton, S.next));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Jakob');
       await tester.pump();
       await tester.tap(find.widgetWithText(PillButton, S.next));
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       await disposeApp(tester);
 
       // „Reload“: neue App, derselbe Speicher.
       await _pump(tester, live);
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep2('Jakob')), findsOneWidget);
       await disposeApp(tester);
     });

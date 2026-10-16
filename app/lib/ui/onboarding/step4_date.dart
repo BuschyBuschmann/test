@@ -1,4 +1,4 @@
-// Schritt 4: Zeitpunkt (Brief 6.1, UI-15, A-27). Die `DateCard` öffnet die
+// Schritt 5: Zeitpunkt (Brief 6.1, UI-15, A-27). Die `DateCard` öffnet die
 // Datumsauswahl der Plattform im Dark-Theme: `lastDate` = heute,
 // `firstDate` = früher von (heute − 2 Jahre, gespeichertes Datum),
 // `initialDate` = gespeichertes Datum oder heute, immer innerhalb der Grenzen.

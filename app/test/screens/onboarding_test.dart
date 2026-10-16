@@ -1,11 +1,14 @@
-// Onboarding (U2b, Plan 4.1 bis 4.3, UI-11 bis UI-16, UI-33/34, UI-70/71):
-// Ablauf der vier Schritte, Speichern jeder Eingabe, Fortsetzen nach Neustart,
-// Zurück je Schritt, Mikrofon-Hinweis, Hinweise nach Löschen und unlesbaren
-// Daten, Fehlerzustand beim Start, Tastatur auf 320 × 568.
+// Onboarding (U2b, Plan 4.1 bis 4.3, UI-11 bis UI-16, UI-33/34, UI-70/71; F2-R4:
+// Brief v2, Ergänzung 1, 6a, V2-65 bis V2-67, V2-75): Ablauf der fünf Schritte
+// (Look, Name, Datenschutz, Verletzungstyp, Datum), Speichern jeder Eingabe,
+// Fortsetzen nach Neustart, Zurück je Schritt, Mikrofon-Hinweis, Hinweise nach
+// Löschen und unlesbaren Daten, Fehlerzustand beim Start, Tastatur auf
+// 320 × 568.
 import 'package:curaone/l10n/strings_de.dart';
 import 'package:curaone/logic/app_state.dart';
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/injury_type.dart';
+import 'package:curaone/logic/manny_look.dart';
 import 'package:curaone/logic/migrations.dart' show encodeDocument;
 import 'package:curaone/state/app_controller.dart';
 import 'package:curaone/ui/components/choice_card.dart';
@@ -14,13 +17,16 @@ import 'package:curaone/ui/components/date_card.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
+import 'package:curaone/ui/components/manny_look_picker.dart';
+import 'package:curaone/ui/components/step_progress.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/path_error_view.dart';
 import 'package:curaone/ui/onboarding/step4_date.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
-import 'package:curaone/theme/cura_metrics.dart';
+import 'package:curaone/ui/components/glass_card.dart';
+import 'package:curaone/ui/components/header_card.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +55,9 @@ PillButton _primary(WidgetTester tester) => tester.widget<PillButton>(
 
 Finder _next() => find.widgetWithText(PillButton, S.next);
 
+/// „Zurück“ der Leiste (Glas-Pille).
+Finder _backButton() => find.widgetWithText(PillButton, S.back);
+
 Future<void> _enterName(WidgetTester tester, String name) async {
   await tester.enterText(find.byType(TextField), name);
   await tester.pump();
@@ -59,7 +68,19 @@ Future<void> _tapNext(WidgetTester tester, [String label = S.next]) async {
   await tester.pumpAndSettle();
 }
 
-/// Bis Schritt [index] (0 … 3) mit Name Jakob, Einwilligung und ACL.
+/// Baut die App am Erststart (Schritt 1, Look-Wahl) und geht mit „Weiter“ zum
+/// Namen (Schritt 2): von dort zählen die Helfer unten ihre Schritte.
+Future<void> _pumpAtName(
+  WidgetTester tester,
+  Harness h, {
+  Size size = Viewports.phone,
+}) async {
+  await pumpCura(tester, h.controller, size: size);
+  await _tapNext(tester);
+}
+
+/// Bis zur Seite [index] (0 = Name, 1 = Datenschutz, 2 = Verletzungstyp,
+/// 3 = Datum; Schritt 2 bis 5) mit Name Jakob, Einwilligung und ACL.
 Future<void> _advanceTo(WidgetTester tester, int index) async {
   if (index >= 1) {
     await _enterName(tester, 'Jakob');
@@ -79,24 +100,24 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
 
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 2 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep1), findsOneWidget);
 
       await _enterName(tester, 'Jakob');
       await _tapNext(tester);
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep2('Jakob')), findsOneWidget);
 
       await _tapNext(tester, S.consentAccept);
-      expect(find.text('Schritt 3 von 4'), findsOneWidget);
+      expect(find.text('Schritt 4 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep3('Jakob')), findsOneWidget);
 
       await tester.tap(find.text(S.injuryAcl));
       await tester.pump();
       await _tapNext(tester);
-      expect(find.text('Schritt 4 von 4'), findsOneWidget);
+      expect(find.text('Schritt 5 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep4), findsOneWidget);
 
       await tester.tap(find.text(S.datePlaceholder));
@@ -113,7 +134,7 @@ void main() {
 
       await _tapNext(tester);
       expect(find.byType(HomeShell), findsOneWidget);
-      expect(find.text('Schritt 4 von 4'), findsNothing);
+      expect(find.text('Schritt 5 von 5'), findsNothing);
       final AppState? saved = await h.persisted();
       expect(saved!.onboarding.completed, isTrue);
       expect(saved.onboarding.injuryDate, const LocalDay(2026, 10, 5));
@@ -126,10 +147,10 @@ void main() {
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       expect(
-        tester.getSemantics(find.text('Schritt 1 von 4')).label,
-        'Schritt 1 von 4',
+        tester.getSemantics(find.text('Schritt 2 von 5')).label,
+        'Schritt 2 von 5',
       );
       // Der Balken ist für den Screenreader ausgeblendet: keine zweite Angabe.
       expect(find.bySemanticsLabel(RegExp('Schritt')), findsOneWidget);
@@ -141,7 +162,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       expect(_primary(tester).onPressed, isNull);
       await _enterName(tester, '   ');
       expect(_primary(tester).onPressed, isNull);
@@ -159,7 +180,7 @@ void main() {
       'UI-13: Einwilligung gespeichert, erneut bestätigen überschreibt',
       (WidgetTester tester) async {
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await _advanceTo(tester, 1);
         expect(
           find.widgetWithText(PillButton, S.consentAccept),
@@ -176,7 +197,7 @@ void main() {
         h.clock.advance(const Duration(minutes: 5));
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
-        expect(find.text('Schritt 2 von 4'), findsOneWidget);
+        expect(find.text('Schritt 3 von 5'), findsOneWidget);
         await _tapNext(tester, S.consentAccept);
         expect(h.state.consent!.acceptedAt, h.clock.now.toUtc());
         expect(h.state.consent!.acceptedAt.isAfter(first), isTrue);
@@ -188,7 +209,7 @@ void main() {
       'UI-13: Link „Datenschutzerklärung lesen“ öffnet die Platzhalterseite',
       (WidgetTester tester) async {
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await _advanceTo(tester, 1);
         await tester.tap(find.text(S.privacyLink));
         await tester.pumpAndSettle();
@@ -198,14 +219,14 @@ void main() {
         await tester.tap(find.byTooltip(S.back));
         await tester.pumpAndSettle();
         expect(find.text(S.privacyTitle), findsNothing);
-        expect(find.text('Schritt 2 von 4'), findsOneWidget);
+        expect(find.text('Schritt 3 von 5'), findsOneWidget);
         // Android-Zurück ebenso.
         await tester.tap(find.text(S.privacyLink));
         await tester.pumpAndSettle();
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
         expect(find.text(S.privacyTitle), findsNothing);
-        expect(find.text('Schritt 2 von 4'), findsOneWidget);
+        expect(find.text('Schritt 3 von 5'), findsOneWidget);
         await disposeApp(tester);
       },
     );
@@ -214,7 +235,7 @@ void main() {
       'UI-14: vier Karten, Einfachauswahl, „Anderes“ mit optionalem Feld',
       (WidgetTester tester) async {
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await _advanceTo(tester, 2);
 
         expect(find.byType(ChoiceCard), findsNWidgets(4));
@@ -252,7 +273,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _advanceTo(tester, 3);
       expect(_primary(tester).onPressed, isNull);
       expect(find.textContaining('Phase'), findsNothing);
@@ -296,7 +317,7 @@ void main() {
     ) async {
       final SemanticsHandle sem = tester.ensureSemantics();
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _advanceTo(tester, 2);
       expect(
         find.text(S.injuryNoOwnPath),
@@ -342,7 +363,7 @@ void main() {
         addTearDown(tester.view.reset);
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await _advanceTo(tester, 2);
         await tester.ensureVisible(find.text(S.injuryMuscle));
         await tester.pumpAndSettle();
@@ -365,7 +386,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _enterName(tester, 'Ja');
       expect((await h.persisted())!.onboarding.name, 'Ja');
       await _enterName(tester, 'Jakob');
@@ -384,7 +405,7 @@ void main() {
       // Neustart: neuer Controller auf demselben Speicher.
       final Harness again = await _boot(raw: h.raw);
       await pumpCura(tester, again.controller);
-      expect(find.text('Schritt 3 von 4'), findsOneWidget);
+      expect(find.text('Schritt 4 von 5'), findsOneWidget);
       expect(find.text(S.onboardingStep3('Jakob')), findsOneWidget);
       expect(
         tester
@@ -398,10 +419,10 @@ void main() {
       // Zurück behält die Eingaben.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 2 von 5'), findsOneWidget);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
         'Jakob',
@@ -414,36 +435,44 @@ void main() {
     ) async {
       final SystemPopRecorder pop = SystemPopRecorder(tester);
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _advanceTo(tester, 3);
       expect(find.byType(MannyBubble), findsOneWidget);
-      for (final int expected in <int>[3, 2, 1]) {
+      for (final int expected in <int>[4, 3, 2]) {
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
-        expect(find.text('Schritt $expected von 4'), findsOneWidget);
+        expect(find.text('Schritt $expected von 5'), findsOneWidget);
         // Die Blase ist da und blockiert das Zurück nicht.
         expect(find.byType(MannyBubble), findsOneWidget);
       }
+      expect(pop.count, 0);
+      // Von Schritt 2 zurück zur Look-Wahl (Schritt 1, ohne Blase).
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
+      expect(find.byType(MannyBubble), findsNothing);
       expect(pop.count, 0);
       // Schritt 1: App schließen.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(pop.count, 1);
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
-      expect(h.state.onboarding.step, 1);
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
+      expect(h.state.onboarding.step, 0);
       await disposeApp(tester);
     });
 
-    testWidgets('Zurück-Pfeil: erst ab Schritt 2, geht einen Schritt zurück', (
+    testWidgets('Zurück-Schaltfläche: auf jedem Schritt, geht einen Schritt', (
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
       await pumpCura(tester, h.controller);
-      expect(find.byTooltip(S.back), findsNothing);
+      expect(_backButton(), findsOneWidget, reason: 'auch auf Schritt 1');
+      await _tapNext(tester);
       await _advanceTo(tester, 1);
-      await tester.tap(find.byTooltip(S.back));
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
+      await tester.tap(_backButton());
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 2 von 5'), findsOneWidget);
       expect(h.state.onboarding.step, 1);
       await disposeApp(tester);
     });
@@ -452,17 +481,17 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _advanceTo(tester, 1);
       expect(find.byType(MannyBubble), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(find.byType(MannyBubble), findsNothing);
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       // Zurück geht trotz geschlossener oder offener Blase einen Schritt.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 2 von 5'), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -470,7 +499,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await tester.tap(find.byTooltip(S.bubbleClose));
       await tester.pumpAndSettle();
       expect(find.byType(MannyBubble), findsNothing);
@@ -485,7 +514,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       for (int step = 0; step < 4; step++) {
         if (step > 0) {
           if (step == 1) await _advanceTo(tester, 1);
@@ -509,7 +538,7 @@ void main() {
       'Hinweis erscheint auch nach geschlossener Blase; Schrittwechsel setzt ihn zurück',
       (WidgetTester tester) async {
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await tester.tap(find.byTooltip(S.bubbleClose));
         await tester.pumpAndSettle();
         await tester.tap(find.byType(MicButton));
@@ -529,7 +558,7 @@ void main() {
       'weder Manny-Button noch Nachrichten-Button auf Schritt 1 bis 4 und Datenschutz',
       (WidgetTester tester) async {
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         void expectNone() {
           expect(find.byType(MannyButton), findsNothing);
           expect(find.byType(FloatingNav), findsNothing);
@@ -562,7 +591,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
       await _advanceTo(tester, 1);
       final double settled2 = await bubbleX(tester, S.onboardingStep2('Jakob'));
 
@@ -598,7 +627,7 @@ void main() {
           tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
         );
         final Harness h = await _boot();
-        await pumpCura(tester, h.controller);
+        await _pumpAtName(tester, h);
         await _enterName(tester, 'Jakob');
         await tester.tap(_next());
         await tester.pump();
@@ -629,12 +658,11 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(HomeShell), findsNothing);
-        expect(find.text('Schritt 1 von 4'), findsOneWidget);
+        expect(find.text('Schritt 1 von 5'), findsOneWidget);
         expect(find.text(S.dataDeleted), findsOneWidget);
-        expect(
-          tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          isEmpty,
-        );
+        // Der Look ist auf die Vorbelegung zurückgesetzt (Ergänzung 1, 6b).
+        expect(h.state.mannyLook, MannyLook.brille);
+        expect(find.byType(MannyLookPicker), findsOneWidget);
         // Vertrag: Schreibsperre ist nach dem Neuaufbau aufgehoben; ohne Eingabe
         // bleibt der Speicher leer (UI-51).
         expect(h.controller.isDeleting, isFalse);
@@ -645,9 +673,10 @@ void main() {
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
         expect(pop.count, 1);
-        expect(find.text('Schritt 1 von 4'), findsOneWidget);
+        expect(find.text('Schritt 1 von 5'), findsOneWidget);
 
         // Eingabe schreibt wieder.
+        await _tapNext(tester);
         await _enterName(tester, 'Mia');
         expect((await h.persisted())!.onboarding.name, 'Mia');
 
@@ -664,7 +693,7 @@ void main() {
         final CorruptStore raw = CorruptStore('{kein json');
         final Harness h = await _boot(raw: raw);
         await pumpCura(tester, h.controller);
-        expect(find.text('Schritt 1 von 4'), findsOneWidget);
+        expect(find.text('Schritt 1 von 5'), findsOneWidget);
         expect(find.text(S.dataUnreadable), findsOneWidget);
         expect(raw.deleted, isTrue);
         expect(h.controller.startNotice, StartNotice.none);
@@ -702,7 +731,7 @@ void main() {
         expect(find.text(S.startLoadError), findsOneWidget);
         expect(find.text(S.pathLoadError), findsNothing, reason: 'E-4');
         expect(find.text(S.retry), findsOneWidget);
-        expect(find.text('Schritt 1 von 4'), findsNothing);
+        expect(find.text('Schritt 1 von 5'), findsNothing);
         expect(raw.deletes, 0, reason: 'bei Lesefehlern nichts löschen');
         // Keine Button-Gruppe beim StartGate-Fehler (A-43).
         expect(find.byType(MannyButton), findsNothing);
@@ -764,10 +793,10 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.byType(HomeShell), findsNothing);
-      expect(find.text('Schritt 1 von 4'), findsNothing);
+      expect(find.text('Schritt 1 von 5'), findsNothing);
       raw.release();
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 1 von 4'), findsOneWidget);
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
       await disposeApp(tester);
     });
   });
@@ -777,7 +806,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _pumpAtName(tester, h, size: Viewports.small);
       // Erst antippen, dann erscheint die Tastatur (wie auf dem Gerät).
       await tester.tap(find.byType(TextField));
       await tester.pump();
@@ -822,7 +851,7 @@ void main() {
       final Harness h = await _boot();
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _pumpAtName(tester, h, size: Viewports.small);
       await openKeyboard(tester);
       const double keyboardTop = 568 - 300;
       final Rect field = tester.getRect(find.byType(TextField));
@@ -834,7 +863,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(SingleChildScrollView),
-          matching: find.text('Schritt 1 von 4'),
+          matching: find.text('Schritt 2 von 5'),
           skipOffstage: false,
         ),
         findsOneWidget,
@@ -846,7 +875,7 @@ void main() {
     testWidgets('Tastatur auf/zu ändert den Zustand des Feldes nicht (Text, '
         'Fokus bleiben, wenn der Kopf wechselt)', (WidgetTester tester) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _pumpAtName(tester, h, size: Viewports.small);
       await _enterName(tester, 'Jakob');
       await tester.showKeyboard(find.byType(TextField));
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
@@ -878,7 +907,7 @@ void main() {
       final Harness h = await _boot();
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _pumpAtName(tester, h, size: Viewports.small);
       expect(find.text(S.moreToAdd, skipOffstage: false), findsOneWidget);
       await disposeApp(tester);
     });
@@ -920,12 +949,12 @@ void main() {
       final Harness h = await _boot();
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await pumpCura(tester, h.controller, size: Viewports.small);
+      await _pumpAtName(tester, h, size: Viewports.small);
       await _enterName(tester, 'Jakob');
       await tester.ensureVisible(_next());
       await tester.tap(_next());
       await tester.pumpAndSettle();
-      expect(find.text('Schritt 2 von 4'), findsOneWidget);
+      expect(find.text('Schritt 3 von 5'), findsOneWidget);
       expectWholeWords(tester, S.consentAccept);
       expect(
         find.descendant(
@@ -940,37 +969,195 @@ void main() {
       await disposeApp(tester);
     });
 
-    testWidgets('passt der Text neben das Mikrofon, bleibt es in der Leiste', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('320 × 568, 200 %: „Weiter“ in der Leiste, „Zurück“ am Ende '
+        'des Inhalts, beide erreichbar', (WidgetTester tester) async {
       final Harness h = await _boot();
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await pumpCura(tester, h.controller, size: Viewports.small);
-      // Schritt 1: „Weiter“ passt neben das Mikrofon.
+      await _pumpAtName(tester, h, size: Viewports.small);
+      await _enterName(tester, 'Jakob');
+      expect(_next().hitTestable(), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(SingleChildScrollView),
-          matching: find.byType(MicButton),
+          matching: _backButton(),
           skipOffstage: false,
         ),
-        findsNothing,
+        findsOneWidget,
       );
+      await tester.ensureVisible(_backButton());
+      await tester.pumpAndSettle();
+      expect(_backButton().hitTestable(), findsOneWidget);
       expectWholeWords(tester, S.next);
+      expect(tester.takeException(), isNull);
+      await disposeApp(tester);
+    });
+
+    testWidgets('390 × 844, 100 %: „Zurück“ links (mindestens 112 dp), 12 dp '
+        'Abstand zu „Weiter“', (WidgetTester tester) async {
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      final Rect next = tester.getRect(_next());
+      final Rect back = tester.getRect(_backButton());
+      expect(back.width, greaterThanOrEqualTo(112));
+      expect(back.right, lessThan(next.left));
+      expect(next.left - back.right, closeTo(12, 0.5));
+      expect(next.height, greaterThanOrEqualTo(56));
       await disposeApp(tester);
     });
   });
 
-  group('Kopf: Fokusring-Abstand (A-U3-RR R2)', () {
-    testWidgets('Zurück-Pfeil im Onboarding-Kopf und auf der Datenschutzseite '
-        'hat 8 dp Abstand zum linken Rand', (WidgetTester tester) async {
+  group('Kopf-Karte (Brief v2, V2-5)', () {
+    testWidgets('Fortschritt und Titel stehen auf der Kopf-Karte; die '
+        'Datenschutzseite hat Zurück-Pfeil und Titel auf einer Karte', (
+      WidgetTester tester,
+    ) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller);
+      await _pumpAtName(tester, h);
+      expect(
+        find.descendant(
+          of: find.byType(HeaderCard),
+          matching: find.text(S.onboardingTitleName),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(HeaderCard),
+          matching: find.byType(StepProgress),
+        ),
+        findsOneWidget,
+      );
       await _advanceTo(tester, 1);
-      expect(tester.getTopLeft(find.byType(HeaderIconButton)).dx, CuraSpace.s2);
       await tester.tap(find.text(S.privacyLink));
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byType(HeaderIconButton)).dx, CuraSpace.s2);
+      expect(
+        find.descendant(
+          of: find.byType(GlassCard),
+          matching: find.byType(HeaderIconButton),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(S.privacyPlaceholderBody), findsOneWidget);
+      await disposeApp(tester);
+    });
+  });
+
+  group('Look-Schritt (Ergänzung 1, 6a, V2-65 bis V2-67, V2-75)', () {
+    testWidgets('Schritt 1 von 5, zwei Karten, „Mit Brille“ vorgewählt, Weiter '
+        'aktiv, keine Figur, keine Blase, kein Mikrofon', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle sem = tester.ensureSemantics();
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
+      expect(find.text(S.onboardingTitleLook), findsOneWidget);
+      expect(find.text(S.mannyLookWith), findsOneWidget);
+      expect(find.text(S.mannyLookWithout), findsOneWidget);
+      expect(find.text(S.mannyLookSelected), findsOneWidget);
+      expect(find.text(S.mannyLookHint), findsOneWidget);
+      expect(h.state.mannyLook, MannyLook.brille);
+      expect(_next(), findsOneWidget);
+      expect(tester.widget<PillButton>(_next()).onPressed, isNotNull);
+      expect(find.byType(MannyBubble), findsNothing);
+      expect(find.byType(MicButton), findsNothing);
+      expect(
+        find.bySemanticsLabel('Manny mit Brille, ausgewählt, 1 von 2'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('Manny ohne Brille, nicht ausgewählt, 2 von 2'),
+        findsOneWidget,
+      );
+      sem.dispose();
+      await disposeApp(tester);
+    });
+
+    testWidgets('Wahl „Ohne Brille“: sofort gespeichert, Name-Schritt zeigt '
+        'Manny ohne Brille, Zurück behält die Wahl, Neustart ebenso', (
+      WidgetTester tester,
+    ) async {
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      await tester.tap(find.text(S.mannyLookWithout));
+      await tester.pumpAndSettle();
+      expect(h.state.mannyLook, MannyLook.ohne);
+      expect((await h.persisted())!.mannyLook, MannyLook.ohne);
+      await _tapNext(tester);
+      expect(find.text('Schritt 2 von 5'), findsOneWidget);
+      final Finder img = find.descendant(
+        of: find.byType(MannyIllustration),
+        matching: find.byType(Image),
+      );
+      final AssetBundleImageKey key =
+          (await tester.runAsync(
+                () => tester
+                    .widget<Image>(img.first)
+                    .image
+                    .obtainKey(
+                      createLocalImageConfiguration(tester.element(img.first)),
+                    ),
+              ))!
+              as AssetBundleImageKey;
+      expect(key.name, startsWith('assets/manny/ohne/'));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Schritt 1 von 5'), findsOneWidget);
+      expect(
+        tester.widget<MannyLookPicker>(find.byType(MannyLookPicker)).value,
+        MannyLook.ohne,
+      );
+      await disposeApp(tester);
+
+      final Harness again = await _boot(raw: h.raw);
+      await pumpCura(tester, again.controller);
+      expect(
+        tester.widget<MannyLookPicker>(find.byType(MannyLookPicker)).value,
+        MannyLook.ohne,
+      );
+      await disposeApp(tester);
+    });
+
+    for (final double scale in <double>[1.0, 2.0]) {
+      testWidgets('320 × 568, ×$scale: Karten (untereinander ab 200 %), '
+          'Weiter und Zurück erreichbar, kein Überlauf', (
+        WidgetTester tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final Harness h = await _boot();
+        await pumpCura(tester, h.controller, size: Viewports.small);
+        final Rect a = tester.getRect(find.text(S.mannyLookWith));
+        final Rect b = tester.getRect(find.text(S.mannyLookWithout));
+        // Bei Breite < 360 dp stehen die Karten immer untereinander.
+        expect(b.top, greaterThan(a.bottom));
+        expect(_next().hitTestable(), findsOneWidget);
+        await tester.ensureVisible(_backButton());
+        await tester.pumpAndSettle();
+        expect(_backButton().hitTestable(), findsOneWidget);
+        await tester.ensureVisible(find.text(S.mannyLookHint));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await disposeApp(tester);
+      });
+    }
+
+    testWidgets('Bewegung reduzieren: Wechsel ohne laufende Animation', (
+      WidgetTester tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final Harness h = await _boot();
+      await pumpCura(tester, h.controller);
+      await tester.tap(find.text(S.mannyLookWithout));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 121));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(tester.binding.transientCallbackCount, 0);
       await disposeApp(tester);
     });
   });
@@ -979,7 +1166,7 @@ void main() {
     testWidgets('768 × 1024: Manny steht linksbündig zur Inhaltsspalte '
         '(Kante des Namensfeldes)', (WidgetTester tester) async {
       final Harness h = await _boot();
-      await pumpCura(tester, h.controller, size: Viewports.tablet);
+      await _pumpAtName(tester, h, size: Viewports.tablet);
       final double manny = tester.getTopLeft(find.byType(MannyIllustration)).dx;
       final double field = tester.getTopLeft(find.byType(TextField)).dx;
       expect(manny, closeTo(field, 0.5));

@@ -142,8 +142,8 @@ void main() {
           tester.widget<Text>(find.text(t)).style?.fontWeight;
       expect(weight('20 Min'), FontWeight.w700);
       expect(weight('10 Min'), isNot(FontWeight.w700));
-      expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
-      expect(find.text('TERMINE'), findsOneWidget);
+      expect(find.text('Übungen · ca. 20 Min'), findsOneWidget);
+      expect(find.text('Termine'), findsOneWidget);
       await disposeApp(tester);
     });
 
@@ -153,18 +153,18 @@ void main() {
       final Harness h = await _today(tester);
       await _tap(tester, find.text('30 Min'));
       expect(h.state.prefs.timeChoice, 30);
-      expect(find.text('ÜBUNGEN · CA. 30 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 30 Min'), findsOneWidget);
       // Ein Termin plus sechs Übungen.
       expect(find.byType(CategoryCard), findsNWidgets(7));
       await _tap(tester, find.text('10 Min'));
-      expect(find.text('ÜBUNGEN · CA. 10 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 10 Min'), findsOneWidget);
       expect(find.byType(CategoryCard), findsNWidgets(3));
 
       h.clock.advanceDays(1);
       resumeApp(tester);
       await tester.pumpAndSettle();
       expect(h.state.prefs.timeChoice, 10, reason: 'Zeitwahl bleibt');
-      expect(find.text('ÜBUNGEN · CA. 10 MIN'), findsOneWidget);
+      expect(find.text('Übungen · ca. 10 Min'), findsOneWidget);
       await _closeLater(tester);
     });
 
@@ -279,14 +279,14 @@ void main() {
         final Harness h = await _today(tester);
         await _tap(tester, _inCard('ex-kniebeuge', S.exerciseRemove));
         expect(find.text(S.exSquatName), findsNothing);
-        expect(find.text('ÜBUNGEN · CA. 14 MIN'), findsOneWidget);
+        expect(find.text('Übungen · ca. 14 Min'), findsOneWidget);
         expect(find.text(S.removedSnackbar), findsOneWidget);
         expect(find.text(S.undo), findsOneWidget);
         expect(h.controller.transient.undoWindowOpen, isTrue);
 
         await _tap(tester, find.text(S.undo));
         expect(find.text(S.exSquatName), findsOneWidget);
-        expect(find.text('ÜBUNGEN · CA. 20 MIN'), findsOneWidget);
+        expect(find.text('Übungen · ca. 20 Min'), findsOneWidget);
         expect(find.byType(CuraSnackbar), findsNothing);
         expect(h.controller.transient.undoWindowOpen, isFalse);
         await disposeApp(tester);
@@ -319,7 +319,7 @@ void main() {
         expect(find.text('3 × 10 · 5 Min'), findsOneWidget);
         expect(_inCard('custom-1', S.exerciseSwap), findsNothing);
         expect(_inCard('custom-1', S.exerciseRemove), findsOneWidget);
-        expect(find.text('ÜBUNGEN · CA. 25 MIN'), findsOneWidget);
+        expect(find.text('Übungen · ca. 25 Min'), findsOneWidget);
         await disposeApp(tester);
       },
     );
@@ -354,7 +354,7 @@ void main() {
     });
 
     testWidgets(
-      'Leer: Karte, Überschrift „ÜBUNGEN“, „Training starten“ deaktiviert (UI-29)',
+      'Leer: Karte, Überschrift „Übungen“, „Training starten“ deaktiviert (UI-29)',
       (WidgetTester tester) async {
         final Harness h = await _today(
           tester,
@@ -367,7 +367,7 @@ void main() {
           ),
         );
         expect(find.text(S.emptyExercises), findsOneWidget);
-        expect(find.text('ÜBUNGEN'), findsOneWidget);
+        expect(find.text('Übungen'), findsOneWidget);
         expect(find.textContaining('CA.'), findsNothing);
         expect(find.text(S.customAdd), findsOneWidget);
         final PillButton button = tester.widget<PillButton>(
@@ -541,8 +541,9 @@ void main() {
         final Rect nav = tester.getRect(find.byType(FloatingNav));
         expect(snackbar.overlaps(nav), isFalse);
         expect(snackbar.overlaps(row), isFalse);
-        // Opak, ohne Blur: nur Nav und Manny-Knopf haben einen BackdropFilter.
-        expect(find.byType(BackdropFilter), findsNWidgets(2));
+        // Opak, ohne Blur: nur Kopf-Karte, Leiste und Manny-Knopf haben einen
+        // BackdropFilter (Blur-Budget 3).
+        expect(find.byType(BackdropFilter), findsNWidgets(3));
         expect(
           find.descendant(
             of: find.byType(CuraSnackbar),

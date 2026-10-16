@@ -58,6 +58,14 @@ abstract final class S {
   static const String onboardingStep4 = 'Wann war die Verletzung oder OP?';
   static const String micHint = 'Das kann ich bald, heute noch nicht.';
 
+  // Titel der Kopf-Karte im Onboarding (Ergänzung 1, 6a): fünf Schritte. Die
+  // Titel der Schritte 2 bis 5 sind die Fragen aus Mannys Blasen in Kurzform.
+  static const String onboardingTitleLook = 'Wie soll Manny aussehen?';
+  static const String onboardingTitleName = 'Wie heißt du?';
+  static const String onboardingTitleConsent = 'Datenschutz';
+  static const String onboardingTitleInjury = "Was hat's erwischt?";
+  static const String onboardingTitleDate = 'Wann war es?';
+
   // -------------------------------------------------------------------------
   // Manny, Blasen auf dem Pfad (Brief 6.2, Platzhalter bis zur KI)
   // -------------------------------------------------------------------------
@@ -375,6 +383,10 @@ abstract final class S {
   static const String mannyLookWithoutLabel = 'Manny ohne Brille';
   static const String mannyLookSelected = 'Ausgewählt';
 
+  /// Hinweiskarte unter den Karten im Onboarding-Schritt 1 (6a).
+  static const String mannyLookHint =
+      'Du kannst das jederzeit im Profil ändern.';
+
   /// „Manny mit Brille, ausgewählt, 1 von 2“ (V2-66).
   static String mannyLookChoiceLabel(
     String label,
@@ -396,7 +408,7 @@ abstract final class S {
   static const String bubbleClose = 'Nachricht schließen';
   static const String datePlaceholder = 'Datum wählen';
 
-  /// „Schritt 3 von 4“ (Brief 5.8, Screenreader liest nur den Text).
+  /// „Schritt 3 von 5“ (Brief 5.8, Screenreader liest nur den Text).
   static String stepOf(int step, int total) => 'Schritt $step von $total';
 
   /// „Kreuzbandriss (ACL), Auswahl, ausgewählt“ (Brief 8).

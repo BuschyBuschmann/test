@@ -306,6 +306,11 @@ abstract final class CuraSize {
   /// Kopf (Zurück, Fortschritt) als erstes Element in die Scrollfläche.
   static const double onboardingHeaderScrollMaxHeight = 400;
 
+  /// Leiste des Onboardings (Ergänzung 1, 6a): „Zurück“ mindestens 112 dp
+  /// breit, 12 dp Abstand zu „Weiter“.
+  static const double onboardingBackWidth = 112;
+  static const double onboardingButtonGap = 12;
+
   /// Routen-Schiebung (Vollbild-Routen, Onboarding-Seitenwechsel).
   static const double routeSlide = MotionTokens.routeSlide;
 

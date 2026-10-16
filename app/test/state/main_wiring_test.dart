@@ -41,7 +41,7 @@ void main() {
     addTearDown(first.dispose);
     await pumpCura(tester, first);
     expect(find.text(S.dataUnreadable), findsOneWidget);
-    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('Schritt 1 von 5'), findsOneWidget);
     await disposeApp(tester);
     expect(
       await tester.runAsync(stored),
@@ -53,7 +53,7 @@ void main() {
     addTearDown(second.dispose);
     await pumpCura(tester, second);
     expect(find.text(S.dataUnreadable), findsNothing);
-    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('Schritt 1 von 5'), findsOneWidget);
     await disposeApp(tester);
   });
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Rauchtest des Produktions-Einstiegs `lib/main.dart` im Browser (U2b):
-// startet die echte App (echter Speicher, Systemuhr), prüft Onboarding Schritt 1,
-// Eingabe, Weiter und Fortsetzen nach Reload. Kein Szenario, keine Overrides.
+// startet die echte App (echter Speicher, Systemuhr), prüft Onboarding Schritt 1
+// (Look-Wahl, F2-R4), Schritt 2 (Name), Eingabe, Weiter und Fortsetzen nach Reload. Kein Szenario, keine Overrides.
 //
 //   flutter build web --release --no-web-resources-cdn -t lib/main.dart --output=<Verzeichnis>
 //   (cd <Verzeichnis> && python3 -m http.server 8766 --bind 127.0.0.1) &
@@ -45,17 +45,19 @@ const seen = async (text, timeout = 15000) =>
   page.getByText(text, { exact: false }).first().waitFor({ state: 'attached', timeout }).then(() => true, () => false);
 
 await open();
-check('main.dart startet: Onboarding Schritt 1', await seen('Schritt 1 von 4'));
+check('main.dart startet: Onboarding Schritt 1 von 5 (Look-Wahl)', (await seen('Schritt 1 von 5')) && (await seen('Wie soll Manny aussehen?')));
 await page.screenshot({ path: path.join(outDir, 'main-schritt1.png') });
+await page.locator('flt-semantics[role="button"]', { hasText: 'Weiter' }).first().click({ force: true });
+check('Weiter → Schritt 2 von 5 (Name)', await seen('Schritt 2 von 5'));
 const field = page.locator('input[data-semantics-role="text-field"]:not([disabled])').first();
 await field.click({ force: true });
 await page.keyboard.type('Jakob');
 await page.waitForTimeout(300);
 await page.locator('flt-semantics[role="button"]', { hasText: 'Weiter' }).first().click({ force: true });
-check('Weiter → Schritt 2 von 4', await seen('Schritt 2 von 4'));
+check('Weiter → Schritt 3 von 5', await seen('Schritt 3 von 5'));
 await page.reload();
 await open();
-check('Reload: Fortsetzen bei Schritt 2 (echter Speicher)', await seen('Schritt 2 von 4'));
+check('Reload: Fortsetzen bei Schritt 3 (echter Speicher)', await seen('Schritt 3 von 5'));
 check('Reload: Name im Manny-Text', await seen('Jakob'));
 await page.screenshot({ path: path.join(outDir, 'main-nach-reload.png') });
 
@@ -78,13 +80,13 @@ await placeholder2.waitFor({ state: 'attached', timeout: 30000 });
 await placeholder2.dispatchEvent('click');
 const seen2 = (text, timeout = 15000) =>
   page2.getByText(text, { exact: false }).first().waitFor({ state: 'attached', timeout }).then(() => true, () => false);
-check('kaputtes Dokument: Onboarding Schritt 1', await seen2('Schritt 1 von 4'));
+check('kaputtes Dokument: Onboarding Schritt 1', await seen2('Schritt 1 von 5'));
 check('kaputtes Dokument: Hinweis „nicht lesbar“', await seen2('nicht lesbar'));
 check('kaputtes Dokument: aus dem Speicher entfernt', (await page2.evaluate(() => localStorage.getItem('curaone.state.v1'))) === null);
 await page2.reload();
 await placeholder2.waitFor({ state: 'attached', timeout: 30000 });
 await placeholder2.dispatchEvent('click');
-check('Reload: Schritt 1 wieder da', await seen2('Schritt 1 von 4'));
+check('Reload: Schritt 1 wieder da', await seen2('Schritt 1 von 5'));
 check('Reload: kein Hinweis mehr', !(await seen2('nicht lesbar', 4000)));
 check('keine Seiten- oder Konsolenfehler', errors.length === 0, errors.slice(0, 3).join(' | '));
 await browser.close();

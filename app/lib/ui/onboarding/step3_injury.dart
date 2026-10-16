@@ -1,4 +1,4 @@
-// Schritt 3: Verletzungstyp (Brief 6.1, UI-14). Vier `ChoiceCard`s,
+// Schritt 4: Verletzungstyp (Brief 6.1, UI-14). Vier `ChoiceCard`s,
 // Einfachauswahl; bei „Anderes“ erscheint ein optionales Textfeld („Was ist
 // passiert?“), „Weiter“ ist trotzdem aktiv. Auswahl und Freitext werden sofort
 // gespeichert. Bei allen Typen außer Kreuzband erscheint direkt unter der
@@ -15,6 +15,7 @@ import '../../theme/cura_motion.dart';
 import '../../theme/tokens.dart';
 import '../components/choice_card.dart';
 import '../components/cura_text_field.dart';
+import '../components/glass_card.dart';
 import '../components/info_note.dart';
 
 class Step3Injury extends StatefulWidget {
@@ -91,6 +92,7 @@ class _Step3InjuryState extends State<Step3Injury> {
         if (selected == InjuryType.other)
           CuraTextField(
             label: S.injuryOtherLabel,
+            labelOnWorld: true,
             controller: _other,
             textInputAction: TextInputAction.done,
             onChanged: c.setInjuryOther,
@@ -130,6 +132,14 @@ class _RevealNoteState extends State<_RevealNote> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      const InfoNote(text: S.injuryNoOwnPath, announce: true);
+  Widget build(BuildContext context) {
+    // Auf der Welt steht der Hinweis auf einer Karte (V2-5).
+    return const GlassCard(
+      padding: EdgeInsets.symmetric(
+        horizontal: CuraSize.cardPadding,
+        vertical: CuraSpace.s3,
+      ),
+      child: InfoNote(text: S.injuryNoOwnPath, announce: true),
+    );
+  }
 }

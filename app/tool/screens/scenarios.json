@@ -24,6 +24,9 @@
     "cmp-snackbar",
     "cmp-pipette",
     "ob1-empty",
+    "ob0-look",
+    "ob0-look-ohne",
+    "ob1-name-ohne",
     "ob1-name",
     "ob1-keyboard",
     "ob2",
@@ -109,12 +112,19 @@
     "example-chat-doctor"
   ],
   "fixedScale": ["chat-manny-scale15", "chats-scale15", "path-header-wrap", "today-wrap"],
+  "worlds": {
+    "viewport": "390x844",
+    "worlds": ["morning", "midday", "evening", "night"],
+    "themes": ["light", "dark"],
+    "scenarios": ["path-active", "today-standard", "ob0-look", "ob1-name", "profile"]
+  },
   "tablet": {
     "viewport": { "name": "768x1024", "w": 768, "h": 1024 },
     "scenarios": [
       "cmp-forms",
       "cmp-surfaces",
       "cmp-nav-manny",
+      "ob0-look",
       "ob1-name",
       "path-active",
       "today-standard",

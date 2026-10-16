@@ -1,6 +1,7 @@
-// `DashedAction` (Brief 5.3): gestrichelte Aktion „+ Eigene Übung“. 48 dp
-// hoch, volle Breite, Rand gestrichelt in `border-control` (HC `-hc`), Text
-// und Icon `text-1`. Pressed: Überlagerung Weiß 10 %.
+// `DashedAction` (Brief 5.3, Brief v2 3.5): gestrichelte Aktion „+ Eigene
+// Übung“. 48 dp hoch, volle Breite, Rand gestrichelt in `border-control` (HC
+// `-hc`), Text und Icon `text-1` auf der Kartenfläche (`card`, kein Text direkt
+// auf der Welt, V2-5; kein Blur). Pressed: Überlagerung Weiß 10 %.
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import 'cura_pressable.dart';
+import 'glass_card.dart';
 
 class DashedAction extends StatelessWidget {
   const DashedAction({
@@ -42,11 +44,13 @@ class DashedAction extends StatelessWidget {
             color: colors.controlBorder,
             width: CuraSize.controlBorder,
           ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: pressed ? colors.pressedOverlay : null,
-              borderRadius: BorderRadius.circular(CuraRadius.pill),
-            ),
+          child: GlassCard(
+            padding: EdgeInsets.zero,
+            radius: CuraRadius.pill,
+            shadow: false,
+            lightEdge: false,
+            borderColor: Colors.transparent,
+            overlay: pressed ? colors.pressedOverlay : null,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 minHeight: CuraSize.chipHeight,

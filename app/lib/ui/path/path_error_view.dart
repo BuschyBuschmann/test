@@ -12,6 +12,7 @@ import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
+import '../components/glass_card.dart';
 import '../components/pill_button.dart';
 import '../components/probe_keys.dart';
 
@@ -37,26 +38,36 @@ class PathErrorView extends StatelessWidget {
         child: SingleChildScrollView(
           key: ProbeKeys.scroll,
           padding: const EdgeInsets.all(CuraSpace.pageMargin),
+          // Symbol und Text stehen auf einer Karte (V2-5: kein Text direkt
+          // auf der Welt); der Button darunter hat seine eigene Fläche.
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Center(
-                child: ExcludeSemantics(
-                  child: Icon(
-                    Icons.error_outline_rounded,
-                    size: CuraComponent.dialogIconSize,
-                    color: colors.statusError,
-                  ),
-                ),
-              ),
-              const SizedBox(height: CuraSpace.s3),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: type.body.copyWith(color: colors.text1),
+              GlassCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Center(
+                      child: ExcludeSemantics(
+                        child: Icon(
+                          Icons.error_outline_rounded,
+                          size: CuraComponent.dialogIconSize,
+                          color: colors.statusError,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: CuraSpace.s3),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: type.body.copyWith(color: colors.text1),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: CuraSpace.s6),

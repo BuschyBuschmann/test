@@ -14,6 +14,7 @@ import '../ui/components/floating_nav.dart';
 import '../ui/components/glass_card.dart';
 import '../ui/components/header_card.dart';
 import '../ui/components/manny_bubble.dart';
+import '../ui/components/manny_look_picker.dart';
 import '../ui/components/node_hint.dart';
 import '../ui/components/opaque_surface.dart';
 import '../ui/components/orb_node.dart';
@@ -172,6 +173,8 @@ TextProbe probeTexts({Element? root, required Size view}) {
         w is CuraDialog ||
         w is NodeHint ||
         w is CategoryIconTile ||
+        // Die Look-Karten sind deckend (`surface-opaque`, gewählt `#FFF1E4`).
+        w is MannyLookPicker ||
         w is OpaqueSurface) {
       g = TextGround.opaque;
     } else if (w is PillButton) {
@@ -201,6 +204,16 @@ TextProbe probeTexts({Element? root, required Size view}) {
         final ProbedText? p = _probe(r, g, screen, c, o);
         if (p != null) out.add(p);
       }
+    }
+    if (w is IndexedStack && w.index != null) {
+      // Nur das angezeigte Kind ist sichtbar; die übrigen bleiben im Baum
+      // (Zustand und Scroll-Position der Ziele der Leiste), werden aber nicht
+      // gemalt und zählen nicht.
+      int i = 0;
+      e.visitChildren((Element child) {
+        if (i++ == w.index) walk(child, g, c, o);
+      });
+      return;
     }
     e.visitChildren((Element child) => walk(child, g, c, o));
   }

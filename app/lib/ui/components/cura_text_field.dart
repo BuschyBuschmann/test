@@ -10,6 +10,7 @@ import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import 'glass_card.dart';
+import 'world_label_chip.dart';
 
 class CuraTextField extends StatefulWidget {
   const CuraTextField({
@@ -26,7 +27,12 @@ class CuraTextField extends StatefulWidget {
     this.autofocus = false,
     this.enabled = true,
     this.autofillHints,
+    this.labelOnWorld = false,
   });
+
+  /// Das Feld steht direkt auf der Welt (Onboarding): das Label sitzt dann auf
+  /// einem Label-Chip statt als freier Text (V2-5, Brief v2 3.5).
+  final bool labelOnWorld;
 
   /// Label oberhalb des Feldes (und Screenreader-Label).
   final String label;
@@ -91,10 +97,12 @@ class _CuraTextFieldState extends State<CuraTextField> {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         ExcludeSemantics(
-          child: Text(
-            widget.label,
-            style: type.secondary.copyWith(color: colors.text2),
-          ),
+          child: widget.labelOnWorld
+              ? WorldLabelChip(widget.label)
+              : Text(
+                  widget.label,
+                  style: type.secondary.copyWith(color: colors.text2),
+                ),
         ),
         const SizedBox(height: CuraComponent.fieldGap),
         GlassCard(

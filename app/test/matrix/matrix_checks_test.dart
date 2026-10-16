@@ -535,7 +535,7 @@ void main() {
       );
     });
 
-    test('Text direkt auf der Welt ist ein Richtwert (bis F2-R2 bis R4)', () {
+    test('Text direkt auf der Welt ist ein Richtwert (V2-5, Abnahme)', () {
       final List<Finding> f = checkCardTextContrast(
         p(_text('Titel', ground: TextGround.bg, color: c.text1)),
         c,
@@ -1657,7 +1657,7 @@ void _u3aMatrixTests(
       expect(await checkReachability(tester), isNotEmpty);
     });
 
-    test('R-AB-4: Messeigenheit nur für CuraTextField und Wert um 1,0', () {
+    test('R-AB-4: Messeigenheit nur für CuraTextField und Wert unter 4,5', () {
       expect(
         isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: true),
         isTrue,
@@ -1666,13 +1666,15 @@ void _u3aMatrixTests(
         isKnownTextFieldArtifact(ratio: 1.02, insideCuraTextField: true),
         isTrue,
       );
-      // Echter Mangel: Wert deutlich über 1,0.
+      // Verlauf des Feldes im Dialog (gemessen 4,33): Messeigenheit.
       expect(
-        isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: true),
-        isFalse,
+        isKnownTextFieldArtifact(ratio: 4.33, insideCuraTextField: true),
+        isTrue,
       );
+      // Ab 4,5 meldet die Leitlinie ohnehin keinen Befund; ein Wert darunter
+      // ohne CuraTextField bleibt einer.
       expect(
-        isKnownTextFieldArtifact(ratio: 4.4, insideCuraTextField: true),
+        isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: false),
         isFalse,
       );
       // Ein anderes Eingabefeld ist nie ausgenommen.

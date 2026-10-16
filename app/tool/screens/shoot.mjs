@@ -14,12 +14,20 @@
 //   --base=URL         Server (Standard http://127.0.0.1:8765)
 //   --out=DIR          Ausgabe (Standard build/screens)
 //   --only=a,b         nur diese Szenario-Kennungen
-//   --variants=a,b     nur diese Varianten (normal, scale2, hc, rm)
+//   --variants=a,b     nur diese Varianten (normal, scale2, hc, rm, worlds oder
+//                      einzelne wie world-night-dark)
 //   --viewports=a,b    nur diese Viewports (z. B. 390x844)
 //   --no-sims          ohne Farbsehschwäche-Simulation
 //   --no-extras        ohne Tablet- und Querformat-Stichproben
+//   --no-worlds        ohne die Welten-Läufe (siehe unten)
 //   --workers=N        parallele Seiten (Standard 4)
 //   --clock=fixed|install|none   Fake-Uhr (Standard fixed, siehe web_checks.mjs)
+//
+// Welten (F2-R4, Plan 3.6): Pfad, Heute, Look-Schritt und Profil in allen vier
+// Welten (Morgen, Mittag, Abend, Nacht) × beiden Themen (Hell, Dunkel). Die Welt
+// wählt der Lauf wie der Nutzer über die Darstellung (URL-Parameter `world` und
+// `theme`, im Preview als Darstellungs-Einstellungen), nicht über die Uhr; die
+// Szenarien und Größen stehen in `scenarios.json` unter `worlds`.
 //
 // Exit-Code 1 bei: Pipette außerhalb der Toleranz, Kontrast < Schwelle bei
 // Text auf Karte oder Welt, Seitenfehler, Szenario nicht bereit.
@@ -71,6 +79,19 @@ for (const variant of pick(Object.keys(config.variants), onlyVariants)) {
     for (const id of scenarios) {
       if (variant === 'scale2' && fixedScale.has(id)) continue;
       jobs.push({ kind: 'shot', variant, vp, id, params: { scenario: id, ...config.variants[variant] } });
+    }
+  }
+}
+const wd = config.worlds;
+if (wd && !flag('no-worlds')) {
+  const vp = config.viewports.find((v) => v.name === wd.viewport);
+  for (const world of wd.worlds) {
+    for (const theme of wd.themes) {
+      const variant = `world-${world}-${theme}`;
+      if (onlyVariants.length && !onlyVariants.includes(variant) && !onlyVariants.includes('worlds')) continue;
+      for (const id of wd.scenarios.filter((s) => scenarios.includes(s))) {
+        jobs.push({ kind: 'shot', variant, vp, id, params: { scenario: id, world, theme } });
+      }
     }
   }
 }

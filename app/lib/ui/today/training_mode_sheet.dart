@@ -10,7 +10,7 @@
 // (kein zweiter, gleichnamiger Button). Es schützt vor einem Fehltipp, weil das
 // Rückgängig nur 8 s dauert, und zeigt, dass Passiv und Aktiv folgen.
 //
-// Aufbau: `CuraSheetFrame` (E2, fester Kopf mit Titel und „Schließen“,
+// Aufbau: `CuraSheetFrame` (E2, fester Kopf `SheetTitleBar`: Titel und „Schließen“,
 // scrollender Mittelteil, feste Fußleiste). Die Route öffnet [TodayScreen]
 // über [TrainingModeSheet.route] und meldet sie im Register der Heute-Routen
 // an, damit ein Tageswechsel sie schließen kann.
@@ -23,9 +23,9 @@ import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../components/choice_card.dart';
 import '../components/glass_card.dart';
-import '../components/header_icon_button.dart';
 import '../components/pill_button.dart';
 import '../components/probe_keys.dart';
+import '../components/sheet_title_bar.dart';
 import '../routes/cura_sheet_route.dart';
 
 class TrainingModeSheet extends StatelessWidget {
@@ -49,42 +49,8 @@ class TrainingModeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final CuraColors colors = CuraColors.of(context);
-    final CuraTypography type = CuraTypography.of(context);
     return CuraSheetFrame(
-      header: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          CuraSpace.pageMargin,
-          CuraSpace.s6,
-          CuraSpace.s2,
-          CuraSpace.s2,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Expanded(
-              child: Semantics(
-                header: true,
-                // Der Titel skaliert bis 150 % mit (wie die Kopfzeilen der
-                // Vollbild-Routen): bei 200 % auf 320 dp füllte er sonst den
-                // Kopf und ließ den Modi keinen Platz.
-                child: MediaQuery.withClampedTextScaling(
-                  maxScaleFactor: CuraSize.headerTitleMaxTextScale,
-                  child: Text(
-                    S.trainingSheetTitle,
-                    style: type.title.copyWith(color: colors.text1),
-                  ),
-                ),
-              ),
-            ),
-            HeaderIconButton(
-              icon: Icons.close_rounded,
-              tooltip: S.close,
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-          ],
-        ),
-      ),
+      header: const SheetTitleBar(title: S.trainingSheetTitle),
       body: Padding(
         padding: const EdgeInsets.only(bottom: CuraSpace.s2),
         child: Column(
