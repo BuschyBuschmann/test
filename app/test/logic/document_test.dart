@@ -96,10 +96,13 @@ void main() {
     });
 
     test('fehlende Migration → unlesbar', () {
-      // Von Schema 2 nach 3 gibt es (noch) keine Migration.
+      // Von Schema 3 nach 4 gibt es (noch) keine Migration.
       expect(
-        () =>
-            decodeDocument(jsonEncode(minimalDoc()), kToday, currentSchema: 3),
+        () => decodeDocument(
+          jsonEncode(minimalDoc(schema: 3)),
+          kToday,
+          currentSchema: 4,
+        ),
         throwsA(isA<UnreadableDataException>()),
       );
     });

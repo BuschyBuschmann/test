@@ -18,10 +18,10 @@ String _fixture(String name) => File('test/fixtures/$name').readAsStringSync();
 Json _json(String raw) => jsonDecode(raw) as Json;
 
 void main() {
-  test('aktuelles Schema ist 2', () {
-    expect(kCurrentSchema, 2);
+  test('aktuelles Schema ist 3 (2 → 3 siehe migration_v3_test)', () {
+    expect(kCurrentSchema, 3);
     expect(kLastOnboardingStep, 4);
-    expect(kMigrations.keys, contains(1));
+    expect(kMigrations.keys, containsAll(<int>[1, 2]));
   });
 
   group('Fixture state_v1_onboarding_step2.json (unfertiges Onboarding)', () {
@@ -30,7 +30,7 @@ void main() {
 
     test('Migration auf Dokumentebene: step + 1, Look brille, Schema 2', () {
       final Json out = migrateToCurrent(_json(raw));
-      expect(out['schema'], 2);
+      expect(out['schema'], kCurrentSchema);
       expect((out['onboarding']! as Json)['step'], 2);
       expect((out['onboarding']! as Json)['completed'], false);
       expect(out['mannyLook'], 'brille');
@@ -73,7 +73,7 @@ void main() {
 
     test('Schritt bleibt unverändert, Look brille, wird nicht gefragt', () {
       final Json out = migrateToCurrent(_json(raw));
-      expect(out['schema'], 2);
+      expect(out['schema'], kCurrentSchema);
       expect((out['onboarding']! as Json)['completed'], true);
       expect((out['onboarding']! as Json)['step'], 3);
       expect(out['mannyLook'], 'brille');
@@ -91,10 +91,10 @@ void main() {
       expect(s.onboarding.completed, isTrue);
     });
 
-    test('Roundtrip schreibt Schema 2 und mannyLook', () {
+    test('Roundtrip schreibt das aktuelle Schema und mannyLook', () {
       final AppState s = expectedV1().copyWith(mannyLook: MannyLook.ohne);
       final Json j = s.toJson();
-      expect(j['schema'], 2);
+      expect(j['schema'], kCurrentSchema);
       expect(j['mannyLook'], 'ohne');
       expect(decodeDocument(encodeDocument(s), kToday), s);
     });

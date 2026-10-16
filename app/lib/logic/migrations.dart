@@ -18,7 +18,17 @@ export 'json_support.dart' show UnreadableDataException;
 /// `test/fixtures/state_v<n>*.json`.
 const Map<int, Json Function(Json)> kMigrations = <int, Json Function(Json)>{
   1: migrateV1ToV2,
+  2: migrateV2ToV3,
 };
+
+/// Schema 2 → 3 (Plan 8.1, L3): Abschnitt `account {patientId, boundAt}` kommt
+/// hinzu. Bestandsdaten haben keine Bindung (`account` fehlt → Startbildschirm,
+/// außer im Demo-Modus); `mannyLook` und alles Übrige bleiben unverändert.
+Json migrateV2ToV3(Json doc) {
+  final Json out = Json.of(doc);
+  out['schema'] = 3;
+  return out;
+}
 
 /// Schema 1 → 2 (Plan 3.5, Brief-Ergänzung 1, 10): Das Onboarding bekommt vor
 /// dem Namen den Look-Schritt, aus dem alten Schritt n wird Schritt n + 1.

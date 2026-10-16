@@ -28,9 +28,10 @@ class PrefsStateStore implements StateStore, DataEraser {
   Future<void> save(AppState state) =>
       _prefs.setString(kStateStorageKey, encodeDocument(state));
 
-  /// `clear(allowList:)` arbeitet mit exakten Schlüsseln (n4).
+  /// `clear(allowList:)` arbeitet mit exakten Schlüsseln (n4). Das Merkzeichen
+  /// der Backend-Löschung gehört nicht dazu (`kLocalEraseKeys`).
   @override
-  Future<void> deleteAll() => _prefs.clear(allowList: kAllStorageKeys);
+  Future<void> deleteAll() => _prefs.clear(allowList: kLocalEraseKeys);
 
   @override
   Future<void> eraseAll() => deleteAll();

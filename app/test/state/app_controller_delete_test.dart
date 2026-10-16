@@ -202,7 +202,13 @@ void main() {
   });
 
   test('Store-Schlüssel: nach Löschen kein Schlüssel aus kAllStorageKeys (UI-51/UI-82)', () {
-    expect(kAllStorageKeys, <String>{kStateStorageKey, kDisplayStorageKey});
+    expect(kAllStorageKeys, <String>{
+      kStateStorageKey,
+      kDisplayStorageKey,
+      kFrameworkStorageKey,
+      kOutboxStorageKey,
+      kDeletionStorageKey,
+    });
   });
 }
 

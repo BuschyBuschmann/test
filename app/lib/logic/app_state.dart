@@ -248,7 +248,42 @@ class CelebrationState {
 }
 
 /// Schema des Dokuments; erhöht bei jeder inkompatiblen Änderung (Plan 6.2).
-const int kCurrentSchema = 2;
+const int kCurrentSchema = 3;
+
+/// Bindung an das Backend (Schema 3, Plan 8.1): Patienten-ID und Zeitpunkt der
+/// aktuellen Bindung. Fehlt der Abschnitt, ist die App nicht gebunden
+/// (Startbildschirm, außer im Demo-Modus).
+class AccountState {
+  const AccountState({required this.patientId, required this.boundAt});
+
+  factory AccountState.fromJson(Json j) {
+    final String patientId = reqString(j, 'patientId');
+    if (patientId.isEmpty) unreadable('account.patientId: leer');
+    return AccountState(
+      patientId: patientId,
+      boundAt: reqInstant(j, 'boundAt'),
+    );
+  }
+
+  final String patientId;
+
+  /// UTC; Grundlage der Untergrenze für Warteschlangen-Tage (Plan 6.7 Nr. 3).
+  final DateTime boundAt;
+
+  Json toJson() => <String, Object?>{
+    'patientId': patientId,
+    'boundAt': boundAt.toUtc().toIso8601String(),
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is AccountState &&
+      other.patientId == patientId &&
+      other.boundAt.isAtSameMomentAs(boundAt);
+
+  @override
+  int get hashCode => Object.hash(patientId, boundAt.microsecondsSinceEpoch);
+}
 
 /// Der gesamte persistierte Zustand.
 class AppState {
@@ -262,6 +297,7 @@ class AppState {
     required this.manny,
     required this.celebration,
     this.mannyLook = MannyLook.defaultLook,
+    this.account,
   });
 
   /// Ausgangszustand (Erststart, nach Löschen): Streak 0, Freezes 2, Zeitwahl
@@ -276,6 +312,7 @@ class AppState {
     manny: const MannyState(),
     celebration: null,
     mannyLook: MannyLook.defaultLook,
+    account: null,
   );
 
   /// Liest ein **bereits auf [kCurrentSchema] migriertes** Dokument
@@ -285,6 +322,7 @@ class AppState {
   factory AppState.fromJson(Json j, LocalDay today) {
     final Json? consentJson = optJson(j, 'consent');
     final Json? celebration = optJson(j, 'celebration');
+    final Json? account = optJson(j, 'account');
     final OnboardingState onboarding = OnboardingState.fromJson(
       reqJson(j, 'onboarding'),
     );
@@ -318,6 +356,7 @@ class AppState {
           ? null
           : CelebrationState.fromJson(celebration),
       mannyLook: MannyLook.fromJson(j['mannyLook']),
+      account: account == null ? null : AccountState.fromJson(account),
     );
   }
 
@@ -333,6 +372,9 @@ class AppState {
   /// Gewählter Manny-Look (Schema 2); Vorbelegung `brille`.
   final MannyLook mannyLook;
 
+  /// Bindung an das Backend (Schema 3); `null` = nicht gebunden.
+  final AccountState? account;
+
   AppState copyWith({
     OnboardingState? onboarding,
     ConsentState? consent,
@@ -344,6 +386,8 @@ class AppState {
     CelebrationState? celebration,
     bool clearCelebration = false,
     MannyLook? mannyLook,
+    AccountState? account,
+    bool clearAccount = false,
   }) {
     return AppState(
       onboarding: onboarding ?? this.onboarding,
@@ -355,6 +399,7 @@ class AppState {
       manny: manny ?? this.manny,
       celebration: clearCelebration ? null : (celebration ?? this.celebration),
       mannyLook: mannyLook ?? this.mannyLook,
+      account: clearAccount ? null : (account ?? this.account),
     );
   }
 
@@ -369,6 +414,8 @@ class AppState {
     'manny': manny.toJson(),
     'celebration': celebration?.toJson(),
     'mannyLook': mannyLook.jsonName,
+    // Nur mit Bindung: ohne Backend bleibt das Dokument unverändert.
+    if (account != null) 'account': account!.toJson(),
   };
 
   @override
@@ -382,7 +429,8 @@ class AppState {
       other.prefs == prefs &&
       other.manny == manny &&
       other.celebration == celebration &&
-      other.mannyLook == mannyLook;
+      other.mannyLook == mannyLook &&
+      other.account == account;
 
   @override
   int get hashCode => Object.hash(
@@ -395,5 +443,6 @@ class AppState {
     manny,
     celebration,
     mannyLook,
+    account,
   );
 }
