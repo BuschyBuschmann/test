@@ -682,6 +682,11 @@ void main() {
         reason: 'Endungsvergleich ohne LIKE-Platzhalter, in Kleinbuchstaben',
       );
       expect(reset, isNot(contains('LIKE')), reason: 'kein LIKE im Reset');
+      expect(
+        reset,
+        contains('strpos(lower(t.payload::text), lower(e.id::text))'),
+        reason: 'Vorlagenbezug ohne Gross-/Kleinschreibung',
+      );
       // Schutzpruefung vor dem ersten DELETE, beide Richtungen
       final guard = reset.indexOf(r'$guard$');
       expect(guard, isNonNegative);
@@ -1068,23 +1073,14 @@ void main() {
       },
     );
 
-    test('blättert: listUsers über mehrere Seiten, Abfragen in Seiten von pageSize', () async {
+    test('blättert: listUsers vollständig (Ende = leere Seite), zwei stabile Durchläufe plus Nachprüfung', () async {
       await backend.resetTestData(kTestEmailDomain);
-      expect(g.listUserCalls, 3, reason: '450+ Konten bei 200 je Seite');
+      // 455 Konten bei 200 je Seite: 3 volle/teilweise Seiten + 1 leere = 4 Aufrufe je Durchlauf
+      expect(g.listUserCalls, 12, reason: '2 Durchläufe + 1 Nachprüfung');
       expect(g.maxRowsPerSelect, lessThanOrEqualTo(2));
-      expect(
-        g.selects.where((s) => s.startsWith('plan_templates@')).length,
-        2,
-        reason: '2 Vorlagen, Seite 1 voll (2 Zeilen), Seite 2 leer',
-      );
-      // Patienten: 3 Zeilen insgesamt, in der Testpraxis 2 -> mehrere Aufrufe wegen inChunk
-      expect(
-        g.selects.where((s) => s.startsWith('patients@')).length,
-        greaterThan(1),
-      );
     });
 
-    test('Abfragen sind nicht an max_rows gebunden: mehr Zeilen als eine Seite werden vollständig gelesen', () async {
+    test('Keyset: mehr Zeilen als eine Seite werden vollständig gelesen und gelöscht', () async {
       for (var i = 0; i < 7; i++) {
         g.tables['patients']!.add({
           'id': 'pat-x$i',
@@ -1094,9 +1090,169 @@ void main() {
         });
       }
       await backend.resetTestData(kTestEmailDomain);
+      expect(g.ids('patients'), ['pat-c']);
+      expect(
+        g.selects.where((s) => s.startsWith('patients>')).length,
+        greaterThan(3),
+      );
+    });
+
+    test('gekappte Seiten (max_rows 1 < pageSize 5) führen nie zu einem stillen Ende', () async {
+      final b = SupabaseSeedBackend(
+        gateway: g,
+        physioPassword: 'platzhalter-nur-test',
+        pageSize: 5,
+        inChunk: 5,
+      );
+      g.maxRows = 1;
+      for (var i = 0; i < 6; i++) {
+        g.tables['patients']!.add({
+          'id': 'pat-x$i',
+          'practice_id': 'pt1',
+          'main_physio_id': 'u-t1',
+          'auth_user_id': null,
+        });
+      }
+      await b.resetTestData(kTestEmailDomain);
       expect(g.ids('patients'), [
         'pat-c',
-      ], reason: 'alle 9 Testpatienten gelöscht, nicht nur die erste Seite');
+      ], reason: 'alle 8 Testpatienten trotz Kappung');
+      expect(g.ids('practices'), ['pc']);
+    });
+
+    test(
+      'gekappte Seiten: Verletzung hinter der Kappung wird gefunden',
+      () async {
+        final b = SupabaseSeedBackend(
+          gateway: g,
+          physioPassword: 'platzhalter-nur-test',
+          pageSize: 5,
+          inChunk: 5,
+        );
+        g.maxRows = 1;
+        // zweite Position/Plan, erst hinter der ersten Zeile erreichbar
+        g.tables['plans']!.add({'id': 'pl-z', 'patient_id': 'pat-c'});
+        g.tables['plan_items']!.add({
+          'id': 'it-z',
+          'plan_id': 'pl-z',
+          'exercise_id': 'ex-t1',
+        });
+        await expectLater(
+          b.resetTestData(kTestEmailDomain),
+          throwsA(isA<SeedGuardException>()),
+        );
+        expect(g.mutations, isEmpty);
+      },
+    );
+
+    test('gleichzeitiges Löschen zwischen zwei Seiten verschiebt nichts (Keyset)', () async {
+      for (var i = 0; i < 7; i++) {
+        g.tables['patients']!.add({
+          'id': 'pat-x$i',
+          'practice_id': 'pt1',
+          'main_physio_id': 'u-t1',
+          'auth_user_id': null,
+        });
+      }
+      var fired = false;
+      g.afterSelect = (table, page) {
+        // ein anderer Prozess löscht die ersten beiden bereits gelesenen Zeilen
+        if (table == 'patients' && !fired && page.length == 2) {
+          fired = true;
+          g.tables['patients']!.removeWhere(
+            (r) => page.any((p) => p['id'] == r['id']),
+          );
+        }
+      };
+      await backend.resetTestData(kTestEmailDomain);
+      expect(fired, isTrue);
+      expect(g.ids('patients'), ['pat-c'], reason: 'nichts übersprungen');
+    });
+
+    test('listUsers: Löschen zwischen zwei Seiten verschiebt den Offset, der zweite Durchlauf findet alle Testkonten', () async {
+      g.users.insert(
+        200,
+        const AuthUserInfo('u-edge', 'edge@test.curaone.invalid'),
+      );
+      var removed = false;
+      g.afterListPage = (call, page) {
+        // nach Seite 1 des ersten Durchlaufs verschwindet ein früheres Konto: u-edge rutscht nach vorn
+        if (call == 1 && !removed) {
+          removed = true;
+          g.users.removeWhere((u) => u.id == 'u-fill0');
+        }
+      };
+      await backend.resetTestData(kTestEmailDomain);
+      expect(removed, isTrue);
+      final left = g.users.map((u) => u.id).toSet();
+      expect(
+        left.contains('u-edge'),
+        isFalse,
+        reason: 'wurde trotz Versatz gefunden und gelöscht',
+      );
+      expect(left.contains('u-far'), isFalse);
+      expect(
+        g.listUserCalls,
+        greaterThan(12),
+        reason: 'ein zusätzlicher Durchlauf wegen Abweichung',
+      );
+    });
+
+    test(
+      'listUsers: instabile Konten brechen laut ab, ohne zu löschen',
+      () async {
+        var n = 0;
+        g.afterListPage = (call, page) {
+          if (page == 1) {
+            g.users.add(
+              AuthUserInfo('u-new${n++}', 'neu$n@test.curaone.invalid'),
+            );
+          }
+        };
+        await expectLater(
+          backend.resetTestData(kTestEmailDomain),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'Meldung',
+              contains('kein stabiler Durchlauf'),
+            ),
+          ),
+        );
+        expect(g.mutations, isEmpty);
+      },
+    );
+
+    test(
+      'Nachprüfung: übrig gebliebenes Testkonto wird laut gemeldet',
+      () async {
+        g.stuckUsers.add('u-t1');
+        await expectLater(
+          backend.resetTestData(kTestEmailDomain),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'Meldung',
+              contains('unvollstaendig'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('Vorlagenbezug: UUID in Großbuchstaben wird erkannt', () async {
+      g.row('plan_templates', 'tp-c')['payload'] = {'exercise_id': 'EX-T1'};
+      await expectLater(
+        backend.resetTestData(kTestEmailDomain),
+        throwsA(
+          isA<SeedGuardException>().having(
+            (e) => e.toString(),
+            'Meldung',
+            contains('Vorlage'),
+          ),
+        ),
+      );
+      expect(g.mutations, isEmpty);
     });
 
     final cases = <String, (void Function(_FakeGateway), String)>{
@@ -1425,6 +1581,10 @@ class _FakeGateway implements SeedGateway {
   int listUserCalls = 0;
   int maxRowsPerSelect = 0;
   bool failListUsers = false;
+  int? maxRows; // simuliert PostgREST max_rows (kleiner als limit)
+  void Function(String table, List<Row> page)? afterSelect;
+  void Function(int call, int page)? afterListPage;
+  final Set<String> stuckUsers = {};
 
   List<String> ids(String table) => [
     for (final r in tables[table]!) r['id']! as String,
@@ -1442,10 +1602,10 @@ class _FakeGateway implements SeedGateway {
     Row? eq,
     String? inColumn,
     List<String>? inValues,
-    required int from,
-    required int to,
+    String? afterId,
+    required int limit,
   }) async {
-    selects.add('$table@$from');
+    selects.add('$table>${afterId ?? ''}');
     var rows =
         tables[table]!.where((r) {
             if (eq != null && !eq.entries.every((e) => r[e.key] == e.value)) {
@@ -1454,13 +1614,20 @@ class _FakeGateway implements SeedGateway {
             if (inColumn != null && !inValues!.contains(r[inColumn])) {
               return false;
             }
-            return true;
+            final id = r['id']! as String;
+            return afterId == null || id.compareTo(afterId) > 0;
           }).toList()
           ..sort((a, b) => (a['id']! as String).compareTo(b['id']! as String));
-    if (from >= rows.length) return [];
-    rows = rows.sublist(from, (to + 1) > rows.length ? rows.length : to + 1);
+    final n = [
+      limit,
+      maxRows ?? limit,
+      rows.length,
+    ].reduce((a, b) => a < b ? a : b);
+    rows = rows.sublist(0, n);
     if (rows.length > maxRowsPerSelect) maxRowsPerSelect = rows.length;
-    return [for (final r in rows) Map<String, Object?>.from(r)];
+    final page = [for (final r in rows) Map<String, Object?>.from(r)];
+    afterSelect?.call(table, page);
+    return page;
   }
 
   @override
@@ -1468,11 +1635,14 @@ class _FakeGateway implements SeedGateway {
     if (failListUsers) throw StateError('listUsers kaputt');
     listUserCalls++;
     final start = (page - 1) * perPage;
-    if (start >= users.length) return [];
-    return users.sublist(
-      start,
-      (start + perPage) > users.length ? users.length : start + perPage,
-    );
+    final result = start >= users.length
+        ? <AuthUserInfo>[]
+        : users.sublist(
+            start,
+            (start + perPage) > users.length ? users.length : start + perPage,
+          );
+    afterListPage?.call(listUserCalls, page);
+    return result;
   }
 
   @override
@@ -1488,6 +1658,9 @@ class _FakeGateway implements SeedGateway {
   @override
   Future<void> deleteUser(String id) async {
     mutations.add('deleteUser:$id');
+    if (stuckUsers.contains(id)) {
+      return; // Loeschen wirkt nicht (Nachpruefung muss es merken)
+    }
     users.removeWhere((u) => u.id == id);
     tables['physios']!.removeWhere((r) => r['id'] == id); // ON DELETE CASCADE
   }

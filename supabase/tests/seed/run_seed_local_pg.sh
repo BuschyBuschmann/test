@@ -189,6 +189,10 @@ mixed "F Vorlage einer echten Praxis verweist auf Uebung einer Testpraxis" \
   "UPDATE public.plan_templates SET payload = jsonb_build_object('phases', jsonb_build_array(jsonb_build_object('items', jsonb_build_array(jsonb_build_object('exercise_id', (SELECT id FROM public.exercises WHERE name LIKE 'Eigene Übung Nord%')))))) WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
   "UPDATE public.plan_templates SET payload = '{\"phases\": []}'::jsonb WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
   "Vorlage ausserhalb"
+mixed "G Vorlage verweist mit UUID in Grossbuchstaben auf Uebung einer Testpraxis" \
+  "UPDATE public.plan_templates SET payload = jsonb_build_object('phases', jsonb_build_array(jsonb_build_object('items', jsonb_build_array(jsonb_build_object('exercise_id', upper((SELECT id::text FROM public.exercises WHERE name LIKE 'Eigene Übung Nord%'))))))) WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
+  "UPDATE public.plan_templates SET payload = '{\"phases\": []}'::jsonb WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
+  "Vorlage ausserhalb"
 # Gegenprobe: aehnliche, aber andere Domain wird nicht angefasst und loest keinen Abbruch aus
 "${PSQL[@]}" -d $DB >/dev/null -c "INSERT INTO auth.users (id, email) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a4', 'ahnlich@xtest.curaone.invalid'); INSERT INTO public.physios (id, practice_id, display_name) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a4', '$C1', 'Aehnlich');"
 run_seed 3

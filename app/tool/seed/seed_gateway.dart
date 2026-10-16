@@ -12,19 +12,20 @@ class AuthUserInfo {
 }
 
 abstract class SeedGateway {
-  /// Eine Seite Zeilen (from..to einschliesslich), stabil nach id sortiert. Filter: `eq` (alle) und
-  /// optional `inColumn IN inValues`.
+  /// Hoechstens [limit] Zeilen mit id > [afterId] (Keyset-Blaettern), aufsteigend nach id. Der
+  /// Server darf weniger liefern (max_rows); nur eine leere Seite bedeutet "Ende". Filter: `eq`
+  /// (alle) und optional `inColumn IN inValues`. [columns] muss `id` enthalten.
   Future<List<Row>> selectPage(
     String table,
     String columns, {
     Row? eq,
     String? inColumn,
     List<String>? inValues,
-    required int from,
-    required int to,
+    String? afterId,
+    required int limit,
   });
 
-  /// Seite der Auth-Konten (page ab 1).
+  /// Seite der Auth-Konten (page ab 1, nur Offset-Blaettern moeglich). Ende = leere Seite.
   Future<List<AuthUserInfo>> listUsersPage(int page, int perPage);
 
   Future<void> deleteRows(String table, String column, List<String> values);

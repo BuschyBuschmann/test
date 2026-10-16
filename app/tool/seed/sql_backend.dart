@@ -85,7 +85,7 @@ class SqlScriptBackend implements SeedBackend {
       '              WHERE (t.practice_id IS NULL OR t.practice_id NOT IN ($testPractices))\n'
       '                AND EXISTS (SELECT 1 FROM public.exercises e\n'
       '                             WHERE e.practice_id IN ($testPractices)\n'
-      "                               AND strpos(t.payload::text, e.id::text) > 0)) THEN\n"
+      "                               AND strpos(lower(t.payload::text), lower(e.id::text)) > 0)) THEN\n"
       "    v := v || 'Vorlage ausserhalb der Testpraxen verweist auf eine Uebung einer Testpraxis; ';\n"
       '  END IF;\n'
       "  IF v <> '' THEN\n"

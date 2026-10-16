@@ -1,9 +1,12 @@
 // Ausfuehrung des Seed-Plans ueber die Supabase-API (lokaler Stack oder Projekt), hinter der
 // Schnittstelle SeedGateway (seed_gateway.dart). Schluessel nur aus der Umgebung (seed_cli.dart).
 //
-// Reset: erst Schutzpruefung (ohne jede Aenderung), dann Loeschen. Alle Abfragen blaettern in
-// Seiten von [pageSize] Zeilen (muss <= max_rows des Projekts sein, Standard 1000) und sind damit
-// nicht an max_rows gebunden.
+// Reset: erst Schutzpruefung (ohne jede Aenderung), dann Loeschen.
+// Blaettern: PostgREST-Abfragen per Keyset (order id, id > letzte id), Ende erst bei leerer
+// Seite. Eine vom Server gekappte Seite (max_rows < pageSize) fuehrt daher nie zu einem stillen
+// Ende, und gleichzeitiges Loeschen verschiebt keine Offsets. GoTrue listUsers kennt nur Offset:
+// die Konten werden so lange eingelesen, bis zwei vollstaendige Durchlaeufe dieselben Testkonten
+// liefern; nach dem Loeschen prueft ein weiterer Durchlauf, dass keines uebrig ist.
 
 import 'dart:convert';
 
@@ -47,7 +50,7 @@ class SupabaseSeedBackend implements SeedBackend {
     }
   }
 
-  /// Alle Zeilen, seitenweise (auch IN-Listen in Teilstuecken).
+  /// Alle Zeilen per Keyset-Blaettern (auch IN-Listen in Teilstuecken). Ende nur bei leerer Seite.
   Future<List<Row>> _all(
     String table,
     String columns, {
@@ -55,23 +58,32 @@ class SupabaseSeedBackend implements SeedBackend {
     String? inColumn,
     List<String>? inValues,
   }) async {
+    if (!columns.split(',').contains('id')) {
+      throw ArgumentError('columns muss id enthalten: $columns');
+    }
     final out = <Row>[];
     final parts = inColumn == null
         ? <List<String>?>[null]
         : [for (final c in _chunks(inValues!)) c];
     for (final part in parts) {
-      for (var from = 0; ; from += pageSize) {
+      String? after;
+      for (;;) {
         final page = await gateway.selectPage(
           table,
           columns,
           eq: eq,
           inColumn: inColumn,
           inValues: part,
-          from: from,
-          to: from + pageSize - 1,
+          afterId: after,
+          limit: pageSize,
         );
+        if (page.isEmpty) break;
         out.addAll(page);
-        if (page.length < pageSize) break;
+        final last = page.last['id'];
+        if (last is! String || last == after) {
+          throw StateError('Blaettern in $table: keine fortschreitende id');
+        }
+        after = last;
       }
     }
     return out;
@@ -81,15 +93,44 @@ class SupabaseSeedBackend implements SeedBackend {
     for (final r in rows) r[col]! as String,
   ];
 
-  Future<List<AuthUserInfo>> _allUsers() async {
+  /// Alle Konten per Offset (nur so abrufbar); Ende = leere Seite.
+  Future<List<AuthUserInfo>> _scanUsers() async {
     const perPage = 200;
     final users = <AuthUserInfo>[];
     for (var page = 1; ; page++) {
       final batch = await gateway.listUsersPage(page, perPage);
+      if (batch.isEmpty) break;
       users.addAll(batch);
-      if (batch.length < perPage) break;
     }
     return users;
+  }
+
+  bool _isTestUser(AuthUserInfo u, String suffix) =>
+      (u.email ?? '').toLowerCase().endsWith(suffix);
+
+  /// Testkonten, stabil gegen gleichzeitiges Loeschen: wiederholt einlesen, bis zwei
+  /// vollstaendige Durchlaeufe dieselbe Menge liefern (sonst haette ein Offset-Versatz Konten
+  /// uebersprungen). Bricht nach [maxScans] Durchlaeufen laut ab.
+  Future<List<AuthUserInfo>> _stableTestUsers(String suffix) async {
+    const maxScans = 5;
+    Set<String>? previous;
+    for (var i = 0; i < maxScans; i++) {
+      final users = [
+        for (final u in await _scanUsers())
+          if (_isTestUser(u, suffix)) u,
+      ];
+      final ids = {for (final u in users) u.id};
+      if (previous != null &&
+          previous.length == ids.length &&
+          previous.containsAll(ids)) {
+        return users;
+      }
+      previous = ids;
+    }
+    throw StateError(
+      'Konten aendern sich waehrend des Einlesens (kein stabiler Durchlauf '
+      'nach $maxScans Versuchen); Reset abgebrochen, nichts geloescht',
+    );
   }
 
   /// Schutzpruefung vor dem ersten Loeschen: liefert alle Verletzungen (leer = unbedenklich).
@@ -183,8 +224,9 @@ class SupabaseSeedBackend implements SeedBackend {
         );
         final n = templates.where((t) {
           if (practiceIds.contains(t['practice_id'])) return false;
-          final text = jsonEncode(t['payload']);
-          return exIds.any(text.contains);
+          // UUIDs sind in JSON-Text beliebig geschrieben: ohne Gross-/Kleinschreibung vergleichen
+          final text = jsonEncode(t['payload']).toLowerCase();
+          return exIds.any((id) => text.contains(id.toLowerCase()));
         }).length;
         if (n > 0) {
           v.add(
@@ -203,10 +245,7 @@ class SupabaseSeedBackend implements SeedBackend {
     final practiceIds = _ids(
       await _all('practices', 'id', eq: {'is_test': true}),
     );
-    final testUsers = [
-      for (final u in await _allUsers())
-        if ((u.email ?? '').toLowerCase().endsWith(suffix)) u,
-    ];
+    final testUsers = await _stableTestUsers(suffix);
     final testUserIds = {for (final u in testUsers) u.id};
     final patientIds = practiceIds.isEmpty
         ? <String>[]
@@ -248,6 +287,17 @@ class SupabaseSeedBackend implements SeedBackend {
       for (final c in _chunks(practiceIds)) {
         await gateway.deleteRows('practices', 'id', c);
       }
+    }
+    // Nachpruefung: kein Testkonto darf uebrig sein (laut abbrechen statt still weiterzumachen)
+    final left = [
+      for (final u in await _scanUsers())
+        if (_isTestUser(u, suffix)) u,
+    ];
+    if (left.isNotEmpty) {
+      throw StateError(
+        'Reset unvollstaendig: ${left.length} Testkonto/-konten nach dem Loeschen '
+        'noch vorhanden; Reset erneut ausfuehren',
+      );
     }
     _physioIds.clear();
     _physioEmails.clear();

@@ -31,8 +31,8 @@ class SupabaseGateway implements SeedGateway {
     Row? eq,
     String? inColumn,
     List<String>? inValues,
-    required int from,
-    required int to,
+    String? afterId,
+    required int limit,
   }) async {
     var q = admin.from(table).select(columns);
     if (eq != null) {
@@ -43,7 +43,10 @@ class SupabaseGateway implements SeedGateway {
     if (inColumn != null) {
       q = q.inFilter(inColumn, inValues!);
     }
-    final res = await q.order('id').range(from, to);
+    if (afterId != null) {
+      q = q.gt('id', afterId);
+    }
+    final res = await q.order('id').limit(limit);
     return [for (final r in res) Map<String, Object?>.from(r)];
   }
 
