@@ -1,7 +1,8 @@
 // Goldens der geteilten Bausteine (Plan 12.2 G; F2-R2): Typo-Tafel, Bausteine
 // einzeln (Normal und Hoher Kontrast), Flächen auf der Welt, Manny-Posen je
-// Variante und die Tafel aller Komponenten des Briefs v2 in 4 Welten × Hell/Dunkel
-// sowie Hoher Kontrast (`showcase_*`). Referenz ist ausschließlich diese
+// Variante und die Tafel aller Komponenten des Briefs v2 in einer Auswahl von
+// vier Darstellungen (`showcase_*`: Mittag hell, Abend hell, Nacht dunkel, Nacht
+// dunkel mit Hohem Kontrast). Referenz ist ausschließlich diese
 // Linux-Umgebung; Erzeugung mit `--update-goldens`, Sichtung durch den
 // `ui-designer`, Freigabe durch den Nutzer (Plan 12.1). Die Szenario-Goldens
 // (`scenario_golden_test.dart`) bleiben für F2-R4.
@@ -390,8 +391,19 @@ void main() {
     }
   });
 
-  group('Tafel aller Komponenten (Welten × Thema × Hoher Kontrast)', () {
-    for (final WorldLook l in allWorldLooks()) {
+  // Auswahl statt aller zehn Darstellungen (Design-Abnahme L1, Punkt 8): Mittag
+  // hell (Referenz), Abend hell, Nacht dunkel und Nacht dunkel mit Hohem
+  // Kontrast. Der Kontrast je Welt ist durch `contrast_world_test.dart` belegt.
+  const Set<String> showcaseLooks = <String>{
+    'midday_light',
+    'night_dark_hc',
+    'evening_light',
+    'night_dark',
+  };
+  group('Tafel aller Komponenten (Auswahl der Welten)', () {
+    for (final WorldLook l in allWorldLooks().where(
+      (WorldLook l) => showcaseLooks.contains(l.name),
+    )) {
       testWidgets('showcase_${l.name}', (WidgetTester tester) async {
         await pumpWorld(
           tester,

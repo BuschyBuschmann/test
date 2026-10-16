@@ -55,7 +55,8 @@ class MannyLookPicker extends StatefulWidget {
   /// Karten untereinander: Breite < 360 dp oder Systemschrift über 130 %.
   static bool stackedFor(double width, TextScaler scaler) =>
       width < CuraSize.mannyChoiceStackBelowWidth ||
-      scaler.scale(CuraSize.hairline) > CuraSize.mannyChoiceStackAboveTextScale;
+      scaler.scale(CuraSize.textScaleUnit) >
+          CuraSize.mannyChoiceStackAboveTextScale;
 
   @override
   State<MannyLookPicker> createState() => _MannyLookPickerState();
@@ -203,11 +204,19 @@ class _LookCard extends StatelessWidget {
       textAlign: stacked ? TextAlign.start : TextAlign.center,
       style: type.heading.copyWith(color: colors.text1),
     );
-    final Widget state = SizedBox(
-      height: type.secondary.fontSize! * type.secondary.height!,
+    // Die Zeile „Ausgewählt“ behält auch im Nicht-Gewählt-Zustand ihre Höhe
+    // (kein Springen) und skaliert mit der Schrift bis 130 % (200 % kappte
+    // sonst den Text; weiter skaliert bräche das Wort in der schmalen Spalte).
+    final TextScaler stateScaler = MediaQuery.textScalerOf(context)
+        .clamp(maxScaleFactor: CuraSize.mannyChoiceStateMaxTextScale);
+    final double stateHeight =
+        stateScaler.scale(type.secondary.fontSize!) * type.secondary.height!;
+    final Widget state = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: stateHeight),
       child: selected
           ? Text(
               S.mannyLookSelected,
+              textScaler: stateScaler,
               textAlign: stacked ? TextAlign.start : TextAlign.center,
               style: type.secondary.copyWith(color: colors.accentText),
             )

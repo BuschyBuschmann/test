@@ -82,6 +82,10 @@ abstract final class CuraSize {
   static const double navTabHeight = 56;
   static const double navVeilHeight = 150;
 
+  /// Schleier über der festen Knopfzeile auf Heute: läuft auf 8 dp von 0 auf
+  /// `navVeilAlpha` (`world-floor`) und deckt dahinter die Zeile selbst.
+  static const double todayVeilFade = 8;
+
   /// Seitenleiste Physio am Rechner ab 840 dp Breite, 240 dp breit; Inhalt
   /// bis 1200 dp.
   static const double sideNavBreakpoint = 840;
@@ -242,6 +246,12 @@ abstract final class CuraSize {
   static const double mannyChoiceStackBelowWidth = 360;
   static const double mannyChoiceStackAboveTextScale = 1.3;
 
+  /// „Ausgewählt“ skaliert höchstens bis 130 % mit (gleich der Stapelgrenze):
+  /// Das Wort bräche in der schmalen Textspalte (108 dp bei 320 dp Breite,
+  /// gestapelt) darüber mitten im Wort; der Zustand steht zusätzlich als Haken,
+  /// Rand und Screenreader-Text.
+  static const double mannyChoiceStateMaxTextScale = 1.3;
+
   // Manny-Knopf (Brief 5): Kopf, 56 dp, rechts 18 dp, 16 dp über der Leiste.
   static const double mannyChatButton = 56;
   static const double mannyButtonSideMargin = 18;
@@ -376,6 +386,11 @@ abstract final class CuraSize {
 
   // Linien und Ränder (dp).
   static const double hairline = 1;
+
+  /// Bezugsgröße (1 sp), an der ein `TextScaler` den Skalierungsfaktor liefert:
+  /// `scaler.scale(CuraSize.textScaleUnit)`. Bewusst nicht `hairline`: Das ist
+  /// eine Linienstärke und könnte sich unabhängig davon ändern.
+  static const double textScaleUnit = 1;
   static const double controlBorder = 1.5;
   static const double selectedBorder = 2;
 

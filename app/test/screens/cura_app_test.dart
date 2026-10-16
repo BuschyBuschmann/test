@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_harness.dart';
 import '../support/controller_harness.dart';
+import '../support/backdrops.dart';
 
 CuraColors _colors(WidgetTester tester) =>
     CuraColors.of(tester.element(find.byType(HomeShell)));
@@ -42,7 +43,7 @@ void main() {
     await pumpCura(tester, h.controller);
     expect(_colors(tester).highContrast, isTrue);
     // HC: kein Blur, Welt ohne Körnung, Dunst, Sterne und Sonne/Mond.
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(activeBackdrops(), findsNothing);
     final Iterable<WorldPainter> worlds = tester
         .widgetList<CustomPaint>(find.byType(CustomPaint))
         .map((CustomPaint p) => p.painter)

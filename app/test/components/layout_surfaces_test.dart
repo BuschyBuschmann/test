@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 void main() {
   group('ContentFrame (B-3)', () {
@@ -232,7 +233,7 @@ void main() {
         const CuraBlur(child: SizedBox(width: 40, height: 40)),
       );
       expect(backdropCount(tester), 1);
-      final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
+      final BackdropFilter f = tester.widget(activeBackdrops());
       expect(
         f.filter,
         ui.ImageFilter.blur(sigmaX: BlurTokens.sigma, sigmaY: BlurTokens.sigma),

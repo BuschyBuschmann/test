@@ -46,10 +46,12 @@ import '../../logic/streak.dart';
 import '../../state/app_controller.dart';
 import '../../state/app_scope.dart';
 import '../../state/transient_ui.dart';
+import '../../state/world_scope.dart';
 import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
+import '../../theme/world_tokens.dart';
 import '../components/category_card.dart';
 import '../components/cura_chip.dart';
 import '../components/cura_snackbar.dart';
@@ -439,6 +441,7 @@ class _TodayScreenState extends State<TodayScreen> {
             },
           ),
         ),
+        if (active) _buttonRowVeil(context),
         if (active)
           Positioned(
             left: CuraSpace.pageMargin,
@@ -464,6 +467,44 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Schleier hinter der festen Knopfzeile (N2): Ohne ihn schneidet die Zeile
+  /// scrollenden Inhalt mitten in der Zeile ab. Er läuft über 8 dp von 0 auf
+  /// `world-floor` zu 70 % und deckt dahinter die Zeile; rein gemalt, nie
+  /// Treffer, nicht in der Semantik.
+  Widget _buttonRowVeil(BuildContext context) {
+    final Color floor = WorldScope.paletteOf(context).floor;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: FloatingNav.occupiedHeight(context) + CuraSpace.pageMargin,
+      height: CuraSize.todayVeilFade + math.max(_groupHeight, _groupMinHeight),
+      child: ExcludeSemantics(
+        child: IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  floor.withValues(alpha: 0),
+                  floor.withValues(alpha: WorldGeometry.navVeilAlpha),
+                  floor.withValues(alpha: WorldGeometry.navVeilAlpha),
+                ],
+                stops: <double>[
+                  0,
+                  CuraSize.todayVeilFade /
+                      (CuraSize.todayVeilFade +
+                          math.max(_groupHeight, _groupMinHeight)),
+                  1,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

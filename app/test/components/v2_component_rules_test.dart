@@ -38,6 +38,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/component_support.dart';
 import '../support/showcase.dart';
 import '../support/world_app.dart';
+import '../support/backdrops.dart';
 
 const Size _board = Size(390, 2300);
 
@@ -99,10 +100,7 @@ void main() {
         expect(n, lessThanOrEqualTo(BlurTokens.maxPerScreen));
         for (final Type t in <Type>[HeaderCard, FloatingNav, MannyButton]) {
           expect(
-            find.descendant(
-              of: find.byType(t),
-              matching: find.byType(BackdropFilter),
-            ),
+            find.descendant(of: find.byType(t), matching: activeBackdrops()),
             l.highContrast ? findsNothing : findsOneWidget,
             reason: '$t ${l.name}',
           );
@@ -139,10 +137,7 @@ void main() {
             reason: '$t fehlt auf der Tafel',
           );
           expect(
-            find.descendant(
-              of: find.byType(t),
-              matching: find.byType(BackdropFilter),
-            ),
+            find.descendant(of: find.byType(t), matching: activeBackdrops()),
             findsNothing,
             reason: '$t darf keinen Blur enthalten',
           );

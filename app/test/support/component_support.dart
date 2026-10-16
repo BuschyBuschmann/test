@@ -3,6 +3,8 @@ import 'package:curaone/theme/cura_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'backdrops.dart';
+
 /// Farben des aktuellen Themes an der Stelle von [finder].
 CuraColors colorsAt(WidgetTester tester, Finder finder) =>
     CuraColors.of(tester.element(finder));
@@ -17,5 +19,4 @@ Iterable<BoxDecoration> decorationsUnder(WidgetTester tester, Finder finder) {
 }
 
 /// Anzahl `BackdropFilter` im gesamten Baum.
-int backdropCount(WidgetTester tester) =>
-    find.byType(BackdropFilter).evaluate().length;
+int backdropCount(WidgetTester tester) => activeBackdrops().evaluate().length;

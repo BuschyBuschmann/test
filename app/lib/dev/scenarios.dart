@@ -1015,6 +1015,22 @@ AppSeed _pathError(ScenarioEnv env) =>
 AppSeed _pathActive(ScenarioEnv env) =>
     AppSeed(state: _pathState(env, streak: _streakActive(env)));
 
+/// Woche 4, Wochenziel ist die aktuelle Unit: der Label-Chip „Wochenziel“
+/// steht sichtbar an der Kugel, der Phasen-Abschluss darüber (V2-34).
+AppSeed _pathLabels(ScenarioEnv env) => AppSeed(
+  state: _pathState(
+    env,
+    daysSinceInjury: 24,
+    streak: _streakActive(env),
+    completed: <String>[
+      for (final PathUnit u in kSamplePath.takeWhile(
+        (PathUnit u) => u.id != 'w4-goal',
+      ))
+        u.id,
+    ],
+  ),
+);
+
 AppSeed _pathFrozen(ScenarioEnv env) =>
     AppSeed(state: _pathState(env, streak: _streakFrozen(env)));
 
@@ -1607,6 +1623,7 @@ final List<Scenario> kScenarios = <Scenario>[
     expectsPrimary: true,
   ),
   _pathScenario('path-active', _pathActive, tablet: true),
+  _pathScenario('path-labels', _pathLabels),
   _pathScenario('path-frozen', _pathFrozen),
   _pathScenario('path-reset', _pathReset),
   _pathScenario('path-bubble-greeting', _pathBubbleGreeting),

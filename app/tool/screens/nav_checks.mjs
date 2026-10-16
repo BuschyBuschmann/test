@@ -35,7 +35,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { launch, openScenario } from './lib.mjs';
+import { launch, openScenario, waitForImages } from './lib.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(here, '..', '..');
@@ -115,6 +115,9 @@ async function settleBox(page, node, timeout = 8000) {
     }
     await page.waitForTimeout(150);
   }
+  // Kein stilles Aufgeben: Der Klick danach trifft sonst einen unruhigen oder
+  // außerhalb liegenden Knoten, und die Ursache wäre im Protokoll nicht zu sehen.
+  console.log(`  [Warnung] settleBox: Zeitüberschreitung nach ${timeout} ms, letzte Box ${JSON.stringify(last)}`);
   return null;
 }
 /**
@@ -181,6 +184,7 @@ async function advanceClock(page, ms) {
   return (await page.evaluate(() => Date.now())) >= target;
 }
 async function shot(page, name) {
+  await waitForImages(page);
   await page.screenshot({ path: path.join(outDir, `${name}.png`) });
 }
 /** Zählt die History-Einträge, die `goBack` noch erreicht. */

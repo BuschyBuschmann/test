@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
 import '../support/world_app.dart';
+import '../support/backdrops.dart';
 
 Widget _card({Widget? trailing, String? subtitle = 'Phase 2 · Kreuzband'}) =>
     Align(
@@ -52,7 +53,7 @@ void main() {
       for (final WorldPhase p in kWorlds) {
         await pumpWorld(tester, _card(), phase: p);
         expect(backdropCount(tester), 1, reason: p.name);
-        final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
+        final BackdropFilter f = tester.widget(activeBackdrops());
         expect(
           f.filter,
           ui.ImageFilter.blur(

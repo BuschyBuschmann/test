@@ -430,7 +430,7 @@ class _PathScreenState extends State<PathScreen> {
   /// des Pfads (F-1, F-2).
   bool _headerScrollsAlong(BuildContext context) {
     final double scale = MediaQuery.textScalerOf(context)
-        .scale(CuraSize.hairline);
+        .scale(CuraSize.textScaleUnit);
     return scale >= CuraSize.textScaleScrollAlong ||
         (scale > CuraSize.hairline &&
             MediaQuery.sizeOf(context).height <
@@ -822,7 +822,7 @@ class _PathScreenState extends State<PathScreen> {
   }) {
     final CuraTypography type = CuraTypography.of(context);
     final TextScaler scaler = MediaQuery.textScalerOf(context);
-    final double textScale = scaler.scale(CuraSize.hairline);
+    final double textScale = scaler.scale(CuraSize.textScaleUnit);
     // Der unterste Teil des Pfads lässt sich über den Manny-Knopf scrollen:
     // Leiste, Abstand, Knopf, Seitenrand.
     final double reserve =

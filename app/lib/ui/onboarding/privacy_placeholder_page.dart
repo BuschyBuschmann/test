@@ -2,10 +2,9 @@
 // echten Einsatz durch den juristisch geprüften Text ersetzt (Brief 6.0).
 //
 // Design-Brief v2 (V2-5: kein Text direkt auf der Welt): Zurück-Pfeil und Titel
-// stehen auf einer Karte, der Text auf einer zweiten. Statt der `HeaderCard`
-// (Blur) eine Karte: die Seite legt sich über das Sheet „Deine Daten“, und eine
-// Kopf-Karte mit Blur verlängerte dort bei „Bewegung reduzieren“ den Übergang
-// über 120 ms (Matrix `data-sheet-bottom` RM).
+// stehen wie auf allen Seiten auf der `HeaderCard`, der Text auf einer Karte.
+// Der Baum von `CuraBlur` bleibt beim Vergeben von Blur-Plätzen stabil, deshalb
+// verlängert die Kopf-Karte den Übergang bei „Bewegung reduzieren“ nicht.
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings_de.dart';
@@ -13,6 +12,7 @@ import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_typography.dart';
 import '../components/glass_card.dart';
+import '../components/header_card.dart';
 import '../components/header_icon_button.dart';
 import '../components/probe_keys.dart';
 import '../components/screen_frame.dart';
@@ -38,28 +38,20 @@ class PrivacyPlaceholderPage extends StatelessWidget {
                   CuraSize.cardMargin,
                   CuraSpace.s2,
                 ),
-                child: GlassCard(
-                  padding: const EdgeInsets.symmetric(vertical: CuraSpace.s1),
-                  child: Row(
-                    children: <Widget>[
-                      HeaderIconButton(
-                        icon: Icons.arrow_back_rounded,
-                        tooltip: S.back,
-                        autofocus: true,
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                      const SizedBox(width: CuraSpace.s2),
-                      Expanded(
-                        child: Semantics(
-                          header: true,
-                          namesRoute: true,
-                          child: Text(
-                            S.privacyTitle,
-                            style: type.title.copyWith(color: colors.text1),
-                          ),
-                        ),
-                      ),
-                    ],
+                child: HeaderCard(
+                  title: S.privacyTitle,
+                  compactTitle: true,
+                  // Zurück-Pfeil über dem Titel: „Datenschutzerklärung“ bekommt
+                  // die volle Breite und bricht nicht mitten im Wort.
+                  top: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: HeaderIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      tooltip: S.back,
+                      autofocus: true,
+                      onHeaderCard: true,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
                   ),
                 ),
               ),

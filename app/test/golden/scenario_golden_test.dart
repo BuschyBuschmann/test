@@ -39,6 +39,7 @@ void main() {
   // Jeder Screen einmal in der Grundwelt (Mittag, Hell, 390 × 844).
   for (final String id in <String>[
     'path-active',
+    'path-labels',
     'path-outlook',
     'chats',
     'profile',
@@ -75,6 +76,11 @@ void main() {
   _golden(
     'ob0-look_scale2',
     const PreviewConfig(scenarioId: 'ob0-look', textScale: 2),
+  );
+  // Look-Sheet im Profil bei 200 % Schrift („Ausgewählt“ nicht abgeschnitten).
+  _golden(
+    'profile-look-sheet_scale2',
+    const PreviewConfig(scenarioId: 'profile-look-sheet', textScale: 2),
   );
   _golden(
     'ob0-look_320',

@@ -208,10 +208,15 @@ TextProbe probeTexts({Element? root, required Size view}) {
     if (w is IndexedStack && w.index != null) {
       // Nur das angezeigte Kind ist sichtbar; die übrigen bleiben im Baum
       // (Zustand und Scroll-Position der Ziele der Leiste), werden aber nicht
-      // gemalt und zählen nicht.
-      int i = 0;
-      e.visitChildren((Element child) {
-        if (i++ == w.index) walk(child, g, c, o);
+      // gemalt und zählen nicht. Das Element des `IndexedStack` hat genau ein
+      // Kind (den privaten `_RawIndexedStack`); erst dessen Kinder sind die
+      // Ziele, in Reihenfolge des Index.
+      final int shown = w.index!;
+      e.visitChildren((Element raw) {
+        int i = 0;
+        raw.visitChildren((Element child) {
+          if (i++ == shown) walk(child, g, c, o);
+        });
       });
       return;
     }

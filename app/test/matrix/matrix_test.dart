@@ -47,6 +47,7 @@ void main() {
               ...takeLayoutExceptions(tester),
               ...await checkTapTargetSize(tester),
               ...await checkTapTargetGaps(tester),
+              ...checkProbeNotEmpty(tester, probe(tester)),
               ...checkTextStyles(probe(tester)),
               ...checkPrimary(tester, s),
               ...checkZones(tester, s),
@@ -79,6 +80,7 @@ void main() {
         await pumpScenario(tester, s, hc: true);
         final List<Finding> f = <Finding>[
           ...takeLayoutExceptions(tester),
+          ...checkProbeNotEmpty(tester, probe(tester)),
           ...checkHighContrast(tester),
           ...checkCardTextContrast(
             probe(tester),

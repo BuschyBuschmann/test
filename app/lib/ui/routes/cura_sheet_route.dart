@@ -281,7 +281,7 @@ class _CuraSheetFrameState extends State<CuraSheetFrame>
     // (ein Schalter mit Hinweis passte sonst nie ganz ins Sichtfenster).
     final bool headerAlong =
         compact ||
-        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+        MediaQuery.textScalerOf(context).scale(CuraSize.textScaleUnit) >=
             CuraSize.textScaleScrollAlong;
     const BorderRadius shape = BorderRadius.vertical(
       top: Radius.circular(CuraRadius.sheet),

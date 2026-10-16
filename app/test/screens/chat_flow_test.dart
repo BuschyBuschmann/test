@@ -41,6 +41,7 @@ import '../support/builders.dart';
 import '../support/controller_harness.dart';
 import '../support/pump_app.dart';
 import '../support/stores.dart';
+import '../support/backdrops.dart';
 
 Future<Harness> _home(
   WidgetTester tester, {
@@ -310,7 +311,7 @@ void main() {
       // Keine Nav, keine Button-Gruppe, kein Blur (UI-85).
       expect(find.byType(FloatingNav), findsNothing);
       expect(find.byType(MannyButton), findsNothing);
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(activeBackdrops(), findsNothing);
       await disposeApp(tester);
     });
 
@@ -584,10 +585,7 @@ void main() {
         expect(find.textContaining('Neuer Chat'), findsNothing);
         expect(find.bySemanticsLabel(RegExp(r'ungelesen')), findsNothing);
         // Kopf-Karte und Leiste sind die Blur-Flächen (höchstens 3).
-        expect(
-          find.byType(BackdropFilter).evaluate().length,
-          lessThanOrEqualTo(3),
-        );
+        expect(activeBackdrops().evaluate().length, lessThanOrEqualTo(3));
         expect(find.byType(FloatingNav), findsOneWidget);
         h.dispose();
         await disposeApp(tester);
@@ -634,7 +632,7 @@ void main() {
         for (final ExampleLine l in c.lines('Jakob')) {
           expect(find.text(l.text), findsOneWidget);
         }
-        expect(find.byType(BackdropFilter), findsNothing);
+        expect(activeBackdrops(), findsNothing);
         expect(find.byType(FloatingNav), findsNothing, reason: 'V2-19');
         // Zurück: Chats, Fokus auf der Zeile.
         await _back(tester);

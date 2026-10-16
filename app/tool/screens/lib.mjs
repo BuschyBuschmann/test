@@ -51,6 +51,54 @@ export function query(params) {
   return q.toString();
 }
 
+
+// --- Bilder -----------------------------------------------------------------
+// Flutter Web malt Bilder in die Zeichenfläche; es gibt keine `<img>`-Knoten,
+// auf die man warten könnte. Das Skript verfolgt deshalb die Bild-Anfragen der
+// Seite (Asset-Dateien, unabhängig vom Ressourcentyp) und wartet, bis keine
+// mehr offen ist und eine Ruhezeit verging (Dekodieren, zwei Frames). Ohne das
+// fehlte Manny teils in Screenshots, die kurz nach `CURA_READY` entstanden.
+const IMAGE_URL = /\.(png|webp|jpe?g|gif|svg)(\?|$)/i;
+const imageState = new WeakMap();
+
+/** Beginnt, die Bild-Anfragen von [page] zu zählen (vor `goto` aufrufen). */
+export function trackImages(page) {
+  if (imageState.has(page)) return;
+  const st = { open: new Set(), last: Date.now(), total: 0 };
+  imageState.set(page, st);
+  const touch = () => {
+    st.last = Date.now();
+  };
+  page.on('request', (r) => {
+    if (!IMAGE_URL.test(r.url())) return;
+    st.open.add(r);
+    st.total++;
+    touch();
+  });
+  const done = (r) => {
+    if (st.open.delete(r)) touch();
+  };
+  page.on('requestfinished', done);
+  page.on('requestfailed', done);
+}
+
+/**
+ * Wartet, bis alle verfolgten Bild-Anfragen beendet sind und [quietMs] lang
+ * keine neue begann. Meldet einen Timeout im Protokoll (kein stilles Weiter).
+ * Gibt die Zahl der gesehenen Bild-Anfragen zurück.
+ */
+export async function waitForImages(page, { quietMs = 400, timeoutMs = 15000 } = {}) {
+  const st = imageState.get(page);
+  if (!st) return 0;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (st.open.size === 0 && Date.now() - st.last >= quietMs) return st.total;
+    await page.waitForTimeout(50);
+  }
+  console.log(`  [Warnung] waitForImages: ${st.open.size} Bild-Anfrage(n) nach ${timeoutMs} ms noch offen`);
+  return st.total;
+}
+
 /**
  * Öffnet ein Szenario in einer neuen Seite von [context], wartet auf
  * `CURA_READY` und liefert die Seite samt `CURA_ENV`/`CURA_DUMP`.
@@ -66,6 +114,7 @@ export async function openScenario(context, baseUrl, params, opts = {}) {
   page.on('pageerror', (e) => errors.push(String(e)));
   if (now && clock === 'fixed') await page.clock.setFixedTime(new Date(now));
   if (now && clock === 'install') await page.clock.install({ time: new Date(now) });
+  trackImages(page);
   if (beforeGoto) await beforeGoto(page);
   await page.goto(`${baseUrl}/?${query(params)}`);
   const started = Date.now();
@@ -77,6 +126,7 @@ export async function openScenario(context, baseUrl, params, opts = {}) {
     }
     await page.waitForTimeout(50);
   }
+  if (ready) await waitForImages(page);
   const find = (marker) => {
     const line = messages.find((m) => m.startsWith(marker + ' '));
     return line ? JSON.parse(line.slice(marker.length + 1)) : null;

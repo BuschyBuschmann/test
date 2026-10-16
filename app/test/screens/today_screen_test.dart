@@ -32,6 +32,7 @@ import '../support/app_harness.dart';
 import '../support/builders.dart';
 import '../support/controller_harness.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 /// Hohes Fenster: der ganze Inhalt steht ohne Scrollen im Bild.
 const Size _tall = Size(390, 1400);
@@ -543,11 +544,11 @@ void main() {
         expect(snackbar.overlaps(row), isFalse);
         // Opak, ohne Blur: nur Kopf-Karte, Leiste und Manny-Knopf haben einen
         // BackdropFilter (Blur-Budget 3).
-        expect(find.byType(BackdropFilter), findsNWidgets(3));
+        expect(activeBackdrops(), findsNWidgets(3));
         expect(
           find.descendant(
             of: find.byType(CuraSnackbar),
-            matching: find.byType(BackdropFilter),
+            matching: activeBackdrops(),
           ),
           findsNothing,
         );

@@ -52,6 +52,7 @@ import '../support/controller_harness.dart';
 import '../support/line_breaks.dart';
 import '../support/pump_app.dart';
 import '../support/stores.dart';
+import '../support/backdrops.dart';
 
 // ---------------------------------------------------------------------------
 // Helfer
@@ -879,7 +880,7 @@ void main() {
         expect(
           find.descendant(
             of: find.byType(DiscardDialog),
-            matching: find.byType(BackdropFilter),
+            matching: activeBackdrops(),
           ),
           findsNothing,
         );
@@ -951,7 +952,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(DeleteDialog),
-          matching: find.byType(BackdropFilter),
+          matching: activeBackdrops(),
         ),
         findsNothing,
       );

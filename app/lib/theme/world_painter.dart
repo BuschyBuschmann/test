@@ -12,8 +12,8 @@ import 'package:flutter/rendering.dart';
 
 import 'world_tokens.dart';
 
-/// Welt hinter dem Inhalt. [decor] = Körnung, Dunst, Sterne und Sonne/Mond
-/// (entfällt bei „Transparenz reduzieren“/Hoher Kontrast); [calm] = ruhige
+/// Welt hinter dem Inhalt. [decor] = Hügelebenen, Körnung, Dunst, Sterne und
+/// Sonne/Mond (entfällt bei „Transparenz reduzieren“/Hoher Kontrast); [calm] = ruhige
 /// Welt des Physio-Bereichs (Ebenen 50 %, ohne Sonne/Mond/Sterne/Körnung).
 class WorldPainter extends CustomPainter {
   const WorldPainter({
@@ -47,46 +47,50 @@ class WorldPainter extends CustomPainter {
       _paintStars(canvas, size);
     }
 
-    final double hillAlpha = calm ? WorldGeometry.calmHillAlpha : 1;
-    _paintHill(
-      canvas,
-      size,
-      palette.hillFar,
-      hillAlpha,
-      crest: WorldGeometry.farCrest,
-      amplitude: WorldGeometry.farAmplitude,
-      wavelength: WorldGeometry.farWavelength,
-      phase: WorldGeometry.farPhase,
-      fadeEnd: WorldGeometry.farFadeEnd,
-      blur: WorldGeometry.farBlur,
-    );
-    if (decor) _paintMist(canvas, size, 0);
-    _paintHill(
-      canvas,
-      size,
-      palette.hillMid,
-      hillAlpha,
-      crest: WorldGeometry.midCrest,
-      amplitude: WorldGeometry.midAmplitude,
-      wavelength: WorldGeometry.midWavelength,
-      phase: WorldGeometry.midPhase,
-      fadeEnd: WorldGeometry.midFadeEnd,
-      blur: WorldGeometry.midBlur,
-    );
-    if (decor) _paintMist(canvas, size, 1);
-    _paintHill(
-      canvas,
-      size,
-      palette.hillNear,
-      hillAlpha,
-      crest: WorldGeometry.nearCrest,
-      amplitude: WorldGeometry.nearAmplitude,
-      wavelength: WorldGeometry.nearWavelength,
-      phase: WorldGeometry.nearPhase,
-      fadeEnd: WorldGeometry.nearFadeEnd,
-      blur: WorldGeometry.nearBlur,
-    );
-    if (decor) _paintMist(canvas, size, 2);
+    // Hoher Kontrast/Transparenz reduzieren: nur der ruhige Verlauf, keine
+    // Hügelebenen, kein Dunst (Brief v2, N1).
+    if (decor) {
+      final double hillAlpha = calm ? WorldGeometry.calmHillAlpha : 1;
+      _paintHill(
+        canvas,
+        size,
+        palette.hillFar,
+        hillAlpha,
+        crest: WorldGeometry.farCrest,
+        amplitude: WorldGeometry.farAmplitude,
+        wavelength: WorldGeometry.farWavelength,
+        phase: WorldGeometry.farPhase,
+        fadeEnd: WorldGeometry.farFadeEnd,
+        blur: WorldGeometry.farBlur,
+      );
+      _paintMist(canvas, size, 0);
+      _paintHill(
+        canvas,
+        size,
+        palette.hillMid,
+        hillAlpha,
+        crest: WorldGeometry.midCrest,
+        amplitude: WorldGeometry.midAmplitude,
+        wavelength: WorldGeometry.midWavelength,
+        phase: WorldGeometry.midPhase,
+        fadeEnd: WorldGeometry.midFadeEnd,
+        blur: WorldGeometry.midBlur,
+      );
+      _paintMist(canvas, size, 1);
+      _paintHill(
+        canvas,
+        size,
+        palette.hillNear,
+        hillAlpha,
+        crest: WorldGeometry.nearCrest,
+        amplitude: WorldGeometry.nearAmplitude,
+        wavelength: WorldGeometry.nearWavelength,
+        phase: WorldGeometry.nearPhase,
+        fadeEnd: WorldGeometry.nearFadeEnd,
+        blur: WorldGeometry.nearBlur,
+      );
+      _paintMist(canvas, size, 2);
+    }
 
     if (sky) _paintGrain(canvas, size);
   }

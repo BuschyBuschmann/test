@@ -199,7 +199,8 @@ class _DataSheetState extends State<DataSheet> {
           // Große Schrift oder wenig Platz: der Untertitel läuft im Scrollbereich
           // mit (bei wenig Platz der ganze Kopf, siehe `CuraSheetFrame`).
           final bool largeText =
-              scaler.scale(CuraSize.hairline) >= CuraSize.textScaleScrollAlong;
+              scaler.scale(CuraSize.textScaleUnit) >=
+              CuraSize.textScaleScrollAlong;
           final bool compact = largeText || CuraSheetScope.compactOf(context);
           // Wenig Platz und Tastatur sichtbar (kleines Gerät, große Schrift): der
           // Abschnitt „Daten löschen“ entfällt, solange die Tastatur steht. Der

@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { launch } from './lib.mjs';
+import { launch, trackImages, waitForImages } from './lib.mjs';
 
 const arg = (name, fallback) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -29,6 +29,7 @@ const check = (name, ok, detail = '') => {
 const browser = await launch();
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'Europe/Berlin', locale: 'de-DE' });
 const page = await ctx.newPage();
+trackImages(page);
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
@@ -46,6 +47,7 @@ const seen = async (text, timeout = 15000) =>
 
 await open();
 check('main.dart startet: Onboarding Schritt 1 von 5 (Look-Wahl)', (await seen('Schritt 1 von 5')) && (await seen('Wie soll Manny aussehen?')));
+await waitForImages(page);
 await page.screenshot({ path: path.join(outDir, 'main-schritt1.png') });
 await page.locator('flt-semantics[role="button"]', { hasText: 'Weiter' }).first().click({ force: true });
 check('Weiter → Schritt 2 von 5 (Name)', await seen('Schritt 2 von 5'));
@@ -59,6 +61,7 @@ await page.reload();
 await open();
 check('Reload: Fortsetzen bei Schritt 3 (echter Speicher)', await seen('Schritt 3 von 5'));
 check('Reload: Name im Manny-Text', await seen('Jakob'));
+await waitForImages(page);
 await page.screenshot({ path: path.join(outDir, 'main-nach-reload.png') });
 
 // Kaputtes Dokument im Speicher (R-U3 MINOR-3): Hinweis beim Start, danach vom

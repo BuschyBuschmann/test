@@ -350,6 +350,51 @@ void main() {
       }
     });
 
+    testWidgets('L1K M1: „Ausgewählt“ wird bei 100 bis 200 % nicht '
+        'abgeschnitten, bricht nicht und die Kartenhöhe springt bei Wechsel '
+        'nicht', (WidgetTester tester) async {
+      for (final (Size, double) v in <(Size, double)>[
+        (const Size(390, 844), 1),
+        (const Size(390, 844), 1.3),
+        (const Size(390, 844), 2),
+        (const Size(320, 568), 1),
+        (const Size(320, 568), 2),
+      ]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpWorld(tester, const _Host(), size: v.$1, textScale: v.$2);
+        await tester.pumpAndSettle();
+        final Rect card = tester.getRect(_card(S.mannyLookWith));
+        final Rect state = tester.getRect(find.text(S.mannyLookSelected));
+        expect(card.contains(state.topLeft), isTrue, reason: '$v');
+        expect(
+          state.bottom,
+          lessThanOrEqualTo(card.bottom - CuraSize.mannyChoiceBorder),
+          reason: 'Text liegt ganz in der Karte $v',
+        );
+        // Eine Zeile: Höhe unter dem Doppelten der skalierten Zeilenhöhe.
+        final double line =
+            TextScaler.linear(v.$2 > 1.3 ? 1.3 : v.$2).scale(14) * 20 / 14;
+        expect(state.height, lessThan(line * 1.6), reason: 'eine Zeile $v');
+        // Wechsel der Wahl ändert die Höhe der Karten nicht.
+        final double before = card.height;
+        final double otherBefore = tester
+            .getRect(_card(S.mannyLookWithout))
+            .height;
+        await tester.tap(_card(S.mannyLookWithout));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(_card(S.mannyLookWith)).height,
+          before,
+          reason: 'Karte „Mit Brille“ springt nicht $v',
+        );
+        expect(
+          tester.getRect(_card(S.mannyLookWithout)).height,
+          otherBefore,
+          reason: 'Karte „Ohne Brille“ springt nicht $v',
+        );
+      }
+    });
+
     test('Umschaltung: unter 360 dp oder über 130 %', () {
       expect(MannyLookPicker.stackedFor(359.9, TextScaler.noScaling), isTrue);
       expect(MannyLookPicker.stackedFor(360, TextScaler.noScaling), isFalse);

@@ -310,6 +310,50 @@ void main() {
   });
 
   group('CuraTextField (Brief 5.9)', () {
+    testWidgets('L1K: Farbe des Feldwerts ist text-1 und hält ≥ 4,5:1 auf der '
+        'Karte (Worst Case), normal und Hoher Kontrast', (
+      WidgetTester tester,
+    ) async {
+      for (final bool hc in <bool>[false, true]) {
+        await pumpApp(
+          tester,
+          _pad(
+            CuraTextField(
+              label: 'Anzahl',
+              controller: TextEditingController(text: '3 × 10'),
+            ),
+          ),
+          highContrast: hc,
+        );
+        final CuraColors c = colorsAt(tester, find.byType(CuraTextField));
+        final EditableText e = tester.widget(find.byType(EditableText));
+        expect(e.style.color, c.text1, reason: 'hc=$hc');
+        expect(
+          worstCaseContrast(e.style.color!, c.cardFillTop),
+          greaterThanOrEqualTo(4.5),
+          reason: 'hc=$hc',
+        );
+      }
+    });
+
+    test('L1K: text-1 auf der Feldfläche ≥ 4,5:1 in allen vier Varianten', () {
+      for (final CuraColors c in <CuraColors>[
+        CuraColors.light,
+        CuraColors.dark,
+        CuraColors.lightHighContrast,
+        CuraColors.darkHighContrast,
+      ]) {
+        expect(
+          worstCaseContrast(c.text1, c.cardFillTop),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          worstCaseContrast(c.text1, c.cardFillBottom),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    });
+
     testWidgets('Label oberhalb, 56 dp, Rand border-control, Fokus accent-hi '
         '2 dp, Eingabe body', (WidgetTester tester) async {
       final TextEditingController ctrl = TextEditingController();

@@ -70,7 +70,7 @@ class CategoryCard extends StatelessWidget {
     final CuraTypography type = CuraTypography.of(context);
     final Color accent = _color(colors);
     final bool stackTime =
-        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+        MediaQuery.textScalerOf(context).scale(CuraSize.textScaleUnit) >=
         CuraSize.textScaleScrollAlong;
 
     final Widget kindRow = Row(

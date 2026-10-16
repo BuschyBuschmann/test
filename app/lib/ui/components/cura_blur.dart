@@ -3,12 +3,17 @@
 // (3) gleichzeitig gebaute `CuraBlur` je [BlurBudgetScope]; zulässig sind nur
 // Leiste, Kopf-Karte und Manny-Knopf (Regel 3 der statischen Prüfung; während
 // des Umbaus noch Blase und Sheet). Ein vierter Blur bekommt keinen Platz im
-// Budget und bleibt unscharf (Fallback wie „Transparenz reduzieren“: Fläche
-// des Kindes opak); wird ein Platz frei, rückt der nächste nach.
+// Budget und bleibt unscharf (ohne Weichzeichnung, wie bei „Transparenz
+// reduzieren“); wird ein Platz frei, rückt der nächste nach.
 //
 // Bei `blurEnabled == false` (Hoher Kontrast/Transparenz reduzieren) wird
-// nichts weichgezeichnet und kein Platz belegt; die Fläche des Kindes ist
-// dann opak.
+// nichts weichgezeichnet und kein Platz belegt.
+//
+// Der Baum bleibt in jedem Zustand gleich (`ClipRRect` > `BackdropFilter` >
+// Kind); umgeschaltet wird nur `BackdropFilter.enabled`. So gehen beim Vergeben
+// oder Zurückgeben eines Platzes, bei `TickerMode` und bei Hohem Kontrast weder
+// Zustand noch Fokus des Kindes verloren. Wer Blur-Flächen zählt, zählt
+// `BackdropFilter`s mit `enabled == true`.
 //
 // Nicht sichtbare Flächen belegen keinen Platz: Die Home-Route hält alle Ziele
 // im Baum (Scroll-Position), jedes mit eigener Kopf-Karte. Ein inaktives Ziel
@@ -186,11 +191,12 @@ class _CuraBlurState extends State<CuraBlur> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_wanted) return widget.child;
-    if (_budget != null && !_holds) return widget.child;
+    final bool active = _wanted && (_budget == null || _holds);
     return ClipRRect(
       borderRadius: widget.borderRadius,
+      clipBehavior: active ? Clip.antiAlias : Clip.none,
       child: BackdropFilter(
+        enabled: active,
         filter: ImageFilter.blur(sigmaX: widget.sigma, sigmaY: widget.sigma),
         child: widget.child,
       ),

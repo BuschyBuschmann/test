@@ -73,6 +73,63 @@ void main() {
     }
   });
 
+  test('A1: Chip und Leiste springen in der Fenstermitte; Chip, Leiste und '
+      'Kopf-Karte halten 4,5:1 bei t = 0,49 und 0,51 (Abend→Nacht, '
+      'Nacht→Morgen)', () {
+    for (final (WorldPhase, WorldPhase) pair in <(WorldPhase, WorldPhase)>[
+      (WorldPhase.evening, WorldPhase.night),
+      (WorldPhase.night, WorldPhase.morning),
+    ]) {
+      for (final double t in <double>[0.49, 0.51]) {
+        final WorldPalette p = WorldPalette.forMix(
+          WorldMix(pair.$1, pair.$2, t),
+        );
+        final String where = '${pair.$1.name}→${pair.$2.name} t=$t';
+        expect(
+          worldChipContrast(p),
+          greaterThanOrEqualTo(4.5),
+          reason: 'Chip $where',
+        );
+        expect(
+          worldNavContrast(p, active: false),
+          greaterThanOrEqualTo(4.5),
+          reason: 'Leiste Ruhe $where',
+        );
+        expect(
+          worldNavContrast(p, active: true),
+          greaterThanOrEqualTo(4.5),
+          reason: 'Leiste Aktiv $where',
+        );
+        expect(
+          worldHeaderContrast(p),
+          greaterThanOrEqualTo(4.5),
+          reason: 'Kopf-Karte (Weiß) $where',
+        );
+      }
+    }
+  });
+
+  test('A1: Kopf-Karte (Weiß) fällt in keiner Mischung unter 4,5:1 '
+      '(Schritt 0,01, alle Grenzen)', () {
+    double worst = double.infinity;
+    String at = '';
+    for (int i = 0; i < kWorldPhaseOrder.length; i++) {
+      final WorldPhase from = kWorldPhaseOrder[i];
+      final WorldPhase to = kWorldPhaseOrder[(i + 1) % kWorldPhaseOrder.length];
+      for (int step = 0; step <= 100; step++) {
+        final double t = step / 100;
+        final double r = worldHeaderContrast(
+          WorldPalette.forMix(WorldMix(from, to, t)),
+        );
+        if (r < worst) {
+          worst = r;
+          at = '${from.name}→${to.name} t=$t';
+        }
+      }
+    }
+    expect(worst, greaterThanOrEqualTo(4.5), reason: 'Minimum $worst bei $at');
+  });
+
   test('Die Prüfung schlägt an: zu schwache Kopf-Karte fällt unter 4,5', () {
     const Color white = Color(0xFFFFFFFF);
     final Color weakTint = const Color(0xFF23303A).withValues(alpha: 0.30);

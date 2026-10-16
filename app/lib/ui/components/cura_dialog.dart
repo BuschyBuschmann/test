@@ -123,7 +123,7 @@ class _CuraDialogState extends State<CuraDialog> {
                 builder: (BuildContext context, BoxConstraints box) {
                   final bool largeText =
                       MediaQuery.textScalerOf(context)
-                          .scale(CuraSize.hairline) >=
+                          .scale(CuraSize.textScaleUnit) >=
                       CuraSize.textScaleDialogCompact;
                   final bool compact =
                       largeText ||

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 Widget _blur(int i) => CuraBlur(
   key: ValueKey<int>(i),
@@ -41,14 +42,14 @@ void main() {
         child: Column(children: <Widget>[for (int i = 0; i < 4; i++) _blur(i)]),
       ),
     );
-    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(activeBackdrops(), findsNWidgets(3));
     expect(_budget(tester).used, 3);
     // Der Inhalt des vierten steht trotzdem da.
     expect(find.text('B3'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey<int>(3)),
-        matching: find.byType(BackdropFilter),
+        matching: activeBackdrops(),
       ),
       findsNothing,
     );
@@ -63,7 +64,7 @@ void main() {
       ),
     );
     await pumpApp(tester, tree(4));
-    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(activeBackdrops(), findsNWidgets(3));
     // Der erste Blur verschwindet.
     await pumpApp(
       tester,
@@ -73,15 +74,65 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(activeBackdrops(), findsNWidgets(3));
     expect(
       find.descendant(
         of: find.byKey(const ValueKey<int>(3)),
-        matching: find.byType(BackdropFilter),
+        matching: activeBackdrops(),
       ),
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'L1K: der Baum bleibt stabil, ein Platz ändert weder Zustand noch '
+    'Element des Kindes',
+    (WidgetTester tester) async {
+      int inits = 0;
+      final Widget probe = _InitCounter(onInit: () => inits++);
+      Widget tree(int from) => BlurBudgetScope(
+        child: Column(
+          children: <Widget>[
+            for (int i = from; i < 4; i++)
+              if (i == 3)
+                CuraBlur(key: const ValueKey<int>(3), child: probe)
+              else
+                _blur(i),
+          ],
+        ),
+      );
+      await pumpApp(tester, tree(0));
+      expect(inits, 1);
+      final Element before = tester.element(find.byType(_InitCounter));
+      // Der vierte hat noch keinen Platz: Filter aus, Baum wie mit Platz.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey<int>(3)),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey<int>(3)),
+          matching: activeBackdrops(),
+        ),
+        findsNothing,
+      );
+      await pumpApp(tester, tree(1));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey<int>(3)),
+          matching: activeBackdrops(),
+        ),
+        findsOneWidget,
+      );
+      expect(inits, 1, reason: 'kein Neuaufbau des Kindes');
+      expect(tester.element(find.byType(_InitCounter)), same(before));
+    },
+  );
 
   testWidgets('Hoher Kontrast: kein Blur, kein Platz belegt', (
     WidgetTester tester,
@@ -93,7 +144,7 @@ void main() {
       ),
       highContrast: true,
     );
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(activeBackdrops(), findsNothing);
     expect(_budget(tester).used, 0);
     expect(find.text('B0'), findsOneWidget);
   });
@@ -105,7 +156,7 @@ void main() {
       tester,
       Column(children: <Widget>[for (int i = 0; i < 5; i++) _blur(i)]),
     );
-    expect(find.byType(BackdropFilter), findsNWidgets(5));
+    expect(activeBackdrops(), findsNWidgets(5));
   });
 
   testWidgets('getrennte Scopes haben getrennte Budgets (je Screen)', (
@@ -128,7 +179,7 @@ void main() {
         ],
       ),
     );
-    expect(find.byType(BackdropFilter), findsNWidgets(6));
+    expect(activeBackdrops(), findsNWidgets(6));
   });
 
   testWidgets('Stärke der Weichzeichnung ist wählbar (Leiste σ 30)', (
@@ -143,7 +194,7 @@ void main() {
         ),
       ),
     );
-    final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
+    final BackdropFilter f = tester.widget(activeBackdrops());
     expect(f.filter.toString(), contains('30'));
   });
 
@@ -161,6 +212,26 @@ void main() {
     // ihren Platz (ohne diese Regel hielte das inaktive den ersten Platz).
     await pumpApp(tester, tree(firstEnabled: false));
     expect(_budget(tester).used, 3);
-    expect(find.byType(BackdropFilter), findsNWidgets(3));
+    expect(activeBackdrops(), findsNWidgets(3));
   });
+}
+
+class _InitCounter extends StatefulWidget {
+  const _InitCounter({required this.onInit});
+
+  final VoidCallback onInit;
+
+  @override
+  State<_InitCounter> createState() => _InitCounterState();
+}
+
+class _InitCounterState extends State<_InitCounter> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onInit();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(width: 40, height: 20);
 }

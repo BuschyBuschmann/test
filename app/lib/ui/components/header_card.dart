@@ -31,6 +31,7 @@ class HeaderCard extends StatelessWidget {
     this.trailing,
     this.leading,
     this.top,
+    this.compactTitle = false,
   });
 
   final String title;
@@ -51,6 +52,11 @@ class HeaderCard extends StatelessWidget {
   /// Streifen über dem Titel (Onboarding: Fortschritt „Schritt N von 5“,
   /// Ergänzung 1, 6a).
   final Widget? top;
+
+  /// Kleinere Titelschrift (`title` statt `titleHeader`) für lange
+  /// Einzelwort-Titel wie „Datenschutzerklärung“, die in der Kopf-Größe nicht
+  /// in eine Zeile passen und mitten im Wort bräche.
+  final bool compactTitle;
 
   /// Füllung der Kopf-Karte: `header-tint` mit Deckkraft, bei Hohem Kontrast
   /// zu 100 %.
@@ -73,7 +79,9 @@ class HeaderCard extends StatelessWidget {
         maxScaleFactor: CuraSize.headerTitleMaxTextScale,
         child: Text(
           title,
-          style: type.titleHeader.copyWith(color: colors.headerInk),
+          style: (compactTitle ? type.title : type.titleHeader).copyWith(
+            color: colors.headerInk,
+          ),
         ),
       ),
     );

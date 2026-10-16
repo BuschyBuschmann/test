@@ -1,7 +1,7 @@
 // `PathOutlook` (Ergänzung 3, 2.1): Abschnittsmarke am oberen Ende des Pfads,
 // hinter dem Boss: „Prävention & Gesundheitssport“, „Danach geht es weiter“.
 // Bewusst **keine Unit** (kein Kreis, keine Woche, kein Ring, kein Manny) und
-// immer gesperrt: Glas-Füllung ohne Blur, gestrichelter Rand `lockedBorder`
+// immer gesperrt: Karte (`GlassCard`, 92 %, ohne Blur), gestrichelter Rand `lockedBorder`
 // (Hoher Kontrast: opak mit `border-control-hc`), Schloss-Kreis 36 dp, Titel
 // `heading`/`text-1`, Untertitel `secondary`/`text-2`. Statisch (keine
 // Animation, kein Schein). Pressed: Füllung 10 % heller wie bei Units.
@@ -22,6 +22,7 @@ import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import 'cura_pressable.dart';
+import 'glass_card.dart';
 
 /// Messung eines Textes: Größe bei der Höchstbreite (die Besitzerin der Marke
 /// misst gecacht, der Baustein selbst mit [PathOutlook.paint]).
@@ -200,11 +201,13 @@ class PathOutlook extends StatelessWidget {
             dash: CuraSize.outlookDash,
             gap: CuraSize.outlookDashGap,
           ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: colors.cardFill,
-              borderRadius: shape,
-            ),
+          // Wie jede Karte: `GlassCard` (92 % `card`, Schatten); nur der Rand
+          // ist gestrichelt (der Kartenrand bleibt unsichtbar, der Strich
+          // liegt darüber).
+          child: GlassCard(
+            padding: EdgeInsets.zero,
+            borderColor: Colors.transparent,
+            lightEdge: false,
             child: DecoratedBox(
               position: DecorationPosition.foreground,
               decoration: BoxDecoration(

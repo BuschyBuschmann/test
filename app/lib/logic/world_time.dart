@@ -78,15 +78,19 @@ class WorldMix {
   /// Die Phase mit dem größeren Anteil (bei 50:50 die frühere).
   WorldPhase get dominant => t > 0.5 ? to : from;
 
+  // Gleichheit und Hash über dieselben Größen (kanonisch): eine reine Mischung
+  // ist durch `from` bestimmt (`to` und `t` spielen keine Rolle), sonst zählen
+  // beide Phasen und `t` exakt. So gilt `a == b` ⇒ `a.hashCode == b.hashCode`.
   @override
   bool operator ==(Object other) =>
       other is WorldMix &&
+      other.isPure == isPure &&
       other.from == from &&
-      other.to == to &&
-      (other.t - t).abs() < 1e-12;
+      (isPure || (other.to == to && other.t == t));
 
   @override
-  int get hashCode => Object.hash(from, to, (t * 1e9).round());
+  int get hashCode =>
+      isPure ? Object.hash(from, true) : Object.hash(from, to, t);
 
   @override
   String toString() => isPure

@@ -25,6 +25,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/app_harness.dart';
 import '../support/controller_harness.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 Future<Harness> _home(
   WidgetTester tester, {
@@ -173,12 +174,12 @@ void main() {
           S.navPath,
         ]) {
           await _goto(tester, label);
-          final int n = find.byType(BackdropFilter).evaluate().length;
+          final int n = activeBackdrops().evaluate().length;
           expect(n, lessThanOrEqualTo(3), reason: label);
           expect(
             find.descendant(
               of: find.byType(FloatingNav),
-              matching: find.byType(BackdropFilter),
+              matching: activeBackdrops(),
             ),
             findsOneWidget,
             reason: '$label: Leiste',
@@ -187,7 +188,7 @@ void main() {
             expect(
               find.descendant(
                 of: find.byType(HeaderCard),
-                matching: find.byType(BackdropFilter),
+                matching: activeBackdrops(),
               ),
               findsOneWidget,
               reason: '$label: Kopf-Karte',
@@ -472,18 +473,15 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(DisplaySheet),
-          matching: find.byType(BackdropFilter),
+          matching: activeBackdrops(),
         ),
         findsNothing,
       );
-      expect(
-        find.byType(BackdropFilter).evaluate().length,
-        lessThanOrEqualTo(3),
-      );
+      expect(activeBackdrops().evaluate().length, lessThanOrEqualTo(3));
       await tester.tap(find.text(S.displayReduceTransparency));
       await tester.pumpAndSettle();
       expect(d.settings.reduceTransparency, isTrue);
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(activeBackdrops(), findsNothing);
       await disposeApp(tester);
     });
 

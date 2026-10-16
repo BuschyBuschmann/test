@@ -23,6 +23,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/backdrops.dart';
+
 class Finding {
   const Finding(this.check, this.message, {this.advisory = false});
 
@@ -1229,7 +1231,7 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
 
 /// `BackdropFilter` ≤ [max] (UI-6).
 List<Finding> checkBackdrops(WidgetTester tester, int max) {
-  final int n = find.byType(BackdropFilter).evaluate().length;
+  final int n = activeBackdrops().evaluate().length;
   return n <= max
       ? const <Finding>[]
       : <Finding>[Finding('BackdropFilter ≤ $max', '$n im Baum')];
@@ -1258,6 +1260,36 @@ List<Finding> checkChatFooter(WidgetTester tester, Scenario scenario) {
             '${footer.height.toStringAsFixed(0)} dp > ${limit.toStringAsFixed(0)} dp',
           ),
         ];
+}
+
+/// Eine leere oder unvollständige Sonde ist nie grün (L1K). Gegenprobe mit einem
+/// unabhängigen Zähler: Jeder auf der Bühne gebaute, nicht leere `RichText`
+/// (`find.byType`, kennt Offstage und inaktive `IndexedStack`-Ziele) muss in der
+/// Sonde stehen. Fängt eine Sonde, die (wie vor L1K im IndexedStack-Zweig) den
+/// sichtbaren Teilbaum verfehlt und deshalb Texte nicht prüft. Szenarien ohne
+/// jeden Text (reine Symbol-Tafeln) bestehen mit ihren Symbolen.
+List<Finding> checkProbeNotEmpty(WidgetTester tester, TextProbe probe) {
+  int expected = 0;
+  for (final Element e in find.byType(RichText).evaluate()) {
+    final RenderObject? r = e.renderObject;
+    if (r is! RenderParagraph || !r.attached || !r.hasSize) continue;
+    if (r.text.toPlainText(includePlaceholders: false).trim().isEmpty) continue;
+    expected++;
+  }
+  final int found = probe.texts.length;
+  return <Finding>[
+    if (found == 0 && expected > 0)
+      Finding(
+        'Sonde leer',
+        'Kein Text gefunden, obwohl $expected im Baum stehen: Die '
+            'Textprüfungen liefen leer.',
+      ),
+    if (found < expected)
+      Finding(
+        'Sonde unvollständig',
+        '$found von $expected Texten im Baum in der Sonde',
+      ),
+  ];
 }
 
 /// Textkontrast auf dem Untergrund (Brief v2, 3.2 und 3.5; ersetzt die
@@ -1317,7 +1349,7 @@ List<Finding> checkCardTextContrast(
 List<Finding> checkHighContrast(WidgetTester tester) {
   final List<Finding> out = <Finding>[];
   final CuraColors c = CuraColors.lightHighContrast;
-  if (find.byType(BackdropFilter).evaluate().isNotEmpty) {
+  if (activeBackdrops().evaluate().isNotEmpty) {
     out.add(const Finding('HC kein Blur', 'BackdropFilter im Baum'));
   }
   final bool decor = find
@@ -1415,28 +1447,37 @@ List<Finding> checkReducedMotion(
 // M-Kontrast
 // ---------------------------------------------------------------------------
 
-/// Obergrenze der Messeigenheit bei Eingabefeldern: Die Leitlinie liest die zwei
-/// häufigsten Farben im Rechteck des Feldes. Der Glas-Verlauf des Feldes
-/// (`card-fill`, oben `#FBFDFE`, unten `#EBEBEB`) liefert zwei Stufen des
-/// **Untergrunds** als „Text“ und „Hintergrund“ (gemessen 1,01 bis 1,1, im Dialog
-/// „Eigene Übung“ zuletzt 4,33; Pixelzählung im Feld: `#FBFDFE` und `#EBEBEB`
-/// vorn, Schrift nur wenige Pixel). Echter Kontrast der Schrift: `text-1` auf
-/// `card` im Worst Case ≥ 4,5 (Token-Test und [checkCardTextContrast]).
-const double kTextFieldArtifactMaxRatio = 4.5;
+/// Messeigenheit bei Eingabefeldern, eng gefasst (L1K). Die Leitlinie liest die
+/// zwei häufigsten Farben im Rechteck des Feldes; bei wenig Schrift trifft sie
+/// zwei Stufen des **Untergrunds** statt der Schriftfarbe. Gemessen sind genau
+/// zwei Fälle:
+/// - Werte um 1,0 bis [kTextFieldArtifactNearOne] (gemessen 1,01 bis 1,1): beide
+///   Farben sind Untergrund, jedes `CuraTextField`;
+/// - der vorbefüllte Wert [kTextFieldArtifactValue] im Dialog „Eigene Übung“
+///   mit [kTextFieldArtifactPairMin] bis [kTextFieldArtifactPairMax] (gemessen
+///   4,33; wenige Schrift-Pixel, Antialiasing).
+/// Alles andere bleibt ein Befund. Die echte Schriftfarbe des Feldes sichert
+/// `test/components/form_components_test.dart` (Token-/Widget-Test, `text-1`
+/// auf `card` im Worst Case ≥ 4,5 in Hell, Dunkel und Hohem Kontrast).
+const double kTextFieldArtifactNearOne = 1.1;
+const String kTextFieldArtifactValue = '3 × 10';
+const double kTextFieldArtifactPairMin = 4.3;
+const double kTextFieldArtifactPairMax = 4.4;
 
-/// Ist die Meldung der Leitlinie zu einem Eingabefeld die bekannte
-/// Messeigenheit (Glas-Verlauf, zwei Stufen des Untergrunds als „Text“ und
-/// „Hintergrund“)? Nur wenn das Feld ein `CuraTextField` ist (Farben durch den
-/// Token-Test belegt) **und** der gemeldete Wert unter 4,5 liegt; die Schrift
-/// selbst prüft [checkCardTextContrast] mit dem Worst Case der Karte.
+/// Ist die Meldung der Leitlinie zu einem Eingabefeld eine der beiden bekannten
+/// Messeigenheiten (siehe [kTextFieldArtifactNearOne])? Nur wenn das Feld ein
+/// `CuraTextField` ist.
 bool isKnownTextFieldArtifact({
   required double? ratio,
   required bool insideCuraTextField,
-}) =>
-    insideCuraTextField &&
-    ratio != null &&
-    ratio >= 1.0 &&
-    ratio < kTextFieldArtifactMaxRatio;
+  String? value,
+}) {
+  if (!insideCuraTextField || ratio == null) return false;
+  if (ratio >= 1.0 && ratio <= kTextFieldArtifactNearOne) return true;
+  return value == kTextFieldArtifactValue &&
+      ratio >= kTextFieldArtifactPairMin &&
+      ratio <= kTextFieldArtifactPairMax;
+}
 
 /// Alle Texteingabe-Ziele mit dieser Beschriftung (bzw. diesem Wert) liegen in
 /// einem `CuraTextField`.
@@ -1509,13 +1550,15 @@ Future<List<Finding>> checkTextContrast(WidgetTester tester) async {
     // 1,01 bis 1,02, beide Farben Untergrund). Messartefakt: `text1` auf Glas
     // und auf `surface-opaque` ist durch den Token-Test (UI-3) belegt. Die
     // Ausnahme gilt nur für diese Eigenheit ([isKnownTextFieldArtifact]):
-    // Feld des Bausteins `CuraTextField` und Wert um 1,0 (R-AB-4).
+    // Feld des Bausteins `CuraTextField` und die zwei gemessenen Paare
+    // (R-AB-4, L1K).
     final bool field = b.contains('isTextField');
     if (field &&
         isKnownTextFieldArtifact(
           ratio: ratio,
           insideCuraTextField:
               shown != null && _onlyInCuraTextField(tester, shown),
+          value: shown,
         )) {
       continue;
     }

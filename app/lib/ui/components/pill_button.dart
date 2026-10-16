@@ -78,7 +78,7 @@ class PillButton extends StatelessWidget {
     final TextStyle base = CuraTypography.of(context).button;
     // Ab 1,5 sinkt der Seitenrand auf `s4`; im Dialog entfällt dort das Symbol.
     final bool large =
-        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+        MediaQuery.textScalerOf(context).scale(CuraSize.textScaleUnit) >=
         CuraSize.textScaleDialogCompact;
     final IconData? shownIcon = large && PillButtonDialogScope.of(context)
         ? null

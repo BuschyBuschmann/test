@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 const String _kSheetName = 'Test-Sheet';
 
@@ -151,7 +152,7 @@ void main() {
         }
 
         await open(hc: false);
-        expect(find.byType(BackdropFilter), findsNothing);
+        expect(activeBackdrops(), findsNothing);
         final CuraColors c = colorsAt(tester, find.byType(CuraSheetFrame));
         expect(
           decorationsUnder(tester, find.byType(CuraSheetFrame)).any(
@@ -178,7 +179,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await open(hc: true);
-        expect(find.byType(BackdropFilter), findsNothing);
+        expect(activeBackdrops(), findsNothing);
         expect(
           tester
               .widget<AnimatedModalBarrier>(

@@ -25,7 +25,6 @@ import 'package:curaone/ui/home/home_shell.dart';
 import 'package:curaone/ui/path/path_error_view.dart';
 import 'package:curaone/ui/onboarding/step4_date.dart';
 import 'package:curaone/ui/routes/app_routes.dart';
-import 'package:curaone/ui/components/glass_card.dart';
 import 'package:curaone/ui/components/header_card.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
@@ -1009,7 +1008,7 @@ void main() {
 
   group('Kopf-Karte (Brief v2, V2-5)', () {
     testWidgets('Fortschritt und Titel stehen auf der Kopf-Karte; die '
-        'Datenschutzseite hat Zurück-Pfeil und Titel auf einer Karte', (
+        'Datenschutzseite hat Zurück-Pfeil und Titel auf der Kopf-Karte', (
       WidgetTester tester,
     ) async {
       final Harness h = await _boot();
@@ -1031,10 +1030,18 @@ void main() {
       await _advanceTo(tester, 1);
       await tester.tap(find.text(S.privacyLink));
       await tester.pumpAndSettle();
+      // Wie alle Seiten: Zurück-Pfeil und Titel auf der Kopf-Karte.
       expect(
         find.descendant(
-          of: find.byType(GlassCard),
+          of: find.byType(HeaderCard),
           matching: find.byType(HeaderIconButton),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(HeaderCard),
+          matching: find.text(S.privacyTitle),
         ),
         findsOneWidget,
       );

@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
 import '../support/world_app.dart';
+import '../support/backdrops.dart';
 
 const List<NavItem> _items = <NavItem>[
   NavItem(icon: Icons.route_rounded, label: 'Pfad'),
@@ -70,7 +71,7 @@ void main() {
       final Rect bar = tester.getRect(
         find.descendant(
           of: find.byType(FloatingNav),
-          matching: find.byType(BackdropFilter),
+          matching: activeBackdrops(),
         ),
       );
       expect(bar.height, 72);
@@ -95,7 +96,7 @@ void main() {
       final Rect bar = tester.getRect(
         find.descendant(
           of: find.byType(FloatingNav),
-          matching: find.byType(BackdropFilter),
+          matching: activeBackdrops(),
         ),
       );
       expect(844 - bar.bottom, 24 + 34);
@@ -221,7 +222,7 @@ void main() {
       final Rect bar = tester.getRect(
         find.descendant(
           of: find.byType(FloatingNav),
-          matching: find.byType(BackdropFilter),
+          matching: activeBackdrops(),
         ),
       );
       await tester.tapAt(bar.centerLeft + const Offset(2, 0));
@@ -294,7 +295,7 @@ void main() {
         tester.getRect(
           find.descendant(
             of: find.byType(FloatingNav),
-            matching: find.byType(BackdropFilter),
+            matching: activeBackdrops(),
           ),
         ),
         for (final NavItem i in _items)

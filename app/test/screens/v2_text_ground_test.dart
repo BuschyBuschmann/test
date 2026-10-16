@@ -45,6 +45,39 @@ void main() {
     await disposeApp(tester);
   });
 
+  testWidgets('V2-34: Pfad mit sichtbaren Label-Chips an den Kugeln '
+      '(Wochenziel, Phasen-Abschluss)', (WidgetTester tester) async {
+    await _open(tester, 'path-labels');
+    final TextProbe p = probeTexts(view: Viewports.phone);
+    final List<String> visible = <String>[
+      for (final ProbedText t in p.texts)
+        if (t.onScreen && !t.isIcon) t.text,
+    ];
+    expect(visible, contains(S.unitWeekGoal), reason: '$visible');
+    expect(visible, contains(S.unitPhaseEnd), reason: '$visible');
+    // Je ein Chip liegt im freien Bereich zwischen Kopf-Karte und Leiste,
+    // nicht darunter oder dahinter.
+    for (final String label in <String>[S.unitWeekGoal, S.unitPhaseEnd]) {
+      expect(
+        p.texts.any(
+          (ProbedText t) =>
+              t.text == label &&
+              t.onScreen &&
+              t.rect.top > 220 &&
+              t.rect.bottom < 740,
+        ),
+        isTrue,
+        reason: label,
+      );
+    }
+    final List<ProbedText> onWorld = <ProbedText>[
+      for (final ProbedText t in p.texts)
+        if (t.onScreen && !t.isIcon && t.ground == TextGround.bg) t,
+    ];
+    expect(onWorld.map((ProbedText t) => t.text), isEmpty);
+    await disposeApp(tester);
+  });
+
   for (final String id in <String>[
     'today-standard',
     'today-empty',
@@ -62,6 +95,19 @@ void main() {
     ) async {
       await _open(tester, id);
       final TextProbe p = probeTexts(view: Viewports.phone);
+      // Untergrenze und erwarteter Titel: eine leere Sonde ist nie grün.
+      final List<String> visible = <String>[
+        for (final ProbedText t in p.texts)
+          if (t.onScreen && !t.isIcon) t.text,
+      ];
+      final int min = id.contains('privacy')
+          ? 2
+          : (id.startsWith('today-') ? 8 : 3);
+      expect(visible.length, greaterThanOrEqualTo(min), reason: '$visible');
+      if (id.startsWith('today-')) {
+        expect(visible, contains(S.todayTitle('Jakob')));
+        expect(visible, contains(S.navToday));
+      }
       final List<String> onWorld = <String>[
         for (final ProbedText t in p.texts)
           if (t.onScreen && !t.isIcon && t.ground == TextGround.bg) t.text,

@@ -1404,6 +1404,59 @@ void main() {
       expect(probeKeyedRects(prefix: 'overlay:'), contains(mark.value));
     });
 
+    testWidgets('L1K: Textsonde im IndexedStack prüft nur das angezeigte Ziel '
+        '(auch bei Index ≠ 0)', (WidgetTester tester) async {
+      Widget tabs(int index) => IndexedStack(
+        index: index,
+        children: const <Widget>[
+          Text('Erstes Ziel', textDirection: TextDirection.ltr),
+          Text('Zweites Ziel', textDirection: TextDirection.ltr),
+          Text('Drittes Ziel', textDirection: TextDirection.ltr),
+        ],
+      );
+      for (int i = 0; i < 3; i++) {
+        await pump(tester, tabs(i));
+        final List<String> texts = <String>[
+          for (final ProbedText t in probe(tester).texts)
+            if (t.onScreen) t.text,
+        ];
+        const List<String> names = <String>[
+          'Erstes Ziel',
+          'Zweites Ziel',
+          'Drittes Ziel',
+        ];
+        expect(texts, contains(names[i]), reason: 'Index $i: $texts');
+        expect(texts.where(names.contains).toList(), <String>[
+          names[i],
+        ], reason: 'nur das sichtbare Ziel, Index $i');
+      }
+    });
+
+    testWidgets('L1K: Gegenprobe der Sonde: unvollständige Sonde ist ein '
+        'Befund', (WidgetTester tester) async {
+      await pump(
+        tester,
+        const Column(
+          children: <Widget>[
+            Text('Eins', textDirection: TextDirection.ltr),
+            Text('Zwei', textDirection: TextDirection.ltr),
+          ],
+        ),
+      );
+      expect(checkProbeNotEmpty(tester, probe(tester)), isEmpty);
+      // Eine Sonde, der Texte fehlen (hier: leer), schlägt an.
+      const TextProbe empty = TextProbe(
+        texts: <ProbedText>[],
+        hasWorld: false,
+        worldDecor: false,
+        view: Size(390, 844),
+      );
+      expect(checkProbeNotEmpty(tester, empty), hasLength(2));
+      // Ohne Text im Baum (Symbol-Tafel ohne Schrift) ist nichts zu finden.
+      await pump(tester, const SizedBox.shrink());
+      expect(checkProbeNotEmpty(tester, empty), isEmpty);
+    });
+
     testWidgets('Marker in einem inaktiven Tab ist ausgeschlossen', (
       WidgetTester tester,
     ) async {
@@ -1657,36 +1710,70 @@ void _u3aMatrixTests(
       expect(await checkReachability(tester), isNotEmpty);
     });
 
-    test('R-AB-4: Messeigenheit nur für CuraTextField und Wert unter 4,5', () {
-      expect(
-        isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: true),
-        isTrue,
-      );
-      expect(
-        isKnownTextFieldArtifact(ratio: 1.02, insideCuraTextField: true),
-        isTrue,
-      );
-      // Verlauf des Feldes im Dialog (gemessen 4,33): Messeigenheit.
-      expect(
-        isKnownTextFieldArtifact(ratio: 4.33, insideCuraTextField: true),
-        isTrue,
-      );
-      // Ab 4,5 meldet die Leitlinie ohnehin keinen Befund; ein Wert darunter
-      // ohne CuraTextField bleibt einer.
-      expect(
-        isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: false),
-        isFalse,
-      );
-      // Ein anderes Eingabefeld ist nie ausgenommen.
-      expect(
-        isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: false),
-        isFalse,
-      );
-      expect(
-        isKnownTextFieldArtifact(ratio: null, insideCuraTextField: true),
-        isFalse,
-      );
-    });
+    test(
+      'R-AB-4/L1K: Messeigenheit nur für genau die zwei gemessenen Paare',
+      () {
+        expect(
+          isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: true),
+          isTrue,
+        );
+        expect(
+          isKnownTextFieldArtifact(ratio: 1.1, insideCuraTextField: true),
+          isTrue,
+        );
+        // Genau das gemessene Paar: vorbefüllter Wert im Dialog „Eigene Übung“.
+        expect(
+          isKnownTextFieldArtifact(
+            ratio: 4.33,
+            insideCuraTextField: true,
+            value: '3 × 10',
+          ),
+          isTrue,
+        );
+        // Derselbe Wert in einem anderen Feld oder ein anderer Wert: Befund.
+        expect(
+          isKnownTextFieldArtifact(ratio: 4.33, insideCuraTextField: true),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(
+            ratio: 4.33,
+            insideCuraTextField: true,
+            value: 'Plank',
+          ),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(
+            ratio: 4.0,
+            insideCuraTextField: true,
+            value: '3 × 10',
+          ),
+          isFalse,
+        );
+        // Dazwischen und darüber: Befund (früher bis 4,5 ausgenommen).
+        expect(
+          isKnownTextFieldArtifact(ratio: 1.5, insideCuraTextField: true),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: true),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(ratio: 2.5, insideCuraTextField: false),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(ratio: 1.01, insideCuraTextField: false),
+          isFalse,
+        );
+        expect(
+          isKnownTextFieldArtifact(ratio: null, insideCuraTextField: true),
+          isFalse,
+        );
+      },
+    );
 
     testWidgets('R-AB-4: Eingabefeld mit grauer Schrift auf grauem Grund '
         '(kein CuraTextField) bleibt ein Befund', (WidgetTester tester) async {

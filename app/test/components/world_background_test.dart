@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_clock.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 WorldPainter _painter(WidgetTester tester) {
   return tester
@@ -93,7 +94,7 @@ void main() {
       ),
       findsWidgets,
     );
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(activeBackdrops(), findsNothing);
   });
 
   testWidgets('ruhige Welt (Physio) wird durchgereicht', (

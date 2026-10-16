@@ -58,7 +58,7 @@ class _TabPageState extends State<TabPage> {
   @override
   Widget build(BuildContext context) {
     final bool along =
-        MediaQuery.textScalerOf(context).scale(CuraSize.hairline) >=
+        MediaQuery.textScalerOf(context).scale(CuraSize.textScaleUnit) >=
         CuraSize.textScaleScrollAlong;
     final double reserve =
         FloatingNav.occupiedHeight(context) +
