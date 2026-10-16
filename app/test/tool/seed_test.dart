@@ -9,8 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../tool/seed/seed_backend.dart';
 import '../../tool/seed/seed_cli.dart';
+import '../../tool/seed/seed_gateway.dart';
 import '../../tool/seed/seed_plan.dart';
 import '../../tool/seed/sql_backend.dart';
+import '../../tool/seed/supabase_backend.dart';
 import '../../tool/seed/stable_ids.dart';
 
 const String _dataPath = 'tool/seed/testdaten.json';
@@ -67,8 +69,13 @@ class _RecordingBackend implements SeedBackend {
     return {'code': 'ABCDE12345', 'expires_at': '2026-10-30T00:00:00Z'};
   }
 
+  Object? closeError;
+
   @override
-  Future<void> close() async => closed = true;
+  Future<void> close() async {
+    closed = true;
+    if (closeError != null) throw closeError!;
+  }
 }
 
 void main() {
@@ -545,9 +552,19 @@ void main() {
     }
 
     expectInvalid(
-      'echte Domain statt .invalid',
+      'echte Domain statt der festen Konstante',
       (d) => (d['meta'] as Map)['email_domain'] = 'example.com',
-      '.invalid',
+      kTestEmailDomain,
+    );
+    expectInvalid(
+      'andere .invalid-Domain ist ebenfalls ungültig',
+      (d) => (d['meta'] as Map)['email_domain'] = 'andere.curaone.invalid',
+      kTestEmailDomain,
+    );
+    expectInvalid(
+      'Domain in Großschreibung weicht ab',
+      (d) => (d['meta'] as Map)['email_domain'] = 'Test.Curaone.Invalid',
+      kTestEmailDomain,
     );
     expectInvalid(
       'Praxisname ohne Kennzeichnung',
@@ -659,7 +676,25 @@ void main() {
         sql.indexOf('INSERT INTO public.practices'),
       );
       expect(reset, contains('WHERE is_test'));
-      expect(reset, contains("email LIKE '%@test.curaone.invalid'"));
+      expect(
+        reset,
+        contains("right(lower(email), 21) = '@test.curaone.invalid'"),
+        reason: 'Endungsvergleich ohne LIKE-Platzhalter, in Kleinbuchstaben',
+      );
+      expect(reset, isNot(contains('LIKE')), reason: 'kein LIKE im Reset');
+      // Schutzpruefung vor dem ersten DELETE, beide Richtungen
+      final guard = reset.indexOf(r'$guard$');
+      expect(guard, isNonNegative);
+      expect(guard, lessThan(reset.indexOf('DELETE FROM')));
+      for (final fragment in [
+        'Physio in einer Testpraxis ohne Testkonto',
+        'Testkonto ist Physio in einer Praxis ohne is_test',
+        'Hauptphysio oder Konto',
+        'RESTRICT',
+        'Vorlage ausserhalb',
+      ]) {
+        expect(reset, contains(fragment));
+      }
       expect(reset, contains('DELETE FROM public.practices WHERE is_test;'));
       expect(
         RegExp(
@@ -740,6 +775,7 @@ void main() {
     final env = {
       'SUPABASE_URL': 'http://127.0.0.1:54321',
       'SUPABASE_SERVICE_ROLE_KEY': secret,
+      'CURAONE_SEED_PASSWORD': 'platzhalter-nur-test',
     };
 
     test('fehlende Umgebung: klare Meldung, Exit 2, kein Backend', () async {
@@ -797,6 +833,73 @@ void main() {
       expect(e2, contains('https'));
     });
 
+    test(
+      'Passwort ist Pflicht beim Anlegen: Exit 2 vor jeder Verbindung',
+      () async {
+        var created = false;
+        final noPw = {...env}..remove('CURAONE_SEED_PASSWORD');
+        final (code, out, err) = await run(
+          ['--target', 'local'],
+          noPw,
+          factory: (u, k, p) {
+            created = true;
+            return _RecordingBackend();
+          },
+        );
+        expect(code, 2);
+        expect(created, isFalse);
+        expect(err, contains('CURAONE_SEED_PASSWORD'));
+        expect(err, isNot(contains(secret)));
+        expect(out, isEmpty);
+      },
+    );
+
+    test(
+      '--reset-only, --dry-run und --emit-sql brauchen kein Passwort',
+      () async {
+        final noPw = {...env}..remove('CURAONE_SEED_PASSWORD');
+        final b = _RecordingBackend();
+        final (c1, _, e1) = await run(
+          ['--target', 'local', '--reset-only'],
+          noPw,
+          factory: (u, k, p) => b,
+        );
+        expect(c1, 0, reason: e1);
+        expect((await run(['--dry-run'], {})).$1, 0);
+        expect((await run(['--emit-sql'], {})).$1, 0);
+      },
+    );
+
+    test(
+      'Fabrik wirft: Exit 1, Schlüssel und Passwort fehlen in der Meldung',
+      () async {
+        final (code, _, err) = await run(
+          ['--target', 'local'],
+          env,
+          factory: (u, k, p) => throw StateError('Verbindung mit $k und $p'),
+        );
+        expect(code, 1);
+        expect(err, contains('nicht gestartet'));
+        expect(err, isNot(contains(secret)));
+        expect(err, isNot(contains('platzhalter-nur-test')));
+      },
+    );
+
+    test('close() wirft: Meldung wird gefiltert, Ergebnis bleibt', () async {
+      final b = _RecordingBackend()
+        ..closeError = StateError('close $secret platzhalter-nur-test');
+      final (code, out, err) = await run(
+        ['--target', 'local'],
+        env,
+        factory: (u, k, p) => b,
+      );
+      expect(code, 0);
+      expect(out, contains('Fertig'));
+      expect(err, contains('Schliessen'));
+      expect(err, isNot(contains(secret)));
+      expect(err, isNot(contains('platzhalter-nur-test')));
+    });
+
     test('Lauf mit Aufzeichnungs-Backend: Exit 0, Codes und Konten auf der Konsole, kein Schlüssel', () async {
       final b = _RecordingBackend();
       String? seenKey;
@@ -812,11 +915,9 @@ void main() {
       );
       expect(code, 0, reason: err);
       expect(seenKey, secret);
-      expect(
-        seenPassword,
-        hasLength(20),
-        reason: 'ohne CURAONE_SEED_PASSWORD wird ein Zufallspasswort erzeugt',
-      );
+      expect(seenPassword, 'platzhalter-nur-test');
+      expect(out, isNot(contains('platzhalter-nur-test')));
+      expect(out, isNot(contains('zufaellig')));
       expect(out, contains('ABCDE12345'));
       expect(out, contains('nord1@test.curaone.invalid'));
       expect(out, contains('Lena (Testperson)'));
@@ -902,6 +1003,262 @@ void main() {
     });
   });
 
+  group('API-Backend mit Fake-Gateway (Schutzprüfung, Reihenfolge, Blättern)', () {
+    late _FakeGateway g;
+    late SupabaseSeedBackend backend;
+
+    setUp(() {
+      g = _FakeGateway.base();
+      backend = SupabaseSeedBackend(
+        gateway: g,
+        physioPassword: 'platzhalter-nur-test',
+        pageSize: 2,
+        inChunk: 2,
+      );
+    });
+
+    List<String> deletedTables() => [
+      for (final m in g.mutations)
+        if (m.startsWith('delete:')) m.split(':')[1],
+    ];
+
+    test(
+      'sauberer Reset löscht in Fremdschlüssel-Reihenfolge und nur Testdaten',
+      () async {
+        await backend.resetTestData(kTestEmailDomain);
+        final order = <String>[];
+        for (final m in g.mutations) {
+          final key = m.startsWith('deleteUser') ? 'users' : m.split(':')[1];
+          if (!order.contains(key)) order.add(key);
+        }
+        expect(order, [
+          'exercise_results',
+          'training_sessions',
+          'consents',
+          'account_events',
+          'appointments',
+          'history_entries',
+          'treaters',
+          'invitations',
+          'plans',
+          'injuries',
+          'patients',
+          'users',
+          'physios',
+          'exercises',
+          'plan_templates',
+          'practices',
+        ]);
+        // Testdaten weg
+        expect(g.ids('practices'), ['pc']);
+        expect(g.ids('patients'), ['pat-c']);
+        expect(g.ids('exercises'), ['ex-c', 'ex-cat']);
+        expect(g.ids('plan_templates'), ['tp-c', 'tp-cat']);
+        // Testkonten (auch in Großschreibung, auch auf einer späteren Seite) weg, Rest bleibt
+        final left = g.users.map((u) => u.id).toSet();
+        expect(left.contains('u-t1'), isFalse);
+        expect(left.contains('u-t2'), isFalse);
+        expect(
+          left.contains('u-far'),
+          isFalse,
+          reason: 'Testkonto auf Seite 3 von listUsers',
+        );
+        expect(left, containsAll(['u-c', 'u-l']));
+        expect(g.ids('physios'), unorderedEquals(['u-c', 'u-l']));
+      },
+    );
+
+    test('blättert: listUsers über mehrere Seiten, Abfragen in Seiten von pageSize', () async {
+      await backend.resetTestData(kTestEmailDomain);
+      expect(g.listUserCalls, 3, reason: '450+ Konten bei 200 je Seite');
+      expect(g.maxRowsPerSelect, lessThanOrEqualTo(2));
+      expect(
+        g.selects.where((s) => s.startsWith('plan_templates@')).length,
+        2,
+        reason: '2 Vorlagen, Seite 1 voll (2 Zeilen), Seite 2 leer',
+      );
+      // Patienten: 3 Zeilen insgesamt, in der Testpraxis 2 -> mehrere Aufrufe wegen inChunk
+      expect(
+        g.selects.where((s) => s.startsWith('patients@')).length,
+        greaterThan(1),
+      );
+    });
+
+    test('Abfragen sind nicht an max_rows gebunden: mehr Zeilen als eine Seite werden vollständig gelesen', () async {
+      for (var i = 0; i < 7; i++) {
+        g.tables['patients']!.add({
+          'id': 'pat-x$i',
+          'practice_id': 'pt1',
+          'main_physio_id': 'u-t1',
+          'auth_user_id': null,
+        });
+      }
+      await backend.resetTestData(kTestEmailDomain);
+      expect(g.ids('patients'), [
+        'pat-c',
+      ], reason: 'alle 9 Testpatienten gelöscht, nicht nur die erste Seite');
+    });
+
+    final cases = <String, (void Function(_FakeGateway), String)>{
+      'Physio in Testpraxis ohne Testkonto': (
+        (g) {
+          g.addUser('u-z', 'z@example.invalid');
+          g.tables['physios']!.add({'id': 'u-z', 'practice_id': 'pt1'});
+        },
+        'ohne Testkonto',
+      ),
+      'Testkonto ist Physio in Nicht-Testpraxis (Großschreibung)': (
+        (g) {
+          g.addUser('u-x', 'X@Test.Curaone.Invalid');
+          g.tables['physios']!.add({'id': 'u-x', 'practice_id': 'pc'});
+        },
+        'Praxis ohne is_test',
+      ),
+      'Testkonto ist Hauptphysio eines echten Patienten': (
+        (g) => g.row('patients', 'pat-c')['main_physio_id'] = 'u-t1',
+        'Hauptphysio oder als Konto',
+      ),
+      'Testkonto ist Konto eines echten Patienten': (
+        (g) {
+          g.addUser('u-y', 'y@test.curaone.invalid');
+          g.row('patients', 'pat-c')['auth_user_id'] = 'u-y';
+        },
+        'Hauptphysio oder als Konto',
+      ),
+      'Plan eines echten Patienten nutzt Übung einer Testpraxis': (
+        (g) => g.row('plan_items', 'it-c')['exercise_id'] = 'ex-t1',
+        'RESTRICT',
+      ),
+      'Vorlage einer echten Praxis verweist auf Übung einer Testpraxis': (
+        (g) => g.row('plan_templates', 'tp-c')['payload'] = {
+          'phases': [
+            {
+              'items': [
+                {'exercise_id': 'ex-t1'},
+              ],
+            },
+          ],
+        },
+        'Vorlage',
+      ),
+    };
+    for (final c in cases.entries) {
+      test('Schutzprüfung bricht ab, ohne etwas zu ändern: ${c.key}', () async {
+        c.value.$1(g);
+        await expectLater(
+          backend.resetTestData(kTestEmailDomain),
+          throwsA(
+            isA<SeedGuardException>().having(
+              (e) => e.toString(),
+              'Meldung',
+              allOf(contains('nichts geloescht'), contains(c.value.$2)),
+            ),
+          ),
+        );
+        expect(g.mutations, isEmpty, reason: 'weder löschen noch ändern');
+        expect(g.ids('practices'), unorderedEquals(['pt1', 'pt2', 'pc']));
+      });
+    }
+
+    test('mehrere Verletzungen werden gemeinsam gemeldet', () async {
+      g.row('patients', 'pat-c')['main_physio_id'] = 'u-t1';
+      g.row('plan_items', 'it-c')['exercise_id'] = 'ex-t1';
+      try {
+        await backend.resetTestData(kTestEmailDomain);
+        fail('Schutzprüfung hätte anschlagen müssen');
+      } on SeedGuardException catch (e) {
+        expect(e.violations, hasLength(2));
+      }
+      expect(g.mutations, isEmpty);
+    });
+
+    test('ohne Testpraxen und Testkonten passiert nichts', () async {
+      final empty = _FakeGateway.base()
+        ..tables['practices']!.removeWhere((p) => p['is_test'] == true)
+        ..users.removeWhere(
+          (u) => u.email!.toLowerCase().endsWith('@$kTestEmailDomain'),
+        );
+      final b = SupabaseSeedBackend(gateway: empty, physioPassword: 'x' * 10);
+      await b.resetTestData(kTestEmailDomain);
+      expect(empty.mutations, isEmpty);
+    });
+
+    test('Konto mit ähnlicher Domain bleibt unberührt', () async {
+      await backend.resetTestData(kTestEmailDomain);
+      expect(g.users.any((u) => u.id == 'u-l'), isTrue);
+    });
+
+    test('Konten werden mit Passwort angelegt; Physio-Verweise und Funktionsaufruf laufen über die echte ID', () async {
+      await backend.createPhysioAccount(
+        const CreatePhysioAccount(
+          key: 'nord_1',
+          email: 'nord1@test.curaone.invalid',
+          displayName: 'Physio Nord 1 (Test)',
+          practiceId: 'pt1',
+        ),
+      );
+      final id = g.createdUsers.single;
+      expect(g.mutations, contains('upsert:physios:1'));
+      await backend.upsert(
+        UpsertRows('appointments', [
+          {'id': 'a1', 'created_by': const PhysioRef('nord_1')},
+          {'id': 'a2', 'created_by': const PhysioRef('nord_1')},
+          {'id': 'a3', 'created_by': const PhysioRef('nord_1')},
+        ]),
+      );
+      expect(g.upserted['appointments']!.map((r) => r['created_by']).toSet(), {
+        id,
+      });
+      expect(
+        g.mutations.where((m) => m.startsWith('upsert:appointments')).length,
+        2,
+        reason: 'in Teilstücken von inChunk',
+      );
+      final r = await backend.physioRpc(
+        const PhysioRpc(
+          physioKey: 'nord_1',
+          fn: 'regenerate_invitation',
+          params: {'p_patient_id': 'p'},
+          subject: 's',
+        ),
+      );
+      expect(r?['code'], 'FAKECODE');
+      expect(
+        g.rpcCalls.single,
+        'nord1@test.curaone.invalid|platzhalter-nur-test|regenerate_invitation',
+      );
+      await expectLater(
+        backend.physioRpc(
+          const PhysioRpc(
+            physioKey: 'fehlt',
+            fn: 'f',
+            params: {},
+            subject: 's',
+          ),
+        ),
+        throwsStateError,
+      );
+      await expectLater(
+        backend.upsert(
+          UpsertRows('x', [
+            {'id': 'a', 'created_by': const PhysioRef('fehlt')},
+          ]),
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('Reset ruft keine Löschung vor der Schutzprüfung auf, auch nicht bei listUsers-Fehler', () async {
+      g.failListUsers = true;
+      await expectLater(
+        backend.resetTestData(kTestEmailDomain),
+        throwsStateError,
+      );
+      expect(g.mutations, isEmpty);
+      expect(deletedTables(), isEmpty);
+    });
+  });
+
   group('Repository-Hygiene', () {
     test('keine Schlüssel oder Passwörter in tool/seed', () {
       final files = Directory('tool/seed').listSync().whereType<File>();
@@ -943,7 +1300,7 @@ void main() {
         text.indexOf('dependencies:'),
         text.indexOf('dev_dependencies:'),
       );
-      expect(deps, isNot(contains('supabase')));
+      expect(deps, isNot(contains('\n  supabase:')));
     });
   });
 }
@@ -954,4 +1311,223 @@ class _FailingBackend extends _RecordingBackend {
   @override
   Future<void> resetTestData(String emailDomain) async =>
       throw StateError(message);
+}
+
+/// In-Memory-Gateway: filtert, sortiert und blättert wie PostgREST, zählt Aufrufe und Änderungen.
+class _FakeGateway implements SeedGateway {
+  _FakeGateway(this.tables, this.users);
+
+  factory _FakeGateway.base() {
+    final tables = <String, List<Row>>{
+      for (final t in [
+        'practices',
+        'physios',
+        'patients',
+        'exercises',
+        'plans',
+        'plan_items',
+        'plan_templates',
+        'exercise_results',
+        'training_sessions',
+        'consents',
+        'account_events',
+        'appointments',
+        'history_entries',
+        'treaters',
+        'invitations',
+        'injuries',
+      ])
+        t: <Row>[],
+    };
+    tables['practices']!.addAll([
+      {'id': 'pt1', 'is_test': true},
+      {'id': 'pt2', 'is_test': true},
+      {'id': 'pc', 'is_test': false},
+    ]);
+    tables['physios']!.addAll([
+      {'id': 'u-t1', 'practice_id': 'pt1'},
+      {'id': 'u-t2', 'practice_id': 'pt2'},
+      {'id': 'u-c', 'practice_id': 'pc'},
+      {'id': 'u-l', 'practice_id': 'pc'},
+    ]);
+    tables['patients']!.addAll([
+      {
+        'id': 'pat-t1',
+        'practice_id': 'pt1',
+        'main_physio_id': 'u-t1',
+        'auth_user_id': null,
+      },
+      {
+        'id': 'pat-t2',
+        'practice_id': 'pt2',
+        'main_physio_id': 'u-t2',
+        'auth_user_id': null,
+      },
+      {
+        'id': 'pat-c',
+        'practice_id': 'pc',
+        'main_physio_id': 'u-c',
+        'auth_user_id': null,
+      },
+    ]);
+    tables['exercises']!.addAll([
+      {'id': 'ex-t1', 'practice_id': 'pt1'},
+      {'id': 'ex-c', 'practice_id': 'pc'},
+      {'id': 'ex-cat', 'practice_id': null},
+    ]);
+    tables['plans']!.addAll([
+      {'id': 'pl-t1', 'patient_id': 'pat-t1'},
+      {'id': 'pl-c', 'patient_id': 'pat-c'},
+    ]);
+    tables['plan_items']!.addAll([
+      {'id': 'it-t1', 'plan_id': 'pl-t1', 'exercise_id': 'ex-t1'},
+      {'id': 'it-c', 'plan_id': 'pl-c', 'exercise_id': 'ex-c'},
+    ]);
+    tables['plan_templates']!.addAll([
+      {
+        'id': 'tp-c',
+        'practice_id': 'pc',
+        'payload': {'phases': []},
+      },
+      {
+        'id': 'tp-cat',
+        'practice_id': null,
+        'payload': {
+          'phases': [
+            {
+              'items': [
+                {'exercise_id': 'ex-cat'},
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+    final users = <AuthUserInfo>[
+      const AuthUserInfo('u-t1', 'nord1@test.curaone.invalid'),
+      const AuthUserInfo('u-t2', 'SUED1@Test.Curaone.Invalid'),
+      const AuthUserInfo('u-c', 'kontrolle@example.invalid'),
+      const AuthUserInfo('u-l', 'x@xtest.curaone.invalid'),
+      for (var i = 0; i < 450; i++)
+        AuthUserInfo('u-fill$i', 'fill$i@example.invalid'),
+      const AuthUserInfo('u-far', 'weit@test.curaone.invalid'),
+    ];
+    return _FakeGateway(tables, users);
+  }
+
+  final Map<String, List<Row>> tables;
+  final List<AuthUserInfo> users;
+  final List<String> mutations = [];
+  final List<String> selects = [];
+  final List<String> createdUsers = [];
+  final Map<String, List<Row>> upserted = {};
+  final List<String> rpcCalls = [];
+  int listUserCalls = 0;
+  int maxRowsPerSelect = 0;
+  bool failListUsers = false;
+
+  List<String> ids(String table) => [
+    for (final r in tables[table]!) r['id']! as String,
+  ];
+
+  Row row(String table, String id) =>
+      tables[table]!.firstWhere((r) => r['id'] == id);
+
+  void addUser(String id, String email) => users.add(AuthUserInfo(id, email));
+
+  @override
+  Future<List<Row>> selectPage(
+    String table,
+    String columns, {
+    Row? eq,
+    String? inColumn,
+    List<String>? inValues,
+    required int from,
+    required int to,
+  }) async {
+    selects.add('$table@$from');
+    var rows =
+        tables[table]!.where((r) {
+            if (eq != null && !eq.entries.every((e) => r[e.key] == e.value)) {
+              return false;
+            }
+            if (inColumn != null && !inValues!.contains(r[inColumn])) {
+              return false;
+            }
+            return true;
+          }).toList()
+          ..sort((a, b) => (a['id']! as String).compareTo(b['id']! as String));
+    if (from >= rows.length) return [];
+    rows = rows.sublist(from, (to + 1) > rows.length ? rows.length : to + 1);
+    if (rows.length > maxRowsPerSelect) maxRowsPerSelect = rows.length;
+    return [for (final r in rows) Map<String, Object?>.from(r)];
+  }
+
+  @override
+  Future<List<AuthUserInfo>> listUsersPage(int page, int perPage) async {
+    if (failListUsers) throw StateError('listUsers kaputt');
+    listUserCalls++;
+    final start = (page - 1) * perPage;
+    if (start >= users.length) return [];
+    return users.sublist(
+      start,
+      (start + perPage) > users.length ? users.length : start + perPage,
+    );
+  }
+
+  @override
+  Future<void> deleteRows(
+    String table,
+    String column,
+    List<String> values,
+  ) async {
+    mutations.add('delete:$table:$column');
+    tables[table]!.removeWhere((r) => values.contains(r[column]));
+  }
+
+  @override
+  Future<void> deleteUser(String id) async {
+    mutations.add('deleteUser:$id');
+    users.removeWhere((u) => u.id == id);
+    tables['physios']!.removeWhere((r) => r['id'] == id); // ON DELETE CASCADE
+  }
+
+  @override
+  Future<String> createUser(String email, String password) async {
+    expect(password, 'platzhalter-nur-test');
+    final id = 'new-${createdUsers.length}';
+    createdUsers.add(id);
+    users.add(AuthUserInfo(id, email));
+    mutations.add('createUser:$email');
+    return id;
+  }
+
+  @override
+  Future<void> upsertRows(
+    String table,
+    List<Row> rows,
+    String onConflict,
+  ) async {
+    mutations.add('upsert:$table:${rows.length}');
+    upserted.putIfAbsent(table, () => []).addAll(rows);
+  }
+
+  @override
+  Future<void> updateRows(String table, Row values, Row where) async {
+    mutations.add('update:$table');
+  }
+
+  @override
+  Future<Row?> rpcAsUser(
+    String email,
+    String password,
+    String fn,
+    Row params,
+  ) async {
+    rpcCalls.add('$email|$password|$fn');
+    return {'code': 'FAKECODE', 'expires_at': 'x'};
+  }
+
+  @override
+  Future<void> close() async {}
 }

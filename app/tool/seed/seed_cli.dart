@@ -5,18 +5,19 @@
 //   dart run tool/seed/seed.dart --emit-sql           SQL fuer das lokale Test-Postgres ausgeben
 //   dart run tool/seed/seed.dart --target ... --reset-only
 //
-// Umgebung (nie im Repository): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-// optional CURAONE_SEED_PASSWORD (sonst wird ein Passwort erzeugt und einmal ausgegeben).
+// Umgebung (nie im Repository): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY und, sobald Konten
+// angelegt werden (alles ausser --reset-only), CURAONE_SEED_PASSWORD (mindestens 8 Zeichen).
+// --dry-run und --emit-sql legen keine echten Konten an und brauchen keine Variable.
 // Exit-Codes: 0 ok, 1 Laufzeitfehler, 2 Aufruf-/Umgebungsfehler.
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'seed_backend.dart';
 import 'seed_plan.dart';
 import 'sql_backend.dart';
 import 'supabase_backend.dart';
+import 'supabase_gateway.dart';
 
 typedef BackendFactory = SeedBackend Function(
   String url,
@@ -43,7 +44,9 @@ Optionen
 Umgebung (nie im Repository ablegen)
   SUPABASE_URL                 Projekt-URL
   SUPABASE_SERVICE_ROLE_KEY    Service-Role-Schluessel (nur in der Shell)
-  CURAONE_SEED_PASSWORD        optional: Passwort der Test-Physios
+  CURAONE_SEED_PASSWORD        Pflicht beim Anlegen der Test-Physio-Konten (nicht bei
+                               --reset-only/--dry-run/--emit-sql), mind. 8 Zeichen;
+                               wird nie ausgegeben
 ''';
 
 bool _isLocalHost(String host) =>
@@ -51,12 +54,6 @@ bool _isLocalHost(String host) =>
     host == '127.0.0.1' ||
     host == '::1' ||
     host == '[::1]';
-
-String _randomPassword() {
-  const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  final r = Random.secure();
-  return List.generate(20, (_) => alphabet[r.nextInt(alphabet.length)]).join();
-}
 
 Future<int> runSeedCli(
   List<String> args,
@@ -141,6 +138,9 @@ Future<int> runSeedCli(
       if ((env['SUPABASE_URL'] ?? '').trim().isEmpty) 'SUPABASE_URL',
       if ((env['SUPABASE_SERVICE_ROLE_KEY'] ?? '').trim().isEmpty)
         'SUPABASE_SERVICE_ROLE_KEY',
+      // Pflicht, sobald Konten angelegt werden; kein Zufallspasswort, keine Ausgabe
+      if (!resetOnly && (env['CURAONE_SEED_PASSWORD'] ?? '').isEmpty)
+        'CURAONE_SEED_PASSWORD',
     ];
     if (missing.isNotEmpty) {
       err.writeln(
@@ -152,6 +152,12 @@ Future<int> runSeedCli(
       err.writeln('  export SUPABASE_URL=http://127.0.0.1:54321');
       err.writeln(
         '  export SUPABASE_SERVICE_ROLE_KEY=<Schluessel aus "supabase status">',
+      );
+      return 2;
+    }
+    if (!resetOnly && env['CURAONE_SEED_PASSWORD']!.length < 8) {
+      err.writeln(
+        'Abbruch: CURAONE_SEED_PASSWORD ist zu kurz (mindestens 8 Zeichen).',
       );
       return 2;
     }
@@ -221,23 +227,20 @@ Future<int> runSeedCli(
     return 0;
   }
 
-  final generated = (env['CURAONE_SEED_PASSWORD'] ?? '').isEmpty;
-  final password = generated
-      ? _randomPassword()
-      : env['CURAONE_SEED_PASSWORD']!;
-  if (password.length < 8) {
-    err.writeln(
-      'Abbruch: CURAONE_SEED_PASSWORD ist zu kurz (mindestens 8 Zeichen).',
-    );
-    return 2;
+  final password = resetOnly ? '' : env['CURAONE_SEED_PASSWORD']!;
+  String scrub(Object e) => _scrub(e.toString(), [key!, password]);
+  final SeedBackend backend;
+  try {
+    backend =
+        (backendFactory ??
+        (u, k, p) => SupabaseSeedBackend(
+          gateway: SupabaseGateway(url: u, serviceRoleKey: k),
+          physioPassword: p,
+        ))(url!, key!, password);
+  } on Object catch (e) {
+    err.writeln('Seed konnte nicht gestartet werden: ${scrub(e)}');
+    return 1;
   }
-  final backend =
-      (backendFactory ??
-      (u, k, p) => SupabaseSeedBackend(
-        url: u,
-        serviceRoleKey: k,
-        physioPassword: p,
-      ))(url!, key!, password);
   try {
     if (resetOnly) {
       await backend.resetTestData(plan.emailDomain);
@@ -256,9 +259,7 @@ Future<int> runSeedCli(
       out.writeln('  $m');
     }
     out.writeln(
-      generated
-          ? 'Passwort (zufaellig, nur dieser Lauf, wird nicht gespeichert): $password'
-          : 'Passwort: Wert aus CURAONE_SEED_PASSWORD',
+      'Passwort: Wert aus CURAONE_SEED_PASSWORD (wird nicht ausgegeben)',
     );
     out.writeln(
       '\nEinladungscodes der Test-Patienten (nur hier auf der Konsole, 14 Tage gueltig):',
@@ -271,12 +272,14 @@ Future<int> runSeedCli(
     }
     return 0;
   } on Object catch (e) {
-    err.writeln(
-      'Seed fehlgeschlagen: ${_scrub(e.toString(), [key, password])}',
-    );
+    err.writeln('Seed fehlgeschlagen: ${scrub(e)}');
     return 1;
   } finally {
-    await backend.close();
+    try {
+      await backend.close();
+    } on Object catch (e) {
+      err.writeln('Schliessen des Backends fehlgeschlagen: ${scrub(e)}');
+    }
   }
 }
 

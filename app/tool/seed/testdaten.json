@@ -2,6 +2,7 @@
   "meta": {
     "kennzeichnung": "TESTDATEN: alle Personen, Praxen, Uebungen und Verlaufsdaten sind erfunden und nur fuer Entwicklung und Praesentation gedacht (Plan Ausschnitt 2, Abschnitt 10).",
     "version": 1,
+    "hinweis_verlauf_vor_bindung": "Die Test-Patienten sind eingeladen und ungebunden, haben aber Trainingsverlauf (service_role-Seed, DB-T45) und keine Einwilligung (consents). Das ist beabsichtigt; App-Code (L3 ff.) darf diesen Zustand nicht als Fehler werten.",
     "email_domain": "test.curaone.invalid",
     "noch_nicht_umsetzbar": [
       "Check-ups nach der Einheit, Tages-Check-ups, Fragen, Notizen und Warnzeichen: Tabellen entstehen erst in L5/L7 (Plan 6.2, MINOR-G); der Seed ergaenzt sie dann ohne Schemaaenderung hier",

@@ -41,31 +41,65 @@ class SqlScriptBackend implements SeedBackend {
 
   @override
   Future<void> resetTestData(String emailDomain) async {
-    final pattern = '%@$emailDomain';
+    final suffix = '@${emailDomain.toLowerCase()}';
+    // Endungsvergleich ohne LIKE-Platzhalterwirkung (Unterstrich/Prozent in der Domain)
+    String isTestUser(String col) =>
+        'right(lower($col), ${suffix.length}) = ${sqlQuote(suffix)}';
+    const testPractices = 'SELECT id FROM public.practices WHERE is_test';
+    const testPatients =
+        'SELECT id FROM public.patients WHERE practice_id IN ($testPractices)';
+    final testUsers =
+        'SELECT u.id FROM auth.users u WHERE ${isTestUser('u.email')}';
+    const testExercises =
+        'SELECT id FROM public.exercises WHERE practice_id IN ($testPractices)';
     _line('-- Reset: nur Praxen mit is_test und Konten mit der Testdomain');
     _line('SET ROLE service_role;');
+    // Schutzpruefung vor dem ersten Loeschen (in beide Richtungen, siehe SeedGuardException)
     _line(
-      'DO \$guard\$ BEGIN\n'
+      'DO \$guard\$\n'
+      'DECLARE v text := \'\';\n'
+      'BEGIN\n'
       '  IF EXISTS (SELECT 1 FROM public.physios ph\n'
-      '              WHERE ph.practice_id IN (SELECT id FROM public.practices WHERE is_test)\n'
-      '                AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = ph.id\n'
-      '                                   AND u.email LIKE ${sqlQuote(pattern)})) THEN\n'
-      "    RAISE EXCEPTION 'Reset abgebrochen: Physio in einer Test-Praxis ohne Testkonto';\n"
+      '              WHERE ph.practice_id IN ($testPractices)\n'
+      '                AND ph.id NOT IN ($testUsers)) THEN\n'
+      "    v := v || 'Physio in einer Testpraxis ohne Testkonto; ';\n"
+      '  END IF;\n'
+      '  IF EXISTS (SELECT 1 FROM public.physios ph\n'
+      '              WHERE ph.id IN ($testUsers)\n'
+      '                AND ph.practice_id NOT IN ($testPractices)) THEN\n'
+      "    v := v || 'Testkonto ist Physio in einer Praxis ohne is_test; ';\n"
+      '  END IF;\n'
+      '  IF EXISTS (SELECT 1 FROM public.patients p\n'
+      '              WHERE p.practice_id NOT IN ($testPractices)\n'
+      '                AND (p.main_physio_id IN ($testUsers)\n'
+      '                     OR p.auth_user_id IN ($testUsers))) THEN\n'
+      "    v := v || 'Patient ausserhalb der Testpraxen hat ein Testkonto als Hauptphysio oder Konto; ';\n"
+      '  END IF;\n'
+      '  IF EXISTS (SELECT 1 FROM public.plan_items pi\n'
+      '               JOIN public.plans pl ON pl.id = pi.plan_id\n'
+      '              WHERE pi.exercise_id IN ($testExercises)\n'
+      '                AND pl.patient_id NOT IN ($testPatients)) THEN\n'
+      "    v := v || 'Plan ausserhalb der Testpraxen nutzt eine Uebung einer Testpraxis (RESTRICT); ';\n"
+      '  END IF;\n'
+      '  IF EXISTS (SELECT 1 FROM public.plan_templates t\n'
+      '              WHERE (t.practice_id IS NULL OR t.practice_id NOT IN ($testPractices))\n'
+      '                AND EXISTS (SELECT 1 FROM public.exercises e\n'
+      '                             WHERE e.practice_id IN ($testPractices)\n'
+      "                               AND strpos(t.payload::text, e.id::text) > 0)) THEN\n"
+      "    v := v || 'Vorlage ausserhalb der Testpraxen verweist auf eine Uebung einer Testpraxis; ';\n"
+      '  END IF;\n'
+      "  IF v <> '' THEN\n"
+      "    RAISE EXCEPTION 'Reset abgebrochen, nichts geloescht (Schutzpruefung): %', v;\n"
       '  END IF;\n'
       'END \$guard\$;',
     );
-    const testPatients =
-        'SELECT id FROM public.patients WHERE practice_id IN '
-        '(SELECT id FROM public.practices WHERE is_test)';
     for (final t in patientScopedTables) {
       _line('DELETE FROM public.$t WHERE patient_id IN ($testPatients);');
     }
     _line('DELETE FROM public.patients WHERE id IN ($testPatients);');
-    _line('DELETE FROM auth.users WHERE email LIKE ${sqlQuote(pattern)};');
+    _line('DELETE FROM auth.users WHERE ${isTestUser('email')};');
     for (final t in ['physios', 'exercises', 'plan_templates']) {
-      _line(
-        'DELETE FROM public.$t WHERE practice_id IN (SELECT id FROM public.practices WHERE is_test);',
-      );
+      _line('DELETE FROM public.$t WHERE practice_id IN ($testPractices);');
     }
     _line('DELETE FROM public.practices WHERE is_test;');
     _line('RESET ROLE;');

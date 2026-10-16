@@ -18,6 +18,16 @@ const List<String> patientScopedTables = [
   'injuries',
 ];
 
+/// Schutzpruefung des Resets hat angeschlagen: nichts wurde geloescht oder geaendert.
+class SeedGuardException implements Exception {
+  SeedGuardException(this.violations);
+  final List<String> violations;
+  @override
+  String toString() =>
+      'Reset abgebrochen, nichts geloescht (Schutzpruefung): '
+      '${violations.join('; ')}';
+}
+
 abstract class SeedBackend {
   /// Loescht ausschliesslich Daten der Praxen mit is_test = true und Konten mit der Testdomain.
   Future<void> resetTestData(String emailDomain);

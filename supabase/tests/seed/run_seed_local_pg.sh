@@ -20,12 +20,15 @@
 #   DART        Dart-Aufruf (Standard: dart; mit Flutter z. B. /opt/flutter/bin/dart)
 #   KEEP=1      Cluster nach dem Lauf nicht abbauen
 # Ausschliesslich lokal: keine Verbindung zu einem echten Projekt, keine Secrets.
+# CURAONE_SEED_PASSWORD ist fuer den echten Lauf Pflicht; hier gilt ein offensichtlicher Platzhalter
+# (der SQL-Weg legt keine Konten mit Passwort an).
 
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUPA="$(cd "$HERE/../.." && pwd)"
 APP="$(cd "$SUPA/../app" && pwd)"
+export CURAONE_SEED_PASSWORD="${CURAONE_SEED_PASSWORD:-PLATZHALTER-NUR-LOKAL}"
 PGBIN="${PGBIN:-/usr/lib/postgresql/16/bin}"
 PORT="${PG_PORT:-55442}"
 DART="${DART:-dart}"
@@ -145,8 +148,70 @@ grep -q '^control:training_sessions [0-9a-f]\{32\}$' "$LOGS/control.after" || fa
 [ "$("${PSQL[@]}" -At -d $DB -c "SELECT count(*) FROM public.practices WHERE NOT is_test")" = "1" ] || fail "Kontrollpraxis fehlt"
 echo "PASS Reset-Umfang: nur is_test-Praxen und Testkonten entfernt (Kontrollpraxis, ihr Konto und ihre Daten vorhanden)"
 
+echo "== Schutzpruefung: Mischfaelle brechen den Reset ab, ohne etwas zu aendern"
+C1=c0c0c0c0-0000-4000-8000-000000000001
+CP=c0c0c0c0-0000-4000-8000-000000000010
+mixed() {  # $1 Name, $2 Aufbau-SQL, $3 Rueckbau-SQL, $4 erwarteter Meldungstext
+  "${PSQL[@]}" -d $DB -c "$2" >/dev/null
+  snapshot >"$LOGS/mix.before"
+  if "${PSQL[@]}" -1 -d $DB -f "$WORK/seed.sql" >"$LOGS/mix.out" 2>"$LOGS/mix.err"; then
+    fail "Mischfall $1: Seed lief trotz Mischfall durch"
+  fi
+  grep -q "$4" "$LOGS/mix.err" || { cat "$LOGS/mix.err"; fail "Mischfall $1: Meldung '$4' fehlt"; }
+  snapshot >"$LOGS/mix.after"
+  diff -q "$LOGS/mix.before" "$LOGS/mix.after" >/dev/null || fail "Mischfall $1: Zustand nach Abbruch veraendert"
+  [ "$("${PSQL[@]}" -At -d $DB -c "SELECT count(*) FROM public.practices WHERE is_test")" = "2" ] \
+    || fail "Mischfall $1: Testpraxen fehlen nach Abbruch"
+  "${PSQL[@]}" -d $DB -c "$3" >/dev/null
+  echo "PASS Mischfall $1: Abbruch mit Schutzmeldung, Zustand (Test- und Kontrolldaten) unveraendert"
+}
+mixed "A Testkonto ist Physio in Nicht-Testpraxis (Gross-/Kleinschreibung)" \
+  "INSERT INTO auth.users (id, email) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a1', 'Misch_A@Test.Curaone.Invalid'); INSERT INTO public.physios (id, practice_id, display_name) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a1', '$C1', 'Misch');" \
+  "DELETE FROM public.physios WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a1'; DELETE FROM auth.users WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a1';" \
+  "Testkonto ist Physio in einer Praxis ohne is_test"
+mixed "B Testkonto ist Hauptphysio eines echten Patienten" \
+  "UPDATE public.patients SET main_physio_id = (SELECT id FROM auth.users WHERE email = 'nord1@test.curaone.invalid') WHERE id = '$CP';" \
+  "UPDATE public.patients SET main_physio_id = 'c0c0c0c0-0000-4000-8000-000000000002' WHERE id = '$CP';" \
+  "Hauptphysio oder Konto"
+mixed "C Testkonto ist Konto eines echten Patienten" \
+  "INSERT INTO auth.users (id, email) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a2', 'misch_c@test.curaone.invalid'); UPDATE public.patients SET auth_user_id = 'c0c0c0c0-0000-4000-8000-0000000000a2' WHERE id = '$CP';" \
+  "UPDATE public.patients SET auth_user_id = NULL WHERE id = '$CP'; DELETE FROM auth.users WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a2';" \
+  "Hauptphysio oder Konto"
+mixed "D Plan eines echten Patienten nutzt Uebung einer Testpraxis (RESTRICT)" \
+  "UPDATE public.plan_items SET exercise_id = (SELECT id FROM public.exercises WHERE name LIKE 'Eigene Übung Nord%') WHERE id = 'c0c0c0c0-0000-4000-8000-000000000014';" \
+  "UPDATE public.plan_items SET exercise_id = 'c0c0c0c0-0000-4000-8000-000000000003' WHERE id = 'c0c0c0c0-0000-4000-8000-000000000014';" \
+  "RESTRICT"
+mixed "E Physio ohne Testkonto in einer Testpraxis" \
+  "INSERT INTO auth.users (id, email) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a3', 'echt@example.invalid'); INSERT INTO public.physios (id, practice_id, display_name) SELECT 'c0c0c0c0-0000-4000-8000-0000000000a3', id, 'Echt' FROM public.practices WHERE is_test LIMIT 1;" \
+  "DELETE FROM public.physios WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a3'; DELETE FROM auth.users WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a3';" \
+  "Physio in einer Testpraxis ohne Testkonto"
+mixed "F Vorlage einer echten Praxis verweist auf Uebung einer Testpraxis" \
+  "UPDATE public.plan_templates SET payload = jsonb_build_object('phases', jsonb_build_array(jsonb_build_object('items', jsonb_build_array(jsonb_build_object('exercise_id', (SELECT id FROM public.exercises WHERE name LIKE 'Eigene Übung Nord%')))))) WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
+  "UPDATE public.plan_templates SET payload = '{\"phases\": []}'::jsonb WHERE id = 'c0c0c0c0-0000-4000-8000-000000000004';" \
+  "Vorlage ausserhalb"
+# Gegenprobe: aehnliche, aber andere Domain wird nicht angefasst und loest keinen Abbruch aus
+"${PSQL[@]}" -d $DB >/dev/null -c "INSERT INTO auth.users (id, email) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a4', 'ahnlich@xtest.curaone.invalid'); INSERT INTO public.physios (id, practice_id, display_name) VALUES ('c0c0c0c0-0000-4000-8000-0000000000a4', '$C1', 'Aehnlich');"
+run_seed 3
+[ "$("${PSQL[@]}" -At -d $DB -c "SELECT count(*) FROM auth.users WHERE email = 'ahnlich@xtest.curaone.invalid'")" = "1" ] \
+  || fail "Konto mit aehnlicher Domain wurde geloescht"
+"${PSQL[@]}" -d $DB >/dev/null -c "DELETE FROM public.physios WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a4'; DELETE FROM auth.users WHERE id = 'c0c0c0c0-0000-4000-8000-0000000000a4';"
+echo "PASS Gegenprobe: Konto @xtest.curaone.invalid bleibt, Seed laeuft durch"
+snapshot >"$LOGS/snap.3"
+diff -q <(grep '^seed:' "$LOGS/snap.2") <(grep '^seed:' "$LOGS/snap.3") >/dev/null || fail "Endzustand nach Lauf 3 verschieden"
+echo "PASS Endzustand nach den Mischfaellen (Lauf 3) gleich"
+
+echo "== Kommandozeile: Passwort ist Pflicht (vor jeder Verbindung)"
+set +e
+cli_out="$(cd "$APP" && env -u CURAONE_SEED_PASSWORD SUPABASE_URL=http://127.0.0.1:1 \
+  SUPABASE_SERVICE_ROLE_KEY=PLATZHALTER-KEIN-ECHTER-SCHLUESSEL "$DART" run tool/seed/seed.dart --target local 2>&1)"
+cli_rc=$?
+set -e
+[ "$cli_rc" = "2" ] && grep -q CURAONE_SEED_PASSWORD <<<"$cli_out" && ! grep -q PLATZHALTER-KEIN <<<"$cli_out" \
+  || { echo "$cli_out"; fail "ohne CURAONE_SEED_PASSWORD kein Exit 2 mit Meldung"; }
+echo "PASS ohne CURAONE_SEED_PASSWORD: Exit 2, Meldung, Schluessel nicht in der Ausgabe"
+
 echo "== Einloesung eines Einladungscodes und Patientensicht"
-CODE_LENA="$(grep -o 'EINLADUNG Lena (Testperson) [0-9A-Z]*' "$LOGS/seed.2.out" | awk '{print $NF}')"
+CODE_LENA="$(grep -o 'EINLADUNG Lena (Testperson) [0-9A-Z]*' "$LOGS/seed.3.out" | awk '{print $NF}')"
 out="$("${PSQL[@]}" -d $DB -v code_lena="$CODE_LENA" -f "$HERE/check_seed.sql" 2>&1)" \
   || { echo "$out" | grep -E 'ERROR|not ok' | head; fail "check_seed.sql mit Einloesung"; }
 n2="$(grep -c 'NOTICE:  ok - ' <<<"$out" || true)"

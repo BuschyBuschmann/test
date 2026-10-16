@@ -115,3 +115,8 @@ PG_WORKDIR=/tmp/curaone-pg KEEP=1 ...     # Arbeitsverzeichnis festlegen, Cluste
 - **Altes JWT nach `delete_my_data`:** `redeem_invitation` mit dem JWT des gelöschten Kontos
   liefert `not_allowed` ohne Protokolleintrag in `redeem_attempts` (F2-1RR NIT-1; Sitzung ohne `auth.users`-Zeile); die App
   meldet sich nach `delete_my_data` ab, bevor sie erneut einlöst.
+- **Seed-Daten: Verlauf vor Bindung (F2-2R MINOR-3):** Die Test-Patienten des Seeds
+  (`app/tool/seed`) sind `invited` und ungebunden, haben aber Trainingsverlauf (der Seed schreibt
+  als `service_role` ohne Patienten-JWT, DB-T45) und keine Einwilligung (`consents`). Das ist
+  beabsichtigt. Späterer App-Code darf „Verlauf vor Bindung/Einwilligung“ nicht als Fehler werten;
+  nach dem Einlösen eines Codes sieht der Patient den vorhandenen Verlauf.

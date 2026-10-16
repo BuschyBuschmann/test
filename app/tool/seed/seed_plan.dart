@@ -8,6 +8,10 @@
 
 import 'stable_ids.dart';
 
+/// Feste Domain der Test-Konten. Der Reset loescht Konten nur mit genau dieser Endung
+/// ("@test.curaone.invalid", Vergleich in Kleinbuchstaben). Nie aus Daten uebernehmen.
+const String kTestEmailDomain = 'test.curaone.invalid';
+
 /// Fehler in den Testdaten (Struktur, Verweise, Werte).
 class SeedDataException implements Exception {
   SeedDataException(this.message);
@@ -222,9 +226,10 @@ SeedPlan buildSeedPlan(Map<String, dynamic> data, {required DateTime today}) {
   final todayUtc = DateTime.utc(today.year, today.month, today.day);
   final meta = _obj(data['meta'], 'meta');
   final domain = _str(meta, 'email_domain', 'meta');
-  if (!domain.endsWith('.invalid')) {
+  if (domain != kTestEmailDomain) {
     throw SeedDataException(
-      'meta.email_domain muss auf ".invalid" enden (nie eine echte Domain)',
+      'meta.email_domain muss "$kTestEmailDomain" sein (feste Konstante, '
+      'sie begrenzt den Reset), nicht "$domain"',
     );
   }
   final notes = [

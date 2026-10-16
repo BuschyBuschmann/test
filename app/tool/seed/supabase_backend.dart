@@ -1,35 +1,30 @@
-// Ausfuehrung des Seed-Plans ueber die Supabase-API (lokaler Stack oder Projekt).
+// Ausfuehrung des Seed-Plans ueber die Supabase-API (lokaler Stack oder Projekt), hinter der
+// Schnittstelle SeedGateway (seed_gateway.dart). Schluessel nur aus der Umgebung (seed_cli.dart).
 //
-// Der Service-Role-Schluessel kommt nur aus der Umgebung (siehe seed_cli.dart) und liegt hier
-// nur im Speicher. Er wird nie ausgegeben oder gespeichert. Die Physio-Sitzungen fuer
-// regenerate_invitation entstehen per E-Mail + Passwort; der Schluessel dient dort nur als
-// apikey-Header, die Rolle bestimmt das Benutzer-JWT.
+// Reset: erst Schutzpruefung (ohne jede Aenderung), dann Loeschen. Alle Abfragen blaettern in
+// Seiten von [pageSize] Zeilen (muss <= max_rows des Projekts sein, Standard 1000) und sind damit
+// nicht an max_rows gebunden.
 
-import 'package:supabase/supabase.dart';
+import 'dart:convert';
 
 import 'seed_backend.dart';
+import 'seed_gateway.dart';
 import 'seed_plan.dart';
 
 class SupabaseSeedBackend implements SeedBackend {
   SupabaseSeedBackend({
-    required this.url,
-    required this.serviceRoleKey,
+    required this.gateway,
     required this.physioPassword,
-  }) : admin = _client(url, serviceRoleKey);
+    this.pageSize = 100,
+    this.inChunk = 100,
+  });
 
-  final String url;
-  final String serviceRoleKey;
+  final SeedGateway gateway;
   final String physioPassword;
-  final SupabaseClient admin;
+  final int pageSize;
+  final int inChunk;
   final Map<String, String> _physioIds = {};
   final Map<String, String> _physioEmails = {};
-  final Map<String, SupabaseClient> _physioClients = {};
-
-  static SupabaseClient _client(String url, String key) => SupabaseClient(
-    url,
-    key,
-    authOptions: const AuthClientOptions(autoRefreshToken: false),
-  );
 
   Object? _resolve(Object? v) {
     if (v is PhysioRef) {
@@ -46,157 +41,265 @@ class SupabaseSeedBackend implements SeedBackend {
     return v;
   }
 
-  static const int _chunk = 100;
-
   Iterable<List<T>> _chunks<T>(List<T> l) sync* {
-    for (var i = 0; i < l.length; i += _chunk) {
-      yield l.sublist(i, i + _chunk > l.length ? l.length : i + _chunk);
+    for (var i = 0; i < l.length; i += inChunk) {
+      yield l.sublist(i, i + inChunk > l.length ? l.length : i + inChunk);
     }
   }
 
-  List<String> _ids(List<dynamic> rows, [String col = 'id']) => [
-    for (final r in rows) (r as Map)[col] as String,
+  /// Alle Zeilen, seitenweise (auch IN-Listen in Teilstuecken).
+  Future<List<Row>> _all(
+    String table,
+    String columns, {
+    Row? eq,
+    String? inColumn,
+    List<String>? inValues,
+  }) async {
+    final out = <Row>[];
+    final parts = inColumn == null
+        ? <List<String>?>[null]
+        : [for (final c in _chunks(inValues!)) c];
+    for (final part in parts) {
+      for (var from = 0; ; from += pageSize) {
+        final page = await gateway.selectPage(
+          table,
+          columns,
+          eq: eq,
+          inColumn: inColumn,
+          inValues: part,
+          from: from,
+          to: from + pageSize - 1,
+        );
+        out.addAll(page);
+        if (page.length < pageSize) break;
+      }
+    }
+    return out;
+  }
+
+  List<String> _ids(List<Row> rows, [String col = 'id']) => [
+    for (final r in rows) r[col]! as String,
   ];
 
-  Future<List<User>> _allUsers() async {
-    final users = <User>[];
+  Future<List<AuthUserInfo>> _allUsers() async {
+    const perPage = 200;
+    final users = <AuthUserInfo>[];
     for (var page = 1; ; page++) {
-      final batch = await admin.auth.admin.listUsers(page: page, perPage: 200);
+      final batch = await gateway.listUsersPage(page, perPage);
       users.addAll(batch);
-      if (batch.length < 200) break;
+      if (batch.length < perPage) break;
     }
     return users;
   }
 
+  /// Schutzpruefung vor dem ersten Loeschen: liefert alle Verletzungen (leer = unbedenklich).
+  Future<List<String>> _guard({
+    required Set<String> practiceIds,
+    required Set<String> testUserIds,
+    required Set<String> testPatientIds,
+  }) async {
+    final v = <String>[];
+    if (practiceIds.isNotEmpty) {
+      final physios = await _all(
+        'physios',
+        'id,practice_id',
+        inColumn: 'practice_id',
+        inValues: practiceIds.toList(),
+      );
+      final n = physios.where((r) => !testUserIds.contains(r['id'])).length;
+      if (n > 0) v.add('$n Physio(s) in einer Testpraxis ohne Testkonto');
+    }
+    if (testUserIds.isNotEmpty) {
+      final asPhysio = await _all(
+        'physios',
+        'id,practice_id',
+        inColumn: 'id',
+        inValues: testUserIds.toList(),
+      );
+      final n1 = asPhysio
+          .where((r) => !practiceIds.contains(r['practice_id']))
+          .length;
+      if (n1 > 0) {
+        v.add('$n1 Testkonto/-konten sind Physio in einer Praxis ohne is_test');
+      }
+      final foreign = <String>{};
+      for (final col in const ['main_physio_id', 'auth_user_id']) {
+        final rows = await _all(
+          'patients',
+          'id,practice_id',
+          inColumn: col,
+          inValues: testUserIds.toList(),
+        );
+        for (final r in rows) {
+          if (!practiceIds.contains(r['practice_id'])) {
+            foreign.add(r['id']! as String);
+          }
+        }
+      }
+      if (foreign.isNotEmpty) {
+        v.add(
+          '${foreign.length} Patient(en) ausserhalb der Testpraxen haben ein '
+          'Testkonto als Hauptphysio oder als Konto',
+        );
+      }
+    }
+    if (practiceIds.isNotEmpty) {
+      final exIds = _ids(
+        await _all(
+          'exercises',
+          'id',
+          inColumn: 'practice_id',
+          inValues: practiceIds.toList(),
+        ),
+      );
+      if (exIds.isNotEmpty) {
+        final items = await _all(
+          'plan_items',
+          'id,plan_id',
+          inColumn: 'exercise_id',
+          inValues: exIds,
+        );
+        final planIds = {for (final r in items) r['plan_id']! as String};
+        if (planIds.isNotEmpty) {
+          final plans = await _all(
+            'plans',
+            'id,patient_id',
+            inColumn: 'id',
+            inValues: planIds.toList(),
+          );
+          final n = plans
+              .where((r) => !testPatientIds.contains(r['patient_id']))
+              .length;
+          if (n > 0) {
+            v.add(
+              '$n Plan/Plaene ausserhalb der Testpraxen nutzen eine Uebung einer '
+              'Testpraxis (Position, ON DELETE RESTRICT)',
+            );
+          }
+        }
+        final templates = await _all(
+          'plan_templates',
+          'id,practice_id,payload',
+        );
+        final n = templates.where((t) {
+          if (practiceIds.contains(t['practice_id'])) return false;
+          final text = jsonEncode(t['payload']);
+          return exIds.any(text.contains);
+        }).length;
+        if (n > 0) {
+          v.add(
+            '$n Vorlage(n) ausserhalb der Testpraxen verweisen auf eine Uebung '
+            'einer Testpraxis',
+          );
+        }
+      }
+    }
+    return v;
+  }
+
   @override
   Future<void> resetTestData(String emailDomain) async {
-    final suffix = '@$emailDomain';
+    final suffix = '@${emailDomain.toLowerCase()}';
     final practiceIds = _ids(
-      await admin.from('practices').select('id').eq('is_test', true),
+      await _all('practices', 'id', eq: {'is_test': true}),
     );
     final testUsers = [
       for (final u in await _allUsers())
-        if ((u.email ?? '').endsWith(suffix)) u,
+        if ((u.email ?? '').toLowerCase().endsWith(suffix)) u,
     ];
     final testUserIds = {for (final u in testUsers) u.id};
+    final patientIds = practiceIds.isEmpty
+        ? <String>[]
+        : _ids(
+            await _all(
+              'patients',
+              'id',
+              inColumn: 'practice_id',
+              inValues: practiceIds,
+            ),
+          );
 
-    if (practiceIds.isNotEmpty) {
-      // Schutz: in einer Test-Praxis darf kein Physio ohne Testkonto stehen
-      final physios = _ids(
-        await admin
-            .from('physios')
-            .select('id')
-            .inFilter('practice_id', practiceIds),
-      );
-      final foreign = physios.where((id) => !testUserIds.contains(id)).toList();
-      if (foreign.isNotEmpty) {
-        throw StateError(
-          'Reset abgebrochen: ${foreign.length} Physio(s) in einer Test-Praxis ohne Testkonto',
-        );
-      }
-      final patientIds = _ids(
-        await admin
-            .from('patients')
-            .select('id')
-            .inFilter('practice_id', practiceIds),
-      );
-      for (final table in patientScopedTables) {
-        for (final c in _chunks(patientIds)) {
-          await admin.from(table).delete().inFilter('patient_id', c);
-        }
-      }
+    final violations = await _guard(
+      practiceIds: practiceIds.toSet(),
+      testUserIds: testUserIds,
+      testPatientIds: patientIds.toSet(),
+    );
+    if (violations.isNotEmpty) {
+      throw SeedGuardException(violations);
+    }
+
+    for (final table in patientScopedTables) {
       for (final c in _chunks(patientIds)) {
-        await admin.from('patients').delete().inFilter('id', c);
+        await gateway.deleteRows(table, 'patient_id', c);
       }
+    }
+    for (final c in _chunks(patientIds)) {
+      await gateway.deleteRows('patients', 'id', c);
     }
     for (final u in testUsers) {
-      await admin.auth.admin.deleteUser(u.id); // physios per ON DELETE CASCADE
+      await gateway.deleteUser(u.id); // physios per ON DELETE CASCADE
     }
     if (practiceIds.isNotEmpty) {
-      for (final table in ['physios', 'exercises', 'plan_templates']) {
-        await admin.from(table).delete().inFilter('practice_id', practiceIds);
+      for (final table in const ['physios', 'exercises', 'plan_templates']) {
+        for (final c in _chunks(practiceIds)) {
+          await gateway.deleteRows(table, 'practice_id', c);
+        }
       }
-      await admin.from('practices').delete().inFilter('id', practiceIds);
+      for (final c in _chunks(practiceIds)) {
+        await gateway.deleteRows('practices', 'id', c);
+      }
     }
     _physioIds.clear();
+    _physioEmails.clear();
   }
 
   @override
   Future<void> createPhysioAccount(CreatePhysioAccount step) async {
-    final res = await admin.auth.admin.createUser(
-      AdminUserAttributes(
-        email: step.email,
-        password: physioPassword,
-        emailConfirm: true,
-        userMetadata: const {'curaone_testdaten': true},
-      ),
-    );
-    final id = res.user?.id;
-    if (id == null) {
-      throw StateError('Konto ${step.email} wurde nicht angelegt');
-    }
+    final id = await gateway.createUser(step.email, physioPassword);
     _physioIds[step.key] = id;
     _physioEmails[step.key] = step.email;
-    await admin.from('physios').upsert({
-      'id': id,
-      'practice_id': step.practiceId,
-      'display_name': step.displayName,
-    }, onConflict: 'id');
+    await gateway.upsertRows('physios', [
+      {
+        'id': id,
+        'practice_id': step.practiceId,
+        'display_name': step.displayName,
+      },
+    ], 'id');
   }
 
   @override
   Future<void> upsert(UpsertRows step) async {
     final rows = [
-      for (final r in step.rows) _resolve(r) as Map<String, dynamic>,
+      for (final r in step.rows) _resolve(r)! as Map<String, Object?>,
     ];
     for (final c in _chunks(rows)) {
-      await admin.from(step.table).upsert(c, onConflict: step.conflict);
+      await gateway.upsertRows(step.table, c, step.conflict);
     }
   }
 
   @override
   Future<void> update(UpdateRows step) async {
-    var q = admin
-        .from(step.table)
-        .update(_resolve(step.values) as Map<String, dynamic>);
-    for (final e in step.where.entries) {
-      q = q.eq(e.key, _resolve(e.value)!);
-    }
-    await q;
-  }
-
-  Future<SupabaseClient> _physioClient(String key) async {
-    final existing = _physioClients[key];
-    if (existing != null) return existing;
-    final email = _physioEmails[key];
-    if (email == null) {
-      throw StateError('Physio "$key" wurde noch nicht angelegt');
-    }
-    final c = _client(url, serviceRoleKey);
-    await c.auth.signInWithPassword(email: email, password: physioPassword);
-    _physioClients[key] = c;
-    return c;
+    await gateway.updateRows(
+      step.table,
+      _resolve(step.values)! as Row,
+      _resolve(step.where)! as Row,
+    );
   }
 
   @override
   Future<Row?> physioRpc(PhysioRpc step) async {
-    final client = await _physioClient(step.physioKey);
-    final res = await client.rpc(
-      step.fn,
-      params: _resolve(step.params) as Map<String, dynamic>,
-    );
-    if (res is List && res.isNotEmpty) {
-      return Map<String, Object?>.from(res.first as Map);
+    final email = _physioEmails[step.physioKey];
+    if (email == null) {
+      throw StateError('Physio "${step.physioKey}" wurde noch nicht angelegt');
     }
-    if (res is Map) return Map<String, Object?>.from(res);
-    return null;
+    return gateway.rpcAsUser(
+      email,
+      physioPassword,
+      step.fn,
+      _resolve(step.params)! as Row,
+    );
   }
 
   @override
-  Future<void> close() async {
-    for (final c in _physioClients.values) {
-      await c.dispose();
-    }
-    await admin.dispose();
-  }
+  Future<void> close() => gateway.close();
 }
