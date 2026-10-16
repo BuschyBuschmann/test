@@ -5,6 +5,7 @@
 import 'package:curaone/theme/tokens.dart';
 import 'package:curaone/ui/components/cura_blur.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/pump_app.dart';
@@ -108,7 +109,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey<int>(3)),
-          matching: find.byType(BackdropFilter),
+          matching: find.byWidgetPredicate((Widget w) => w is BackdropFilter),
         ),
         findsOneWidget,
       );
@@ -213,6 +214,24 @@ void main() {
     await pumpApp(tester, tree(firstEnabled: false));
     expect(_budget(tester).used, 3);
     expect(activeBackdrops(), findsNWidgets(3));
+  });
+
+  testWidgets('L1K2: deaktivierter Filter erzwingt kein Compositing, aktiver '
+      'schon', (WidgetTester tester) async {
+    Widget tree(bool wanted) =>
+        Column(children: <Widget>[for (int i = 0; i < 4; i++) _blur(i)]);
+    await pumpApp(tester, BlurBudgetScope(child: tree(true)));
+    RenderBackdropFilter render(int i) => tester.renderObject(
+      find.descendant(
+        of: find.byKey(ValueKey<int>(i)),
+        matching: find.byWidgetPredicate((Widget w) => w is BackdropFilter),
+      ),
+    );
+    expect(render(0).enabled, isTrue);
+    expect(render(0).alwaysNeedsCompositing, isTrue);
+    // Der vierte hat keinen Platz: Filter aus, kein erzwungenes Compositing.
+    expect(render(3).enabled, isFalse);
+    expect(render(3).alwaysNeedsCompositing, isFalse);
   });
 }
 

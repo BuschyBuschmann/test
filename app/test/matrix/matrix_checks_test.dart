@@ -1457,6 +1457,31 @@ void main() {
       expect(checkProbeNotEmpty(tester, empty), isEmpty);
     });
 
+    testWidgets('L1K2: Gegenprobe: gleiche Anzahl, aber andere Texte ist ein '
+        'Befund', (WidgetTester tester) async {
+      await pump(
+        tester,
+        const Column(
+          children: <Widget>[
+            Text('Eins', textDirection: TextDirection.ltr),
+            Text('Zwei', textDirection: TextDirection.ltr),
+          ],
+        ),
+      );
+      final TextProbe real = probe(tester);
+      final TextProbe swapped = TextProbe(
+        texts: <ProbedText>[real.texts.first, real.texts.first],
+        hasWorld: real.hasWorld,
+        worldDecor: real.worldDecor,
+        view: real.view,
+      );
+      expect(swapped.texts.length, real.texts.length);
+      final List<Finding> f = checkProbeNotEmpty(tester, swapped);
+      expect(f, hasLength(1));
+      expect(f.single.message, contains('"Zwei"'));
+      expect(f.single.message, isNot(contains('"Eins"')));
+    });
+
     testWidgets('Marker in einem inaktiven Tab ist ausgeschlossen', (
       WidgetTester tester,
     ) async {

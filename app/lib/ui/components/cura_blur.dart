@@ -22,6 +22,7 @@
 // und Manny-Knopf des sichtbaren Ziels ihn bekommen (V2-10).
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -195,11 +196,43 @@ class _CuraBlurState extends State<CuraBlur> {
     return ClipRRect(
       borderRadius: widget.borderRadius,
       clipBehavior: active ? Clip.antiAlias : Clip.none,
-      child: BackdropFilter(
+      child: _LeanBackdropFilter(
         enabled: active,
         filter: ImageFilter.blur(sigmaX: widget.sigma, sigmaY: widget.sigma),
         child: widget.child,
       ),
     );
+  }
+}
+
+/// `BackdropFilter` (Unterklasse, bleibt also ein `BackdropFilter`; Zählung über
+/// `w is BackdropFilter && w.enabled`), der im deaktivierten Zustand kein
+/// Compositing erzwingt: `RenderBackdropFilter.alwaysNeedsCompositing` hängt
+/// sonst nicht von `enabled` ab. Der Baum bleibt gleich, nur das RenderObject
+/// meldet das Compositing-Bedürfnis nach `enabled`.
+class _LeanBackdropFilter extends BackdropFilter {
+  const _LeanBackdropFilter({
+    required super.filter,
+    required super.enabled,
+    super.child,
+  });
+
+  @override
+  RenderBackdropFilter createRenderObject(BuildContext context) =>
+      _RenderLeanBackdropFilter(filter: filter, enabled: enabled);
+}
+
+class _RenderLeanBackdropFilter extends RenderBackdropFilter {
+  _RenderLeanBackdropFilter({super.filter, super.enabled});
+
+  @override
+  bool get alwaysNeedsCompositing => enabled && child != null;
+
+  @override
+  set enabled(bool value) {
+    if (enabled == value) return;
+    super.enabled = value;
+    if (!value) layer = null;
+    markNeedsCompositingBitsUpdate();
   }
 }

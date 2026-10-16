@@ -1269,14 +1269,34 @@ List<Finding> checkChatFooter(WidgetTester tester, Scenario scenario) {
 /// sichtbaren Teilbaum verfehlt und deshalb Texte nicht prüft. Szenarien ohne
 /// jeden Text (reine Symbol-Tafeln) bestehen mit ihren Symbolen.
 List<Finding> checkProbeNotEmpty(WidgetTester tester, TextProbe probe) {
+  // Mengenabgleich (Multimenge): erwartet ⊆ gefunden. Gleiche Anzahl bei
+  // anderen Texten fällt so auf.
+  final Map<String, int> missing = <String, int>{};
   int expected = 0;
   for (final Element e in find.byType(RichText).evaluate()) {
     final RenderObject? r = e.renderObject;
     if (r is! RenderParagraph || !r.attached || !r.hasSize) continue;
-    if (r.text.toPlainText(includePlaceholders: false).trim().isEmpty) continue;
+    final String plain = r.text.toPlainText(includePlaceholders: false);
+    if (plain.trim().isEmpty) continue;
     expected++;
+    missing[plain] = (missing[plain] ?? 0) + 1;
+  }
+  for (final ProbedText t in probe.texts) {
+    final int? n = missing[t.text];
+    if (n == null) continue;
+    if (n <= 1) {
+      missing.remove(t.text);
+    } else {
+      missing[t.text] = n - 1;
+    }
   }
   final int found = probe.texts.length;
+  final int missingCount = missing.values.fold(0, (int a, int b) => a + b);
+  String quoted(String t) {
+    final String one = t.replaceAll('\n', ' ');
+    return '"${one.length > 40 ? '${one.substring(0, 40)}…' : one}"';
+  }
+
   return <Finding>[
     if (found == 0 && expected > 0)
       Finding(
@@ -1284,10 +1304,11 @@ List<Finding> checkProbeNotEmpty(WidgetTester tester, TextProbe probe) {
         'Kein Text gefunden, obwohl $expected im Baum stehen: Die '
             'Textprüfungen liefen leer.',
       ),
-    if (found < expected)
+    if (missingCount > 0)
       Finding(
         'Sonde unvollständig',
-        '$found von $expected Texten im Baum in der Sonde',
+        '${expected - missingCount} von $expected Texten im Baum in der '
+            'Sonde; es fehlen: ${missing.keys.map(quoted).join(', ')}',
       ),
   ];
 }
