@@ -11,6 +11,11 @@
 --   P0001  conflict, current_phase_required, foreign_id, plan_closed, idempotency_mismatch
 --   55000  pepper_missing (Pepper nicht gesetzt, X2-11)
 -- redeem_invitation und delete_my_data liefern Ergebniscodes als Rueckgabewert.
+--
+-- Sperrreihenfolge (F2-1R MINOR-1): immer Patientenzeile vor Einladungszeile(n). Wer beides
+-- braucht, sperrt zuerst public.patients und erst danach public.invitations (create_patient,
+-- regenerate_invitation, redeem_invitation, delete_my_data). Ein Schreibzugriff nur auf die
+-- Einladung (Fehlversuch zaehlen) haelt keine Patientensperre.
 
 -- ---------------------------------------------------------------------------
 -- interne Hilfen (kein EXECUTE fuer API-Rollen)
@@ -168,7 +173,10 @@ BEGIN
     LOOP
       v_var := (v_item ->> 'easier_variant_of')::integer;
       IF v_var IS NOT NULL THEN
-        IF NOT (v_item_ids ? (v_pidx || ':' || v_var)) OR v_var = v_iidx - 1 THEN
+        -- Ziel muss eine andere Position derselben Phase sein, die selbst keine Variante ist
+        -- (F2-1R NIT-5: keine Zyklen A->B->A und keine Ketten)
+        IF NOT (v_item_ids ? (v_pidx || ':' || v_var)) OR v_var = v_iidx - 1
+           OR (v_phase -> 'items' -> v_var ->> 'easier_variant_of') IS NOT NULL THEN
           RAISE EXCEPTION 'invalid_easier_variant' USING ERRCODE = '22023';
         END IF;
         UPDATE public.plan_items pi
@@ -276,6 +284,16 @@ BEGIN
   RETURNING id INTO v_inserted;
 
   IF v_inserted IS NULL THEN
+    -- F2-1R NIT-1: Zugehoerigkeit zuerst ohne Sperre pruefen; eine fremde Praxis sperrt keine
+    -- fremde Patientenzeile und erhaelt fuer jede vorhandene fremde id unabhaengig von Status
+    -- und Parametern dieselbe Antwort (42501 not_allowed). Dass eine vom Client gewaehlte id
+    -- bereits vergeben ist, laesst sich bei Client-IDs (UUIDv4, nicht aufzaehlbar) nicht
+    -- verbergen; Status und Inhalt bleiben verborgen.
+    SELECT pt.practice_id INTO v_ex_practice FROM public.patients pt WHERE pt.id = p_id;
+    IF v_ex_practice IS DISTINCT FROM v_practice THEN
+      RAISE EXCEPTION 'not_allowed' USING ERRCODE = '42501';
+    END IF;
+    -- Sperrreihenfolge Patient vor Einladung (MINOR-1)
     SELECT pt.practice_id, pt.status, pt.create_params_hash
       INTO v_ex_practice, v_ex_status, v_ex_hash
       FROM public.patients pt WHERE pt.id = p_id FOR UPDATE;
@@ -325,7 +343,10 @@ BEGIN
   IF NOT app.physio_can_see_patient(p_patient_id) THEN
     RAISE EXCEPTION 'not_allowed' USING ERRCODE = '42501';
   END IF;
+  -- Sperrreihenfolge Patient vor Einladung (MINOR-1)
   SELECT pt.status INTO v_status FROM public.patients pt WHERE pt.id = p_patient_id FOR UPDATE;
+  -- Nutzerentscheidung (F2-1K): Patienten mit Status access_deleted werden nicht neu
+  -- eingeladen (42501 patient_not_invitable); der Physio legt sie neu an.
   IF v_status NOT IN ('invited', 'active') THEN
     RAISE EXCEPTION 'patient_not_invitable' USING ERRCODE = '42501';
   END IF;
@@ -347,6 +368,7 @@ DECLARE
   v_code    text;
   v_hmac    bytea;
   v_inv     record;
+  v_found   boolean;
   v_status  text;
   v_old     uuid;
   v_result  text;
@@ -358,7 +380,11 @@ BEGIN
     RETURN 'not_allowed';
   END IF;
 
-  -- Bereinigung (> 24 h) und Bremse je Sitzung: 5 Fehlversuche je 15 Minuten
+  -- Bremse je Sitzung: 5 Fehlversuche je 15 Minuten. Aufrufe derselben Sitzung laufen
+  -- nacheinander (F2-1R NIT-3), sonst zaehlen parallele Aufrufe alle vor dem ersten Eintrag.
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('curaone.redeem_invitation'),
+                                           pg_catalog.hashtext(v_uid::text));
+  -- Bereinigung (> 24 h; Index redeem_attempts_at_idx)
   DELETE FROM public.redeem_attempts ra WHERE ra.at < v_now - interval '24 hours';
   IF (SELECT count(*) FROM public.redeem_attempts ra
        WHERE ra.uid = v_uid AND NOT ra.ok AND ra.at > v_now - interval '15 minutes') >= 5 THEN
@@ -372,9 +398,18 @@ BEGIN
   END IF;
 
   v_hmac := app.invite_code_hmac(v_code);
+  -- Sperrreihenfolge Patient vor Einladung (F2-1R MINOR-1): Einladung zuerst ohne Sperre lesen;
+  -- nur wenn sie einloesbar aussieht, Patient sperren, dann Einladung sperren und neu pruefen.
   SELECT i.id, i.patient_id, i.expires_at, i.redeemed_at, i.revoked_at INTO v_inv
-    FROM public.invitations i WHERE i.code_hmac = v_hmac FOR UPDATE;
-  IF NOT FOUND THEN
+    FROM public.invitations i WHERE i.code_hmac = v_hmac;
+  v_found := FOUND;
+  IF v_found AND v_inv.revoked_at IS NULL AND v_inv.redeemed_at IS NULL AND v_inv.expires_at > v_now THEN
+    SELECT pt.status, pt.auth_user_id INTO v_status, v_old
+      FROM public.patients pt WHERE pt.id = v_inv.patient_id FOR UPDATE;
+    SELECT i.id, i.patient_id, i.expires_at, i.redeemed_at, i.revoked_at INTO v_inv
+      FROM public.invitations i WHERE i.id = v_inv.id FOR UPDATE;
+  END IF;
+  IF NOT v_found THEN
     v_result := 'invalid';
   ELSIF v_inv.revoked_at IS NOT NULL THEN
     v_result := 'invalid';
@@ -391,9 +426,7 @@ BEGIN
     RETURN v_result;
   END IF;
 
-  SELECT pt.status, pt.auth_user_id INTO v_status, v_old
-    FROM public.patients pt WHERE pt.id = v_inv.patient_id FOR UPDATE;
-
+  -- Patient ist gesperrt (v_status, v_old von oben)
   IF v_status = 'invited' THEN
     UPDATE public.patients pt
        SET auth_user_id = v_uid, status = 'active', bound_at = v_now
@@ -408,6 +441,11 @@ BEGIN
     IF v_old IS NOT NULL THEN
       PERFORM app.on_rebind(v_old);
       DELETE FROM auth.users u WHERE u.id = v_old;
+      -- keine Auth-UUID der alten Identitaet zurueckbehalten (F2-1R NIT-4); die Einladung
+      -- bleibt ueber redeemed_at als eingeloest erkennbar
+      UPDATE public.invitations i SET redeemed_by = NULL
+       WHERE i.patient_id = v_inv.patient_id AND i.redeemed_by = v_old;
+      DELETE FROM public.redeem_attempts ra WHERE ra.uid = v_old;
     END IF;
     INSERT INTO public.account_events (patient_id, kind, at) VALUES (v_inv.patient_id, 'rebound', v_now);
     v_result := 'ok_rebound';
@@ -558,6 +596,13 @@ BEGIN
                        WHERE y.id = x.easier_variant_of AND y.phase_id = x.phase_id))) THEN
     RAISE EXCEPTION 'invalid_easier_variant' USING ERRCODE = '22023';
   END IF;
+  -- Ziel einer Variante ist selbst keine Variante (F2-1R NIT-5: keine Zyklen A->B->A, keine Ketten)
+  IF EXISTS (SELECT 1 FROM pg_catalog.jsonb_to_recordset(v_items) AS x(id uuid, easier_variant_of uuid)
+               JOIN pg_catalog.jsonb_to_recordset(v_items) AS y(id uuid, easier_variant_of uuid)
+                 ON y.id = x.easier_variant_of
+              WHERE x.easier_variant_of IS NOT NULL AND y.easier_variant_of IS NOT NULL) THEN
+    RAISE EXCEPTION 'invalid_easier_variant' USING ERRCODE = '22023';
+  END IF;
 
   -- aktuelle Phase: Pflicht, sobald Phasen existieren
   v_current := (p_plan ->> 'current_phase_id')::uuid;
@@ -686,8 +731,13 @@ BEGIN
   UPDATE public.patients pt
      SET manny_look = NULL, auth_user_id = NULL, status = 'access_deleted'
    WHERE pt.id = v_patient;
+  -- Einladungen nach der Patientenzeile (Sperrreihenfolge, MINOR-1)
   UPDATE public.invitations i SET revoked_at = app.utc_now()
    WHERE i.patient_id = v_patient AND i.redeemed_at IS NULL AND i.revoked_at IS NULL;
+  -- keine Auth-UUID zurueckbehalten (F2-1R NIT-4); eingeloest bleibt ueber redeemed_at erkennbar
+  UPDATE public.invitations i SET redeemed_by = NULL
+   WHERE i.patient_id = v_patient AND i.redeemed_by IS NOT NULL;
+  DELETE FROM public.redeem_attempts ra WHERE ra.uid = v_uid;
 
   -- Auth-Konto des Aufrufers (B-7; im echten Stack in L9 zu bestaetigen, R2-12)
   DELETE FROM auth.users u WHERE u.id = v_uid;
@@ -708,7 +758,7 @@ BEGIN
   SELECT pt.id INTO v_patient
     FROM public.patients pt
    WHERE v_uid IS NOT NULL AND pt.auth_user_id = v_uid AND pt.status = 'active'
-     FOR SHARE;
+     FOR NO KEY UPDATE;  -- gleich die Sperre des folgenden UPDATE (F2-1R NIT-2, kein Upgrade-Deadlock)
   IF v_patient IS NULL THEN
     RAISE EXCEPTION 'not_allowed' USING ERRCODE = '42501';
   END IF;
@@ -719,7 +769,9 @@ BEGIN
 END
 $$;
 
--- Lesen des eigenen Looks (NIT-1: kein Spalten-Grant auf patients.manny_look)
+-- Lesen des eigenen Looks (NIT-1: kein Spalten-Grant auf patients.manny_look).
+-- Nutzerentscheidung (F2-1K): get_my_manny_look() ist als eigener Leseweg des Patienten
+-- bestaetigt (statt Spalten-Grant).
 CREATE OR REPLACE FUNCTION public.get_my_manny_look()
 RETURNS text
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$

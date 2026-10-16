@@ -2,14 +2,24 @@
 -- Trigger-Namen mit Praefix tNN_, weil Postgres BEFORE-Trigger alphabetisch ausfuehrt:
 -- t10 Schreibsperre, t20 injury_id, t30 created_by.
 
--- Vertrauenswuerdige Sitzung ohne Patienten-/Physio-JWT: Seed mit service_role (JWT-Rolle) oder
--- eine direkte Datenbanksitzung (Migrationsrolle, SQL-Konsole). API-Anfragen laufen immer mit
--- der Sitzungsrolle anon bzw. authenticated (PostgREST setzt role), sind also nie privilegiert.
+-- Vertrauenswuerdige Sitzung ohne Patienten-/Physio-JWT: Seed mit service_role oder eine direkte
+-- Datenbanksitzung der Migrations- bzw. Verwaltungsrolle (SQL-Konsole). Positivliste (F2-1R
+-- MINOR-2): massgeblich ist die wirksame Sitzungsrolle, d. h. die mit SET ROLE gesetzte Rolle
+-- bzw. ohne SET ROLE der Anmeldebenutzer (session_user; current_user ist in dieser
+-- SECURITY-DEFINER-Funktion immer der Eigentuemer). Privilegiert nur service_role, postgres,
+-- supabase_admin. Jede andere Rolle (anon, authenticated, authenticator ohne SET ROLE, neue
+-- LOGIN-Rollen) ist nicht privilegiert. Der JWT-Claim role allein zaehlt nicht, weil jede
+-- Sitzung request.jwt.claims selbst setzen kann; unter PostgREST faellt service_role per JWT
+-- mit SET ROLE service_role zusammen.
 -- Nur fuer Trigger, kein EXECUTE fuer API-Rollen.
 CREATE OR REPLACE FUNCTION app.is_privileged_session() RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
-  SELECT coalesce(auth.role() = 'service_role', false)
-      OR coalesce(pg_catalog.current_setting('role', true), 'none') NOT IN ('anon', 'authenticated')
+  SELECT coalesce(
+           CASE WHEN coalesce(pg_catalog.current_setting('role', true), 'none') IN ('none', '')
+                THEN SESSION_USER::text
+                ELSE pg_catalog.current_setting('role', true)
+           END IN ('service_role', 'postgres', 'supabase_admin'),
+           false)
 $$;
 REVOKE EXECUTE ON FUNCTION app.is_privileged_session() FROM PUBLIC, anon, authenticated;
 
@@ -55,13 +65,23 @@ BEGIN
 
   v_patient := (v_row ->> 'patient_id')::uuid;
 
+  -- Zuerst der Aufrufer (F2-1R NIT-1): nur die an diesen Patienten gebundene Identitaet; fuer
+  -- fremde, unbekannte, eingeladene oder geloeschte Patienten einheitlich not_allowed, damit
+  -- eine ungebundene Sitzung den Status fremder Patienten nicht erfragen kann (kein Orakel
+  -- aktiv vs. eingeladen/unbekannt ueber t10 vor t30/RLS).
+  IF NOT EXISTS (SELECT 1 FROM public.patients pt
+                  WHERE pt.id = v_patient AND pt.auth_user_id = app.uid()) THEN
+    RAISE EXCEPTION 'not_allowed' USING ERRCODE = '42501';
+  END IF;
+
+  -- Status und Bindung unter Sperre erneut pruefen (wartet auf delete_my_data/Neubindung, M-4)
   IF TG_OP = 'DELETE' THEN
     PERFORM 1 FROM public.patients pt
-     WHERE pt.id = v_patient AND pt.status IN ('active', 'deleting')
+     WHERE pt.id = v_patient AND pt.auth_user_id = app.uid() AND pt.status IN ('active', 'deleting')
        FOR SHARE;
   ELSE
     PERFORM 1 FROM public.patients pt
-     WHERE pt.id = v_patient AND pt.status = 'active'
+     WHERE pt.id = v_patient AND pt.auth_user_id = app.uid() AND pt.status = 'active'
        FOR SHARE;
   END IF;
   IF NOT FOUND THEN

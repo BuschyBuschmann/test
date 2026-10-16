@@ -14,6 +14,9 @@ PG_WORKDIR=/tmp/curaone-pg KEEP=1 ...     # Arbeitsverzeichnis festlegen, Cluste
   Sitzungswechsel `t.as_*`, Uhr `t.set_clock`, Basis-Fixture `t.seed_base()` (nur Testdaten).
 - Jede Testdatei läuft in einer frischen Datenbank aus der Vorlage; `db/race/*.sh` nutzen zwei
   bzw. drei Verbindungen.
+- `db/race/TSR_*` erzwingen die Verschränkung deterministisch mit einer zusätzlichen
+  Torwächter-Verbindung, die eine Zeile kurz sperrt; geprüft wird das Zusammenspiel der beiden
+  Aufrufe.
 - Nicht hier prüfbar (Stack, X2-8): DB-T40 (Seed), DB-T68 und Storage-Teil von DB-T80, echtes
   Supabase-Auth/GoTrue, PostgREST-Exposition der Schemas (DB-T81 prüft nur `config.toml`).
 
@@ -74,3 +77,39 @@ PG_WORKDIR=/tmp/curaone-pg KEEP=1 ...     # Arbeitsverzeichnis festlegen, Cluste
 | DB-T80 | `T80_security_not_date_dependent.sql` | 6.7 Nr. 2/3/5 (MAJOR-2) |
 | DB-T81 | `T81_app_helpers_caller_checked.sql` | 6.1 Nr. 5 (MAJOR-A, MINOR-C, MINOR-9) |
 | DB-T85 | `T85_manny_look_patient_only.sql` | 6.4, 6.13, O-41, NIT-1 (N-17) |
+| SR-MINOR-1 | `race/TSR_M1_lock_order_patient_before_invitation.sh` | Sicherheitsreview F2-1R MINOR-1 (Sperrreihenfolge Patient vor Einladung) |
+| SR-MINOR-2 | `TSR_M2_privileged_session_positive_list.sql` | F2-1R MINOR-2 (`app.is_privileged_session()` als Positivliste) |
+| SR-NIT-1 | `TSR_N1_no_status_oracle.sql` | F2-1R NIT-1 (kein Statusorakel über t10, create_patient fremde id) |
+| SR-NIT-2 | `race/TSR_N2_manny_look_lock.sh` | F2-1R NIT-2 (`set_manny_look` FOR NO KEY UPDATE) |
+| SR-NIT-3 | `race/TSR_N3_redeem_throttle_concurrent.sh` | F2-1R NIT-3 (Sitzungs-Sperre der Bremse, Index `redeem_attempts(at)`) |
+| SR-NIT-4 | `TSR_N4_no_retained_auth_uuid.sql` | F2-1R NIT-4 (keine alte Auth-UUID in `redeemed_by`/`redeem_attempts`) |
+| SR-NIT-5 | `TSR_N5_easier_variant_no_cycles.sql` | F2-1R NIT-5 (Variante ohne Zyklen/Ketten) |
+
+## Nutzerentscheidungen (F2-1K, 2026-10-16)
+
+- `public.get_my_manny_look()` ist als eigener Leseweg des Patienten für seinen Manny-Look
+  bestätigt (kein Spalten-Grant auf `patients.manny_look`).
+- Patienten mit Status `access_deleted` werden nicht neu eingeladen:
+  `regenerate_invitation` liefert 42501 `patient_not_invitable`; der Physio legt den Patienten
+  neu an (`create_patient`).
+- NIT-4: Bei `delete_my_data` und bei Neubindung wird `invitations.redeemed_by` der alten
+  Identität auf NULL gesetzt (die Einladung bleibt über `redeemed_at` als eingelöst erkennbar)
+  und `redeem_attempts` der alten Auth-UUID werden gelöscht.
+
+## Hinweise für L3 (App, nicht Teil dieser DB-Tests)
+
+- **40P01 wiederholbar:** Die App bzw. ihre Warteschlange stuft SQLSTATE `40P01`
+  (deadlock detected) – wie `40001` – als wiederholbar ein und wiederholt den Aufruf mit
+  Backoff. Die Migrationen sperren einheitlich Patient vor Einladung (F2-1R MINOR-1), ein
+  Deadlock ist damit für die bekannten Pfade ausgeschlossen, aber nicht für jede künftige
+  Kombination garantiert.
+- **Spalten einzeln selektieren:** `select=*` auf `patients` scheitert wegen der Spalten-Grants
+  (42501). Die App nennt die benötigten Spalten einzeln; den eigenen Manny-Look liest der
+  Patient über `get_my_manny_look()`.
+- **Fehlercodes ohne Orakel:** Schreibversuche für fremde oder nicht gebundene Patienten
+  liefern einheitlich 42501 `not_allowed`; `patient_not_active` erhält nur die an den Patienten
+  gebundene Identität (z. B. während bzw. nach `delete_my_data`). Die App behandelt beide als
+  „kein Zugriff“.
+- **Altes JWT nach `delete_my_data`:** `redeem_invitation` mit dem JWT des gelöschten Kontos
+  scheitert mit 23503 statt eines Ergebniscodes (Hinweis aus F2-1R, nicht geändert); die App
+  meldet sich nach `delete_my_data` ab, bevor sie erneut einlöst.

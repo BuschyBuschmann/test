@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS public.redeem_attempts (
   ok  boolean NOT NULL
 );
 CREATE INDEX IF NOT EXISTS redeem_attempts_uid_at_idx ON public.redeem_attempts (uid, at);
+-- Bereinigung in redeem_invitation (at < now - 24 h) ohne Vollscan (F2-1R NIT-3)
+CREATE INDEX IF NOT EXISTS redeem_attempts_at_idx ON public.redeem_attempts (at);
 
 CREATE TABLE IF NOT EXISTS public.exercises (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
