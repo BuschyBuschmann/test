@@ -353,3 +353,13 @@ Platz in der Leiste ist reserviert (5. Ziel). Gestaltung folgt in einem eigenen 
 
 ## 14. Nicht enthalten
 Feed-Gestaltung, Community-Funktionen, KI-Kurzbriefing und Physio-KI (Ausschnitt 3), Übungsvideos, Tablet-spezifische Layouts des Patientenbereichs, Karte/Filter für Orte, ein vollständiger Entwurf der Onboarding- und Pfad-Texte (Texte aus v1 bleiben), echte Illustrationen und 3D-Objekte, Fotos von Personen.
+
+## Errata (2026-10-16, nach Design-Abnahme L1, vom Nutzer bestätigt)
+
+- **E-V2-1 zu V2-6 (Weltüberblendung):** Himmel, Hügel und Kopf-Karte mischen im 30-min-Fenster linear; Label-Chip und Leiste springen bei t = 0,5 auf die neue Phase, weil eine lineare Mischung dort nur ~1,02:1 Kontrast hätte. In jedem Moment gilt ein gemessenes Paar. Test bei t = 0,49/0,51.
+- **E-V2-2 zu V2-26 (Bewegung reduzieren):** Es läuft keine Überblendung; öffnet man die App innerhalb eines Übergangsfensters, ist eine ruhende Mischfarbe zulässig.
+- **E-V2-3 zu V2-24 (große Schrift):** Ab Textskalierung ≥ 1,5 läuft der Sheet-Kopf (Titel, „Schließen“) mit dem Inhalt; Griff und Ziehgeste entfallen; Schließen bleibt über Zurück, Tippen daneben, Escape und Fußleiste möglich. Gilt für alle Sheets.
+- **E-V2-4 Kopf-Karten-Chips:** Füllung Schwarz 22 % statt Weiß 18 % (sonst ~3,9:1).
+- **E-V2-5 Onboarding-Kopf-Karten-Titel:** Schritt 1 „Wie soll Manny aussehen?“, 2 „Wie heißt du?“, 3 „Datenschutz“, 4 „Was hat’s erwischt?“, 5 „Wann war es?“; „Zurück“ auch auf Schritt 1.
+- **E-V2-6 Hoher Kontrast der Welt:** nur ruhiger Verlauf, ohne Hügelebenen, Sterne, Sonne, Dunst, Körnung.
+- **E-V2-7 Übernommene Detailwerte:** Schatten E1 Spread −12, Deckkraft 16 % Hell / 45 % Dunkel; `GlassPill` in beiden Themen hell (Weiß 90 %, Tinte `#211B16`); Gold-Rand der Kugel `#F2BC3A`; Symbol der Kategorie-Kachel Weiß; im Hohen Kontrast weißer Rand der Kopf-Karte; Halo-Deckkraft folgt der Mondmenge der Welt.
