@@ -1,0 +1,181 @@
+{
+  "meta": {
+    "kennzeichnung": "TESTDATEN: alle Personen, Praxen, Uebungen und Verlaufsdaten sind erfunden und nur fuer Entwicklung und Praesentation gedacht (Plan Ausschnitt 2, Abschnitt 10).",
+    "version": 1,
+    "email_domain": "test.curaone.invalid",
+    "noch_nicht_umsetzbar": [
+      "Check-ups nach der Einheit, Tages-Check-ups, Fragen, Notizen und Warnzeichen: Tabellen entstehen erst in L5/L7 (Plan 6.2, MINOR-G); der Seed ergaenzt sie dann ohne Schemaaenderung hier",
+      "Gruende fuer uebersprungene Uebungen: exercise_results hat keine Grund-Spalte (kommt mit den Check-ups, L5)",
+      "Bilder zu Uebungen: exercise_images entsteht erst in L8 (Plan 6.2)"
+    ]
+  },
+  "katalog": [
+    {"key": "kniebeuge", "name": "Kniebeuge", "sets": 3, "reps": 10, "pause": 60, "material": [], "orte": ["home", "practice", "gym"], "kurz": "Füße hüftbreit, Gesäß nach hinten, Knie über den Zehen halten."},
+    {"key": "bruecke", "name": "Beckenheben (Brücke)", "sets": 3, "reps": 12, "pause": 45, "material": ["Matte"], "orte": ["home", "practice"], "kurz": "Auf dem Rücken liegen, Becken anheben, oben kurz halten."},
+    {"key": "wadenheben", "name": "Wadenheben", "sets": 3, "reps": 15, "pause": 45, "material": [], "orte": ["home", "practice", "gym"], "kurz": "Auf die Zehenspitzen heben, langsam absenken."},
+    {"key": "ausfallschritt", "name": "Ausfallschritt", "sets": 3, "reps": 8, "pause": 60, "material": [], "orte": ["home", "practice", "gym"], "kurz": "Großer Schritt nach vorn, hinteres Knie Richtung Boden, zurück."},
+    {"key": "einbeinstand", "name": "Einbeinstand", "sets": 3, "duration": 30, "pause": 30, "material": ["Balancekissen"], "orte": ["home", "practice"], "kurz": "Auf einem Bein stehen, Becken gerade halten."},
+    {"key": "beinheben_seitlich", "name": "Seitliches Beinheben", "sets": 3, "reps": 12, "pause": 45, "material": ["Theraband"], "orte": ["home", "practice"], "kurz": "Im Stand das Bein seitlich gegen das Band anheben."},
+    {"key": "pendeln_schulter", "name": "Pendelübung Schulter", "sets": 2, "duration": 60, "pause": 30, "material": [], "orte": ["home", "practice"], "kurz": "Vorgebeugt den Arm locker kreisen lassen."},
+    {"key": "wandrutscher", "name": "Wandrutscher", "sets": 3, "reps": 10, "pause": 45, "material": [], "orte": ["home", "practice"], "kurz": "Unterarme an der Wand nach oben gleiten lassen."},
+    {"key": "rudern_band", "name": "Rudern mit Band", "sets": 3, "reps": 12, "pause": 45, "material": ["Theraband"], "orte": ["home", "practice", "gym"], "kurz": "Band zur Hueftseite ziehen, Schulterblätter zusammenführen."},
+    {"key": "katze_kuh", "name": "Katze und Kuh", "sets": 2, "reps": 10, "pause": 30, "material": ["Matte"], "orte": ["home", "practice"], "kurz": "Im Vierfüßlerstand Rücken rund und hohl machen."},
+    {"key": "vierfuessler_diagonal", "name": "Vierfüßler diagonal", "sets": 3, "reps": 8, "pause": 45, "material": ["Matte"], "orte": ["home", "practice"], "kurz": "Gegenüberliegenden Arm und Bein strecken, Rumpf ruhig."},
+    {"key": "unterarmstuetz", "name": "Unterarmstütz", "sets": 3, "duration": 30, "pause": 45, "material": ["Matte"], "orte": ["home", "practice", "gym"], "kurz": "Körper als gerade Linie halten, Bauch fest."},
+    {"key": "beinpresse", "name": "Beinpresse", "sets": 3, "reps": 10, "weight": 40, "pause": 90, "material": ["Beinpresse"], "orte": ["gym", "practice"], "kurz": "Gewicht kontrolliert wegdrücken, Knie nicht durchstrecken."},
+    {"key": "huefte_dehnen", "name": "Hüftbeuger dehnen", "sets": 2, "duration": 30, "pause": 15, "material": ["Matte"], "orte": ["home", "practice"], "kurz": "Ausfallschrittposition, Becken nach vorn schieben."},
+    {"key": "sprunggelenk_alphabet", "name": "Sprunggelenk-Alphabet", "sets": 2, "duration": 60, "pause": 30, "material": [], "orte": ["home", "practice"], "kurz": "Mit dem Fuß Buchstaben in die Luft schreiben."}
+  ],
+  "vorlagen": [
+    {"key": "knie", "name": "Knie nach Operation (Beispielvorlage)", "verletzung": "Knie (Beispiel)", "phasen": [
+      {"titel": "Beweglichkeit", "wochen": 3, "positionen": [
+        {"uebung": "bruecke", "saetze": 3, "wdh": 12},
+        {"uebung": "wadenheben", "saetze": 3, "wdh": 15}]},
+      {"titel": "Kräftigung", "wochen": 4, "positionen": [
+        {"uebung": "kniebeuge", "saetze": 3, "wdh": 10, "leichter_als_index": 1},
+        {"uebung": "ausfallschritt", "saetze": 3, "wdh": 8},
+        {"uebung": "beinpresse", "saetze": 3, "wdh": 10, "freigabe_mit_phase": 2}]},
+      {"titel": "Belastungsaufbau", "wochen": 4, "positionen": [
+        {"uebung": "ausfallschritt", "saetze": 3, "wdh": 10},
+        {"uebung": "einbeinstand", "saetze": 3, "dauer": 30}]}]},
+    {"key": "schulter", "name": "Schulter (Beispielvorlage)", "verletzung": "Schulter (Beispiel)", "phasen": [
+      {"titel": "Mobilisation", "wochen": 2, "positionen": [
+        {"uebung": "pendeln_schulter", "saetze": 2, "dauer": 60},
+        {"uebung": "wandrutscher", "saetze": 3, "wdh": 10}]},
+      {"titel": "Kräftigung", "wochen": 4, "positionen": [
+        {"uebung": "rudern_band", "saetze": 3, "wdh": 12}]}]},
+    {"key": "ruecken", "name": "Unterer Rücken (Beispielvorlage)", "verletzung": "Rücken (Beispiel)", "phasen": [
+      {"titel": "Entlastung", "wochen": 2, "positionen": [
+        {"uebung": "katze_kuh", "saetze": 2, "wdh": 10}]},
+      {"titel": "Stabilisation", "wochen": 6, "positionen": [
+        {"uebung": "vierfuessler_diagonal", "saetze": 3, "wdh": 8},
+        {"uebung": "unterarmstuetz", "saetze": 3, "dauer": 30}]}]}
+  ],
+  "praxen": [
+    {
+      "key": "nord", "name": "Praxis Nord (Testdaten)",
+      "physios": [
+        {"key": "nord_1", "email": "nord1", "name": "Physio Nord 1 (Test)"},
+        {"key": "nord_2", "email": "nord2", "name": "Physio Nord 2 (Test)"}
+      ],
+      "uebungen": [
+        {"key": "nord_eigene", "name": "Eigene Übung Nord (Test)", "sets": 2, "reps": 10, "material": ["Handtuch"], "orte": ["practice"], "kurz": "Praxiseigene Beispielübung."}
+      ],
+      "patienten": [
+        {
+          "key": "lena", "vorname": "Lena", "nachname": "Testperson", "hauptphysio": "nord_1",
+          "verletzung": {"bezeichnung": "Knie nach Kreuzband-OP (Testdaten)", "beginn_tag": -35, "referenz_tag": -35},
+          "plan": {"aktuelle_phase": "kraeftigung", "phasen": [
+            {"key": "beweglichkeit", "titel": "Beweglichkeit", "wochen": 3, "positionen": [
+              {"key": "bruecke", "uebung": "bruecke", "saetze": 3, "wdh": 12},
+              {"key": "wadenheben", "uebung": "wadenheben", "saetze": 3, "wdh": 15}]},
+            {"key": "kraeftigung", "titel": "Kräftigung", "wochen": 4, "positionen": [
+              {"key": "kniebeuge", "uebung": "kniebeuge", "saetze": 3, "wdh": 10, "leichter": "ausfallschritt"},
+              {"key": "ausfallschritt", "uebung": "ausfallschritt", "saetze": 3, "wdh": 8},
+              {"key": "einbein", "uebung": "einbeinstand", "saetze": 3, "dauer": 30},
+              {"key": "beinpresse", "uebung": "beinpresse", "saetze": 3, "wdh": 10, "gewicht": 40, "freigabe_mit_phase": "belastung"},
+              {"key": "waden_last", "uebung": "wadenheben", "saetze": 3, "wdh": 12, "gewicht": 10, "notiz": "mit Kurzhantel", "freigabe_am_tag": 5}]},
+            {"key": "belastung", "titel": "Belastungsaufbau", "wochen": 4, "positionen": [
+              {"key": "ausfall2", "uebung": "ausfallschritt", "saetze": 3, "wdh": 10}]}]},
+          "behandler": [
+            {"key": "arzt", "rolle": "Orthopädin", "name": "Dr. Erfunden (Test)", "telefon": "000 0000000"},
+            {"key": "physio_ext", "rolle": "Hausarzt", "name": "Dr. Beispiel (Test)"}],
+          "verlauf": [
+            {"art": "op", "titel": "Kreuzband-Operation (Test)", "tag": -35, "notiz": "Erfundener Eintrag"},
+            {"art": "befund", "titel": "Kontrolle nach zwei Wochen (Test)", "tag": -21}],
+          "termine": [
+            {"tag": 2, "zeit": "09:30", "titel": "Kontrolle (Test)", "ort": "Praxis Nord", "behandler": "arzt"},
+            {"tag": 9, "zeit": "14:00", "titel": "Physiotermin (Test)", "ort": "Praxis Nord"}],
+          "training": [
+            {"plan": "aktiv", "von": -14, "bis": -1, "ohne": [-11, -6], "uebersprungen": [{"tag": -9, "positionen": ["ausfallschritt"]}, {"tag": -3, "positionen": ["einbein", "ausfallschritt"]}]}]
+        },
+        {
+          "key": "jonas", "vorname": "Jonas", "nachname": "Testperson", "hauptphysio": "nord_2",
+          "verletzung": {"bezeichnung": "Schulter, Impingement (Testdaten)", "beginn_tag": -12, "referenz_tag": -14},
+          "plan": {"aktuelle_phase": "mobil", "phasen": [
+            {"key": "mobil", "titel": "Mobilisation", "wochen": 2, "positionen": [
+              {"key": "pendeln", "uebung": "pendeln_schulter", "saetze": 2, "dauer": 60},
+              {"key": "wand", "uebung": "wandrutscher", "saetze": 3, "wdh": 10},
+              {"key": "nord_eigene", "uebung": "nord_eigene", "saetze": 2, "wdh": 10}]},
+            {"key": "kraft", "titel": "Kräftigung", "wochen": 4, "positionen": [
+              {"key": "rudern", "uebung": "rudern_band", "saetze": 3, "wdh": 12, "freigabe_mit_phase": "kraft"}]}]},
+          "behandler": [{"key": "arzt", "rolle": "Hausärztin", "name": "Dr. Muster (Test)"}],
+          "verlauf": [{"art": "unfall", "titel": "Schmerzen beim Heben (Test)", "tag": -14}],
+          "termine": [{"tag": 4, "zeit": "11:00", "titel": "Verlaufskontrolle (Test)", "ort": "Praxis Nord"}],
+          "training": [
+            {"plan": "aktiv", "von": -12, "bis": -1, "ohne": [-8, -7, -2], "uebersprungen": [{"tag": -5, "positionen": ["wand"]}]}]
+        },
+        {
+          "key": "mira", "vorname": "Mira", "nachname": "Testperson", "hauptphysio": "nord_1",
+          "verletzung": {"bezeichnung": "Unterer Rücken (Testdaten)", "beginn_tag": -28, "referenz_tag": -28},
+          "plan": {"aktuelle_phase": "stabil", "phasen": [
+            {"key": "entlastung", "titel": "Entlastung", "wochen": 2, "positionen": [
+              {"key": "katze", "uebung": "katze_kuh", "saetze": 2, "wdh": 10}]},
+            {"key": "stabil", "titel": "Stabilisation", "wochen": 6, "positionen": [
+              {"key": "vierfuessler", "uebung": "vierfuessler_diagonal", "saetze": 3, "wdh": 8},
+              {"key": "bruecke", "uebung": "bruecke", "saetze": 3, "wdh": 12},
+              {"key": "plank", "uebung": "unterarmstuetz", "saetze": 3, "dauer": 30, "freigabe_am_tag": 3}]}]},
+          "fruehere_verletzungen": [
+            {"key": "sprunggelenk", "bezeichnung": "Sprunggelenk, Distorsion (abgeschlossen, Testdaten)", "beginn_tag": -150, "ende_tag": -105,
+             "plan": {"phasen": [
+               {"key": "aufbau", "titel": "Belastungsaufbau", "wochen": 3, "positionen": [
+                 {"key": "einbein", "uebung": "einbeinstand", "saetze": 3, "dauer": 30},
+                 {"key": "waden", "uebung": "wadenheben", "saetze": 3, "wdh": 15}]}]},
+             "training": [{"von": -140, "bis": -134, "ohne": [-137], "uebersprungen": [{"tag": -135, "positionen": ["waden"]}]}]}],
+          "behandler": [{"key": "arzt", "rolle": "Hausarzt", "name": "Dr. Test-Hausarzt"}],
+          "verlauf": [
+            {"art": "befund", "titel": "Rücken, MRT unauffaellig (Test)", "tag": -26},
+            {"art": "unfall", "titel": "Sprunggelenk umgeknickt (Test)", "tag": -150}],
+          "termine": [{"tag": 1, "zeit": "16:15", "titel": "Physiotermin (Test)", "ort": "Praxis Nord"}],
+          "training": [
+            {"plan": "aktiv", "von": -14, "bis": -1, "ohne": [-13, -12, -4], "uebersprungen": [{"tag": -7, "positionen": ["vierfuessler"]}]}]
+        }
+      ]
+    },
+    {
+      "key": "sued", "name": "Praxis Süd (Testdaten)",
+      "physios": [
+        {"key": "sued_1", "email": "sued1", "name": "Physio Süd 1 (Test)"},
+        {"key": "sued_2", "email": "sued2", "name": "Physio Süd 2 (Test)"}
+      ],
+      "uebungen": [
+        {"key": "sued_eigene", "name": "Eigene Übung Süd (Test)", "sets": 3, "duration": 20, "material": [], "orte": ["home"], "kurz": "Praxiseigene Beispielübung."}
+      ],
+      "patienten": [
+        {
+          "key": "emil", "vorname": "Emil", "nachname": "Testperson", "hauptphysio": "sued_1",
+          "verletzung": {"bezeichnung": "Hüftprothese (Testdaten)", "beginn_tag": -60, "referenz_tag": -60},
+          "plan": {"aktuelle_phase": "alltag", "phasen": [
+            {"key": "schutz", "titel": "Schutzphase", "wochen": 2, "positionen": [
+              {"key": "bruecke", "uebung": "bruecke", "saetze": 2, "wdh": 10}]},
+            {"key": "aufbau", "titel": "Aufbau", "wochen": 4, "positionen": [
+              {"key": "seitlich_a", "uebung": "beinheben_seitlich", "saetze": 3, "wdh": 12}]},
+            {"key": "alltag", "titel": "Alltagsbelastung", "wochen": 6, "positionen": [
+              {"key": "kniebeuge", "uebung": "kniebeuge", "saetze": 3, "wdh": 10},
+              {"key": "seitlich", "uebung": "beinheben_seitlich", "saetze": 3, "wdh": 15, "gewicht": 2},
+              {"key": "dehnen", "uebung": "huefte_dehnen", "saetze": 2, "dauer": 30},
+              {"key": "sued_eigene", "uebung": "sued_eigene", "saetze": 3, "dauer": 20}]}]},
+          "behandler": [{"key": "arzt", "rolle": "Orthopäde", "name": "Dr. Erdacht (Test)"}],
+          "verlauf": [{"art": "op", "titel": "Hüftprothese (Test)", "tag": -60}],
+          "termine": [{"tag": 6, "zeit": "10:00", "titel": "Abschlusskontrolle (Test)", "ort": "Praxis Süd"}],
+          "training": [
+            {"plan": "aktiv", "von": -14, "bis": -1, "ohne": [-10], "uebersprungen": [{"tag": -4, "positionen": ["dehnen"]}, {"tag": -2, "positionen": ["dehnen", "seitlich"]}]}]
+        },
+        {
+          "key": "sofia", "vorname": "Sofia", "nachname": "Testperson", "hauptphysio": "sued_2",
+          "verletzung": {"bezeichnung": "Sprunggelenk, Bänderriss (Testdaten)", "beginn_tag": -4, "referenz_tag": -5},
+          "plan": {"aktuelle_phase": "erst", "phasen": [
+            {"key": "erst", "titel": "Erstbehandlung", "wochen": 2, "positionen": [
+              {"key": "alphabet", "uebung": "sprunggelenk_alphabet", "saetze": 2, "dauer": 60},
+              {"key": "einbein", "uebung": "einbeinstand", "saetze": 3, "dauer": 20, "freigabe_am_tag": 4},
+              {"key": "waden", "uebung": "wadenheben", "saetze": 3, "wdh": 10}]}]},
+          "behandler": [],
+          "verlauf": [],
+          "termine": [{"tag": 3, "zeit": "08:45", "titel": "Erste Kontrolle (Test)", "ort": "Praxis Süd"}],
+          "training": [
+            {"plan": "aktiv", "von": -3, "bis": -1, "ohne": [], "uebersprungen": []}]
+        }
+      ]
+    }
+  ]
+}
