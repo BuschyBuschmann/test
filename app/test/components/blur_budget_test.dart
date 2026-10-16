@@ -218,9 +218,9 @@ void main() {
 
   testWidgets('L1K2: deaktivierter Filter erzwingt kein Compositing, aktiver '
       'schon', (WidgetTester tester) async {
-    Widget tree(bool wanted) =>
+    Widget tree() =>
         Column(children: <Widget>[for (int i = 0; i < 4; i++) _blur(i)]);
-    await pumpApp(tester, BlurBudgetScope(child: tree(true)));
+    await pumpApp(tester, BlurBudgetScope(child: tree()));
     RenderBackdropFilter render(int i) => tester.renderObject(
       find.descendant(
         of: find.byKey(ValueKey<int>(i)),
@@ -232,6 +232,56 @@ void main() {
     // Der vierte hat keinen Platz: Filter aus, kein erzwungenes Compositing.
     expect(render(3).enabled, isFalse);
     expect(render(3).alwaysNeedsCompositing, isFalse);
+  });
+
+  testWidgets('L1K3: aktiver Blur wird inaktiv und wieder aktiv, am selben '
+      'RenderObject und ohne Neuaufbau des Kindes', (
+    WidgetTester tester,
+  ) async {
+    int inits = 0;
+    final Widget probe = _InitCounter(onInit: () => inits++);
+    Widget tree({required bool active}) => BlurBudgetScope(
+      child: TickerMode(
+        enabled: active,
+        child: CuraBlur(key: const ValueKey<int>(0), child: probe),
+      ),
+    );
+    RenderBackdropFilter render() => tester.renderObject(
+      find.descendant(
+        of: find.byKey(const ValueKey<int>(0)),
+        matching: find.byWidgetPredicate((Widget w) => w is BackdropFilter),
+      ),
+    );
+
+    await pumpApp(tester, tree(active: true));
+    final RenderBackdropFilter before = render();
+    expect(before.enabled, isTrue);
+    expect(before.debugLayer, isA<BackdropFilterLayer>());
+    expect(before.needsCompositing, isTrue);
+    final Element childBefore = tester.element(find.byType(_InitCounter));
+    expect(inits, 1);
+
+    // Aktiv -> inaktiv am bestehenden RenderObject: kein Layer, kein Compositing.
+    await pumpApp(tester, tree(active: false));
+    await tester.pump();
+    expect(render(), same(before));
+    expect(render().enabled, isFalse);
+    expect(render().debugLayer, isNull);
+    expect(render().needsCompositing, isFalse);
+    expect(activeBackdrops(), findsNothing);
+    expect(inits, 1, reason: 'kein Neuaufbau des Kindes');
+    expect(tester.element(find.byType(_InitCounter)), same(childBefore));
+
+    // Inaktiv -> aktiv: genau ein Layer, Compositing wieder erzwungen.
+    await pumpApp(tester, tree(active: true));
+    await tester.pump();
+    expect(render(), same(before));
+    expect(render().enabled, isTrue);
+    expect(render().debugLayer, isA<BackdropFilterLayer>());
+    expect(render().needsCompositing, isTrue);
+    expect(activeBackdrops(), findsOneWidget);
+    expect(inits, 1, reason: 'kein Neuaufbau des Kindes');
+    expect(tester.element(find.byType(_InitCounter)), same(childBefore));
   });
 }
 
