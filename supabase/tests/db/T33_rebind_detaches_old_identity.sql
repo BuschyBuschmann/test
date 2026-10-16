@@ -23,4 +23,4 @@ BEGIN
 END $$;
 SELECT t.throws(format('INSERT INTO public.training_sessions (id, patient_id, plan_id, local_day, mode) SELECT gen_random_uuid(), %L, %L, current_date, ''checklist''',
                 t.id('pat_a1'), gen_random_uuid()), '42501', 'alte Identitaet kann nicht schreiben');
-SELECT t.is(public.redeem_invitation(t.code('pat_a1_new')), 'already_used', 'alte Identitaet (jetzt ungebunden) kann den Code nicht noch einmal nutzen');
+SELECT t.is(public.redeem_invitation(t.code('pat_a1_new')), 'not_allowed', 'alte Identitaet (Auth-Konto geloescht) kann den Code nicht noch einmal nutzen (F2-1RR NIT-1)');

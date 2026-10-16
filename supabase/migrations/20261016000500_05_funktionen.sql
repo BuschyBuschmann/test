@@ -384,6 +384,13 @@ BEGIN
   -- nacheinander (F2-1R NIT-3), sonst zaehlen parallele Aufrufe alle vor dem ersten Eintrag.
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('curaone.redeem_invitation'),
                                            pg_catalog.hashtext(v_uid::text));
+  -- Nach Erhalt der Sitzungssperre erneut pruefen (F2-1RR MINOR-A): ein paralleler Aufruf
+  -- derselben Sitzung kann inzwischen gebunden haben -> not_allowed statt 23505. Sitzung ohne
+  -- auth.users-Zeile (z. B. altes JWT nach delete_my_data): nichts protokollieren (F2-1RR NIT-1).
+  IF EXISTS (SELECT 1 FROM public.patients pt WHERE pt.auth_user_id = v_uid)
+     OR NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = v_uid) THEN
+    RETURN 'not_allowed';
+  END IF;
   -- Bereinigung (> 24 h; Index redeem_attempts_at_idx)
   DELETE FROM public.redeem_attempts ra WHERE ra.at < v_now - interval '24 hours';
   IF (SELECT count(*) FROM public.redeem_attempts ra

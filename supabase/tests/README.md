@@ -84,6 +84,8 @@ PG_WORKDIR=/tmp/curaone-pg KEEP=1 ...     # Arbeitsverzeichnis festlegen, Cluste
 | SR-NIT-3 | `race/TSR_N3_redeem_throttle_concurrent.sh` | F2-1R NIT-3 (Sitzungs-Sperre der Bremse, Index `redeem_attempts(at)`) |
 | SR-NIT-4 | `TSR_N4_no_retained_auth_uuid.sql` | F2-1R NIT-4 (keine alte Auth-UUID in `redeemed_by`/`redeem_attempts`) |
 | SR-NIT-5 | `TSR_N5_easier_variant_no_cycles.sql` | F2-1R NIT-5 (Variante ohne Zyklen/Ketten) |
+| SR-RR-A | `race/TSR_RRA_redeem_binding_recheck.sh` | F2-1RR MINOR-A (Bindungsprüfung nach Sitzungssperre: `not_allowed` statt 23505) |
+| SR-RR-N1/N3 | `TSR_RR_nit1_nit3.sql` | F2-1RR NIT-1 (kein `redeem_attempts`-Eintrag ohne `auth.users`-Zeile), NIT-3 (`access_deleted` → `regenerate_invitation` → `patient_not_invitable`) |
 
 ## Nutzerentscheidungen (F2-1K, 2026-10-16)
 
@@ -108,8 +110,8 @@ PG_WORKDIR=/tmp/curaone-pg KEEP=1 ...     # Arbeitsverzeichnis festlegen, Cluste
   Patient über `get_my_manny_look()`.
 - **Fehlercodes ohne Orakel:** Schreibversuche für fremde oder nicht gebundene Patienten
   liefern einheitlich 42501 `not_allowed`; `patient_not_active` erhält nur die an den Patienten
-  gebundene Identität (z. B. während bzw. nach `delete_my_data`). Die App behandelt beide als
+  gebundene Identität (nur während des Wettlaufs mit `delete_my_data`; nach dessen Commit ist die Bindung NULL und der Aufruf liefert `not_allowed`). Die App behandelt beide als
   „kein Zugriff“.
 - **Altes JWT nach `delete_my_data`:** `redeem_invitation` mit dem JWT des gelöschten Kontos
-  scheitert mit 23503 statt eines Ergebniscodes (Hinweis aus F2-1R, nicht geändert); die App
+  liefert `not_allowed` ohne Protokolleintrag in `redeem_attempts` (F2-1RR NIT-1; Sitzung ohne `auth.users`-Zeile); die App
   meldet sich nach `delete_my_data` ab, bevor sie erneut einlöst.
