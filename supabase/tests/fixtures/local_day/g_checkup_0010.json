@@ -1,0 +1,17 @@
+{
+  "id": "g",
+  "plan_ref": "Plan 6.7 Nr. 5 (g), 6.9 (L5)",
+  "description": "Tages-Check-up um 00:10 nach Mitternacht zaehlt fuer den neuen Tag (Anstiegs- und Stimmungsregel)",
+  "case": {
+    "timezone": "Europe/Berlin",
+    "device_time": "2026-07-15T00:10:00+02:00",
+    "utc_instant": "2026-07-14T22:10:00Z",
+    "local_day": "2026-07-15",
+    "utc_date": "2026-07-14",
+    "offset_days": 1,
+    "utc_offset": "+0200"
+  },
+  "expect": {
+    "local_day": "2026-07-15"
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "c",
+  "plan_ref": "Plan 6.7 Nr. 5 (c), 6.7 Nr. 3",
+  "description": "Kurz vor und nach Mitternacht in UTC+13 und UTC-7 sowie an den Grenzen UTC+14/UTC-12: local_day liegt immer innerhalb +-1 Tag um das UTC-Datum und ist gueltig",
+  "cases": [
+    {
+      "timezone": "Pacific/Auckland",
+      "device_time": "2026-12-10T23:59:00+13:00",
+      "utc_instant": "2026-12-10T10:59:00Z",
+      "local_day": "2026-12-10",
+      "utc_date": "2026-12-10",
+      "offset_days": 0,
+      "utc_offset": "+1300"
+    },
+    {
+      "timezone": "Pacific/Auckland",
+      "device_time": "2026-12-11T00:01:00+13:00",
+      "utc_instant": "2026-12-10T11:01:00Z",
+      "local_day": "2026-12-11",
+      "utc_date": "2026-12-10",
+      "offset_days": 1,
+      "utc_offset": "+1300"
+    },
+    {
+      "timezone": "America/Los_Angeles",
+      "device_time": "2026-07-15T23:59:00-07:00",
+      "utc_instant": "2026-07-16T06:59:00Z",
+      "local_day": "2026-07-15",
+      "utc_date": "2026-07-16",
+      "offset_days": -1,
+      "utc_offset": "-0700"
+    },
+    {
+      "timezone": "America/Los_Angeles",
+      "device_time": "2026-07-16T00:01:00-07:00",
+      "utc_instant": "2026-07-16T07:01:00Z",
+      "local_day": "2026-07-16",
+      "utc_date": "2026-07-16",
+      "offset_days": 0,
+      "utc_offset": "-0700"
+    },
+    {
+      "timezone": "Pacific/Kiritimati",
+      "device_time": "2026-07-16T00:30:00+14:00",
+      "utc_instant": "2026-07-15T10:30:00Z",
+      "local_day": "2026-07-16",
+      "utc_date": "2026-07-15",
+      "offset_days": 1,
+      "utc_offset": "+1400",
+      "note": "UTC+14, Grenze"
+    },
+    {
+      "timezone": "Etc/GMT+12",
+      "device_time": "2026-07-15T23:30:00-12:00",
+      "utc_instant": "2026-07-16T11:30:00Z",
+      "local_day": "2026-07-15",
+      "utc_date": "2026-07-16",
+      "offset_days": -1,
+      "utc_offset": "-1200",
+      "note": "UTC-12, Grenze"
+    }
+  ],
+  "expect": {
+    "immediate": "accepted",
+    "queue": "accepted"
+  }
+}

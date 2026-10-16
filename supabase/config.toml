@@ -1,0 +1,61 @@
+# Konfiguration des lokalen Supabase-Stacks (supabase start, nach X2-8). Ohne Secrets.
+# Werte vor Nutzung gegen die aktuelle Supabase-CLI-Doku pruefen (Plan 15).
+
+project_id = "curaone"
+
+[api]
+enabled = true
+port = 54321
+# Nur public ueber die API; das Schema app (Hilfsfunktionen, Geheimnisse) ist nicht exponiert
+# (Plan 6.1 Nr. 5, DB-T81). Im echten Projekt unter API-Einstellungen pruefen (X2-3).
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 16
+
+[db.seed]
+# Seed laeuft ueber app/tool/seed/seed.dart (F2-2), nicht ueber seed.sql
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+# Storage fuer Uebungsbilder (L8); Bucket und Policies entstehen erst in Migration 12
+enabled = true
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+# Muss an bleiben, damit anonyme Anmeldungen funktionieren; die Registrierung per E-Mail ist
+# unten abgeschaltet (Physio-Konten nur per Seed bzw. Konsole). Im Stack bestaetigen (X2-2, X2-8).
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.sms]
+enable_signup = false
+
+[edge_runtime]
+# keine Edge Functions in Ausschnitt 2 (B-1)
+enabled = false
+
+[analytics]
+enabled = false
