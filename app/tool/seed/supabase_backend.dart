@@ -14,6 +14,10 @@ import 'seed_backend.dart';
 import 'seed_gateway.dart';
 import 'seed_plan.dart';
 
+/// Hoechstzahl Seiten (je 200 Konten) eines listUsers-Durchlaufs: 500 Seiten = 100 000 Konten,
+/// weit ueber jedem realistischen Testprojekt; darueber gilt ein Server-Fehler als wahrscheinlich.
+const int kMaxUserPages = 500;
+
 class SupabaseSeedBackend implements SeedBackend {
   SupabaseSeedBackend({
     required this.gateway,
@@ -93,13 +97,33 @@ class SupabaseSeedBackend implements SeedBackend {
     for (final r in rows) r[col]! as String,
   ];
 
-  /// Alle Konten per Offset (nur so abrufbar); Ende = leere Seite.
+  /// Alle Konten per Offset (nur so abrufbar); Ende = leere Seite. Schutz gegen Endlosschleifen,
+  /// falls ein Server `page` ignoriert oder hinter dem Ende nie eine leere Seite liefert: hoechstens
+  /// [kMaxUserPages] Seiten, und eine Seite mit exakt denselben IDs wie die vorige bricht ab.
   Future<List<AuthUserInfo>> _scanUsers() async {
     const perPage = 200;
     final users = <AuthUserInfo>[];
+    List<String>? previousIds;
     for (var page = 1; ; page++) {
+      if (page > kMaxUserPages) {
+        throw StateError(
+          'listUsers liefert auch nach $kMaxUserPages Seiten keine leere Seite '
+          '(Server ignoriert page?); Abbruch',
+        );
+      }
       final batch = await gateway.listUsersPage(page, perPage);
       if (batch.isEmpty) break;
+      final ids = [for (final u in batch) u.id];
+      if (previousIds != null &&
+          ids.length == previousIds.length &&
+          Iterable<int>.generate(ids.length)
+              .every((i) => ids[i] == previousIds![i])) {
+        throw StateError(
+          'listUsers liefert auf Seite $page dieselben Konten wie auf der '
+          'vorigen Seite (Server ignoriert page?); Abbruch',
+        );
+      }
+      previousIds = ids;
       users.addAll(batch);
     }
     return users;

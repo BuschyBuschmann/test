@@ -1224,6 +1224,47 @@ void main() {
     );
 
     test(
+      'listUsers ignoriert page: Abbruch statt Endlosschleife, ohne Mutationen',
+      () async {
+        g.ignorePage = true;
+        await expectLater(
+          backend.resetTestData(kTestEmailDomain),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'Meldung',
+              contains('dieselben Konten'),
+            ),
+          ),
+        );
+        expect(g.mutations, isEmpty);
+        expect(g.listUserCalls, lessThan(5));
+      },
+    );
+
+    test(
+      'listUsers ohne leere Seite hinter dem Ende: Seitenobergrenze greift',
+      () async {
+        g.endlessDistinct = true;
+        await expectLater(
+          backend.resetTestData(kTestEmailDomain),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'Meldung',
+              allOf(
+                contains('$kMaxUserPages Seiten'),
+                isNot(contains('platzhalter')),
+              ),
+            ),
+          ),
+        );
+        expect(g.mutations, isEmpty);
+        expect(g.listUserCalls, kMaxUserPages);
+      },
+    );
+
+    test(
       'Nachprüfung: übrig gebliebenes Testkonto wird laut gemeldet',
       () async {
         g.stuckUsers.add('u-t1');
@@ -1581,6 +1622,9 @@ class _FakeGateway implements SeedGateway {
   int listUserCalls = 0;
   int maxRowsPerSelect = 0;
   bool failListUsers = false;
+  bool ignorePage = false; // liefert unabhaengig von page immer die erste Seite
+  bool endlessDistinct =
+      false; // nie eine leere Seite, jede Seite mit neuen Konten
   int? maxRows; // simuliert PostgREST max_rows (kleiner als limit)
   void Function(String table, List<Row> page)? afterSelect;
   void Function(int call, int page)? afterListPage;
@@ -1634,6 +1678,13 @@ class _FakeGateway implements SeedGateway {
   Future<List<AuthUserInfo>> listUsersPage(int page, int perPage) async {
     if (failListUsers) throw StateError('listUsers kaputt');
     listUserCalls++;
+    if (endlessDistinct) {
+      return [
+        for (var i = 0; i < 2; i++)
+          AuthUserInfo('u-endless$page-$i', 'e$page$i@example.invalid'),
+      ];
+    }
+    if (ignorePage) page = 1;
     final start = (page - 1) * perPage;
     final result = start >= users.length
         ? <AuthUserInfo>[]
