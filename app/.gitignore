@@ -50,3 +50,4 @@ app.*.map.json
 # Web-Prüfwerkzeug (U2p)
 /tool/screens/node_modules/
 /tool/screens/out/
+test/golden/failures/

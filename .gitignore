@@ -1,0 +1,6 @@
+__pycache__/
+# Supabase / Backend (Plan Ausschnitt 2, Abschnitt 5): lokale Konfiguration und Secrets nie einchecken
+app/config/supabase.local.json
+supabase/.temp/
+supabase/.branches/
+.env*

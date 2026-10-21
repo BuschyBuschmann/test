@@ -38,7 +38,7 @@ void main() {
         clock: FakeClock().call,
       );
       await s.save(expectedV1());
-      expect(raw.raw, contains('"schema":1'));
+      expect(raw.raw, contains('"schema":3'));
       expect(await s.load(), expectedV1());
     });
 
@@ -109,9 +109,33 @@ void main() {
     PrefsStateStore make() =>
         PrefsStateStore(clock: FakeClock().call, prefs: prefs);
 
-    test('Schlüsselliste: genau ein Schlüssel', () {
-      expect(kAllStorageKeys, <String>{'curaone.state.v1'});
+    test('Schlüsselliste: Zustand, Darstellung (B-21), Framework, '
+        'Warteschlange und Merkzeichen der Löschung (Plan 8.1)', () {
+      expect(kAllStorageKeys, <String>{
+        'curaone.state.v1',
+        'curaone.display.v1',
+        'curaone.framework.v1',
+        'curaone.outbox.v1',
+        'curaone.deletion.v1',
+      });
     });
+
+    test(
+      'deleteAll entfernt alles außer dem Merkzeichen der Löschung',
+      () async {
+        for (final String k in kAllStorageKeys) {
+          await prefs.setString(k, 'x');
+        }
+        await make().deleteAll();
+        for (final String k in kAllStorageKeys) {
+          expect(
+            await prefs.getString(k),
+            k == kDeletionStorageKey ? 'x' : isNull,
+            reason: k,
+          );
+        }
+      },
+    );
 
     test('leer → null; save/load Roundtrip', () async {
       final PrefsStateStore store = make();

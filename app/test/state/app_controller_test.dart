@@ -2,6 +2,7 @@ import 'package:curaone/logic/app_state.dart';
 import 'package:curaone/logic/clock.dart';
 import 'package:curaone/logic/day_program.dart';
 import 'package:curaone/logic/injury_type.dart';
+import 'package:curaone/logic/manny_look.dart';
 import 'package:curaone/logic/profile.dart';
 import 'package:curaone/logic/streak.dart';
 import 'package:curaone/state/app_controller.dart';
@@ -248,10 +249,28 @@ void main() {
       h.dispose();
     });
 
-    test('setStep begrenzt auf 0..3', () async {
+    test(
+      'setMannyLook speichert sofort; Löschen setzt auf „Mit Brille“',
+      () async {
+        final Harness h = await Harness.boot();
+        expect(h.state.mannyLook, MannyLook.brille);
+        h.controller.setMannyLook(MannyLook.ohne);
+        await h.controller.idle;
+        expect(h.state.mannyLook, MannyLook.ohne);
+        final Harness restarted = await Harness.boot(raw: h.raw);
+        expect(restarted.state.mannyLook, MannyLook.ohne);
+        await restarted.controller.deleteAll();
+        expect(restarted.state.mannyLook, MannyLook.brille);
+        expect(restarted.state.onboarding.step, 0);
+        h.dispose();
+        restarted.dispose();
+      },
+    );
+
+    test('setStep begrenzt auf 0..4', () async {
       final Harness h = await Harness.boot();
       h.controller.setStep(9);
-      expect(h.state.onboarding.step, 3);
+      expect(h.state.onboarding.step, 4);
       h.controller.setStep(-2);
       expect(h.state.onboarding.step, 0);
       h.dispose();

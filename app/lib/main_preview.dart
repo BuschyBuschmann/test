@@ -7,12 +7,17 @@
 //   scale     Textskalierung (linear), z. B. 2.0
 //   hc=1      Hoher Kontrast (Override im MaterialApp.builder)
 //   rm=1      Bewegung reduzieren (Override)
+//   world     Darstellung „Welt“: automatic (Standard), morning, midday,
+//             evening, night (App-Szenarien, wie im Profil gewählt)
+//   theme     Darstellung „Thema“: system (Standard), light, dark
 //   a11y=1    Semantik-Baum aktivieren (ARIA im Web)
 //   dumpText=1 JSON-Liste aller Texte nach dem Einschwingen ausgeben
 //   live      reserviert: echter Speicher, folgt mit dem StartGate (U2b)
 //
 // Konsole (Playwright liest sie): `CURA_ENV {json}` direkt nach dem Start,
-// `CURA_READY` sobald keine Animation und kein Frame mehr läuft,
+// `CURA_READY {"settled":bool}` sobald keine Animation und kein Frame mehr
+// läuft (`settled:false` = Zeitlimit erreicht, nur bei Szenarien mit
+// Dauer-Animation erwartet),
 // `CURA_DUMP {json}` bei `dumpText=1`.
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -51,12 +56,15 @@ Map<String, Object?> _environment(PreviewConfig config) {
   final ui.AccessibilityFeatures f = d.accessibilityFeatures;
   return <String, Object?>{
     'scenario': config.scenarioId,
+    'loops': scenarioById(config.scenarioId ?? '')?.loops ?? false,
     'now': (config.now ?? ScenarioEnv.defaultNow).toIso8601String(),
     'dartNow': DateTime.now().toIso8601String(),
     'override': <String, Object?>{
       'scale': config.textScale,
       'hc': config.highContrast,
       'rm': config.reduceMotion,
+      'world': config.world.jsonName,
+      'theme': config.theme.name,
     },
     // Systemsignale des Browsers, ohne Override (Plan 12.5 b).
     'system': <String, Object?>{
@@ -68,17 +76,24 @@ Map<String, Object?> _environment(PreviewConfig config) {
   };
 }
 
-/// Höchstens 2 s Wanduhrzeit einschwingen (Szenarien mit Dauer-Animation, z. B.
-/// Fortschrittskreis, werden nie ruhig und rendern in Software langsam),
-/// ruhig = 3 Abfragen in Folge.
-const Duration _maxSettle = Duration(seconds: 2);
+/// Einschwingen: Szenarien mit Dauer-Animation (`loops`, z. B. Fortschrittskreis)
+/// werden nie ruhig und rendern in Software langsam, darum höchstens 2 s
+/// Wanduhrzeit. Alle anderen warten bis zu 10 s: sie enden, sobald es ruhig
+/// ist (3 Abfragen in Folge); die längere Frist fängt nur einen langsamen
+/// Start unter Last ab (R3), sie verdeckt keine Dauer-Animation (die würde
+/// auch nach 10 s als „nicht zur Ruhe gekommen“ gemeldet).
+const Duration _maxSettleLoops = Duration(seconds: 2);
+const Duration _maxSettleRest = Duration(seconds: 10);
 const int _idlePolls = 3;
 
 Future<void> _afterSettle(PreviewConfig config) async {
   await WidgetsBinding.instance.endOfFrame;
   int idle = 0;
   final Stopwatch watch = Stopwatch()..start();
-  while (watch.elapsed < _maxSettle && idle < _idlePolls) {
+  final Duration limit = (scenarioById(config.scenarioId ?? '')?.loops ?? false)
+      ? _maxSettleLoops
+      : _maxSettleRest;
+  while (watch.elapsed < limit && idle < _idlePolls) {
     await Future<void>.delayed(CuraMotion.fastDuration);
     final SchedulerBinding b = SchedulerBinding.instance;
     idle = (b.transientCallbackCount == 0 && !b.hasScheduledFrame)
@@ -90,7 +105,15 @@ Future<void> _afterSettle(PreviewConfig config) async {
   } catch (e, st) {
     _announce('CURA_ERROR', '$e $st');
   }
-  _announce('CURA_READY', '');
+  _announce(
+    'CURA_READY',
+    jsonEncode(<String, Object?>{
+      'settled': idle >= _idlePolls,
+      'waitedMs': watch.elapsedMilliseconds,
+      'transientCallbacks': SchedulerBinding.instance.transientCallbackCount,
+      'frameScheduled': SchedulerBinding.instance.hasScheduledFrame,
+    }),
+  );
 }
 
 void _dump(PreviewConfig config) {
@@ -98,6 +121,10 @@ void _dump(PreviewConfig config) {
   final Size size = view.physicalSize / view.devicePixelRatio;
   final TextProbe probe = probeTexts(view: size);
   final Map<String, Rect> keyed = probeKeyedRects(prefix: 'probe:');
+  final Map<String, Rect> overlays = probeKeyedRects(
+    prefix: 'overlay:',
+    skipBuried: true,
+  );
   _announce(
     'CURA_DUMP',
     jsonEncode(<String, Object?>{
@@ -107,10 +134,20 @@ void _dump(PreviewConfig config) {
         'h': size.height,
         'dpr': view.devicePixelRatio,
       },
-      'hasGlow': probe.hasGlow,
+      'hasWorld': probe.hasWorld,
+      'worldDecor': probe.worldDecor,
       'texts': <Map<String, Object?>>[
         for (final ProbedText t in probe.texts) t.toJson(),
       ],
+      'overlays': <String, Object?>{
+        for (final MapEntry<String, Rect> e in overlays.entries)
+          e.key: <String, double>{
+            'x': e.value.left,
+            'y': e.value.top,
+            'w': e.value.width,
+            'h': e.value.height,
+          },
+      },
       'probes': <String, Object?>{
         for (final MapEntry<String, Rect> e in keyed.entries)
           e.key: <String, double>{

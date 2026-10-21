@@ -13,6 +13,7 @@ import '../logic/day_rollover.dart' as rollover_logic;
 import '../logic/injury_type.dart';
 import '../logic/json_support.dart' show UnreadableDataException;
 import '../logic/manny_context.dart';
+import '../logic/manny_look.dart';
 import '../logic/manny_occasions.dart' as occasions;
 import '../logic/manny_text_source.dart';
 import '../logic/placeholder_pools.dart';
@@ -261,9 +262,17 @@ class AppController extends ChangeNotifier {
   );
 
   void setStep(int step) => _mutate(
-    (AppState s) =>
-        s.copyWith(onboarding: s.onboarding.copyWith(step: step.clamp(0, 3))),
+    (AppState s) => s.copyWith(
+      onboarding: s.onboarding.copyWith(
+        step: step.clamp(0, kLastOnboardingStep),
+      ),
+    ),
   );
+
+  /// Manny-Look (Ergänzung 1, 6a/6b): wird sofort gespeichert und gilt für die
+  /// ganze App; „Alles löschen“ setzt ihn auf die Vorbelegung zurück.
+  void setMannyLook(MannyLook look) =>
+      _mutate((AppState s) => s.copyWith(mannyLook: look));
 
   /// Speichert die Einwilligung (UTC-Zeitstempel, Version `prototype-0`);
   /// erneutes Bestätigen überschreibt den Zeitstempel (A-2).
@@ -306,7 +315,7 @@ class AppController extends ChangeNotifier {
       (AppState cur) => cur.copyWith(
         onboarding: cur.onboarding.copyWith(
           completed: true,
-          step: 3,
+          step: kLastOnboardingStep,
           injuryOther: cur.onboarding.injuryType == InjuryType.other
               ? cur.onboarding.injuryOther
               : '',

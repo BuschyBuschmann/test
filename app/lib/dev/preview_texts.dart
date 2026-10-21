@@ -20,6 +20,7 @@ abstract final class PreviewTexts {
   static const String nameValue = 'Jakob';
   static const String dateValue = '3. September 2026';
   static const String yourData = 'Deine Daten';
+  static const String injuryOtherValue = 'Schulter ausgekugelt';
 
   static const String glassCardText =
       'Glas-Karte: kein Blur, innere Lichtkante.';
@@ -37,5 +38,8 @@ abstract final class PreviewTexts {
   static const String typoLabelSample = 'Abschnittstitel';
   static const String pathTab = 'Pfad';
   static const String todayTab = 'Heute';
+  static const String chatsTab = 'Chats';
+  static const String profileTab = 'Profil';
+  static const String profileInitial = 'J';
   static const String pipetteTitle = 'Dein Weg';
 }

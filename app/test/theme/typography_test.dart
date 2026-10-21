@@ -11,10 +11,10 @@ double _axis(TextStyle s, String tag) =>
     s.fontVariations!.firstWhere((FontVariation v) => v.axis == tag).value;
 
 void main() {
-  final CuraTypography t = CuraTypography.dark;
+  final CuraTypography t = CuraTypography.light;
 
   test('UI-5: alle Stile mindestens 13 sp und Gewicht 400', () {
-    expect(t.all.length, 14);
+    expect(t.all.length, 19);
     for (final MapEntry<String, TextStyle> e in t.all.entries) {
       expect(e.value.fontSize, greaterThanOrEqualTo(13), reason: e.key);
       expect(
@@ -27,25 +27,31 @@ void main() {
     expect(t.bubble.fontSize, 14.5);
   });
 
-  test('Brief 3.3: Familie, Größe/Zeilenhöhe, Gewicht je Stil', () {
+  test('Brief v2 3.3: Familie, Größe/Zeilenhöhe, Gewicht je Stil', () {
     // name: (Familie, Größe, Zeilenhöhe, Gewicht)
     final Map<String, (String, double, double, int)> expected =
         <String, (String, double, double, int)>{
-          'display': ('BricolageGrotesque', 32, 36, 500),
-          'title': ('BricolageGrotesque', 24, 28, 500),
-          'heading': ('BricolageGrotesque', 18, 24, 500),
-          'numeral': ('BricolageGrotesque', 20, 24, 600),
-          'numeralLarge': ('BricolageGrotesque', 24, 28, 600),
-          'button': ('BricolageGrotesque', 18, 24, 600),
+          'display': ('BricolageGrotesque', 36, 38, 800),
+          'titleHeader': ('BricolageGrotesque', 30, 32, 800),
+          'title': ('BricolageGrotesque', 24, 28, 800),
+          'heading': ('BricolageGrotesque', 20, 23, 800),
+          'counter': ('BricolageGrotesque', 52, 52, 800),
+          'counterUnit': ('BricolageGrotesque', 30, 30, 800),
+          'numeral': ('BricolageGrotesque', 28, 30, 800),
+          'numeralSmall': ('BricolageGrotesque', 18, 24, 800),
+          'numeralLarge': ('BricolageGrotesque', 24, 28, 800),
+          'button': ('BricolageGrotesque', 18, 24, 800),
           'body': ('DMSans', 16, 24, 400),
-          'bodyStrong': ('DMSans', 16, 24, 600),
+          'bodyStrong': ('DMSans', 16, 24, 700),
           'secondary': ('DMSans', 14, 20, 500),
-          'label': ('DMSans', 13, 16, 600),
-          'caption': ('DMSans', 13, 16, 500),
+          'label': ('DMSans', 13, 16, 700),
+          'caption': ('DMSans', 13, 16, 600),
+          'chip': ('DMSans', 13, 16, 700),
           'bubble': ('DMSans', 14.5, 20, 400),
           'segment': ('DMSans', 16, 24, 400),
           'segmentSelected': ('DMSans', 16, 24, 700),
         };
+    expect(t.all.keys.toSet(), expected.keys.toSet());
     for (final MapEntry<String, TextStyle> e in t.all.entries) {
       final (String family, double size, double line, int weight) =
           expected[e.key]!;
@@ -57,6 +63,23 @@ void main() {
         reason: e.key,
       );
       expect(e.value.fontWeight!.value, weight, reason: e.key);
+    }
+  });
+
+  test('Titel und Zahlen: Bricolage mit Gewicht 700–800 (Brief 3.3)', () {
+    for (final String name in <String>[
+      'display',
+      'titleHeader',
+      'title',
+      'heading',
+      'counter',
+      'numeral',
+      'numeralSmall',
+      'button',
+    ]) {
+      final TextStyle s = t.all[name]!;
+      expect(s.fontFamily, 'BricolageGrotesque', reason: name);
+      expect(s.fontWeight!.value, greaterThanOrEqualTo(700), reason: name);
     }
   });
 
@@ -88,8 +111,9 @@ void main() {
 
   test('label: Laufweite 0,06 em; Segmentfarben nach A-23', () {
     expect(t.label.letterSpacing, closeTo(0.06 * 13, 1e-9));
-    expect(t.segment.color, CuraColors.dark.text2);
-    expect(t.segmentSelected.color, CuraColors.dark.text1);
+    expect(t.segment.color, CuraColors.light.text2);
+    expect(t.segmentSelected.color, CuraColors.light.text1);
+    expect(CuraTypography.dark.segment.color, CuraColors.dark.text2);
     // übrige Stile tragen keine Farbe
     expect(t.body.color, isNull);
   });

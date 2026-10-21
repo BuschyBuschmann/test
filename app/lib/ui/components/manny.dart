@@ -1,19 +1,32 @@
-// `MannyPlaceholder` (Brief 5.6, Plan 9): Manny als `CustomPainter` aus
-// Flutter-Formen. Körper `#34425F` mit Rand Weiß 35 % (1 dp), Flügel, weißer
-// Bauch, zwei Augen, Schnabel und Füße in `accent-hi`. Drei statische Posen
-// (`neutral`, `motiviert`, `feiernd`), eine Zeichnung für beide Zuschnitte
-// (`crop: full | head`, Kopf für Manny-Button und Chat-Emblem). Eine spätere
-// Illustration ersetzt nur dieses Widget. Keine Animation (Regel 9).
+// `MannyIllustration` und `MannyAvatar` (Design-Brief v2, Ergänzung 1, 6.1 bis
+// 6.6): Manny aus den **finalen PNG-Grafiken** beider Varianten (`brille/`,
+// `ohne/`; Posen `normal`, `freudig`, `traurig` und `kopf`). Es gibt keinen
+// gezeichneten Platzhalter mehr. Die Figur wird nie umgefärbt, gedreht,
+// gespiegelt oder verzerrt (`BoxFit.contain`, quadratische bzw. feste
+// Seitenverhältnisse der Leinwand).
 //
-// Die Geometrie liegt in einer Zeichenfläche von 100 × 120 Einheiten
-// (Standlinie bei y = 118); diese Datei ist von Regel 2 ausgenommen
-// (Painter-Geometrie).
-import 'dart:math' as math;
-
+// Die Variante kommt aus dem Zustand (`AppState.mannyLook`) und gilt in jeder
+// Pose und an jeder Stelle; ohne `AppScope` (Bausteintests, Vorschau) gilt die
+// Vorbelegung „Mit Brille“. Anlass -> Bild steht zentral in
+// `lib/logic/manny_occasions.dart` (`mannyImageFor`). Flutter wählt die
+// Dichte-Variante (`2.0x/`, `3.0x/`) selbst; kein Bild wird größer als seine
+// Leinwand in dp dargestellt (Körper 158 × 193 dp, Kopf 110 dp).
+//
+// Sichtbarkeit (6.4): Auf der Welt Nacht verschwindet die dunkle Kontur; dort
+// steht hinter der Figur ein **Halo** (Weiß 28 %, 1,15 × Leinwandbreite). Der
+// **Kopf** steht immer auf einer hellen Scheibe (`MannyAvatar`) und ist nie
+// kleiner als 40 dp (6.5).
+//
+// Diese Datei enthält keine Animation (Regel 9): Hüpfen und Wippen gehören zu
+// den Feier-Momenten und kommen mit ihnen; bei „Bewegung reduzieren“ ist Manny
+// ohnehin statisch (V2-26, V2-74).
 import 'package:flutter/widgets.dart';
 
 import '../../l10n/strings_de.dart';
-import '../../logic/manny_occasions.dart' show MannyPose;
+import '../../logic/manny_look.dart';
+import '../../logic/manny_occasions.dart';
+import '../../state/app_scope.dart';
+import '../../state/world_scope.dart';
 import '../../theme/cura_colors.dart';
 import '../../theme/cura_metrics.dart';
 import '../../theme/cura_roles.dart';
@@ -22,319 +35,213 @@ export '../../logic/manny_occasions.dart' show MannyPose;
 
 enum MannyCrop { full, head }
 
-/// Ein Flügel: gedrehte Ellipse in Zeichenflächen-Einheiten.
-class MannyWing {
-  const MannyWing(this.cx, this.cy, this.rx, this.ry, this.angle);
+/// Die Variante, die an [context] gilt: aus dem Zustand, sonst die
+/// Vorbelegung.
+MannyLook mannyLookOf(BuildContext context) =>
+    AppScope.maybeOf(context)?.state.mannyLook ?? MannyLook.defaultLook;
 
-  final double cx;
-  final double cy;
-  final double rx;
-  final double ry;
-
-  /// Drehung im Uhrzeigersinn in Bogenmaß.
-  final double angle;
-
-  Path path([double grow = 0]) {
-    final Path p = Path()
-      ..addOval(
-        Rect.fromCenter(
-          center: Offset(cx, cy),
-          width: (rx + grow) * 2,
-          height: (ry + grow) * 2,
-        ),
-      );
-    final Matrix4 m = Matrix4.identity()
-      ..translateByDouble(cx, cy, 0, 1)
-      ..rotateZ(angle)
-      ..translateByDouble(-cx, -cy, 0, 1);
-    return p.transform(m.storage);
-  }
-}
-
-/// Geometrie in Zeichenflächen-Einheiten.
-abstract final class MannyGeometry {
-  static const double width = 100;
-  static const double height = 120;
-  static const double baseline = 118;
-
-  /// Zuschnitt „Kopf“: Quadrat um Kopf und Schnabel.
-  static const Rect headRect = Rect.fromLTWH(16, 14, 68, 68);
-  static const Rect fullRect = Rect.fromLTWH(0, 0, width, height);
-
-  static const Rect body = Rect.fromLTRB(16, 22, 84, 114);
-  static const Rect belly = Rect.fromLTRB(28, 60, 72, 112);
-  static const Rect footLeft = Rect.fromLTRB(27, 108, 46, baseline);
-  static const Rect footRight = Rect.fromLTRB(54, 108, 73, baseline);
-  static const double footRadius = 5;
-
-  static Rect cropRect(MannyCrop crop) =>
-      crop == MannyCrop.head ? headRect : fullRect;
-
-  static List<MannyWing> wings(MannyPose pose) {
-    switch (pose) {
-      case MannyPose.neutral:
-        return const <MannyWing>[
-          MannyWing(14, 72, 8, 24, 0.2),
-          MannyWing(86, 72, 8, 24, -0.2),
-        ];
-      case MannyPose.motiviert:
-        return const <MannyWing>[
-          MannyWing(14, 72, 8, 24, 0.2),
-          MannyWing(87, 54, 8, 23, 0.55),
-        ];
-      case MannyPose.feiernd:
-        return const <MannyWing>[
-          MannyWing(13, 52, 8, 24, -0.6),
-          MannyWing(87, 52, 8, 24, 0.6),
-        ];
-    }
-  }
-}
-
-class MannyPlaceholder extends StatefulWidget {
-  const MannyPlaceholder({
+class MannyIllustration extends StatelessWidget {
+  const MannyIllustration({
     super.key,
     required this.height,
     this.pose = MannyPose.neutral,
     this.crop = MannyCrop.full,
+    this.look,
     this.onTap,
     this.excludeSemantics = false,
-  });
+    this.onWorld = false,
+  }) : assert(height > 0),
+       assert(
+         crop == MannyCrop.full
+             ? height <= CuraSize.mannyBodyHeight
+             : height >= CuraSize.mannyHeadMin &&
+                   height <= CuraSize.mannyHeadCanvas,
+         'Manny: Körper höchstens 193 dp hoch, Kopf zwischen 40 und 110 dp.',
+       );
 
-  /// Höhe in dp (Pfad ca. 80, Onboarding 56–64, Kopf im Button 38).
+  /// Höhe der Leinwand in dp (Pfad 88, Onboarding 120, Auswahlkarten bis 190);
+  /// beim Kopf zugleich die Breite.
   final double height;
   final MannyPose pose;
   final MannyCrop crop;
 
-  /// Nur auf dem Pfad gesetzt: Tipp auf die Form (plus 8 dp Rand, bis zur
-  /// Standlinie) öffnet den Chat. Ohne Wert ist Manny nicht antippbar
-  /// (`IgnorePointer`). Manny hat nie eine eigene Fokusstation (Plan 4.6).
+  /// Variante; ohne Angabe die gewählte (`AppState.mannyLook`).
+  final MannyLook? look;
+
+  /// Nur auf dem Pfad gesetzt: Tipp auf die Figur (plus 8 dp Rand, mindestens
+  /// 48 × 48 dp, unten an der Fußlinie) öffnet den Chat. Ohne Wert ist Manny
+  /// nicht antippbar (`IgnorePointer`). Manny hat nie eine eigene Fokusstation.
   final VoidCallback? onTap;
 
-  /// Bild-Label ausblenden (Manny-Button und Emblem tragen ihr eigenes Label).
+  /// Bild-Label ausblenden (Knopf, Avatar und Zeile tragen ihr eigenes Label).
   final bool excludeSemantics;
 
-  /// Größe in dp für eine Höhe.
-  static Size sizeFor(MannyCrop crop, double height) {
-    final Rect r = MannyGeometry.cropRect(crop);
-    return Size(height * r.width / r.height, height);
-  }
+  /// Manny steht direkt auf der Welt (Pfad): in der Welt Nacht mit Halo.
+  final bool onWorld;
 
-  /// Trefferfläche: gezeichnete Form plus [margin] (Plan: 8 dp), mindestens
-  /// [minSide] × [minSide], unten an der Standlinie (Fußunterkante)
-  /// abgeschnitten. Koordinaten wie das Widget (Ursprung oben links).
-  static Path hitPath({
-    required Size size,
-    required MannyPose pose,
-    MannyCrop crop = MannyCrop.full,
+  /// Zusätzlicher Platz um die Figur, wenn Manny tippbar ist: links, rechts und
+  /// oben der Trefferrand bzw. so viel, dass das Mindestquadrat Platz hat;
+  /// unten nichts (Fußlinie). Der Besitzer rechnet damit beim Platzieren.
+  static EdgeInsets tapInsets(
+    Size size, {
     double margin = CuraSize.mannyHitMargin,
     double minSide = CuraSize.touchTarget,
   }) {
-    final Rect view = MannyGeometry.cropRect(crop);
-    final double s = size.height / view.height;
-    final double g = margin / s; // Rand in Einheiten
-    final List<Path> parts = <Path>[
-      Path()..addOval(MannyGeometry.body.inflate(g)),
-      Path()..addRRect(
-        RRect.fromRectAndRadius(
-          MannyGeometry.footLeft.inflate(g),
-          Radius.circular(MannyGeometry.footRadius + g),
-        ),
-      ),
-      Path()..addRRect(
-        RRect.fromRectAndRadius(
-          MannyGeometry.footRight.inflate(g),
-          Radius.circular(MannyGeometry.footRadius + g),
-        ),
-      ),
-      for (final MannyWing w in MannyGeometry.wings(pose)) w.path(g),
-    ];
-    Path union = parts.first;
-    for (final Path p in parts.skip(1)) {
-      union = Path.combine(PathOperation.union, union, p);
-    }
-    final Matrix4 toLocal = Matrix4.identity()
-      ..scaleByDouble(s, s, 1, 1)
-      ..translateByDouble(-view.left, -view.top, 0, 1);
-    Path local = union.transform(toLocal.storage);
-
-    final double baseY = (MannyGeometry.baseline - view.top) * s;
-    final Rect minRect = Rect.fromCenter(
-      center: Offset(size.width / 2, baseY - minSide / 2),
-      width: minSide,
-      height: minSide,
-    );
-    local = Path.combine(PathOperation.union, local, Path()..addRect(minRect));
-    final Path clip = Path()..addRect(Rect.fromLTRB(0, 0, size.width, baseY));
-    return Path.combine(PathOperation.intersect, local, clip);
+    final double x = margin > (minSide - size.width) / 2
+        ? margin
+        : (minSide - size.width) / 2;
+    final double top = margin > minSide - size.height
+        ? margin
+        : minSide - size.height;
+    return EdgeInsets.fromLTRB(x, top, x, 0);
   }
 
-  @override
-  State<MannyPlaceholder> createState() => _MannyPlaceholderState();
-}
+  /// Größe in dp für eine Leinwandhöhe: Körper im Verhältnis 158 : 193, Kopf
+  /// quadratisch.
+  static Size sizeFor(MannyCrop crop, double height) => crop == MannyCrop.head
+      ? Size(height, height)
+      : Size(
+          height * CuraSize.mannyBodyWidth / CuraSize.mannyBodyHeight,
+          height,
+        );
 
-class _MannyPlaceholderState extends State<MannyPlaceholder> {
-  bool _pressed = false;
+  /// Abstand der Fußlinie von der Oberkante der Leinwand (unten bleibt ein
+  /// Rand von 8 dp bei 193 dp Leinwandhöhe).
+  static double feetFromTop(double height) =>
+      height *
+      (CuraSize.mannyBodyHeight - CuraSize.mannyBottomMargin) /
+      CuraSize.mannyBodyHeight;
 
-  void _setPressed(bool v) {
-    if (_pressed != v && mounted) setState(() => _pressed = v);
-  }
+  /// Bild der Anlass-Pose (Körper) bzw. der Kopf.
+  MannyImage get image =>
+      crop == MannyCrop.head ? MannyImage.kopf : mannyImageFor(pose);
 
   @override
   Widget build(BuildContext context) {
-    final CuraColors colors = CuraColors.of(context);
-    final Size size = MannyPlaceholder.sizeFor(widget.crop, widget.height);
-    final bool tappable = widget.onTap != null;
-    Widget art = CustomPaint(
-      size: size,
-      painter: _MannyPainter(
-        colors: colors,
-        pose: widget.pose,
-        crop: widget.crop,
-        size: size,
-        pressed: _pressed && tappable,
-        hit: tappable,
-      ),
+    final MannyLook variant = look ?? mannyLookOf(context);
+    final Size size = sizeFor(crop, height);
+    final bool tappable = onTap != null;
+    // Tippbar: Die Fläche wird um [tapInsets] größer, damit der 8-dp-Rand und
+    // das 48-dp-Mindestquadrat auch außerhalb der Figur (und der Bildgrenze)
+    // Treffer liefern (Flutter trifft nur innerhalb der Box).
+    final EdgeInsets insets = tappable ? tapInsets(size) : EdgeInsets.zero;
+    Widget art = Image.asset(
+      mannyAssetPath(variant, image),
+      width: size.width,
+      height: size.height,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+      excludeFromSemantics: true,
     );
+    if (onWorld) art = _Halo(size: size, child: art);
     if (tappable) {
       art = ExcludeFocus(
         child: GestureDetector(
-          behavior: HitTestBehavior.deferToChild,
+          behavior: HitTestBehavior.opaque,
           excludeFromSemantics: true,
-          onTapDown: (_) => _setPressed(true),
-          onTapUp: (_) => _setPressed(false),
-          onTapCancel: () => _setPressed(false),
-          onTap: widget.onTap,
-          child: art,
+          onTap: onTap,
+          child: Padding(padding: insets, child: art),
         ),
       );
     } else {
       art = IgnorePointer(child: art);
     }
-    if (widget.excludeSemantics) return ExcludeSemantics(child: art);
+    if (excludeSemantics) return ExcludeSemantics(child: art);
     return Semantics(label: S.mannyImageLabel, image: true, child: art);
   }
 }
 
-class _MannyPainter extends CustomPainter {
-  _MannyPainter({
-    required this.colors,
-    required this.pose,
-    required this.crop,
-    required this.size,
-    required this.pressed,
-    required this.hit,
-  });
+/// Halo hinter der Figur (6.4): nur in der Welt Nacht, Kreis mit 1,15 × der
+/// Leinwandbreite, Weiß 28 % mit weichem Auslauf am Rand; die Deckkraft folgt
+/// `moonAmount` der Welt (in der Überblendung Abend/Nacht wächst er mit). Mit
+/// „Transparenz reduzieren“/Hoher Kontrast opak (`card`).
+class _Halo extends StatelessWidget {
+  const _Halo({required this.size, required this.child});
 
-  final CuraColors colors;
-  final MannyPose pose;
-  final MannyCrop crop;
   final Size size;
-  final bool pressed;
-  final bool hit;
-
-  Path? _hitPath;
-
-  Path get _path =>
-      _hitPath ??= MannyPlaceholder.hitPath(size: size, pose: pose, crop: crop);
+  final Widget child;
 
   @override
-  bool? hitTest(Offset position) => hit ? _path.contains(position) : false;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Rect view = MannyGeometry.cropRect(crop);
-    final double s = size.height / view.height;
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-    canvas.scale(s);
-    canvas.translate(-view.left, -view.top);
-
-    final double hair = CuraSize.hairline / s;
-    final Paint fill = Paint()..style = PaintingStyle.fill;
-    final Paint line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = hair
-      ..color = colors.mannyOutline;
-
-    // Füße (hinter dem Körper).
-    for (final Rect foot in <Rect>[
-      MannyGeometry.footLeft,
-      MannyGeometry.footRight,
-    ]) {
-      final RRect r = RRect.fromRectAndRadius(
-        foot,
-        const Radius.circular(MannyGeometry.footRadius),
-      );
-      canvas.drawRRect(r, fill..color = colors.accentHi);
-    }
-
-    // Flügel und Körper.
-    final List<MannyWing> wings = MannyGeometry.wings(pose);
-    for (final MannyWing w in wings) {
-      canvas.drawPath(w.path(), fill..color = colors.mannyBody);
-      canvas.drawPath(w.path(), line);
-    }
-    canvas.drawOval(MannyGeometry.body, fill..color = colors.mannyBody);
-    canvas.drawOval(MannyGeometry.body, line);
-
-    // Bauch.
-    canvas.drawOval(MannyGeometry.belly, fill..color = colors.mannyBelly);
-
-    // Augen.
-    const Offset eyeL = Offset(40, 40);
-    const Offset eyeR = Offset(60, 40);
-    if (pose == MannyPose.feiernd) {
-      final Paint arc = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round
-        ..color = colors.mannyBelly;
-      for (final Offset c in <Offset>[eyeL, eyeR]) {
-        canvas.drawArc(
-          Rect.fromCenter(center: c.translate(0, 3), width: 12, height: 10),
-          math.pi,
-          math.pi,
-          false,
-          arc,
-        );
-      }
-    } else {
-      final Offset look = pose == MannyPose.motiviert
-          ? const Offset(1.5, -1.5)
-          : const Offset(1, 1);
-      for (final Offset c in <Offset>[eyeL, eyeR]) {
-        canvas.drawCircle(c, 7, fill..color = colors.mannyBelly);
-        canvas.drawCircle(c + look, 3.2, fill..color = colors.bg);
-      }
-    }
-
-    // Schnabel.
-    final double open = pose == MannyPose.feiernd ? 2 : 0;
-    final Path beak = Path()
-      ..moveTo(43 - open, 49)
-      ..lineTo(57 + open, 49)
-      ..lineTo(50, 58 + open)
-      ..close();
-    canvas.drawPath(beak, fill..color = colors.accentHi);
-
-    // Pressed: Form 10 % heller (keine Animation, keine Pose-Änderung).
-    if (pressed) {
-      final Paint overlay = Paint()..color = colors.pressedOverlay;
-      canvas.drawOval(MannyGeometry.body, overlay);
-      for (final MannyWing w in wings) {
-        canvas.drawPath(w.path(), overlay);
-      }
-    }
-    canvas.restore();
+  Widget build(BuildContext context) {
+    final double night = WorldScope.paletteOf(context).moonAmount;
+    if (night <= 0) return child;
+    final CuraColors colors = CuraColors.of(context);
+    final double d = size.width * CuraSize.mannyHaloScale;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        Positioned.fill(
+          child: OverflowBox(
+            minWidth: 0,
+            minHeight: 0,
+            maxWidth: d,
+            maxHeight: d,
+            child: ExcludeSemantics(
+              child: IgnorePointer(
+                child: SizedBox.square(
+                  key: const ValueKey<String>('manny-halo'),
+                  dimension: d,
+                  child: DecoratedBox(
+                    decoration: colors.mannyHaloDecoration(night),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
   }
+}
+
+/// Manny-Kopf auf heller Scheibe (6.4): Avatar in Chat-Liste, Chat-Kopf und
+/// Nachrichten. Die Scheibe misst [size] (Durchmesser), der Kopf darin 86 %
+/// (mindestens 40 dp, daher [size] ≥ 48). Scheibe `#FBF3E4` in Hell und
+/// Dunkel gleich. Das Bild ist ausgeblendet: die Zeile oder der Kopf trägt das
+/// Label (V2-71).
+class MannyAvatar extends StatelessWidget {
+  const MannyAvatar({super.key, required this.size, this.look})
+    : assert(
+        size * CuraSize.mannyDiscHeadFactor >= CuraSize.mannyHeadMin,
+        'Manny-Kopf kleiner als 40 dp: Scheibe mindestens 48 dp.',
+      );
+
+  /// Durchmesser der Scheibe.
+  final double size;
+  final MannyLook? look;
+
+  /// Kantenlänge des Kopfes in der Scheibe.
+  static double headFor(double size) => size * CuraSize.mannyDiscHeadFactor;
 
   @override
-  bool shouldRepaint(_MannyPainter old) =>
-      old.colors != colors ||
-      old.pose != pose ||
-      old.crop != crop ||
-      old.size != size ||
-      old.pressed != pressed ||
-      old.hit != hit;
+  Widget build(BuildContext context) {
+    final CuraColors colors = CuraColors.of(context);
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.mannyDisc,
+            border: colors.highContrast
+                ? Border.all(
+                    color: colors.lightSurfaceBorder,
+                    width: CuraSize.controlBorder,
+                  )
+                : null,
+          ),
+          child: Center(
+            child: MannyIllustration(
+              height: headFor(size),
+              crop: MannyCrop.head,
+              look: look,
+              excludeSemantics: true,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

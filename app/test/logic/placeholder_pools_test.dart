@@ -82,7 +82,7 @@ void main() {
       final List<Appointment> a = appointmentsFor(const LocalDay(2026, 10, 9));
       expect(a.map((e) => e.timeText), <String>['09:30', '17:00']);
       expect(a.first.category, AppointmentCategory.doctor);
-      expect(a.first.title, 'Kontrolle Orthopädie');
+      expect(a.first.title, 'Kontrolltermin Orthopädie');
       expect(a.first.meta, endsWith('· Beispiel'));
     });
 
@@ -98,7 +98,7 @@ void main() {
       );
       expect(
         appointmentsFor(const LocalDay(2026, 10, 9)).first.semanticsLabel,
-        'Beispieltermin, Arzt, Kontrolle Orthopädie, 09:30 Uhr',
+        'Beispieltermin, Arzt, Kontrolltermin Orthopädie, 09:30 Uhr',
       );
     });
   });

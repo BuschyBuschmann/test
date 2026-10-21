@@ -1,12 +1,13 @@
-// `CuraSnackbar` + `SnackbarHost` (Ergänzung 1, Abschnitt 2, 3.3; Plan 9):
-// Fläche `surface-opaque`, Rand `border-hair` (Hoher Kontrast `-hc`), Radius
+// `CuraSnackbar` + `SnackbarHost` (Brief v2, 4; Ergänzung 1, Abschnitt 2, 3.3;
+// Plan 9): Fläche `card` zu 100 % opak (`surface-opaque`), Rand `border-hair`
+// (Hoher Kontrast `-hc`), Radius
 // 20, Innenabstand 16, Text `body` `text-1`, optionale Aktion rechts als
 // Text-Button in `accent-hi` (Hit-Area 48 dp); ab Textskalierung 1,3 oder wenn
 // sie nicht daneben passt, steht die Aktion rechtsbündig unter dem Text.
 // Immer nur eine Snackbar: eine neue ersetzt die alte, die alte Aktion
 // verfällt. Live-Region („Eingetragen. Rückgängig, Schaltfläche“), nie Blur.
 // Erscheinen: Einblenden plus 8 dp Schiebung (`dur-base`); bei reduzierter
-// Bewegung höchstens `dur-fast` ohne Schiebung. Dauer 4/5/8 s (B-8); der
+// Bewegung höchstens `dur-fast` ohne Schiebung. Standard 6 s (Brief v2, 4), sonst 4/5/8 s (B-8); der
 // Timer pausiert bei Fokus/Hover und läuft nicht bei `accessibleNavigation`.
 import 'dart:async';
 
@@ -23,6 +24,7 @@ import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
 import 'cura_pressable.dart';
+import 'size_reporter.dart';
 
 /// Warum eine Snackbar endete (für das Rückgängig-Fenster, Ergänzung 1, 3.3).
 enum SnackbarCloseReason {
@@ -45,7 +47,7 @@ enum SnackbarCloseReason {
 class CuraSnackbarMessage {
   const CuraSnackbarMessage({
     required this.text,
-    this.duration = SnackbarTokens.long,
+    this.duration = SnackbarTokens.standard,
     this.actionLabel,
     this.actionSemanticsLabel,
     this.onAction,
@@ -54,7 +56,8 @@ class CuraSnackbarMessage {
 
   final String text;
 
-  /// 4 s (`short`), 5 s (`medium`) oder 8 s (`long`), Brief B-8.
+  /// 6 s (`standard`, Brief v2) oder 4 s (`short`), 5 s (`medium`), 8 s
+  /// (`long`), Brief B-8.
   final Duration duration;
 
   /// Sichtbare Aktion („Rückgängig“).
@@ -154,7 +157,7 @@ class CuraSnackbar extends StatelessWidget {
                   heightFactor: 1,
                   child: Text(
                     action,
-                    style: type.bodyStrong.copyWith(color: colors.accentHi),
+                    style: type.bodyStrong.copyWith(color: colors.accentText),
                   ),
                 ),
               ),
@@ -236,10 +239,16 @@ class SnackbarHost extends StatefulWidget {
     super.key,
     required this.controller,
     this.bottomOffset = 0,
+    this.onHeightChanged,
   });
 
   final SnackbarController controller;
   final double bottomOffset;
+
+  /// Meldet die gemessene Höhe der sichtbaren Snackbar (0, wenn keine
+  /// sichtbar ist): Heute rechnet die Scroll-Reserve am Listenende damit, damit
+  /// die Snackbar den letzten Eintrag nie überdeckt (Plan 4.6).
+  final ValueChanged<double>? onHeightChanged;
 
   @override
   State<SnackbarHost> createState() => _SnackbarHostState();
@@ -297,6 +306,7 @@ class _SnackbarHostState extends State<SnackbarHost> {
     }
     _syncTimer();
     if (!mounted) return;
+    if (_c.current == null) widget.onHeightChanged?.call(0);
     // `show` kann mitten im Bauen aufgerufen werden: dann nach dem Frame.
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -397,7 +407,10 @@ class _SnackbarHostState extends State<SnackbarHost> {
             tween: Tween<double>(begin: 0, end: 1),
             duration: motion.duration(MotionTokens.base),
             curve: motion.curve,
-            child: content,
+            child: SizeReporter(
+              onSize: (Size size) => widget.onHeightChanged?.call(size.height),
+              child: content,
+            ),
             builder: (BuildContext context, double t, Widget? child) {
               return Opacity(
                 opacity: t,

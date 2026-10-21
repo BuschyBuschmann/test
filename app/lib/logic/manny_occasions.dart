@@ -1,6 +1,8 @@
-// Manny-Anlässe (Plan 7.7, A-20 bis A-22, N-2): welche Blase wann.
+// Manny-Anlässe (Plan 7.7, A-20 bis A-22, N-2): welche Blase wann, und die
+// zentrale Abbildung Anlass/Pose -> Bilddatei (Brief-Ergänzung 1, 6.3).
 import 'app_state.dart';
 import 'clock.dart';
+import 'manny_look.dart';
 import 'manny_state.dart';
 
 export 'manny_state.dart' show MannyOccasion;
@@ -8,9 +10,74 @@ export 'manny_state.dart' show MannyOccasion;
 /// „Abends“ beginnt um 18:00 Uhr Ortszeit (N-2).
 const int kEveningHour = 18;
 
-/// Pose, in der Manny die Blase spricht (Brief 5.6). Die Darstellung
-/// (`MannyPlaceholder`, U2a) bildet die Posen ab.
-enum MannyPose { neutral, motiviert, feiernd }
+/// Anlass der Darstellung Mannys (Ergänzung 1, 6.3). Die Werte `neutral`,
+/// `motiviert` und `feiernd` stammen aus Ausschnitt 1; die übrigen sind die
+/// neuen Anlässe der Tabelle. Welche Bilddatei ein Anlass bekommt, steht
+/// ausschließlich in [mannyImageFor].
+enum MannyPose {
+  /// Standard (Chat-Avatar groß, Pfad, Onboarding).
+  neutral,
+
+  /// Begrüßen (Tagesbeginn, Moin-Blase).
+  gruessend,
+
+  /// Feier (Session-Ende, Streak, Meilenstein).
+  feiernd,
+
+  /// Ziel (aktuelle Station, Boss).
+  ziel,
+
+  /// Erinnerung, freundlich (Neustart, Streak-Gefahr).
+  motiviert,
+
+  /// Training-Begleiter (Session, Packliste).
+  training,
+
+  /// Trösten (Schmerz melden, schlechter Tag).
+  troestend,
+
+  /// Denken (Chat „schreibt“, Laden).
+  denkend,
+
+  /// Schlafen (Ruhetag, Nacht).
+  schlafend,
+}
+
+/// Die gelieferten Bilddateien je Variante (`<variante>/<name>.png`).
+enum MannyImage {
+  normal,
+  freudig,
+  traurig,
+
+  /// Kopf als Rundform (Manny-Knopf, Chat-Liste, Avatare).
+  kopf;
+
+  /// Dateiname im Verzeichnis der Variante.
+  String get fileName => '$name.png';
+}
+
+/// Zentrale Abbildung Anlass -> Körperbild (Ergänzung 1, 6.3, V2-70): Feier
+/// und Begrüßen zeigen `freudig`, Trösten `traurig`, alle übrigen Anlässe
+/// (auch die noch nicht eigens gezeichneten) fallen auf `normal` zurück.
+/// Der Kopf ist kein Anlass, sondern ein Zuschnitt ([MannyImage.kopf]).
+MannyImage mannyImageFor(MannyPose pose) => switch (pose) {
+  MannyPose.gruessend || MannyPose.feiernd => MannyImage.freudig,
+  MannyPose.troestend => MannyImage.traurig,
+  MannyPose.neutral ||
+  MannyPose.ziel ||
+  MannyPose.motiviert ||
+  MannyPose.training ||
+  MannyPose.denkend ||
+  MannyPose.schlafend => MannyImage.normal,
+};
+
+/// Verzeichnis der Assets (in `pubspec.yaml` deklariert).
+const String kMannyAssetRoot = 'assets/manny';
+
+/// Pfad des 1x-Bildes: `assets/manny/<brille|ohne>/<datei>.png`. Die Variante
+/// gilt in jeder Pose (die Brille wird nie abgesetzt).
+String mannyAssetPath(MannyLook look, MannyImage image) =>
+    '$kMannyAssetRoot/${look.name}/${image.fileName}';
 
 class BubbleDecision {
   const BubbleDecision({
@@ -78,7 +145,7 @@ BubbleDecision? nextBubble(
   if (manny.greetingPending && !manny.shownOn(MannyOccasion.greeting, today)) {
     return const BubbleDecision(
       occasion: MannyOccasion.greeting,
-      pose: MannyPose.neutral,
+      pose: MannyPose.gruessend,
     );
   }
 

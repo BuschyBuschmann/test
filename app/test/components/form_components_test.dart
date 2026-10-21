@@ -67,7 +67,7 @@ void main() {
           .widget<Text>(find.text('Kreuzbandriss (ACL)'))
           .style!;
       expect(s.fontFamily, 'BricolageGrotesque');
-      expect(s.fontSize, 18);
+      expect(s.fontSize, 20);
       expect(find.byIcon(Icons.check_circle_rounded), findsNothing);
       expect(
         decorationsUnder(
@@ -87,7 +87,7 @@ void main() {
       final CuraColors c = colorsAt(tester, f);
       expect(
         _borderBox(tester, f).border,
-        Border.all(color: c.accentHi, width: 2),
+        Border.all(color: c.accent, width: 2),
       );
       expect(
         decorationsUnder(
@@ -98,7 +98,7 @@ void main() {
       );
       final Finder check = find.byIcon(Icons.check_circle_rounded);
       expect(check, findsOneWidget);
-      expect(tester.widget<Icon>(check).color, c.accentHi);
+      expect(tester.widget<Icon>(check).color, c.accentText);
       expect(
         tester.getRect(check).right,
         greaterThan(tester.getRect(f).right - 32),
@@ -241,23 +241,23 @@ void main() {
     ) async {
       await pumpApp(tester, card(selected: true));
       final CuraColors c = colorsAt(tester, find.byType(ChoiceCard));
-      final Color ground = compose(c.accentSoft, glassWithGlow(c));
+      final Color ground = compose(c.accentSoft, compose(c.cardFillTop, c.bg));
       expect(contrastRatio(c.text1, ground), greaterThanOrEqualTo(4.5));
-      expect(contrastRatio(c.accentHi, ground), greaterThanOrEqualTo(3));
+      expect(contrastRatio(c.accentText, ground), greaterThanOrEqualTo(3));
     });
   });
 
   group('StepProgress (Brief 5.8)', () {
     testWidgets(
-      'Text „Schritt X von 4“, vier Segmente 4 dp hoch, 4 dp Abstand, '
+      'Text „Schritt X von 5“, fünf Segmente 4 dp hoch, 4 dp Abstand, '
       'erledigt und aktuell accent, offen Weiß 18 %',
       (WidgetTester tester) async {
         await pumpApp(tester, _pad(const StepProgress(step: 3)));
         final Finder f = find.byType(StepProgress);
         final CuraColors c = colorsAt(tester, f);
-        expect(find.text('Schritt 3 von 4'), findsOneWidget);
+        expect(find.text('Schritt 3 von 5'), findsOneWidget);
         final TextStyle s = tester
-            .widget<Text>(find.text('Schritt 3 von 4'))
+            .widget<Text>(find.text('Schritt 3 von 5'))
             .style!;
         expect(s.fontSize, 14);
         expect(s.color, c.text2);
@@ -265,14 +265,15 @@ void main() {
           tester,
           f,
         ).where((BoxDecoration d) => d.color != null).toList();
-        expect(segs.length, 4);
+        expect(segs.length, 5);
         expect(segs.map((BoxDecoration d) => d.color).toList(), <Color?>[
           c.accent,
           c.accent,
           c.accent,
           c.progressOff,
+          c.progressOff,
         ]);
-        expect(c.progressOff.a, closeTo(0.18, 0.005));
+        expect(c.progressOff.a, closeTo(0.14, 0.005));
         final List<Rect> rects = find
             .descendant(of: f, matching: find.byType(DecoratedBox))
             .evaluate()
@@ -286,16 +287,16 @@ void main() {
     testWidgets('Screenreader liest nur den Text', (WidgetTester tester) async {
       final SemanticsHandle h = tester.ensureSemantics();
       await pumpApp(tester, _pad(const StepProgress(step: 2)));
-      expect(find.bySemanticsLabel('Schritt 2 von 4'), findsOneWidget);
+      expect(find.bySemanticsLabel('Schritt 2 von 5'), findsOneWidget);
       final Iterable<SemanticsNode> labeled = <SemanticsNode>[
-        tester.getSemantics(find.text('Schritt 2 von 4')),
+        tester.getSemantics(find.text('Schritt 2 von 5')),
       ];
-      expect(labeled.single.label, 'Schritt 2 von 4');
+      expect(labeled.single.label, 'Schritt 2 von 5');
       h.dispose();
     });
 
-    testWidgets('Schritt 1 bis 4 passen sich an', (WidgetTester tester) async {
-      for (int i = 1; i <= 4; i++) {
+    testWidgets('Schritt 1 bis 5 passen sich an', (WidgetTester tester) async {
+      for (int i = 1; i <= 5; i++) {
         await pumpApp(tester, _pad(StepProgress(step: i)));
         final CuraColors c = colorsAt(tester, find.byType(StepProgress));
         final int filled = decorationsUnder(
@@ -303,12 +304,56 @@ void main() {
           find.byType(StepProgress),
         ).where((BoxDecoration d) => d.color == c.accent).length;
         expect(filled, i);
-        expect(find.text('Schritt $i von 4'), findsOneWidget);
+        expect(find.text('Schritt $i von 5'), findsOneWidget);
       }
     });
   });
 
   group('CuraTextField (Brief 5.9)', () {
+    testWidgets('L1K: Farbe des Feldwerts ist text-1 und hält ≥ 4,5:1 auf der '
+        'Karte (Worst Case), normal und Hoher Kontrast', (
+      WidgetTester tester,
+    ) async {
+      for (final bool hc in <bool>[false, true]) {
+        await pumpApp(
+          tester,
+          _pad(
+            CuraTextField(
+              label: 'Anzahl',
+              controller: TextEditingController(text: '3 × 10'),
+            ),
+          ),
+          highContrast: hc,
+        );
+        final CuraColors c = colorsAt(tester, find.byType(CuraTextField));
+        final EditableText e = tester.widget(find.byType(EditableText));
+        expect(e.style.color, c.text1, reason: 'hc=$hc');
+        expect(
+          worstCaseContrast(e.style.color!, c.cardFillTop),
+          greaterThanOrEqualTo(4.5),
+          reason: 'hc=$hc',
+        );
+      }
+    });
+
+    test('L1K: text-1 auf der Feldfläche ≥ 4,5:1 in allen vier Varianten', () {
+      for (final CuraColors c in <CuraColors>[
+        CuraColors.light,
+        CuraColors.dark,
+        CuraColors.lightHighContrast,
+        CuraColors.darkHighContrast,
+      ]) {
+        expect(
+          worstCaseContrast(c.text1, c.cardFillTop),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          worstCaseContrast(c.text1, c.cardFillBottom),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    });
+
     testWidgets('Label oberhalb, 56 dp, Rand border-control, Fokus accent-hi '
         '2 dp, Eingabe body', (WidgetTester tester) async {
       final TextEditingController ctrl = TextEditingController();
@@ -340,7 +385,7 @@ void main() {
       expect(tester.testTextInput.isVisible, isTrue);
       expect(
         _borderBox(tester, box).border,
-        Border.all(color: c.accentHi, width: 2),
+        Border.all(color: c.accentText, width: 2),
       );
       await tester.enterText(find.byType(TextField), 'Jakob');
       expect(ctrl.text, 'Jakob');
@@ -508,7 +553,7 @@ void main() {
       final CuraColors c = colorsAt(tester, find.byType(CuraLabel));
       final TextStyle s = tester.widget<Text>(find.text('DEIN PROFIL')).style!;
       expect(s.fontSize, 13);
-      expect(s.fontWeight, FontWeight.w600);
+      expect(s.fontWeight, FontWeight.w700);
       expect(s.letterSpacing, closeTo(13 * 0.06, 0.001));
       expect(s.color, c.text2);
       expect(

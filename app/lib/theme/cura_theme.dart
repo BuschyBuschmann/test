@@ -9,24 +9,34 @@ import 'cura_metrics.dart';
 import 'cura_typography.dart';
 
 abstract final class CuraTheme {
-  /// Dunkles Theme; `highContrast` wählt den Token-Satz „Hoher Kontrast“.
-  static ThemeData build({bool highContrast = false}) {
-    final CuraColors colors = highContrast
-        ? CuraColors.darkHighContrast
-        : CuraColors.dark;
-    final CuraTypography type = highContrast
-        ? CuraTypography.darkHighContrast
-        : CuraTypography.dark;
+  /// Theme der Inhaltsflächen: [brightness] wählt Hell oder Dunkel (Brief 3.2,
+  /// unabhängig von der Welt); [highContrast] den Token-Satz „Hoher Kontrast“
+  /// (gilt auch für „Transparenz reduzieren“, Brief 3.5).
+  static ThemeData build({
+    Brightness brightness = Brightness.light,
+    bool highContrast = false,
+  }) {
+    final CuraColors colors = CuraColors.variant(
+      brightness,
+      highContrast: highContrast,
+    );
+    final CuraTypography type = switch ((brightness, highContrast)) {
+      (Brightness.dark, true) => CuraTypography.darkHighContrast,
+      (Brightness.dark, false) => CuraTypography.dark,
+      (Brightness.light, true) => CuraTypography.lightHighContrast,
+      (Brightness.light, false) => CuraTypography.light,
+    };
 
-    final ColorScheme scheme = ColorScheme.dark(
+    final ColorScheme scheme = ColorScheme(
+      brightness: brightness,
       primary: colors.accent,
       onPrimary: colors.onAccent,
-      secondary: colors.accentHi,
-      onSecondary: colors.onAccent,
+      secondary: colors.accentText,
+      onSecondary: colors.surfaceOpaque,
       surface: colors.surfaceOpaque,
       onSurface: colors.text1,
       error: colors.statusError,
-      onError: colors.onAccent,
+      onError: colors.surfaceOpaque,
     );
 
     TextStyle withColor(TextStyle s, Color c) => s.copyWith(color: c);
@@ -50,7 +60,7 @@ abstract final class CuraTheme {
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: colors.bg,
       canvasColor: colors.bg,
@@ -59,8 +69,8 @@ abstract final class CuraTheme {
       extensions: <ThemeExtension<dynamic>>[colors, type],
       datePickerTheme: datePickerTheme(colors, type),
       // `primary` bleibt `accent` (Flächen, Ringe, Auswahl). Alles, was
-      // Material daraus als **Text** färbt, wird auf `accentHi` bzw. `text-1`
-      // umgelenkt (Brief-E-2, UI-4): Textbuttons, Eingabefeld-Labels.
+      // Material daraus als **Text** färbt, wird auf `accentText` bzw. `text-1`
+      // umgelenkt (Brief-E-2, V2-32): Textbuttons, Eingabefeld-Labels.
       textButtonTheme: TextButtonThemeData(
         style: _textButtonStyle(colors, type),
       ),
@@ -72,21 +82,21 @@ abstract final class CuraTheme {
       ),
       inputDecorationTheme: inputDecorationTheme(colors, type),
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: colors.accentHi,
-        selectionHandleColor: colors.accentHi,
+        cursorColor: colors.accentText,
+        selectionHandleColor: colors.accentText,
       ),
     );
   }
 
   static ButtonStyle _textButtonStyle(CuraColors colors, CuraTypography type) =>
       TextButton.styleFrom(
-        foregroundColor: colors.accentHi,
+        foregroundColor: colors.accentText,
         textStyle: type.bodyStrong,
         minimumSize: const Size(CuraSize.touchTarget, CuraSize.touchTarget),
       );
 
   /// Eingabefelder (auch im Eingabe-Modus der Datumsauswahl): Label `text-2`,
-  /// fokussiert bzw. schwebend `accentHi`, nie `accent` als Text.
+  /// fokussiert bzw. schwebend `accentText`, nie `accent` als Text.
   static InputDecorationTheme inputDecorationTheme(
     CuraColors colors,
     CuraTypography type,
@@ -100,7 +110,7 @@ abstract final class CuraTheme {
           color: states.contains(WidgetState.error)
               ? colors.statusError
               : (states.contains(WidgetState.focused)
-                    ? colors.accentHi
+                    ? colors.accentText
                     : colors.text2),
         );
       }),
@@ -109,8 +119,8 @@ abstract final class CuraTheme {
     );
   }
 
-  /// Dunkle Datumsauswahl. Textbuttons in `accent-hi` (Brief-E-2, UI-4: nie
-  /// `accent` als Text auf `surface-opaque`); der gewählte Tag bleibt eine
+  /// Datumsauswahl im gewählten Thema. Textbuttons in `accent-text` (Brief-E-2:
+  /// nie `accent` als Text auf `surface-opaque`); der gewählte Tag bleibt eine
   /// Fläche `accent` mit `on-accent`.
   static DatePickerThemeData datePickerTheme(
     CuraColors colors,
@@ -144,9 +154,9 @@ abstract final class CuraTheme {
       ) {
         return states.contains(WidgetState.selected)
             ? colors.onAccent
-            : colors.accentHi;
+            : colors.accentText;
       }),
-      todayBorder: BorderSide(color: colors.accentHi),
+      todayBorder: BorderSide(color: colors.accentText),
       inputDecorationTheme: inputDecorationTheme(colors, type),
     );
   }

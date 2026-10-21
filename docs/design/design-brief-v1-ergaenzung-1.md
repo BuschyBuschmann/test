@@ -124,7 +124,7 @@ Alle `PathNode`s werden bedienbar (Hit-Area mindestens 48 dp, sichtbarer `focus-
 | Zustand | Verhalten | Text |
 |---|---|---|
 | **Aktuell** | Wechsel auf den Tab "Heute" (Nav zeigt "Heute" aktiv). Gilt auch, wenn heute schon erledigt ist (Heute zeigt dann "Heute erledigt"). | kein Hinweis |
-| **Gesperrt** | `NodeHint` über der Unit (wenn oben weniger als 64 dp frei sind: darunter), kein Tabwechsel. | Trainingstag, Wochenziel: "Kommt in Woche N". Phasen-Abschluss und Boss mit Beschriftung: "Phasen-Abschluss kommt in Woche N" bzw. "Return to Sport kommt in Woche N". Liegt die Unit in der laufenden Woche: "Kommt noch diese Woche". |
+| **Gesperrt** | `NodeHint` über der Unit (wenn oben weniger als 64 dp frei sind: darunter), kein Tabwechsel. | Trainingstag, Wochenziel: "Kommt in Woche N". Phasen-Abschluss und Boss mit Beschriftung: "Phasen-Abschluss kommt in Woche N" bzw. "Return to Sport kommt in Woche N". Liegt die Unit in der laufenden Woche: "Kommt noch diese Woche". Der Ausblick `PathOutlook` (Ergänzung 3) ist keine Unit und hat einen eigenen Text: "Nach Return to Sport geht es hier weiter. Die Details folgen noch." |
 | **Erledigt** | `NodeHint`, kein Tabwechsel. | "Erledigt. Das hast du geschafft." |
 
 **Form des Hinweises (Festlegung):** `NodeHint` am Knoten, **nicht** die Manny-Blase und **nicht** eine Snackbar. Begründung: Manny sitzt woanders auf dem Pfad, sodass eine Blase den Bezug zur getippten Unit verliert und mit den Blasen-Anlässen (einmal pro Tag) kollidiert. Eine Snackbar würde die freien Zonen (K2) überdecken. Der `NodeHint` ist opak, verbraucht kein Blur-Budget (nur Nav und eine eventuelle Blase bleiben, also höchstens 2) und steht direkt an der Unit.
@@ -196,7 +196,7 @@ Alle `PathNode`s werden bedienbar (Hit-Area mindestens 48 dp, sichtbarer `focus-
 - UI-60: Tipp auf eine gesperrte Unit zeigt einen `NodeHint` mit "Kommt in Woche N" (N = Woche dieser Unit; bei Phasen-Abschluss und Boss mit Beschriftung, in der laufenden Woche "Kommt noch diese Woche") und wechselt nicht den Tab.
 - UI-61: Tipp auf eine erledigte Unit zeigt den `NodeHint` "Erledigt. Das hast du geschafft." und wechselt nicht den Tab.
 - UI-62: Der `NodeHint` ist opak, ohne Blur, höchstens einer gleichzeitig, vollständig im sichtbaren Bereich (≥ 16 dp Seitenrand), bricht bei 200 % Schrift um. Er schließt durch Tipp irgendwo, Scrollen, Escape und nach 5 s (nicht bei aktivem Screenreader).
-- UI-63: Jede Unit hat Hit-Area ≥ 48 dp, sichtbaren `focus-ring`, ist mit Enter/Leertaste auslösbar und liest die Labels aus 3.5 vor. Die Freien Zonen unten links/rechts (UI-24) sind weiterhin frei, weil auf dem Pfad keine Snackbar erscheint.
+- UI-63 (gilt sinngemäß auch für den Ausblick, siehe UI-91 bis UI-93 in Ergänzung 3): Jede Unit hat Hit-Area ≥ 48 dp, sichtbaren `focus-ring`, ist mit Enter/Leertaste auslösbar und liest die Labels aus 3.5 vor. Die Freien Zonen unten links/rechts (UI-24) sind weiterhin frei, weil auf dem Pfad keine Snackbar erscheint.
 
 **Querschnitt**
 - UI-64: Mit "Bewegung reduzieren" haben Sheet, Dialoge, Snackbar, Hinweis und Scrim keine Schiebe- oder Skalieranimation und höchstens 120 ms Einblenden. Der neu berechnete Pfad springt ohne Animation.

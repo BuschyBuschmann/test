@@ -45,14 +45,18 @@ class ChoiceCard extends StatelessWidget {
     final CuraMotion motion = CuraMotion.of(context);
     return CuraPressable(
       onPressed: onPressed,
-      semanticLabel: S.choiceLabel(title, selected),
+      // Der Untertitel gehört zur Beschriftung: der Screenreader liest sonst
+      // nur den Titel („Manuell“), nicht „Ich trainiere selbst und trage es ein“.
+      semanticLabel: subtitle == null
+          ? S.choiceLabel(title, selected)
+          : S.choiceLabelDetail(title, subtitle!, selected),
       autofocus: autofocus,
       focusNode: focusNode,
       ringRadius: CuraRadius.card,
       builder: (BuildContext context, bool pressed) {
         return TweenAnimationBuilder<Color?>(
           tween: ColorTween(
-            end: selected ? colors.accentHi : colors.controlBorder,
+            end: selected ? colors.accent : colors.controlBorder,
           ),
           duration: motion.duration(motion.fast),
           curve: motion.curve,
@@ -108,7 +112,7 @@ class ChoiceCard extends StatelessWidget {
                   Icon(
                     Icons.check_circle_rounded,
                     size: CuraComponent.iconSize,
-                    color: colors.accentHi,
+                    color: colors.accentText,
                   ),
                 ],
               ],

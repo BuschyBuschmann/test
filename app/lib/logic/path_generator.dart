@@ -8,6 +8,22 @@ import 'injury_type.dart';
 /// Der Pfad ist ein Beispiel und wird immer so beschriftet (UI-25).
 const bool kSamplePathIsPlaceholder = true;
 
+/// Hinter dem Boss steht der gesperrte Ausblick „Prävention &
+/// Gesundheitssport“ (Ergänzung 3). Reines Darstellungselement `PathOutlook`:
+/// kein Teil der Unit-Liste, ohne ID, Status oder Einfluss auf Generator,
+/// Streak und Profil-Neuberechnung. PLATZHALTER: die volle Phase folgt mit
+/// eigener Spec.
+const bool kPathOutlookShown = true;
+
+/// Kennung des Ausblicks für den `NodeHint` (keine Unit-ID; Unit-IDs sind
+/// `w{W}-d{1..3}`, `w{W}-goal`, `p{P}-end`, `boss`).
+const String kPathOutlookHintId = 'outlook';
+
+/// Kennungen der Hinweise an den Chips der Pfad-Kopfzeile (SK-1). Sie teilen
+/// sich mit den Unit-Hinweisen den einen Hinweis-Platz (höchstens einer).
+const String kStatFreezeHintId = 'stat-freeze';
+const String kStatStreakHintId = 'stat-streak';
+
 const int kPathWeeks = 12;
 const int kWeeksPerPhase = 4;
 const int kTrainingDaysPerWeek = 3;

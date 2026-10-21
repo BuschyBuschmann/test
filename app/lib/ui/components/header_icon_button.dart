@@ -2,6 +2,8 @@
 // 24 dp `text-2`, Fläche transparent, Pressed: Kreis Weiß 10 %. Hoher
 // Kontrast: zusätzlich Kreisrand `border-control-hc`. Tooltip bei
 // Langdruck/Hover; der Screenreader liest den Tooltip-Text als Label.
+// Auf der Kopf-Karte (`onHeaderCard`) steht das Symbol in `#FFFFFF` auf dem
+// Glas der Welt, der Kreis zeigt beim Drücken Weiß 18 %.
 import 'package:flutter/material.dart';
 
 import '../../theme/cura_colors.dart';
@@ -17,9 +19,13 @@ class HeaderIconButton extends StatelessWidget {
     required this.onPressed,
     this.autofocus = false,
     this.focusNode,
+    this.onHeaderCard = false,
   });
 
   final IconData icon;
+
+  /// Der Knopf sitzt auf der Kopf-Karte (weißes Symbol statt `text-2`).
+  final bool onHeaderCard;
 
   /// Tooltip und Screenreader-Label (z. B. „Deine Daten“).
   final String tooltip;
@@ -42,10 +48,14 @@ class HeaderIconButton extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: pressed ? colors.pressedOverlay : null,
+              color: pressed
+                  ? (onHeaderCard ? colors.headerEdge : colors.pressedOverlay)
+                  : null,
               border: colors.highContrast
                   ? Border.all(
-                      color: colors.controlBorder,
+                      color: onHeaderCard
+                          ? colors.headerInk
+                          : colors.controlBorder,
                       width: CuraSize.controlBorder,
                     )
                   : null,
@@ -53,7 +63,7 @@ class HeaderIconButton extends StatelessWidget {
             child: Icon(
               icon,
               size: CuraComponent.iconSize,
-              color: colors.text2,
+              color: onHeaderCard ? colors.headerInk : colors.text2,
             ),
           ),
         );

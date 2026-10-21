@@ -1,5 +1,6 @@
 import 'package:curaone/logic/app_state.dart';
 import 'package:curaone/logic/clock.dart';
+import 'package:curaone/logic/manny_look.dart';
 import 'package:curaone/logic/manny_occasions.dart';
 import 'package:curaone/logic/manny_state.dart';
 import 'package:curaone/logic/streak.dart';
@@ -184,6 +185,94 @@ void main() {
       expect(s.path.pulsePending, isNull);
       expect(consumeCelebration(s), s);
       expect(nextBubble(s, at(10)), isNull);
+    });
+  });
+
+  group('Pose → Bild (V2-70, Brief-Ergänzung 1, 6.3)', () {
+    test('Feier und Begrüßen liefern freudig', () {
+      expect(mannyImageFor(MannyPose.feiernd), MannyImage.freudig);
+      expect(mannyImageFor(MannyPose.gruessend), MannyImage.freudig);
+    });
+
+    test('Trösten (Schmerzmeldung in der Session, schlechter Tag) liefert '
+        'traurig', () {
+      expect(mannyImageFor(MannyPose.troestend), MannyImage.traurig);
+    });
+
+    test('alle übrigen Anlässe fallen auf normal zurück', () {
+      for (final MannyPose p in <MannyPose>[
+        MannyPose.neutral,
+        MannyPose.ziel,
+        MannyPose.motiviert,
+        MannyPose.training,
+        MannyPose.denkend,
+        MannyPose.schlafend,
+      ]) {
+        expect(mannyImageFor(p), MannyImage.normal, reason: p.name);
+      }
+    });
+
+    test('jede Pose hat genau eine Datei; der Kopf ist kein Anlass', () {
+      for (final MannyPose p in MannyPose.values) {
+        expect(mannyImageFor(p), isNot(MannyImage.kopf), reason: p.name);
+      }
+      expect(MannyImage.values.map((MannyImage i) => i.fileName), <String>[
+        'normal.png',
+        'freudig.png',
+        'traurig.png',
+        'kopf.png',
+      ]);
+    });
+
+    test('die gewählte Variante bleibt in jeder Pose gleich (Brille nie '
+        'abgesetzt)', () {
+      for (final MannyLook look in MannyLook.values) {
+        final Set<String> dirs = <String>{
+          for (final MannyPose p in MannyPose.values)
+            mannyAssetPath(look, mannyImageFor(p)).split('/')[2],
+        };
+        expect(dirs, <String>{look.name});
+      }
+      expect(
+        mannyAssetPath(MannyLook.brille, MannyImage.freudig),
+        'assets/manny/brille/freudig.png',
+      );
+      expect(
+        mannyAssetPath(MannyLook.ohne, MannyImage.traurig),
+        'assets/manny/ohne/traurig.png',
+      );
+    });
+
+    test('Blasen-Anlässe: Begrüßung freudig, Feier freudig, Erinnerung und '
+        'Fakt normal', () {
+      expect(
+        mannyImageFor(
+          nextBubble(
+            onboardedState().copyWith(
+              manny: const MannyState(greetingPending: true),
+            ),
+            at(10),
+          )!.pose,
+        ),
+        MannyImage.freudig,
+      );
+      final BubbleDecision celebration = nextBubble(
+        onboardedState().copyWith(
+          celebration: CelebrationState(day: kToday, unitId: 'w5-d1'),
+        ),
+        at(10),
+      )!;
+      expect(mannyImageFor(celebration.pose), MannyImage.freudig);
+      final BubbleDecision restart = nextBubble(
+        onboardedState().copyWith(
+          streak: const StreakState(resetNoticePending: true),
+        ),
+        at(10),
+      )!;
+      expect(mannyImageFor(restart.pose), MannyImage.normal);
+      final BubbleDecision fact = nextBubble(onboardedState(), at(10))!;
+      expect(fact.occasion, MannyOccasion.fact);
+      expect(mannyImageFor(fact.pose), MannyImage.normal);
     });
   });
 }

@@ -1,0 +1,55 @@
+{
+  "id": "d",
+  "plan_ref": "Plan 6.7 Nr. 3 und Nr. 5 (d), DB-T63, DB-T80, DB-T83",
+  "description": "Plausibilitaetsgrenzen relativ zum UTC-Datum des Servers. Sofortige Aufrufe: +-1 Tag. Warteschlange (submit_daily_checkup, L5): Bindungstag - 1 bis UTC-Datum + 1",
+  "server_utc_instant": "2026-07-15T12:00:00Z",
+  "server_utc_date": "2026-07-15",
+  "bound_at": "2026-07-01T08:00:00Z",
+  "bound_day": "2026-07-01",
+  "cases": [
+    {
+      "local_day": "2026-07-17",
+      "offset_days": 2,
+      "immediate": "invalid_local_day",
+      "queue": "invalid_local_day"
+    },
+    {
+      "local_day": "2026-07-16",
+      "offset_days": 1,
+      "immediate": "accepted",
+      "queue": "accepted"
+    },
+    {
+      "local_day": "2026-07-15",
+      "offset_days": 0,
+      "immediate": "accepted",
+      "queue": "accepted"
+    },
+    {
+      "local_day": "2026-07-14",
+      "offset_days": -1,
+      "immediate": "accepted",
+      "queue": "accepted"
+    },
+    {
+      "local_day": "2026-07-13",
+      "offset_days": -2,
+      "immediate": "invalid_local_day",
+      "queue": "accepted"
+    },
+    {
+      "local_day": "2026-06-30",
+      "offset_days": -15,
+      "immediate": "invalid_local_day",
+      "queue": "accepted",
+      "note": "Bindungstag - 1"
+    },
+    {
+      "local_day": "2026-06-29",
+      "offset_days": -16,
+      "immediate": "invalid_local_day",
+      "queue": "invalid_local_day",
+      "note": "vor Bindungstag - 1"
+    }
+  ]
+}

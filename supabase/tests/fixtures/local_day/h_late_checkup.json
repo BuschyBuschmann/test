@@ -1,0 +1,19 @@
+{
+  "id": "h",
+  "plan_ref": "Plan 6.7 Nr. 3/5 (h), DB-T83 (L5), U outbox (L3)",
+  "description": "Check-up am Tag D offline erfasst, am Tag D+3 gesendet -> angenommen und ausgewertet; Tag vor Bindungstag - 1 -> invalid_local_day, in der App zurueckgestellt",
+  "bound_at": "2026-07-01T08:00:00Z",
+  "cases": [
+    {
+      "local_day": "2026-07-10",
+      "sent_at": "2026-07-13T09:00:00Z",
+      "expect": "accepted"
+    },
+    {
+      "local_day": "2026-06-29",
+      "sent_at": "2026-07-13T09:00:00Z",
+      "expect": "invalid_local_day",
+      "app": "deferred"
+    }
+  ]
+}

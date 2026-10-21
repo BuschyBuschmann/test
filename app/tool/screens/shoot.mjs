@@ -14,15 +14,23 @@
 //   --base=URL         Server (Standard http://127.0.0.1:8765)
 //   --out=DIR          Ausgabe (Standard build/screens)
 //   --only=a,b         nur diese Szenario-Kennungen
-//   --variants=a,b     nur diese Varianten (normal, scale2, hc, rm)
+//   --variants=a,b     nur diese Varianten (normal, scale2, hc, rm, worlds oder
+//                      einzelne wie world-night-dark)
 //   --viewports=a,b    nur diese Viewports (z. B. 390x844)
 //   --no-sims          ohne Farbsehschwäche-Simulation
 //   --no-extras        ohne Tablet- und Querformat-Stichproben
+//   --no-worlds        ohne die Welten-Läufe (siehe unten)
 //   --workers=N        parallele Seiten (Standard 4)
 //   --clock=fixed|install|none   Fake-Uhr (Standard fixed, siehe web_checks.mjs)
 //
+// Welten (F2-R4, Plan 3.6): Pfad, Heute, Look-Schritt und Profil in allen vier
+// Welten (Morgen, Mittag, Abend, Nacht) × beiden Themen (Hell, Dunkel). Die Welt
+// wählt der Lauf wie der Nutzer über die Darstellung (URL-Parameter `world` und
+// `theme`, im Preview als Darstellungs-Einstellungen), nicht über die Uhr; die
+// Szenarien und Größen stehen in `scenarios.json` unter `worlds`.
+//
 // Exit-Code 1 bei: Pipette außerhalb der Toleranz, Kontrast < Schwelle bei
-// Glow-nahem Text, Seitenfehler, Szenario nicht bereit.
+// Text auf Karte oder Welt, Seitenfehler, Szenario nicht bereit.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,6 +59,9 @@ const outDir = path.resolve(arg('out', path.join(appRoot, 'build', 'screens')));
 const only = arg('only', '')?.split(',').filter(Boolean);
 const onlyVariants = arg('variants', '')?.split(',').filter(Boolean);
 const onlyViewports = arg('viewports', '')?.split(',').filter(Boolean);
+// Dauer-Animationen (cmp-busy) rendern in Software sehr langsam (ca. 12 s je
+// Bild allein, mehr bei 4 Workern): großzügige Frist bis CURA_READY.
+const READY_TIMEOUT_MS = 120000;
 const workers = Number(arg('workers', '4'));
 const clock = arg('clock', 'fixed');
 const DPR = 2;
@@ -60,10 +71,27 @@ const scenarios = config.scenarios.filter((s) => !only.length || only.includes(s
 // --- Aufträge -----------------------------------------------------------------
 const jobs = [];
 const pick = (list, filter, key = (x) => x) => list.filter((x) => !filter.length || filter.includes(key(x)));
+// Szenarien mit festem Skalierungswert (z. B. chat-manny-scale15) ignorieren den
+// Parameter `scale`: die Variante scale2 entfällt für sie.
+const fixedScale = new Set(config.fixedScale ?? []);
 for (const variant of pick(Object.keys(config.variants), onlyVariants)) {
   for (const vp of pick(config.viewports, onlyViewports, (v) => v.name)) {
     for (const id of scenarios) {
+      if (variant === 'scale2' && fixedScale.has(id)) continue;
       jobs.push({ kind: 'shot', variant, vp, id, params: { scenario: id, ...config.variants[variant] } });
+    }
+  }
+}
+const wd = config.worlds;
+if (wd && !flag('no-worlds')) {
+  const vp = config.viewports.find((v) => v.name === wd.viewport);
+  for (const world of wd.worlds) {
+    for (const theme of wd.themes) {
+      const variant = `world-${world}-${theme}`;
+      if (onlyVariants.length && !onlyVariants.includes(variant) && !onlyVariants.includes('worlds')) continue;
+      for (const id of wd.scenarios.filter((s) => scenarios.includes(s))) {
+        jobs.push({ kind: 'shot', variant, vp, id, params: { scenario: id, world, theme } });
+      }
     }
   }
 }
@@ -120,9 +148,12 @@ function save(rel, buffer) {
 
 async function runShot(worker, job) {
   const ctx = await contextFor(worker, job.vp);
-  const s = await openScenario(ctx, base, { ...job.params, dumpText: 1 }, { clock, now: config.now });
+  const s = await openScenario(ctx, base, { ...job.params, dumpText: 1 }, { clock, now: config.now, timeoutMs: READY_TIMEOUT_MS });
   try {
     if (!s.ready) problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht bereit (Timeout)`);
+    if (s.ready && s.settled === false && !s.env?.loops) {
+      problems.push(`${job.variant}/${job.vp.name}/${job.id}: nicht zur Ruhe gekommen (Animation läuft weiter, Szenario nicht als loops markiert; ${JSON.stringify(s.readyInfo)})`);
+    }
     if (s.error) problems.push(`${job.variant}/${job.vp.name}/${job.id}: ${s.error.slice(0, 200)}`);
     const png = await s.page.screenshot();
     const rel = save(path.join(job.variant, job.vp.name, `${job.id}.png`), png);
@@ -141,8 +172,16 @@ async function runShot(worker, job) {
 
 async function measureContrast(png, dump, job) {
   const rows = [];
+  // Scrollender Inhalt, der unter einem festen Overlay (Nav, Button-Gruppe,
+  // Primärbutton-Reihe) liegt, ist dort verdeckt: Das Median-Verfahren würde die
+  // Farbe des Overlays als Untergrund lesen. Nur Texte des Overlays selbst
+  // und Texte ohne Überschneidung zählen.
+  const overlays = Object.values(dump.overlays ?? {});
+  const hidden = (t) =>
+    !t.inOverlay &&
+    overlays.some((o) => t.x < o.x + o.w && t.x + t.w > o.x && t.y < o.y + o.h && t.y + t.h > o.y);
   const texts = dump.texts.filter(
-    (t) => t.onScreen && t.glowAlpha > 0 && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
+    (t) => t.onScreen && !hidden(t) && t.ground !== 'opaque' && t.colorAlpha >= 0.999,
   );
   if (!texts.length) return rows;
   const requests = texts.map((t, i) => ({
@@ -162,7 +201,6 @@ async function measureContrast(png, dump, job) {
       scenario: job.id,
       text: t.text.replace(/\s+/g, ' ').slice(0, 40),
       ground: t.ground,
-      glowAlpha: t.glowAlpha,
       textColor: t.color,
       measuredBackground: m.rgb ? rgbToHex(m.rgb) : '',
       samples: m.n,
@@ -172,6 +210,11 @@ async function measureContrast(png, dump, job) {
       status: ratio === null ? 'n/a' : ratio >= (t.isIcon ? config.contrast.minRatioIcon : config.contrast.minRatio) ? 'ok' : 'FEHLER',
     };
     rows.push(row);
+    if (row.status === 'n/a') {
+      problems.push(
+        `Kontrast ${job.variant}/${job.vp.name}/${job.id} ${row.kind === 'icon' ? 'Symbol' : `„${row.text}“`}: nicht messbar (${m.n} Messpunkte < 20)`,
+      );
+    }
     if (row.status === 'FEHLER') {
       problems.push(
         `Kontrast ${job.variant}/${job.vp.name}/${job.id} ${row.kind === 'icon' ? 'Symbol' : `„${row.text}“`}: ${ratio.toFixed(2)} < ${row.limit}`,
@@ -213,7 +256,7 @@ async function measurePipette(png, dump, job) {
 
 async function runSim(worker, job) {
   const ctx = await contextFor(worker, job.vp);
-  const s = await openScenario(ctx, base, { scenario: job.id }, { clock, now: config.now });
+  const s = await openScenario(ctx, base, { scenario: job.id }, { clock, now: config.now, timeoutMs: READY_TIMEOUT_MS });
   try {
     if (!s.ready) problems.push(`sim-${job.type}/${job.id}: nicht bereit`);
     const normal = await s.page.screenshot();
@@ -264,7 +307,7 @@ const shots = results.filter((r) => r.kind === 'shot');
 const sims = results.filter((r) => r.kind === 'sim');
 const contrastRows = shots.flatMap((r) => r.contrast);
 const csv = [
-  'variant,viewport,scenario,kind,text,ground,glowAlpha,textColor,measuredBackground,samples,ratio,limit,status',
+  'variant,viewport,scenario,kind,text,ground,textColor,measuredBackground,samples,ratio,limit,status',
   ...contrastRows.map((c) =>
     [
       c.variant,
@@ -273,7 +316,6 @@ const csv = [
       c.kind,
       JSON.stringify(c.text),
       c.ground,
-      c.glowAlpha.toFixed(4),
       c.textColor,
       c.measuredBackground,
       c.samples,

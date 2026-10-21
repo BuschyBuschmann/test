@@ -146,7 +146,7 @@ Regeln: Nichts unter 13 sp. Kein Schriftgewicht unter 400. Systemseitige Schrift
 
 Verwendete Animationen im ersten Ausschnitt: Seitenwechsel im Onboarding (Schiebung 24 dp und Einblenden, `dur-base`), Sprechblase (Einblenden plus 8 dp Schiebung, `dur-base`), Unit-Abschluss (einmaliger Ring-Puls, `dur-slow`), Auswahlkarte (Randwechsel, `dur-fast`). Keine Dauerschleifen, keine Bounce-Kurven. Die Manny-Animationen (Spec 3) sind eine externe Abhängigkeit und im Platzhalter nicht enthalten.
 
-**Reduzierte Bewegung** (`MediaQuery.disableAnimations`): alle Schiebungen und Pulse entfallen, Zustandswechsel sind Sofortwechsel oder ein Überblenden von höchstens `dur-fast`. Der Pfad scrollt weiterhin normal. Manny zeigt statische Posen.
+**Reduzierte Bewegung** (`MediaQuery.disableAnimations`): alle Schiebungen und Pulse entfallen, Zustandswechsel sind Sofortwechsel oder ein Überblenden von höchstens `dur-fast`. Der Pfad scrollt weiterhin normal. Manny zeigt statische Posen. (siehe Erratum E-3)
 
 ---
 
@@ -201,7 +201,7 @@ Größen (Durchmesser): klein 48 dp (Trainingstag), mittel 60 dp (Wochenziel), g
 | Boss gesperrt | wie Gesperrt, Rand `accent` 55 %, Stern `accent-hi` |
 | Groß gesperrt | wie Gesperrt, Stern Weiß 50 % |
 
-Beschriftung unter großen und Boss-Units sowie mittleren (`caption`, `text-3`). Zukünftige Strecke: gepunktete Linie Weiß 22 %, 3 dp. Der Pfad ist geschwungen (Kurve durch alternierende Positionen links/rechts, keine gerade Linie), vertikal scrollend, Zukunft oben.
+Beschriftung unter großen und Boss-Units sowie mittleren (`caption`, `text-3`). Zukünftige Strecke: gepunktete Linie Weiß 22 %, 3 dp, vom Boss weiter bis zum Ausblick `PathOutlook` (Ergänzung 3, keine Unit, kein weiterer Durchmesser). Der Pfad ist geschwungen (Kurve durch alternierende Positionen links/rechts, keine gerade Linie), vertikal scrollend, Zukunft oben.
 
 ### 5.6 Manny-Platzhalter und Sprechblase (`MannyPlaceholder`, `MannyBubble`, neu)
 - **Manny:** Flutter-Formen (`CustomPainter`): Körper `#34425F` mit Rand Weiß 35 % (1 dp), Flügel, weißer Bauch `#F2F0EB`, zwei weiße Augen mit dunklen Pupillen, Schnabel und Füße in `accent-hi`. Drei Posen als Parameter (`neutral`, `motiviert`, `feiernd`), statisch. Höhe auf dem Pfad ca. 80 dp, im Onboarding 56–64 dp, in der Sprechblase nicht enthalten. Eine spätere Illustration ersetzt nur dieses Widget.
@@ -257,7 +257,7 @@ Folge für die Anzeige: Die Fortschrittsanzeige zeigt **"Schritt X von 4"**, nic
 
 Layout (von oben): Statusleiste, `PathHeader`, scrollender Pfad (Zukunft oben, Vergangenheit unten), `FloatingNav`. Platz unten rechts über der Nav (56 dp, 16 dp Abstand) und unten links bleibt **frei** für den späteren Manny-Chat-Button (Spec 7) bzw. Montags-Brief (Spec 5). Nichts wird dort gezeichnet.
 
-Inhalt: Pfad-Einheit ist die **Woche** (Spec 3). Je Woche mehrere kleine Units (Trainingstage), eine mittlere (Wochenziel); am Ende einer Phase eine große Unit (Phasen-Abschluss), am Ende des Pfads die Boss-Unit "Return to Sport". Manny sitzt auf der aktuellen Unit. Erledigte Units sind klar markiert (Haken).
+Inhalt: Pfad-Einheit ist die **Woche** (Spec 3). Je Woche mehrere kleine Units (Trainingstage), eine mittlere (Wochenziel); am Ende einer Phase eine große Unit (Phasen-Abschluss), am Ende des Pfads die Boss-Unit "Return to Sport", dahinter ein gesperrter Ausblick "Prävention & Gesundheitssport" (Ergänzung 3). Manny sitzt auf der aktuellen Unit. Erledigte Units sind klar markiert (Haken).
 
 **Platzhalterdaten (Annahme, keine medizinische Aussage):** Ein Generator liefert für ACL einen festen Beispielpfad, dessen Länge und Phasen **nur Demo-Werte** sind (z. B. 12 Wochen in 3 Phasen mit je 3 Trainingstagen und 1 Wochenziel pro Woche). Die aktuelle Woche ergibt sich aus dem Datum (Schritt 4). Die echten Werte kommen aus dem Physio-Framework (Blocker, extern). Bei Datum in der Zukunft, über das Pfadende oder bei anderem Verletzungstyp: derselbe Beispielpfad mit Hinweiszeile "Beispielpfad" in der Kopfzeile (kleines Label), damit nichts als echte Planung erscheint.
 
@@ -270,7 +270,7 @@ Wie Freezes verdient werden ("Belohnung für Meilensteine"), ist im Ausschnitt n
 
 **Manny-Auftritte (Spec 3):** Im Ausschnitt nur zwei Anlässe, mit **festen Beispieltexten**: (1) nach dem Onboarding / erste Session: "Moin [Name], los geht's. Dein Weg beginnt hier." (2) Streak-Gefahr (abends, wenn heute noch nichts eingetragen): "Dein Streak von [N] Tagen wartet auf dich. Heute noch eine Runde?" Dazu optional ein Beispielfakt im Sprechblasenformat, z. B. "Dein Gewebe baut sich gerade aktiv um. Heute zählt." (Beispiel aus Spec 3, Platzhalter bis zum Physio-Pool). Anlass (3) Feier nach Eintragen eines Trainings (Pose `feiernd`, "Stark, [Name]. Das war Tag [N]."). Alle sofort wegtippbar (X oder Tap irgendwo), erscheinen höchstens einmal pro Anlass und Tag. Die Texte sind Platzhalter bis zur KI-Anbindung.
 
-**Zustände Pfad:** Standard, Laden (statische Glas-Kreise als Platzhalter, kein Shimmer, höchstens 300 ms sichtbar), Fehler ("Dein Pfad konnte nicht geladen werden." plus Button "Nochmal versuchen", `status-error`-Icon), Streak-Zustände (oben), Manny-Blase sichtbar/ausgeblendet. Leerer Zustand entfällt (der Pfad hat immer Inhalt). Beim Öffnen: aktuelle Unit auf ca. 55 % der Höhe zentriert.
+**Zustände Pfad:** Standard, Laden (statische Glas-Kreise als Platzhalter, kein Shimmer, höchstens 300 ms sichtbar), Fehler ("Dein Pfad konnte nicht geladen werden." plus Button "Nochmal versuchen", `status-error`-Icon; Fehlertext beim Start siehe Erratum E-4), Streak-Zustände (oben), Manny-Blase sichtbar/ausgeblendet. Leerer Zustand entfällt (der Pfad hat immer Inhalt). Beim Öffnen: aktuelle Unit auf ca. 55 % der Höhe zentriert.
 
 ### 6.3 Heute (Tab "Heute"), minimal nach Spec 2
 
@@ -309,7 +309,7 @@ Verhalten:
 - **Reduzierte Bewegung:** siehe 3.6.
 - **Fokus und Tastatur/Switch:** Sichtbarer `focus-ring`. Reihenfolge entspricht der visuellen Reihenfolge von oben nach unten und links nach rechts. Primärbutton ist über die Tastatur erreichbar. Sprechblase hat Schließen-Aktion, Escape/Zurück schließt sie.
 - **Screenreader (TalkBack/VoiceOver), Beispiele für Labels:**
-  - Pfad-Unit: "Woche 5, Trainingstag 3, aktuell" / "… erledigt" / "… gesperrt". Boss: "Return to Sport, gesperrt". Die Pfadlinie ist ausgeblendet.
+  - Pfad-Unit: "Woche 5, Trainingstag 3, aktuell" / "… erledigt" / "… gesperrt". Boss: "Return to Sport, gesperrt". Ausblick: "Prävention und Gesundheitssport, gesperrt." (Ergänzung 3). Die Pfadlinie ist ausgeblendet.
   - Streak: "Streak: 12 Tage" und "Streak-Freezes: 2". Eingefroren: "Streak: 12 Tage, eingefroren".
   - Manny-Blase: Text wird vorgelesen, Schließen-Button "Nachricht schließen". Manny-Bild: "Manny, dein Begleiter" (nicht doppelt zur Blase).
   - Auswahlkarte: "Kreuzbandriss (ACL), Auswahl, nicht ausgewählt/ausgewählt".
@@ -347,7 +347,7 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 **Glas, Glow, Motion**
 - UI-6: Pro Screen sind höchstens 2 `BackdropFilter` im Widget-Baum gleichzeitig sichtbar (Nav und Sprechblase/Sheet). Karten, Chips und Listenelemente enthalten keinen (Code-Suche).
 - UI-7 (siehe Erratum E-1: neue Fassung gilt): Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Text liegt mindestens 70 dp vom Glow-Mittelpunkt entfernt (Screenshot-Prüfung der Screens aus 6).
-- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen.
+- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen. (siehe Erratum E-3)
 - UI-9: Bei "Hoher Kontrast" haben Karten, Nav, Blase und Sheets opake Füllungen (`#1B2129`), kein Blur, keinen Glow, und Ränder erreichen ≥ 4,3:1 (gemessen 4,37).
 - UI-10: Die Scroll-Performance des Pfads liegt auf einem Mittelklasse-Testgerät nach Augenschein ohne sichtbares Ruckeln (Flutter-Profile: keine dauerhaften Frames über 16 ms durch Blur; Messung durch den Entwickler dokumentieren).
 
@@ -416,7 +416,7 @@ Prüfbar auf Gerät/Emulator, soweit nicht anders vermerkt.
 
 ## 13. Nicht enthalten
 
-Kalender-Ansicht, Vor-/Nachbereitung, Tap-Abfrage, Modi Passiv/Aktiv, Push-Benachrichtigungen, Symptom-Check und Triage-Ansicht (Spec 4; nur Tokens und Regeln), Fortschritts-Ansicht (Spec 5), Return-to-Sport-Phase (Spec 6) bis auf die Boss-Unit als gesperrtes Element, Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8), Dokument-Upload, Team/Google Places, heller Modus, Manny-Illustration und -Animationen, Physio-Framework, echte KI-Texte.
+Kalender-Ansicht, Vor-/Nachbereitung, Tap-Abfrage, Modi Passiv/Aktiv, Push-Benachrichtigungen, Symptom-Check und Triage-Ansicht (Spec 4; nur Tokens und Regeln), Fortschritts-Ansicht (Spec 5), Return-to-Sport-Phase (Spec 6) bis auf die Boss-Unit als gesperrtes Element und den gesperrten Ausblick Prävention & Gesundheitssport (Ergänzung 3; die volle Phase folgt mit eigener Spec), Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8), Dokument-Upload, Team/Google Places, heller Modus, Manny-Illustration und -Animationen, Physio-Framework, echte KI-Texte.
 
 ---
 
@@ -436,7 +436,9 @@ Diese Errata sind vom Nutzer freigegeben und haben Vorrang vor den Stellen, auf 
 5. **Prüfung** per Alpha am dem Glow-Mittelpunkt nächstgelegenen Punkt des Text-Rechtecks (Alpha-Funktion aus 3.2) gegen die Schwellen 24 / 16 / 12 %, nicht per Abstand. Der Untergrund ergibt sich daraus, ob der Text in einer Glas-Karte liegt.
 
 **UI-7 (neue Fassung, ersetzt die alte im Wortlaut):**
-- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Am nächstgelegenen Punkt jedes Text-Rechtecks beträgt der Glow-Alpha höchstens 24 % bei Text direkt auf `bg`, höchstens 16 % bei `text-1`/`text-2`/`text-3` auf Glas und höchstens 12 % bei farbigem Text und `accent-hi` auf Glas (Prüfung per Test der Alpha-Funktion und Screenshot-Prüfung der Screens aus 6).
+- UI-7: Der Glow ist statisch, `ExcludeSemantics`, in einer `RepaintBoundary` und hat höchstens 24 % Spitzen-Deckkraft. Am nächstgelegenen Punkt jedes Text-Rechtecks beträgt der Glow-Alpha höchstens 24 % bei Text direkt auf `bg`, höchstens 16 % bei `text-1`/`text-2`/`text-3` auf Glas und höchstens 12 % bei farbigem Text und `accent-hi` auf Glas (Prüfung per Test der Alpha-Funktion und Screenshot-Prüfung der Screens aus 6). Die Schwellen gelten für die Ruhelage der Screens (siehe Präzisierung 2026-10-08).
+
+**Präzisierung 2026-10-08.** Die Glow-Regel nach Untergrund (Text auf `bg` bis 24 %, Glas bis 16 %, farbiger Text und `accent-hi` auf Glas bis 12 %) gilt für die Ruhelage der Screens, also die Startposition bzw. die Position nach programmatischem Scrollen (z. B. aktuelle Unit zentriert). Inhalt, den der Nutzer kurzzeitig unter den Lichtfleck scrollt, ist ausgenommen.
 
 **Ergänzung zu 3.1: Kontraste über Glow (Verhältnis).**
 
@@ -468,3 +470,47 @@ Folgen: Farbiger Text und `accent-hi` auf Glas nur bei Alpha ≤ 12 % (`cat-phys
 
 **UI-4 (präzisierte Fassung):**
 - UI-4: Akzent (`accent`) als Textfarbe wird nur auf `bg` verwendet. Auf `surface-opaque`, Glas, in Dialogen, Snackbars, Hinweisen und in Datumsauswahl-Textbuttons nur `accent-hi` oder `text-1` (Code-Review und Kontrasttest).
+
+### E-3: Fortschrittskreis bei reduzierter Bewegung (Ausnahme von UI-8, freigegeben 2026-10-08)
+
+**Anlass.** Der Fortschrittskreis laufender Vorgänge (z. B. `PillButton` mit `busy`, Löschen-Dialog) ist ein Zustandsanzeiger, kein Schiebe-, Puls- oder Fade-Effekt. Ein statischer Kreis würde "hängt" signalisieren.
+
+**Regel.** Fortschrittskreise laufender Vorgänge dürfen bei "Bewegung reduzieren" weiterdrehen, unter diesen Bedingungen:
+- reine Drehung, keine Schiebung, kein Puls, kein Skalieren;
+- nur während des Vorgangs, sichtbar erst nach mehr als 300 ms;
+- kein Ein- oder Ausblenden länger als 120 ms;
+- keine Dauerschleife außerhalb eines Vorgangs;
+- Screenreader erhalten eine Statusansage (z. B. "Wird gelöscht").
+
+**UI-8 (neue Fassung, ersetzt die alte im Wortlaut):**
+- UI-8: Mit eingeschalteter Systemoption "Bewegung reduzieren" gibt es auf allen Screens keine Schiebe-, Puls- oder Fade-Animationen länger als 120 ms. Manny zeigt statische Posen. Ausgenommen sind Fortschrittskreise laufender Vorgänge unter den Bedingungen von E-3 (reine Drehung, nur während des Vorgangs und erst nach 300 ms sichtbar, kein Ein-/Ausblenden über 120 ms, keine Dauerschleife außerhalb eines Vorgangs, Statusansage für Screenreader).
+
+### E-4: Fehlertext beim Start (freigegeben 2026-10-08, Anlass Abnahme A-U3, Nitpick N1)
+
+**Anlass.** Der StartGate zeigt die Fehleransicht, solange unklar ist, ob das Onboarding abgeschlossen war. Dort existiert noch kein Pfad, der Text "Dein Pfad konnte nicht geladen werden." (6.2) passt dann nicht.
+
+**Regel.**
+- Fehler beim Start (StartGate, Daten nicht lesbar oder Plattformfehler beim Laden, bevor ein Pfad angezeigt wird): Text **"Deine Daten konnten nicht geladen werden."**, Button "Nochmal versuchen" und `status-error`-Icon unverändert.
+- Fehler im Pfad-Tab (6.2, Pfad lässt sich bei bekanntem, abgeschlossenem Onboarding nicht aufbauen): behält den **alten Text** "Dein Pfad konnte nicht geladen werden." Begründung: Dort sind die Daten des Nutzers vorhanden, und es ist tatsächlich der Pfad, der fehlt; die Meldung soll genau den Teil benennen, der nicht lädt. Eine einheitliche Formulierung würde dort ungenauer.
+- Gestaltung, Verhalten und Barrierefreiheit (Live-Region, Fokus auf den Button) ändern sich nicht. Der alte Text in 6.2 bleibt stehen und gilt für den Pfad-Tab. Die Ablage in `strings_de.dart` erhält zwei getrennte Texte.
+
+### E-5: Sheet „Deine Daten“ im kompakten Zustand, Höhe, Buttons und Verwerfen (freigegeben 2026-10-11)
+
+**Anlass.** Nutzerabstimmung vom 2026-10-11 zu Ergänzung 1, Abschnitt 3.2 (Sheet „Deine Daten“), und zu UI-57 (Verwerfen).
+
+**Regel.**
+1. **Kompakter Zustand des Sheets „Deine Daten“** (gilt für 3.2 der Ergänzung 1 und hat dort Vorrang vor „Kopf scrollt nicht mit“):
+   - **Auslöser:** Die verfügbare Höhe beträgt weniger als 440 dp. Gemeint ist Bildschirm minus Tastatur, Querformat eingeschlossen.
+   - **Verhalten:**
+     - Das Sheet nimmt den ganzen verfügbaren Platz ein. Oben bleibt der Abstand für Statusleiste und Notch (Safe Area).
+     - Der Kopf scrollt mit.
+     - Die Fläche ist opak (`surface-opaque`), ohne Blur.
+     - „Speichern“ bleibt fest unten sichtbar.
+     - Bei sichtbarer Tastatur entfällt der Abschnitt „Daten löschen“.
+   - **Rückkehr:** Wird die Tastatur geschlossen, kehrt das Sheet in den Normalzustand zurück.
+   - **Begründung:** Nur so bleibt bei 320 × 568 dp, 200 % Schrift und offener Tastatur der Inhalt erreichbar, ohne Ausnahme für ein Szenario. Beim Tippen werden keine Daten gelöscht.
+2. **Sheet-Oberkante:** höchstens 90 % der Bildschirmhöhe und mindestens 64 dp Abstand zur Bildschirmoberkante. Das präzisiert die Höhenangabe „höchstens 90 %“ in Ergänzung 1 (Komponente `DataSheet` und Abschnitt 320 × 568 dp).
+3. **Dialog-Buttons ab Textskalierung 1,5 ohne Symbol** (alle, auch „Ja, alles löschen“; Beschriftungen dürfen nur an Wortgrenzen umbrechen). Der Button „Alle Daten löschen und neu starten“ im Sheet behält sein Symbol (Nutzerentscheidung 2026-10-11).
+4. **„Verwerfen“ (UI-57):** Bestätigtes Verwerfen schließt das Sheet. Es setzt nicht nur die Felder zurück. Der Satz „Verwerfen setzt die Felder zurück, ohne zu speichern“ wird dadurch durch „Verwerfen schließt das Sheet, ohne zu speichern“ ersetzt.
+
+**Vorrang.** E-5 geht im kompakten Zustand und für die genannten Punkte den folgenden Stellen vor, deren Wortlaut unverändert stehen bleibt: Ergänzung 1, 3.2 („Kopf scrollt nicht mit“, „Kopf und Fußleiste bleiben sichtbar“ bei 200 %), UI-48, UI-57, die Komponente `DataSheet` (Höhe, Blur σ = 16 als Ebene E2 entfällt im kompakten Zustand) sowie die Symbolangaben zu „Daten löschen“ und zum Löschdialog (UI-51, UI-66).

@@ -21,24 +21,6 @@ final MatrixReport _report = MatrixReport();
 String _name(Scenario s, Size size, String rest) =>
     '${s.id} ${size.width.toInt()}x${size.height.toInt()} $rest';
 
-Future<void> _tapEveryTarget(
-  WidgetTester tester,
-  List<Finding> out,
-  bool allowProgress,
-) async {
-  final List<TapTarget> targets = tapTargets(tester)
-      .where((TapTarget t) => !t.isTextField && !t.hidden)
-      .take(12)
-      .toList();
-  final Rect view = Offset.zero & viewSize(tester);
-  for (final TapTarget t in targets) {
-    if (!view.contains(t.rect.center)) continue;
-    await tester.tapAt(t.rect.center);
-    await tester.pump(const Duration(milliseconds: 121));
-    out.addAll(checkReducedMotion(tester, allowProgress: allowProgress));
-  }
-}
-
 void main() {
   tearDownAll(() => _report.write('matrix'));
 
@@ -50,7 +32,13 @@ void main() {
       ];
       for (final Size size in sizes) {
         final bool tabletOnly = size == Viewports.tablet;
-        for (final double scale in tabletOnly ? <double>[1] : <double>[1, 2]) {
+        // Szenarien mit festem Wert (z. B. 1,5 für die Fuß-Regel des Chats)
+        // laufen nur mit diesem Wert.
+        final double? fixed = s.fixedTextScale;
+        for (final double scale
+            in fixed != null
+                ? <double>[fixed]
+                : (tabletOnly ? <double>[1] : <double>[1, 2])) {
           final String name = _name(s, size, '×${scale.toStringAsFixed(1)}');
           testWidgets(name, (WidgetTester tester) async {
             final SemanticsHandle semantics = tester.ensureSemantics();
@@ -58,15 +46,22 @@ void main() {
             final List<Finding> f = <Finding>[
               ...takeLayoutExceptions(tester),
               ...await checkTapTargetSize(tester),
-              ...checkTapTargetGaps(tester),
+              ...await checkTapTargetGaps(tester),
+              ...checkProbeNotEmpty(tester, probe(tester)),
               ...checkTextStyles(probe(tester)),
               ...checkPrimary(tester, s),
-              ...checkZones(tester),
-              ...checkVisibleArea(tester),
+              ...checkZones(tester, s),
+              ...checkTodayGroup(tester, s),
+              ...checkVisibleArea(tester, s),
               ...await checkReachability(tester),
+              ...checkFocusedField(tester, s),
               ...checkBackdrops(tester, s.maxBackdrops),
-              ...checkChatFooter(tester),
-              ...checkGlowRule(probe(tester), colorsFor(hc: false), size),
+              ...checkChatFooter(tester, s),
+              ...checkCardTextContrast(
+                probe(tester),
+                colorsFor(hc: false),
+                size,
+              ),
               ...takeLayoutExceptions(tester),
             ];
             await tester.pumpWidget(const SizedBox.shrink());
@@ -85,8 +80,13 @@ void main() {
         await pumpScenario(tester, s, hc: true);
         final List<Finding> f = <Finding>[
           ...takeLayoutExceptions(tester),
+          ...checkProbeNotEmpty(tester, probe(tester)),
           ...checkHighContrast(tester),
-          ...checkGlowRule(probe(tester), colorsFor(hc: true), Viewports.phone),
+          ...checkCardTextContrast(
+            probe(tester),
+            colorsFor(hc: true),
+            Viewports.phone,
+          ),
         ];
         await tester.pumpWidget(const SizedBox.shrink());
         expectNoFindings(f, report: _report, caseName: hcName);
@@ -98,10 +98,21 @@ void main() {
         await pumpScenario(tester, s, rm: true);
         final List<Finding> f = <Finding>[...takeLayoutExceptions(tester)];
         // Einblenden/Schieben seit dem Aufbau: nach 121 ms nichts mehr.
-        await tester.pump(const Duration(milliseconds: 121));
+        await pastReducedLimit(tester);
         f.addAll(checkReducedMotion(tester, allowProgress: s.loops));
-        // Jeden Übergang auslösen, den die Tap-Ziele anbieten.
-        await _tapEveryTarget(tester, f, s.loops);
+        // Jeden Übergang auslösen, den die Tap-Ziele anbieten: jedes Ziel in
+        // frisch aufgebautem Ausgangszustand (R-AB-1).
+        final TapSweep sweep = await tapEveryTarget(
+          tester,
+          rebuild: () async {
+            await tester.pumpWidget(const SizedBox.shrink());
+            await pumpScenario(tester, s, rm: true);
+          },
+          allowProgress: s.loops,
+        );
+        f.addAll(sweep.findings);
+        _report.sweepCandidates += sweep.candidates;
+        _report.sweepTapped += sweep.tapped;
         f.addAll(takeLayoutExceptions(tester));
         await tester.pumpWidget(const SizedBox.shrink());
         semantics.dispose();

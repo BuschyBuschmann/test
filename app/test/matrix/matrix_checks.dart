@@ -3,6 +3,7 @@
 // sammeln sie je Fall und schlagen mit einer lesbaren Liste fehl. Befunde mit
 // `advisory` sind Richtwerte (Plan 12.2): sie werden gemeldet, lassen den Test
 // aber nicht scheitern („Befund an den ui-designer, nicht still umgestalten“).
+import 'dart:async' show FutureOr;
 import 'dart:ui' as ui;
 
 import 'package:curaone/dev/scenarios.dart';
@@ -11,14 +12,18 @@ import 'package:curaone/theme/contrast.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_motion.dart';
-import 'package:curaone/theme/glow.dart';
+import 'package:curaone/theme/world_painter.dart';
+import 'package:curaone/ui/components/cura_snackbar.dart';
+import 'package:curaone/ui/components/cura_text_field.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
-import 'package:curaone/ui/components/glow_background.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
+import 'package:curaone/ui/components/manny_chat_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/backdrops.dart';
 
 class Finding {
   const Finding(this.check, this.message, {this.advisory = false});
@@ -47,8 +52,10 @@ class TapTarget {
     this.rect,
     this.isTextField,
     this.hidden,
-    this.inScroll,
-  );
+    this.inScroll, {
+    this.inOverlay = false,
+    this.inHeader = false,
+  });
 
   final String label;
   final Rect rect;
@@ -59,6 +66,14 @@ class TapTarget {
 
   /// Liegt in einem scrollenden Bereich (darf unter Overlays durchlaufen).
   final bool inScroll;
+
+  /// Gehört im **Element-Baum** zu einem markierten Overlay (Marker
+  /// `overlay:*` oder die Leiste eines `SnackbarHost`), nicht nur geometrisch
+  /// (R-U3 MAJOR-2): ein Ziel unter einem Overlay ist kein Teil davon.
+  final bool inOverlay;
+
+  /// Gehört im Element-Baum zum festen Kopf (Marker `header`).
+  final bool inHeader;
 
   @override
   String toString() => '"$label" $rect';
@@ -80,14 +95,96 @@ Rect _globalRect(SemanticsNode node, double dpr) {
   );
 }
 
-/// Alle Knoten mit Tap-Aktion (auch außerhalb des Bildschirms, solange sie
-/// gebaut sind). Zusammengeführte Knoten zählen nicht.
+/// Semantik-Knoten, der die Semantik von [r] trägt: das Render-Objekt selbst
+/// oder der nächste Vorfahr mit eigenem, nicht in den Vater verschmolzenen
+/// Knoten (wie `WidgetTester.getSemantics`).
+SemanticsNode? _semanticsOf(RenderObject? r) {
+  RenderObject? cur = r;
+  SemanticsNode? n = cur?.debugSemantics;
+  while (cur != null && (n == null || n.isMergedIntoParent)) {
+    cur = cur.parent;
+    n = cur?.debugSemantics;
+  }
+  return n;
+}
+
+bool _hasTap(RenderObject r) {
+  if (r is RenderSemanticsAnnotations) return r.properties.onTap != null;
+  if (r is RenderSemanticsGestureHandler) return r.onTap != null;
+  return false;
+}
+
+/// Ids der Semantik-Knoten aller Tap-Elemente **unterhalb** der markierten
+/// Elemente im Element-Baum (nur sichtbare Teilbäume wie bei
+/// [probeKeyedRects]). [isMarker] wählt die Elemente aus. So hängt die
+/// Zugehörigkeit zu Overlay bzw. Kopf an der Baumstruktur und nicht an der
+/// Lage auf dem Bildschirm (R-U3 MAJOR-2).
+Set<int> tapNodeIdsUnder(bool Function(Element e) isMarker) {
+  final Set<int> ids = <int>{};
+  void collect(RenderObject r) {
+    if (_hasTap(r)) {
+      final SemanticsNode? n = _semanticsOf(r);
+      if (n != null) ids.add(n.id);
+    }
+    r.visitChildren(collect);
+  }
+
+  void walk(Element e) {
+    if (isMarker(e)) {
+      final RenderObject? r = e.renderObject;
+      if (r != null && r.attached) collect(r);
+    }
+    e.debugVisitOnstageChildren(walk);
+  }
+
+  final Element? root = WidgetsBinding.instance.rootElement;
+  if (root != null) walk(root);
+  return ids;
+}
+
+bool _isKeyedWith(Element e, bool Function(String key) test) {
+  final Key? key = e.widget.key;
+  return key is ValueKey<String> && test(key.value);
+}
+
+/// Tap-Ziele im markierten Overlay-Teilbaum (`overlay:*`), in der Leiste eines
+/// `SnackbarHost` und im Scrim (`ModalBarrier`).
+Set<int> overlayTapNodeIds() => tapNodeIdsUnder(
+  (Element e) =>
+      _isKeyedWith(e, (String k) => k.startsWith('overlay:')) ||
+      // Der Scrim hinter Sheet und Dialog („Schließen“, ganzer Bildschirm) ist
+      // kein Inhalt, sondern eine Ebene unter der Route.
+      e.widget is ModalBarrier ||
+      (e.widget is CuraSnackbar && _insideSnackbarHost(e)),
+);
+
+bool _insideSnackbarHost(Element e) {
+  bool inside = false;
+  e.visitAncestorElements((Element a) {
+    if (a.widget is SnackbarHost) {
+      inside = true;
+      return false;
+    }
+    return true;
+  });
+  return inside;
+}
+
+/// Tap-Ziele im festen Kopf (Marker `header`).
+Set<int> headerTapNodeIds() => tapNodeIdsUnder(
+  (Element e) => _isKeyedWith(e, (String k) => k == 'header'),
+);
+
+/// Alle Knoten mit Tap-Aktion (nur gebaute; bei Scrollbereichen mit lazy
+/// Listen ergänzt [scanScroll] den Rest). Zusammengeführte Knoten zählen nicht.
 List<TapTarget> tapTargets(WidgetTester tester) {
   final RenderView view = tester.binding.renderViews.first;
   final SemanticsNode? root = view.owner!.semanticsOwner?.rootSemanticsNode;
   final List<TapTarget> out = <TapTarget>[];
   if (root == null) return out;
   final double dpr = tester.view.devicePixelRatio;
+  final Set<int> overlayIds = overlayTapNodeIds();
+  final Set<int> headerIds = headerTapNodeIds();
   void walk(SemanticsNode n, bool scrolling) {
     final SemanticsData d = n.getSemanticsData();
     final bool childScrolling =
@@ -107,6 +204,8 @@ List<TapTarget> tapTargets(WidgetTester tester) {
             d.flagsCollection.isTextField,
             d.flagsCollection.isHidden,
             scrolling,
+            inOverlay: overlayIds.contains(n.id),
+            inHeader: headerIds.contains(n.id),
           ),
         );
       }
@@ -118,29 +217,348 @@ List<TapTarget> tapTargets(WidgetTester tester) {
   }
 
   walk(root, false);
+  return _refineToInnerTargets(tester, out);
+}
+
+/// Rechtecke aller Render-Objekte mit Tap-Semantik (`Semantics(onTap:)`,
+/// `GestureDetector`), in dp. Nur **sichtbare** Teilbäume: Eine Route unter
+/// einer opaken Route (Home unter dem Chat) hat ihre Render-Objekte noch, sie
+/// gehören aber nicht zum Bildschirm (Element-Baum: `debugVisitOnstageChildren`,
+/// wie bei [probeKeyedRects]). Sonst würden die Units des Pfads unter den
+/// Kontaktzeilen als „innere Ziele“ der Zeilen gezählt.
+List<Rect> _renderTapRects(WidgetTester tester) {
+  final List<Rect> out = <Rect>[];
+  final double dpr = tester.view.devicePixelRatio;
+  void walk(Element e) {
+    final RenderObject? r = e.renderObject;
+    if (e is RenderObjectElement && r != null) {
+      bool tap = false;
+      if (r is RenderSemanticsAnnotations) tap = r.properties.onTap != null;
+      if (r is RenderSemanticsGestureHandler) tap = r.onTap != null;
+      // Nur Ziele in Scrollbereichen: Index-Zellen gibt es nur dort, und feste
+      // Overlays dürfen nicht in die Zelle darunter hineingerechnet werden.
+      // Nicht die Ziele einer überdeckten Route (Pfad unter dem Sheet „Deine
+      // Daten“): sie liegen unter dem Scrim und gehören nicht zu den Zellen der
+      // oberen Route, auch wenn ihr Rechteck zufällig darin liegt.
+      if (tap &&
+          r is RenderBox &&
+          r.attached &&
+          r.hasSize &&
+          RenderAbstractViewport.maybeOf(r) != null &&
+          !isBuriedRoute(e)) {
+        final Rect g = r.localToGlobal(Offset.zero) & r.size;
+        out.add(
+          Rect.fromLTRB(
+            g.left / dpr,
+            g.top / dpr,
+            g.right / dpr,
+            g.bottom / dpr,
+          ),
+        );
+      }
+    }
+    e.debugVisitOnstageChildren(walk);
+  }
+
+  final Element? root = WidgetsBinding.instance.rootElement;
+  if (root != null) walk(root);
   return out;
 }
 
-/// Rechtecke der Overlays (Marker `overlay:*`), nach Namen ohne Präfix.
+/// Standard-Listen (`addSemanticIndexes`, in Produktivlisten Pflicht für die
+/// Listenposition) hüllen jede Zelle in einen Index-Knoten, der Label und Tap
+/// des Inhalts übernimmt; sein Rechteck ist die ganze Zelle samt Abstand
+/// (R-U2-RR N3). Enthält ein Knoten kleinere Tap-Render-Objekte, werden deren
+/// Rechtecke statt der Zelle gemeldet.
+List<TapTarget> _refineToInnerTargets(
+  WidgetTester tester,
+  List<TapTarget> nodes,
+) {
+  final List<Rect> renders = _renderTapRects(tester);
+  final List<TapTarget> out = <TapTarget>[];
+  for (final TapTarget t in nodes) {
+    if (!t.inScroll) {
+      out.add(t);
+      continue;
+    }
+    final double area = t.rect.width * t.rect.height;
+    final List<Rect> inner = renders
+        .where(
+          (Rect r) =>
+              _contains(t.rect, r) &&
+              r.width * r.height < area - 1 &&
+              r.width * r.height > 0,
+        )
+        .toList();
+    if (inner.isEmpty) {
+      out.add(t);
+    } else {
+      for (final Rect r in inner) {
+        out.add(TapTarget(t.label, r, t.isTextField, t.hidden, t.inScroll));
+      }
+    }
+  }
+  return out;
+}
+
+/// Beschriftete Semantik-Knoten (Label, globales Rechteck), egal ob tippbar.
+List<(String, Rect)> labeledNodes(WidgetTester tester) {
+  final RenderView view = tester.binding.renderViews.first;
+  final SemanticsNode? root = view.owner!.semanticsOwner?.rootSemanticsNode;
+  final List<(String, Rect)> out = <(String, Rect)>[];
+  if (root == null) return out;
+  final double dpr = tester.view.devicePixelRatio;
+  void walk(SemanticsNode n) {
+    if (!n.isMergedIntoParent) {
+      final SemanticsData d = n.getSemanticsData();
+      if (d.label.isNotEmpty) out.add((d.label, _globalRect(n, dpr)));
+    }
+    n.visitChildren((SemanticsNode c) {
+      walk(c);
+      return true;
+    });
+  }
+
+  walk(root);
+  return out;
+}
+
+/// Rechtecke der Overlays (Marker `overlay:*`), nach Namen ohne Präfix. Die
+/// sichtbare Snackbar-Leiste (`CuraSnackbar`) zählt automatisch als
+/// `snackbar`, auch ohne Marker (der Host füllt den ganzen Bildschirm).
 Map<String, Rect> overlayRects() {
-  final Map<String, Rect> raw = probeKeyedRects(prefix: 'overlay:');
-  return <String, Rect>{
+  // Ohne die Overlays einer überdeckten Route (Home unter Sheet oder Dialog):
+  // Nav und Button-Gruppe sind dort abgedunkelt und nicht bedienbar.
+  final Map<String, Rect> raw = probeKeyedRects(
+    prefix: 'overlay:',
+    skipBuried: true,
+  );
+  final Map<String, Rect> out = <String, Rect>{
     for (final MapEntry<String, Rect> e in raw.entries)
       e.key.substring('overlay:'.length): e.value,
   };
+  // Nur die Leiste eines `SnackbarHost` (nicht eine Snackbar, die ein Szenario
+  // als gewöhnlichen Inhalt zeigt).
+  final Element? bar = find
+      .descendant(
+        of: find.byType(SnackbarHost),
+        matching: find.byType(CuraSnackbar),
+      )
+      .evaluate()
+      .firstOrNull;
+  final RenderObject? r = bar?.renderObject;
+  if (r is RenderBox && r.attached && r.hasSize) {
+    out['snackbar'] = r.localToGlobal(Offset.zero) & r.size;
+  }
+  return out;
 }
 
-Rect? headerRect() => probeKeyedRects(prefix: 'header')['header'];
+/// Fester Kopf der **obersten** Route: der Kopf einer überdeckten Route (Pfad
+/// unter dem Sheet „Deine Daten“) liegt unter dem Scrim und begrenzt den
+/// Inhalt der oberen Route nicht.
+Rect? headerRect() =>
+    probeKeyedRects(prefix: 'header', skipBuried: true)['header'];
 
-/// Ein Tap-Ziel gehört zu einem Overlay, wenn es (fast) ganz darin liegt.
-bool _isOverlay(TapTarget t, Iterable<Rect> overlays) {
-  final double area = t.rect.width * t.rect.height;
-  if (area <= 0) return false;
-  return overlays.any((Rect o) {
-    final Rect i = o.intersect(t.rect);
-    return i.width > 0 && i.height > 0 && i.width * i.height / area >= 0.95;
+/// Ergebnis von [scanAll] für **einen** Scrollbereich: Tap-Ziele in
+/// **Inhaltskoordinaten** (Scrollstand 0), über den ganzen Scrollweg
+/// eingesammelt, damit auch lazy gebaute Listen (`ListView.builder`,
+/// Slivers) vollständig geprüft werden (R-U2 MAJOR-1).
+class ScrollScan {
+  const ScrollScan(
+    this.position,
+    this.renderObject,
+    this.viewport,
+    this.targets,
+    this.complete,
+    this.oversize,
+    this.reachedMax,
+  );
+
+  final ScrollPosition position;
+  final RenderObject? renderObject;
+
+  /// Sichtfenster des Bereichs in globalen Koordinaten.
+  final Rect viewport;
+  final List<TapTarget> targets;
+
+  /// `false`, wenn der Scrollweg nicht vollständig durchlaufen werden konnte
+  /// (zu viele Schritte, z. B. endlose Liste).
+  final bool complete;
+
+  /// Ziele, die nie ganz ins Sichtfenster passen (höher als der Bereich).
+  final List<String> oversize;
+
+  /// Das beim Scan **tatsächlich erreichte** Scroll-Maximum. Bei lazy gebauten
+  /// Listen ist `maxScrollExtent` in der Ruhelage nur geschätzt und erst am
+  /// Ende des Weges exakt (R-U3 MINOR-1); Erreichbarkeit rechnet damit.
+  final double reachedMax;
+
+  Offset shiftFor(double pixels) =>
+      position.axis == Axis.vertical ? Offset(0, pixels) : Offset(pixels, 0);
+}
+
+/// Ein Scrollbereich **in** einem Overlay (`overlay:*`) ist kein Inhaltsbereich:
+/// Der Text einer begrenzten Blase scrollt innen (Plan 4.6, letzte Stufe), und
+/// die Pfad-Units, die unter der Blase liegen, gehören nicht zu seinem
+/// Scrollweg. Der markierte Hauptbereich ([PreviewKeys.scroll]) bleibt immer
+/// dabei.
+bool _insideOverlay(Element e) {
+  bool inside = false;
+  e.visitAncestorElements((Element a) {
+    if (_isKeyedWith(a, (String k) => k.startsWith('overlay:'))) {
+      inside = true;
+      return false;
+    }
+    return true;
   });
+  return inside;
 }
+
+/// Alle Scrollbereiche, die Tap-Ziele tragen können: der markierte
+/// ([PreviewKeys.scroll]) und jeder weitere vertikale `Scrollable` mit
+/// Scrollweg (Sheet über Liste, Chat-Nachrichtenliste, R-U2-RR N1). Ein
+/// zweiter, nicht markierter Bereich fällt so nicht still heraus.
+List<ScrollableState> _scrollables(WidgetTester tester) {
+  // Nicht die Bereiche einer überdeckten Route (Liste von Heute unter einem
+  // Sheet oder Dialog): ihr Scrollstand verschiebt die Ziele der oberen Route
+  // nicht, und sie sind abgedunkelt und nicht bedienbar.
+  final Finder keyed = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.scroll && !isBuriedRoute(e),
+  );
+  final Set<ScrollableState> out = <ScrollableState>{};
+  if (keyed.evaluate().isNotEmpty) {
+    final Finder inner = find.descendant(
+      of: keyed,
+      matching: find.byType(Scrollable),
+    );
+    final Finder f = inner.evaluate().isNotEmpty
+        ? inner
+        : find.ancestor(of: keyed, matching: find.byType(Scrollable));
+    if (f.evaluate().isNotEmpty) {
+      out.add(tester.state<ScrollableState>(f.first));
+    }
+  }
+  for (final Element e in find.byType(Scrollable).evaluate()) {
+    final ScrollableState st = (e as StatefulElement).state as ScrollableState;
+    if (st.position.axis == Axis.vertical &&
+        st.position.maxScrollExtent > 0.5 &&
+        !_insideOverlay(e) &&
+        !isBuriedRoute(e)) {
+      out.add(st);
+    }
+  }
+  return out.toList();
+}
+
+/// Durchläuft für jeden Scrollbereich den Scrollweg in Viertel-Viewport-
+/// Schritten und sammelt alle Tap-Ziele. Stellt die Scrollstände wieder her.
+/// Ziele, die höher sind als der Bereich, werden als `oversize` gemeldet
+/// (R-U2-RR N2).
+Future<List<ScrollScan>> scanAll(WidgetTester tester) async {
+  final List<ScrollScan> scans = <ScrollScan>[];
+  for (final ScrollableState st in _scrollables(tester)) {
+    final ScrollPosition position = st.position;
+    final RenderObject? ro = st.context.findRenderObject();
+    final Rect viewport = ro is RenderBox
+        ? ro.localToGlobal(Offset.zero) & ro.size
+        : Offset.zero & viewSize(tester);
+    final double start = position.pixels;
+    final Map<String, TapTarget> seen = <String, TapTarget>{};
+    final Set<String> oversize = <String>{};
+    bool complete = true;
+    position.jumpTo(0);
+    await tester.pump();
+    for (int guard = 0; ; guard++) {
+      final Offset shift = position.axis == Axis.vertical
+          ? Offset(0, position.pixels)
+          : Offset(position.pixels, 0);
+      // Nur vollständig sichtbare Knoten: Am Rand schneidet der Scrollbereich
+      // das Rechteck ab, und Teilstücke würden als Nachbarn erscheinen. Am
+      // Anfang/Ende des Scrollwegs darf ein Ziel den Rand berühren.
+      final bool atStart = position.pixels <= 0.5;
+      final bool atEnd = position.pixels >= position.maxScrollExtent - 0.5;
+      final Rect inner = Rect.fromLTRB(
+        viewport.left - 0.5,
+        viewport.top + (atStart ? -0.5 : 0.5),
+        viewport.right + 0.5,
+        viewport.bottom + (atEnd ? 0.5 : -0.5),
+      );
+      for (final TapTarget t in tapTargets(
+        tester,
+      ).where((TapTarget t) => t.inScroll)) {
+        final bool inside =
+            t.rect.left >= inner.left &&
+            t.rect.right <= inner.right &&
+            t.rect.top >= inner.top &&
+            t.rect.bottom <= inner.bottom;
+        if (inside) {
+          final Rect c = t.rect.shift(shift);
+          final String key =
+              '${t.label}|${c.left.round()}|${c.top.round()}|${c.width.round()}|${c.height.round()}';
+          seen.putIfAbsent(
+            key,
+            () => TapTarget(t.label, c, t.isTextField, false, true),
+          );
+        } else if (t.rect.overlaps(viewport) &&
+            t.rect.top <= viewport.top + 0.5 &&
+            t.rect.bottom >= viewport.bottom - 0.5) {
+          // Angeschnitten und überdeckt den ganzen Bereich: höher als er.
+          oversize.add(t.label);
+        }
+      }
+      final double max = position.maxScrollExtent;
+      if (position.pixels >= max - 0.5) break;
+      if (guard > 400) {
+        complete = false;
+        break;
+      }
+      final double step = (position.viewportDimension * 0.25).clamp(1, 1e9);
+      position.jumpTo((position.pixels + step).clamp(0, max));
+      await tester.pump();
+    }
+    final double reachedMax = position.pixels;
+    position.jumpTo(start);
+    await tester.pump();
+    scans.add(
+      ScrollScan(
+        position,
+        ro,
+        viewport,
+        seen.values.toList(),
+        complete,
+        oversize.toList(),
+        reachedMax,
+      ),
+    );
+  }
+  return scans;
+}
+
+/// Gehört das Ziel zu einem gescannten Bereich? Im Sichtfenster ja; ein
+/// vorgebautes Ziel außerhalb davon (Cache-Bereich) über die Spalte des
+/// Bereichs.
+bool _inAnyViewport(TapTarget t, Iterable<ScrollScan> scans) => scans.any(
+  (ScrollScan s) =>
+      s.viewport.inflate(0.5).overlaps(t.rect) ||
+      (t.rect.left < s.viewport.right + 0.5 &&
+          t.rect.right > s.viewport.left - 0.5 &&
+          (t.rect.top >= s.viewport.bottom || t.rect.bottom <= s.viewport.top)),
+);
+
+List<Finding> _scanProblems(Iterable<ScrollScan> scans) => <Finding>[
+  for (final ScrollScan s in scans) ...<Finding>[
+    if (!s.complete)
+      const Finding(
+        'Scrollweg vollständig',
+        'Scrollbereich nicht vollständig durchlaufen (Endlosliste?)',
+      ),
+    for (final String l in s.oversize)
+      Finding(
+        'Ziel nicht vollständig sichtbar',
+        '"$l" ist höher als sein Scrollbereich und passt nie ganz ins Sichtfenster',
+      ),
+  ],
+];
 
 bool _contains(Rect a, Rect b) =>
     a.inflate(0.5).contains(b.topLeft) &&
@@ -176,34 +594,156 @@ List<Finding> takeLayoutExceptions(WidgetTester tester) {
   return out;
 }
 
-/// Tap-Ziele ≥ 48 × 48 dp (Flutter-Leitlinie `androidTapTargetGuideline`).
+/// Führt [body] mit allen vertikalen Scrollbereichen am Anfang (Scrollstand 0)
+/// aus und stellt die Scrollstände danach wieder her. Ruhelage-Prüfungen
+/// (Zielgröße, Abstand zu festen Elementen) gelten für den Anfangszustand: ein
+/// Szenario mit fokussiertem Feld steht gescrollt, und Inhalt, der dabei unter
+/// dem Kopf angeschnitten wird, ist kein Verstoß.
+Future<T> atScrollStart<T>(
+  WidgetTester tester,
+  FutureOr<T> Function() body,
+) async {
+  final List<(ScrollPosition, double)> saved = <(ScrollPosition, double)>[
+    for (final ScrollableState st in _scrollables(tester))
+      (st.position, st.position.pixels),
+  ];
+  final bool moved = saved.any(((ScrollPosition, double) e) => e.$2 > 0.5);
+  if (moved) {
+    for (final (ScrollPosition p, double _) in saved) {
+      p.jumpTo(0);
+    }
+    await tester.pump();
+  }
+  try {
+    return await body();
+  } finally {
+    if (moved) {
+      for (final (ScrollPosition p, double pixels) in saved) {
+        p.jumpTo(pixels);
+      }
+      await tester.pump();
+    }
+  }
+}
+
+/// Tap-Ziele ≥ 48 × 48 dp: Flutter-Leitlinie `androidTapTargetGuideline` für
+/// den Anfangszustand der Scrollbereiche ([atScrollStart]) **und** die
+/// Rechtecke aller Ziele über den ganzen Scrollweg ([scanAll]), damit auch ein
+/// zu kleines Ziel weit unten in einer langen Liste auffällt (R-U3-RR N1).
 Future<List<Finding>> checkTapTargetSize(WidgetTester tester) async {
-  final Evaluation e = await androidTapTargetGuideline.evaluate(tester);
-  return e.passed
-      ? const <Finding>[]
-      : <Finding>[Finding('Tap-Ziel ≥ 48 dp', e.reason ?? '')];
+  final Evaluation e = await atScrollStart(
+    tester,
+    () => androidTapTargetGuideline.evaluate(tester),
+  );
+  final List<Finding> out = <Finding>[
+    if (!e.passed) Finding('Tap-Ziel ≥ 48 dp', e.reason ?? ''),
+  ];
+  const double min = CuraSize.touchTarget - 0.01;
+  for (final ScrollScan scan in await scanAll(tester)) {
+    for (final TapTarget t in scan.targets) {
+      if (t.rect.width < min || t.rect.height < min) {
+        out.add(
+          Finding(
+            'Tap-Ziel ≥ 48 dp',
+            '$t im Scrollweg ist kleiner als 48 × 48 dp '
+                '(${t.rect.width.toStringAsFixed(1)} × ${t.rect.height.toStringAsFixed(1)})',
+          ),
+        );
+      }
+    }
+  }
+  return out;
 }
 
 /// Abstand ≥ 8 dp zwischen Tap-Ziel-Rechtecken, paarweise ohne verschachtelte
-/// (UI-32). Overlay und Inhalt dürfen sich beim Scrollen überlagern, das
-/// prüft [checkReachability].
-List<Finding> checkTapTargetGaps(WidgetTester tester) {
-  final List<TapTarget> all = tapTargets(tester);
-  final List<Finding> out = <Finding>[];
-  for (int i = 0; i < all.length; i++) {
-    for (int j = i + 1; j < all.length; j++) {
-      final TapTarget a = all[i];
-      final TapTarget b = all[j];
-      if (_contains(a.rect, b.rect) || _contains(b.rect, a.rect)) continue;
-      if (a.inScroll != b.inScroll) continue;
-      final double gap = _rectDistance(a.rect, b.rect);
-      if (gap < CuraSize.minTargetGap - 0.01) {
-        out.add(
-          Finding(
-            'Abstand ≥ 8 dp',
-            '${gap.toStringAsFixed(1)} dp zwischen $a und $b',
-          ),
-        );
+/// (UI-32). Kategorien: scrollender Inhalt, Overlay, fester Rest. Nur das
+/// Paar „scrollender Inhalt gegen Overlay“ entfällt (Inhalt darf darunter
+/// laufen, das prüft [checkReachability]); feste Nicht-Overlay-Elemente
+/// (Kopf-Buttons) werden gegen den Inhalt in der Ruhelage geprüft (Anfang der
+/// Scrollbereiche, [atScrollStart]).
+/// Scrollender Inhalt gegeneinander: über den ganzen Scrollweg.
+Future<List<Finding>> checkTapTargetGaps(WidgetTester tester) =>
+    atScrollStart(tester, () => _checkTapTargetGaps(tester));
+
+/// Sichtfenster vertikaler Scrollbereiche ohne Scrollweg (nicht in Overlays,
+/// nicht in überdeckten Routen).
+List<Rect> _idleViewports(WidgetTester tester) => <Rect>[
+  for (final Element e in find.byType(Scrollable).evaluate())
+    if (((e as StatefulElement).state as ScrollableState).position.axis ==
+            Axis.vertical &&
+        (e.state as ScrollableState).position.maxScrollExtent <= 0.5 &&
+        !_insideOverlay(e) &&
+        !isBuriedRoute(e) &&
+        e.renderObject is RenderBox)
+      (e.renderObject! as RenderBox).localToGlobal(Offset.zero) &
+          (e.renderObject! as RenderBox).size,
+];
+
+Future<List<Finding>> _checkTapTargetGaps(WidgetTester tester) async {
+  final List<TapTarget> rest = tapTargets(tester);
+  final List<ScrollScan> scans = await scanAll(tester);
+  final List<Finding> out = <Finding>[..._scanProblems(scans)];
+  void pair(TapTarget a, TapTarget b) {
+    if (_contains(a.rect, b.rect) || _contains(b.rect, a.rect)) return;
+    final double gap = _rectDistance(a.rect, b.rect);
+    if (gap < CuraSize.minTargetGap - 0.01) {
+      out.add(
+        Finding(
+          'Abstand ≥ 8 dp',
+          '${gap.toStringAsFixed(1)} dp zwischen $a und $b',
+        ),
+      );
+    }
+  }
+
+  final List<TapTarget> overlay = <TapTarget>[];
+  final List<TapTarget> fixed = <TapTarget>[];
+  final List<TapTarget> scrollRest = <TapTarget>[];
+  for (final TapTarget t in rest) {
+    if (t.inScroll) {
+      scrollRest.add(t);
+    } else if (t.inOverlay) {
+      overlay.add(t);
+    } else {
+      fixed.add(t);
+    }
+  }
+  final List<TapTarget> nonScroll = <TapTarget>[...overlay, ...fixed];
+  for (int i = 0; i < nonScroll.length; i++) {
+    for (int j = i + 1; j < nonScroll.length; j++) {
+      pair(nonScroll[i], nonScroll[j]);
+    }
+  }
+  // Scrollender Inhalt, der nicht ganz im Sichtfenster seines Scrollbereichs
+  // liegt, ist dort abgeschnitten oder nicht sichtbar (Dialog: Buttons fest
+  // unter dem Scrollbereich; vorgebaute Zeilen außerhalb): kein Abstandsbefund.
+  // Nur ganz sichtbarer Inhalt zählt.
+  //
+  // Ein zweiter Scrollbereich **ohne** Scrollweg (Inhalt kürzer als die
+  // Fläche) hat kein Scan-Fenster, sein Inhalt ist aber voll sichtbar: Ein
+  // Ziel darin ist nicht abgeschnitten, nur weil ein anderer Bereich Fenster
+  // hat (R-AB-6).
+  final List<Rect> idle = _idleViewports(tester);
+  bool clipped(TapTarget c) =>
+      scans.isNotEmpty &&
+      !scans.any((ScrollScan sc) => _contains(sc.viewport, c.rect)) &&
+      !idle.any((Rect v) => _contains(v, c.rect));
+  for (final TapTarget f in fixed) {
+    for (final TapTarget c in scrollRest) {
+      if (clipped(c)) continue;
+      pair(f, c);
+    }
+  }
+  // Jeder Scrollbereich über seinen ganzen Weg; scrollende Ziele außerhalb
+  // aller Scan-Fenster (kein Scrollweg) in der Ruhelage.
+  final List<List<TapTarget>> groups = <List<TapTarget>>[
+    for (final ScrollScan sc in scans) sc.targets,
+    scrollRest.where((TapTarget t) => !_inAnyViewport(t, scans)).toList(),
+  ];
+  for (final List<TapTarget> content in groups) {
+    for (int i = 0; i < content.length; i++) {
+      for (int j = i + 1; j < content.length; j++) {
+        pair(content[i], content[j]);
       }
     }
   }
@@ -228,8 +768,12 @@ List<Finding> checkTextStyles(TextProbe probe) {
 }
 
 /// Primärbutton ([PreviewKeys.primary]) vollständig sichtbar und antippbar.
+/// Es zählt nur der Primärbutton der **obersten** Route: unter einem Sheet oder
+/// Dialog liegt „Training starten“ abgedunkelt unter dem Scrim.
 List<Finding> checkPrimary(WidgetTester tester, Scenario scenario) {
-  final Finder f = find.byKey(PreviewKeys.primary);
+  final Finder f = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),
+  );
   if (f.evaluate().isEmpty) {
     return scenario.expectsPrimary
         ? const <Finding>[Finding('Primärbutton', 'Marker fehlt im Baum')]
@@ -255,11 +799,26 @@ List<Finding> checkPrimary(WidgetTester tester, Scenario scenario) {
 /// Freie Zonen über der Nav (UI-24 neu): unten links nichts, unten rechts nur
 /// die Button-Gruppe. Gemessen an den Overlays; scrollender Inhalt darf
 /// darunter laufen. Zusätzlich: Gruppe vollständig sichtbar, nicht über der
-/// Nav; Blase und Hinweis überdecken die Gruppe nicht.
-List<Finding> checkZones(WidgetTester tester) {
+/// Nav; Blase und Hinweis überdecken die Gruppe nicht. Setzt das Szenario
+/// `expectsMannyButton`/`expectsNav`, ist ein fehlender Marker ein harter
+/// Befund (kein stilles Überspringen, R-U2 MAJOR-3).
+List<Finding> checkZones(WidgetTester tester, Scenario scenario) {
   final Map<String, Rect> o = overlayRects();
-  final Rect? cluster = o['cluster'];
+  final Rect? cluster = o['manny-button'];
   final List<Finding> out = <Finding>[];
+  if (scenario.expectsMannyButton && cluster == null) {
+    out.add(
+      const Finding(
+        'Marker fehlt',
+        'overlay:manny-button (Szenario erwartet den Manny-Knopf)',
+      ),
+    );
+  }
+  if (scenario.expectsNav && o['nav'] == null) {
+    out.add(
+      const Finding('Marker fehlt', 'overlay:nav (Szenario erwartet die Nav)'),
+    );
+  }
   final Size view = viewSize(tester);
   if (cluster != null) {
     if (!_contains(Offset.zero & view, cluster)) {
@@ -285,8 +844,13 @@ List<Finding> checkZones(WidgetTester tester) {
       view.width,
       navTop,
     );
+    // Heute: Die Primärbutton-Reihe gehört zur Gruppe (Manny-Button, darüber
+    // der Nachrichten-Button); die Zonenregel gilt nur dem Pfad (UI-24 neu).
+    // Für Heute gelten [checkTodayGroup] und die Erreichbarkeit.
+    final bool today = o.containsKey('primary-row');
     for (final MapEntry<String, Rect> e in o.entries) {
-      if (e.key == 'nav' || e.key == 'cluster') continue;
+      if (e.key == 'nav' || e.key == 'manny-button') continue;
+      if (today && e.key == 'primary-row') continue;
       if (e.value.overlaps(left)) {
         out.add(
           Finding(
@@ -319,17 +883,103 @@ List<Finding> checkZones(WidgetTester tester) {
   return out;
 }
 
+/// Primärbutton-Reihe auf Heute (UI-71, UI-73; Nachrichten-Knopf entfällt seit
+/// F2-R3): der Manny-Knopf steht unten bündig mit dem Primärbutton; dessen Breite
+/// ist die Breite des Rahmens − 96 dp (Seitenränder 2 × 16, Manny-Knopf 56,
+/// Abstand 8); eine Snackbar steht 12 dp über der Oberkante der Reihe. Gilt nur,
+/// wenn die Reihe (`overlay:primary-row`) im Baum steht.
+List<Finding> checkTodayGroup(WidgetTester tester, Scenario scenario) {
+  final Map<String, Rect> o = overlayRects();
+  final Rect? row = o['primary-row'];
+  if (row == null) return const <Finding>[];
+  final Finder manny = find.byElementPredicate(
+    (Element e) => e.widget is MannyButton && !isBuriedRoute(e),
+  );
+  final Finder primary = find.byElementPredicate(
+    (Element e) => e.widget.key == PreviewKeys.primary && !isBuriedRoute(e),
+  );
+  // Ohne Manny-Knopf ist es nicht die Reihe von Heute (das Onboarding nutzt
+  // den Marker für seine Fußleiste).
+  if (manny.evaluate().isEmpty) return const <Finding>[];
+  if (primary.evaluate().isEmpty) {
+    return const <Finding>[
+      Finding('Primärbutton-Reihe Heute', 'Primärbutton fehlt'),
+    ];
+  }
+  final Rect m = tester.getRect(manny.first);
+  final Rect p = tester.getRect(primary.first);
+  final List<Finding> out = <Finding>[];
+  const double tol = 0.6;
+  if ((m.bottom - p.bottom).abs() > tol) {
+    out.add(
+      Finding('Manny-Knopf unten bündig mit dem Primärbutton', '$m gegen $p'),
+    );
+  }
+  final double frame = viewSize(tester).width < CuraSize.lineLengthMax
+      ? viewSize(tester).width
+      : CuraSize.lineLengthMax;
+  final double expected =
+      frame -
+      CuraSpace.pageMargin * 2 -
+      CuraSize.mannyChatButton -
+      CuraSpace.clusterGap;
+  if ((p.width - expected).abs() > tol) {
+    out.add(
+      Finding(
+        'Primärbutton Breite = Breite − 96 dp',
+        '${p.width.toStringAsFixed(1)} statt ${expected.toStringAsFixed(1)}',
+      ),
+    );
+  }
+  final Rect? snackbar = o['snackbar'];
+  if (snackbar != null && !isBuriedSnackbar(tester)) {
+    final double above = row.top - snackbar.bottom;
+    if ((above - CuraSpace.snackbarGap).abs() > tol) {
+      out.add(
+        Finding(
+          'Snackbar 12 dp über der Reihe',
+          '${above.toStringAsFixed(1)} dp zwischen $snackbar und der Reihe $row',
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/// Die Snackbar-Leiste liegt in einer überdeckten Route (kein Befund-Fall).
+bool isBuriedSnackbar(WidgetTester tester) {
+  final Element? bar = find
+      .descendant(
+        of: find.byType(SnackbarHost),
+        matching: find.byType(CuraSnackbar),
+      )
+      .evaluate()
+      .firstOrNull;
+  return bar != null && isBuriedRoute(bar);
+}
+
 /// Mindest-Sichtfläche zwischen Kopf und den Overlays über volle Breite
 /// (Nav, Primärbutton-Reihe, Snackbar) ≥ 120 dp. **Richtwert** (Plan 12.2).
-List<Finding> checkVisibleArea(WidgetTester tester) {
+/// Fehlt der Kopf-Marker bei `expectsHeader`, ist das ein harter Befund.
+List<Finding> checkVisibleArea(WidgetTester tester, Scenario scenario) {
   final Rect? header = headerRect();
-  if (header == null) return const <Finding>[];
+  // Kopf in der Scrollfläche (Onboarding bei großer Schrift oder geringer
+  // Höhe, Marker `scroll-header`): erfüllt die Erwartung; die Sichtfläche
+  // beginnt dann am oberen Rand.
+  final bool scrollsAlong = probeKeyedRects(prefix: 'scroll-header').isNotEmpty;
+  if (header == null && !scrollsAlong) {
+    return scenario.expectsHeader
+        ? const <Finding>[
+            Finding('Marker fehlt', 'header (Szenario erwartet den Kopf)'),
+          ]
+        : const <Finding>[];
+  }
   final Size view = viewSize(tester);
   double top = view.height;
   for (final Rect r in overlayRects().values) {
     if (r.width >= view.width * 0.6 && r.top < top) top = r.top;
   }
-  final double free = top - header.bottom;
+  final double free = top - (header?.bottom ?? 0);
   return free >= 120
       ? const <Finding>[]
       : <Finding>[
@@ -341,103 +991,237 @@ List<Finding> checkVisibleArea(WidgetTester tester) {
         ];
 }
 
-/// Inhalt nach Scrollen erreichbar (UI-31 neu, UI-88): jedes Tap-Ziel des
-/// Inhalts lässt sich in eine Lage scrollen, in der es vollständig sichtbar,
-/// unter dem Kopf und von keinem Overlay verdeckt ist. Ohne Scrollbereich muss
-/// es in der Ruhelage so liegen.
-Future<List<Finding>> checkReachability(WidgetTester tester) async {
-  final Size view = viewSize(tester);
-  final Rect screen = Offset.zero & view;
-  final Map<String, Rect> o = overlayRects();
-  final Rect? header = headerRect();
-  // Inhalt: alles in Scrollbereichen; außerhalb davon, was nicht selbst
-  // Overlay ist (feste Inhalte ohne Scrollbereich).
-  final List<TapTarget> targets = tapTargets(tester)
-      .where((TapTarget t) => t.inScroll || !_isOverlay(t, o.values))
-      .toList();
-  final List<Finding> out = <Finding>[];
+/// Das fokussierte Textfeld ist sichtbar (A-U3 B1): ganz auf dem Bildschirm,
+/// unter dem festen Kopf, von keinem Overlay (Tastatur, Weiter-Leiste,
+/// Snackbar) verdeckt. Ein Tastatur-Szenario ([Scenario.keyboard]) muss ein
+/// fokussiertes Feld haben; sonst fiele die Prüfung still weg.
+List<Finding> checkFocusedField(WidgetTester tester, Scenario scenario) {
+  final BuildContext? focus = FocusManager.instance.primaryFocus?.context;
+  Element? field;
+  if (focus is Element) {
+    if (focus.widget is EditableText) field = focus;
+    focus.visitAncestorElements((Element a) {
+      if (field == null && a.widget is EditableText) field = a;
+      return field == null;
+    });
+  }
+  final Element? editable = field;
+  if (editable == null) {
+    return scenario.keyboard
+        ? const <Finding>[
+            Finding(
+              'Fokusfeld',
+              'Tastatur-Szenario ohne fokussiertes Textfeld (Skript prüfen)',
+            ),
+          ]
+        : const <Finding>[];
+  }
+  // Ganzes Feld (Rahmen) statt nur der Textzeile, soweit es ein `CuraTextField`
+  // gibt.
+  Element target = editable;
+  editable.visitAncestorElements((Element a) {
+    if (a.widget is CuraTextField) {
+      target = a;
+      return false;
+    }
+    return true;
+  });
+  final RenderObject? ro = target.renderObject;
+  if (ro is! RenderBox || !ro.attached || !ro.hasSize) {
+    return const <Finding>[
+      Finding('Fokusfeld', 'Das fokussierte Feld hat keine Größe'),
+    ];
+  }
+  final Rect r = ro.localToGlobal(Offset.zero) & ro.size;
+  return FreeZone(tester).free(r)
+      ? const <Finding>[]
+      : <Finding>[
+          Finding(
+            'Fokusfeld sichtbar',
+            'fokussiertes Feld $r ist verdeckt, abgeschnitten oder außerhalb '
+                '(Kopf/Overlays/Tastatur)',
+          ),
+        ];
+}
+
+/// Freie Fläche des Bildschirms: ganz auf dem Bildschirm, unter dem festen
+/// Kopf und von keinem Overlay verdeckt. Overlays werden in der Ruhelage
+/// gelesen; ein Overlay-Marker **innerhalb** eines Scrollbereichs (läuft mit
+/// dem Inhalt) wird je Scanposition nicht neu gelesen. Das ist eine bekannte
+/// Grenze (R-U3 MINOR-2): sie betrifft Overlays in lazy Listen außerhalb des
+/// Sichtfensters (z. B. künftige Knotenhinweise, U3a); dort braucht ein
+/// Szenario sein Overlay als festes Overlay über der Liste.
+class FreeZone {
+  FreeZone(WidgetTester tester, {Set<String> ignoring = const <String>{}})
+    : screen = Offset.zero & viewSize(tester),
+      header = headerRect(),
+      overlays = <Rect>[
+        for (final MapEntry<String, Rect> e in overlayRects().entries)
+          if (!ignoring.contains(e.key)) e.value,
+      ];
+
+  final Rect screen;
+  final Rect? header;
+  final List<Rect> overlays;
+
+  bool _clearOfOverlays(Rect r) =>
+      !overlays.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
 
   bool free(Rect r) {
     if (!_contains(screen, r)) return false;
-    if (header != null && r.top < header.bottom - 0.5) return false;
-    return !o.values.any((Rect ov) => ov.overlaps(r.deflate(0.5)));
+    final Rect? h = header;
+    if (h != null && r.top < h.bottom - 0.5) return false;
+    return _clearOfOverlays(r);
   }
 
-  final Finder scroll = find.byKey(PreviewKeys.scroll);
-  ScrollPosition? position;
-  if (scroll.evaluate().isNotEmpty) {
-    final Finder scrollables = find.descendant(
-      of: scroll,
-      matching: find.byType(Scrollable),
-    );
-    final Finder scrollable = scrollables.evaluate().isNotEmpty
-        ? scrollables
-        : find.ancestor(of: scroll, matching: find.byType(Scrollable));
-    if (scrollable.evaluate().isNotEmpty) {
-      position = tester.state<ScrollableState>(scrollable.first).position;
+  /// Feste Bedienelemente **im** Kopf (Zurück-Pfeil, „Deine Daten“) gehören
+  /// zum Kopf selbst und liegen nicht „unter“ ihm: sie müssen auf dem
+  /// Bildschirm liegen und dürfen von keinem Overlay überdeckt sein.
+  bool freeInHeader(Rect r) => _contains(screen, r) && _clearOfOverlays(r);
+}
+
+/// Overlays, die der Pfad beim Scrollen durch den Nutzer schließt (Blase,
+/// `NodeHint`; Marker `overlay:bubble`, `overlay:hint`).
+const Set<String> kDismissedOnScroll = <String>{'bubble', 'hint'};
+
+/// Inhalt nach Scrollen erreichbar (UI-31 neu, UI-88): jedes Tap-Ziel des
+/// Inhalts lässt sich in eine Lage scrollen, in der es vollständig sichtbar,
+/// unter dem Kopf und von keinem Overlay verdeckt ist. Der Scrollweg wird
+/// ganz durchlaufen ([scanAll]), damit auch lazy gebaute Listen zählen, und
+/// mit dem dabei **erreichten** Maximum gerechnet. Feste Ziele außerhalb von
+/// Overlays müssen in der Ruhelage frei liegen. Zugehörigkeit zu Overlay und
+/// Kopf folgt dem Element-Baum ([TapTarget.inOverlay], [TapTarget.inHeader]):
+/// ein Ziel, das nur geometrisch unter einem Overlay liegt, ist ein Befund.
+Future<List<Finding>> checkReachability(WidgetTester tester) async {
+  final FreeZone zone = FreeZone(tester);
+  final bool Function(Rect) free = zone.free;
+  // Blase und `NodeHint` des Pfads schließen, sobald der **Nutzer** scrollt
+  // (UI-23, UI-62; Test: `UserScrollNotification` schließt beide): in jeder
+  // Lage **außer der Ruhelage** stehen sie beim Erreichen eines Ziels nicht
+  // mehr im Weg. In der Ruhelage (dem Scrollstand des Szenarios) zählen sie
+  // weiter, ebenso beim Hit-Test: ein Ziel, das dort dauerhaft unter ihnen
+  // liegt, ist ein Befund (R-AB-3). Ohne die Ausnahme wäre eine 96 dp hohe
+  // Marke (320 × 568) bei offener Blase nie „frei“ (Fenster zwischen Kopf,
+  // Blase und Gruppe nur 71 und 79 dp).
+  final FreeZone scrollingZone = FreeZone(tester, ignoring: kDismissedOnScroll);
+  final bool Function(Rect) freeWhileScrolling = scrollingZone.free;
+  final List<Rect> dismissible = <Rect>[
+    for (final MapEntry<String, Rect> e in overlayRects().entries)
+      if (kDismissedOnScroll.contains(e.key)) e.value,
+  ];
+  final List<Finding> out = <Finding>[];
+
+  final List<TapTarget> rest = tapTargets(tester);
+  for (final TapTarget t in rest.where(
+    (TapTarget t) => !t.inScroll && !t.inOverlay,
+  )) {
+    if (!(t.inHeader ? zone.freeInHeader(t.rect) : free(t.rect))) {
+      out.add(
+        Finding(
+          'Inhalt erreichbar',
+          '$t ist in der Ruhelage verdeckt oder außerhalb',
+        ),
+      );
     }
   }
 
-  for (final TapTarget t in targets) {
-    if (position == null) {
-      if (!free(t.rect)) {
+  final List<ScrollScan> scans = await scanAll(tester);
+  out.addAll(_scanProblems(scans));
+  // Scrollende Ziele ohne eigenes Scan-Fenster (kein Scrollweg): Ruhelage.
+  for (final TapTarget t in rest.where(
+    (TapTarget t) => t.inScroll && !_inAnyViewport(t, scans),
+  )) {
+    if (!free(t.rect)) {
+      out.add(
+        Finding(
+          'Inhalt erreichbar',
+          '$t ist in der Ruhelage verdeckt oder außerhalb',
+        ),
+      );
+    }
+  }
+
+  for (final ScrollScan scan in scans) {
+    final ScrollPosition position = scan.position;
+    final double start = position.pixels;
+    final double max = scan.reachedMax;
+    final RenderObject? sr = scan.renderObject;
+    for (final TapTarget t in scan.targets) {
+      // Frei von Kopf und Overlays **und** ganz im Sichtfenster des
+      // Scrollbereichs: Ein Dialog hat feste Buttons unter seinem Scrollbereich,
+      // die kein Overlay-Marker sind; Inhalt dahinter ist abgeschnitten.
+      bool atRest(double offset) => (offset - start).abs() <= 0.5;
+      bool reachable(double offset) {
+        final Rect r = t.rect.shift(-scan.shiftFor(offset));
+        // Ruhelage: Blase und Hinweis zählen; sonst sind sie weggescrollt.
+        final bool clear = atRest(offset) ? free(r) : freeWhileScrolling(r);
+        return clear && _contains(scan.viewport, r);
+      }
+
+      double? hit;
+      if (reachable(start)) hit = start;
+      for (
+        double offset = 0;
+        hit == null && offset <= max + 0.001;
+        offset += 2
+      ) {
+        if (reachable(offset)) {
+          hit = offset;
+        }
+      }
+      if (hit == null && max > 0 && reachable(max)) {
+        hit = max;
+      }
+      if (hit == null) {
         out.add(
           Finding(
             'Inhalt erreichbar',
-            '$t ist in der Ruhelage verdeckt oder außerhalb',
+            '$t lässt sich nicht frei von Kopf/Overlays scrollen (Scrollweg 0 … ${max.toStringAsFixed(0)} dp)',
           ),
         );
+        continue;
       }
-      continue;
-    }
-    final double start = position.pixels;
-    final double max = position.maxScrollExtent;
-    double? hit;
-    for (double offset = 0; offset <= max + 0.001; offset += 2) {
-      if (free(t.rect.shift(Offset(0, start - offset)))) {
-        hit = offset;
-        break;
-      }
-    }
-    if (hit == null && max > 0 && free(t.rect.shift(Offset(0, start - max)))) {
-      hit = max;
-    }
-    if (hit == null) {
-      out.add(
-        Finding(
-          'Inhalt erreichbar',
-          '$t lässt sich nicht frei von Kopf/Overlays scrollen (Scrollweg 0 … ${max.toStringAsFixed(0)} dp)',
-        ),
-      );
-      continue;
-    }
-    // Gegenprobe mit echtem Hit-Test an der gefundenen Lage.
-    position.jumpTo(hit);
-    await tester.pump();
-    final Offset center = t.rect.center.translate(0, start - hit);
-    final HitTestResult result = tester.hitTestOnBinding(center);
-    final RenderObject? sr = scroll.evaluate().first.renderObject;
-    bool onContent = false;
-    for (final HitTestEntry e in result.path) {
-      RenderObject? p = e.target is RenderObject
-          ? e.target as RenderObject
-          : null;
-      while (p != null) {
-        if (p == sr || (sr == null)) {
-          onContent = true;
-          break;
+      // Gegenprobe mit echtem Hit-Test an der gefundenen Lage.
+      position.jumpTo(hit);
+      await tester.pump();
+      final Offset center = t.rect.center - scan.shiftFor(position.pixels);
+      // Liegt das Ziel in einer gescrollten Lage unter Blase oder Hinweis, die
+      // beim Nutzerscrollen schließen, trifft der Test nur das Overlay: das
+      // Ziel selbst ist frei. In der Ruhelage gilt das nicht (R-AB-3).
+      final bool underDismissible =
+          !atRest(hit) && dismissible.any((Rect r) => r.contains(center));
+      final HitTestResult result = tester.hitTestOnBinding(center);
+      bool onContent = false;
+      if (sr == null) {
+        out.add(
+          const Finding(
+            'Inhalt erreichbar',
+            'Hit-Test-Gegenprobe nicht möglich: Scrollbereich ohne RenderObject',
+          ),
+        );
+      } else {
+        for (final HitTestEntry e in result.path) {
+          RenderObject? p = e.target is RenderObject
+              ? e.target as RenderObject
+              : null;
+          while (p != null) {
+            if (p == sr) {
+              onContent = true;
+              break;
+            }
+            p = p.parent;
+          }
+          if (onContent) break;
         }
-        p = p.parent;
+        if (!onContent && !underDismissible) {
+          out.add(
+            Finding(
+              'Inhalt erreichbar',
+              '$t: Hit-Test in Lage ${hit.toStringAsFixed(0)} trifft den Inhalt nicht',
+            ),
+          );
+        }
       }
-      if (onContent) break;
-    }
-    if (!onContent) {
-      out.add(
-        Finding(
-          'Inhalt erreichbar',
-          '$t: Hit-Test in Lage ${hit.toStringAsFixed(0)} trifft den Inhalt nicht',
-        ),
-      );
     }
     position.jumpTo(start);
     await tester.pump();
@@ -447,16 +1231,26 @@ Future<List<Finding>> checkReachability(WidgetTester tester) async {
 
 /// `BackdropFilter` ≤ [max] (UI-6).
 List<Finding> checkBackdrops(WidgetTester tester, int max) {
-  final int n = find.byType(BackdropFilter).evaluate().length;
+  final int n = activeBackdrops().evaluate().length;
   return n <= max
       ? const <Finding>[]
       : <Finding>[Finding('BackdropFilter ≤ $max', '$n im Baum')];
 }
 
-/// Chat-Fuß ≤ 40 % der Höhe (Ergänzung 2, 3.2).
-List<Finding> checkChatFooter(WidgetTester tester) {
+/// Chat-Fuß ≤ 40 % der Höhe (Ergänzung 2, 3.2). Fehlt der Marker bei
+/// `expectsChatFooter`, ist das ein harter Befund.
+List<Finding> checkChatFooter(WidgetTester tester, Scenario scenario) {
   final Rect? footer = overlayRects()['chat-footer'];
-  if (footer == null) return const <Finding>[];
+  if (footer == null) {
+    return scenario.expectsChatFooter
+        ? const <Finding>[
+            Finding(
+              'Marker fehlt',
+              'overlay:chat-footer (Szenario erwartet den Chat-Fuß)',
+            ),
+          ]
+        : const <Finding>[];
+  }
   final double limit = viewSize(tester).height * CuraSize.chatFooterMaxFraction;
   return footer.height <= limit + 0.5
       ? const <Finding>[]
@@ -468,49 +1262,98 @@ List<Finding> checkChatFooter(WidgetTester tester) {
         ];
 }
 
-/// Glow-Alpha-Regel (Plan 8.2, Brief-E-1): je Text der Alpha am nächsten
-/// Punkt: `bg` ≤ 24 %, `text-1/2/3` auf Glas ≤ 16 %, farbiger Text und
-/// `accent-hi` auf Glas ≤ 12 %; dazu Kontrast ≥ 4,5 bei diesem Alpha
-/// (Symbole 3). Deckende Flächen sind glowfrei. Halbtransparente Schrift
-/// (Disabled) ist ausgenommen.
-List<Finding> checkGlowRule(TextProbe probe, CuraColors colors, Size view) {
+/// Eine leere oder unvollständige Sonde ist nie grün (L1K). Gegenprobe mit einem
+/// unabhängigen Zähler: Jeder auf der Bühne gebaute, nicht leere `RichText`
+/// (`find.byType`, kennt Offstage und inaktive `IndexedStack`-Ziele) muss in der
+/// Sonde stehen. Fängt eine Sonde, die (wie vor L1K im IndexedStack-Zweig) den
+/// sichtbaren Teilbaum verfehlt und deshalb Texte nicht prüft. Szenarien ohne
+/// jeden Text (reine Symbol-Tafeln) bestehen mit ihren Symbolen.
+List<Finding> checkProbeNotEmpty(WidgetTester tester, TextProbe probe) {
+  // Mengenabgleich (Multimenge): erwartet ⊆ gefunden. Gleiche Anzahl bei
+  // anderen Texten fällt so auf.
+  final Map<String, int> missing = <String, int>{};
+  int expected = 0;
+  for (final Element e in find.byType(RichText).evaluate()) {
+    final RenderObject? r = e.renderObject;
+    if (r is! RenderParagraph || !r.attached || !r.hasSize) continue;
+    final String plain = r.text.toPlainText(includePlaceholders: false);
+    if (plain.trim().isEmpty) continue;
+    expected++;
+    missing[plain] = (missing[plain] ?? 0) + 1;
+  }
+  for (final ProbedText t in probe.texts) {
+    final int? n = missing[t.text];
+    if (n == null) continue;
+    if (n <= 1) {
+      missing.remove(t.text);
+    } else {
+      missing[t.text] = n - 1;
+    }
+  }
+  final int found = probe.texts.length;
+  final int missingCount = missing.values.fold(0, (int a, int b) => a + b);
+  String quoted(String t) {
+    final String one = t.replaceAll('\n', ' ');
+    return '"${one.length > 40 ? '${one.substring(0, 40)}…' : one}"';
+  }
+
+  return <Finding>[
+    if (found == 0 && expected > 0)
+      Finding(
+        'Sonde leer',
+        'Kein Text gefunden, obwohl $expected im Baum stehen: Die '
+            'Textprüfungen liefen leer.',
+      ),
+    if (missingCount > 0)
+      Finding(
+        'Sonde unvollständig',
+        '${expected - missingCount} von $expected Texten im Baum in der '
+            'Sonde; es fehlen: ${missing.keys.map(quoted).join(', ')}',
+      ),
+  ];
+}
+
+/// Textkontrast auf dem Untergrund (Brief v2, 3.2 und 3.5; ersetzt die
+/// Glow-Alpha-Regel): Text auf einer Karte oder Glasfläche (`glass`) erreicht
+/// im Worst Case über Schwarz, Weiß, Mandarine und Grau unter der Karte 4,5:1
+/// (Symbole 3:1). Deckende Flächen prüfen die Paar-Tests der Tokens. Text
+/// **direkt auf der Welt** (`bg`) verstößt gegen „Text nie direkt auf der
+/// Welt“ (V2-5) bleibt ein Richtwert (`advisory`): F2-R4 hat Heute, Onboarding,
+/// Datenschutzseite und „Deine Daten“ umgestellt (harte Prüfung in
+/// `test/screens/v2_text_ground_test.dart`); die Chat-Vollbilder, der Pfad-Ausblick
+/// und die Baustein-Tafeln (cmp-*) tragen noch Text auf der Welt und gehen in
+/// die Design-Abnahme.
+/// Halbtransparente Schrift (Disabled) ist ausgenommen. Texte unter einer
+/// anderen Route/Scrim und außerhalb des Bildschirms zählen nicht.
+List<Finding> checkCardTextContrast(
+  TextProbe probe,
+  CuraColors colors,
+  Size view,
+) {
   final List<Finding> out = <Finding>[];
-  bool near(Color a, Color b) =>
-      (a.r - b.r).abs() < 0.004 &&
-      (a.g - b.g).abs() < 0.004 &&
-      (a.b - b.b).abs() < 0.004;
   for (final ProbedText t in probe.texts) {
     if (!t.onScreen || t.ground == TextGround.opaque) continue;
     if (t.color.a < 0.999) continue;
-    final bool plain =
-        near(t.color, colors.text1) ||
-        near(t.color, colors.text2) ||
-        near(t.color, colors.text3);
-    final bool glass = t.ground == TextGround.glass;
-    final GlowBackdrop backdrop = !glass
-        ? GlowBackdrop.bg
-        : (plain ? GlowBackdrop.glass : GlowBackdrop.coloredOnGlass);
-    final double limit = maxGlowAlphaFor(backdrop);
-    if (!t.isIcon && t.glowAlpha > limit + 0.0005) {
-      out.add(
-        Finding(
-          'Glow-Alpha',
-          '"${t.text}" ${(t.glowAlpha * 100).toStringAsFixed(1)} % > '
-              '${(limit * 100).toStringAsFixed(0)} % (${backdrop.name})',
-        ),
-      );
+    if (t.ground == TextGround.bg) {
+      if (!t.isIcon) {
+        out.add(
+          Finding(
+            'Text direkt auf der Welt',
+            '"${t.text}" liegt auf keiner Karte (V2-5)',
+            advisory: true,
+          ),
+        );
+      }
+      continue;
     }
-    final Color ground = glass
-        ? glassWithGlow(colors, glow: t.glowAlpha)
-        : backgroundWithGlow(colors, glow: t.glowAlpha);
-    final double ratio = contrastRatio(t.color, ground);
+    final double ratio = worstCaseContrast(t.color, colors.cardFillTop);
     final double min = t.isIcon ? 3 : 4.5;
     if (ratio < min) {
       out.add(
         Finding(
-          'Kontrast bei Glow',
-          '${t.isIcon ? 'Symbol' : '"${t.text}"'} ${ratio.toStringAsFixed(2)} < $min '
-              '(Glow ${(t.glowAlpha * 100).toStringAsFixed(1)} %, ${t.ground.name})',
+          'Kontrast auf Karte',
+          '${t.isIcon ? 'Symbol' : '"${t.text}"'} ${ratio.toStringAsFixed(2)} '
+              '< $min (${t.ground.name})',
         ),
       );
     }
@@ -522,19 +1365,25 @@ List<Finding> checkGlowRule(TextProbe probe, CuraColors colors, Size view) {
 // M-Modus
 // ---------------------------------------------------------------------------
 
-/// Hoher Kontrast: Flächen opak, kein Blur, kein Glow, keine Schatten/Scheine
+/// Hoher Kontrast: Flächen opak, kein Blur, Welt ohne Dekor, keine Schatten/Scheine
 /// (außer dem Schatten der beiden Aktionsbuttons, der bleibt, Ergänzung 2).
 List<Finding> checkHighContrast(WidgetTester tester) {
   final List<Finding> out = <Finding>[];
-  final CuraColors c = CuraColors.darkHighContrast;
-  if (find.byType(BackdropFilter).evaluate().isNotEmpty) {
+  final CuraColors c = CuraColors.lightHighContrast;
+  if (activeBackdrops().evaluate().isNotEmpty) {
     out.add(const Finding('HC kein Blur', 'BackdropFilter im Baum'));
   }
-  final bool glow = find
+  final bool decor = find
       .byType(CustomPaint)
       .evaluate()
-      .any((Element e) => (e.widget as CustomPaint).painter is GlowPainter);
-  if (glow) out.add(const Finding('HC kein Glow', 'GlowPainter im Baum'));
+      .map((Element e) => (e.widget as CustomPaint).painter)
+      .whereType<WorldPainter>()
+      .any((WorldPainter p) => p.decor);
+  if (decor) {
+    out.add(
+      const Finding('HC Welt ohne Dekor', 'WorldPainter mit Körnung/Dunst'),
+    );
+  }
 
   bool solid(Color? color, Gradient? gradient) {
     if (gradient is LinearGradient) {
@@ -619,33 +1468,122 @@ List<Finding> checkReducedMotion(
 // M-Kontrast
 // ---------------------------------------------------------------------------
 
-/// Bekannte Eigenheit von `textContrastGuideline` (U2a): Im aktiven Nav-Eintrag
-/// wertet sie die Icon-Pixel als Text und meldet fälschlich ca. 2,27:1. Die
-/// Nav-Paare (`accent-hi`/`text-1`/`text-2` auf `floatFill`) sind stattdessen
-/// in `test/theme/contrast_test.dart` aus den Tokens geprüft. Ausgenommen
-/// werden nur Meldungen, die sich auf einen Knoten innerhalb der Nav beziehen.
-/// Alles andere bleibt scharf.
+/// Messeigenheit bei Eingabefeldern, eng gefasst (L1K). Die Leitlinie liest die
+/// zwei häufigsten Farben im Rechteck des Feldes; bei wenig Schrift trifft sie
+/// zwei Stufen des **Untergrunds** statt der Schriftfarbe. Gemessen sind genau
+/// zwei Fälle:
+/// - Werte um 1,0 bis [kTextFieldArtifactNearOne] (gemessen 1,01 bis 1,1): beide
+///   Farben sind Untergrund, jedes `CuraTextField`;
+/// - der vorbefüllte Wert [kTextFieldArtifactValue] im Dialog „Eigene Übung“
+///   mit [kTextFieldArtifactPairMin] bis [kTextFieldArtifactPairMax] (gemessen
+///   4,33; wenige Schrift-Pixel, Antialiasing).
+/// Alles andere bleibt ein Befund. Die echte Schriftfarbe des Feldes sichert
+/// `test/components/form_components_test.dart` (Token-/Widget-Test, `text-1`
+/// auf `card` im Worst Case ≥ 4,5 in Hell, Dunkel und Hohem Kontrast).
+const double kTextFieldArtifactNearOne = 1.1;
+const String kTextFieldArtifactValue = '3 × 10';
+const double kTextFieldArtifactPairMin = 4.3;
+const double kTextFieldArtifactPairMax = 4.4;
+
+/// Ist die Meldung der Leitlinie zu einem Eingabefeld eine der beiden bekannten
+/// Messeigenheiten (siehe [kTextFieldArtifactNearOne])? Nur wenn das Feld ein
+/// `CuraTextField` ist.
+bool isKnownTextFieldArtifact({
+  required double? ratio,
+  required bool insideCuraTextField,
+  String? value,
+}) {
+  if (!insideCuraTextField || ratio == null) return false;
+  if (ratio >= 1.0 && ratio <= kTextFieldArtifactNearOne) return true;
+  return value == kTextFieldArtifactValue &&
+      ratio >= kTextFieldArtifactPairMin &&
+      ratio <= kTextFieldArtifactPairMax;
+}
+
+/// Alle Texteingabe-Ziele mit dieser Beschriftung (bzw. diesem Wert) liegen in
+/// einem `CuraTextField`.
+bool _onlyInCuraTextField(WidgetTester tester, String label) {
+  final List<TapTarget> fields = tapTargets(tester)
+      .where((TapTarget t) => t.isTextField && t.label == label)
+      .toList();
+  if (fields.isEmpty) return false;
+  final double dpr = tester.view.devicePixelRatio;
+  final List<Rect> boxes = <Rect>[
+    for (final Element e in find.byType(CuraTextField).evaluate())
+      if (e.renderObject is RenderBox)
+        (e.renderObject! as RenderBox).localToGlobal(Offset.zero) / dpr &
+            ((e.renderObject! as RenderBox).size / dpr),
+  ];
+  return fields.every(
+    (TapTarget t) => boxes.any((Rect b) => _contains(b, t.rect)),
+  );
+}
+
+/// Bekannte Eigenheit von `textContrastGuideline` (U2a): Im **aktiven**
+/// Nav-Eintrag wertet sie die Icon-Pixel als Text und meldet fälschlich ca.
+/// 2,27:1. Die Nav-Paare stehen aus Tokens in `test/theme/contrast_world_test.dart`.
+/// Ausgenommen wird eine Meldung nur, wenn alle drei Bedingungen gelten
+/// (R-U2 MAJOR-2): (1) das Label gehört zum aktiven Eintrag einer `FloatingNav`,
+/// (2) **alle** Semantik-Knoten mit diesem Label liegen im Nav-Rechteck
+/// (gleichnamiger Inhaltstext außerhalb → keine Ausnahme), (3) der gemeldete
+/// Wert liegt im bekannten Bereich 2,0 bis 2,5. Alles andere bleibt scharf.
 Future<List<Finding>> checkTextContrast(WidgetTester tester) async {
   final Evaluation e = await textContrastGuideline.evaluate(tester);
   if (e.passed) return const <Finding>[];
   final Rect? nav = overlayRects()['nav'];
-  final List<String> navLabels = <String>[
+  final Set<String> activeLabels = <String>{
     for (final Element el in find.byType(FloatingNav).evaluate())
-      ...(el.widget as FloatingNav).items.map((NavItem i) => i.label),
-  ];
+      (el.widget as FloatingNav)
+          .items[(el.widget as FloatingNav).currentIndex]
+          .label,
+  };
+  final List<(String, Rect)> nodes = labeledNodes(tester);
   final List<Finding> out = <Finding>[];
-  // Meldungen sind durch Leerzeilen/„SemanticsNode#“ getrennt.
   final List<String> blocks = (e.reason ?? '').split(
     RegExp(r'\n(?=SemanticsNode#)'),
   );
   for (final String b in blocks) {
     if (b.trim().isEmpty) continue;
-    final bool inNav =
-        nav != null &&
-        navLabels.any(
-          (String l) => b.contains('label: "$l"') || b.contains('"$l"'),
-        );
-    if (inNav && b.contains('found 2.')) continue;
+    final String? label = RegExp(r'label: "([^"]*)"').firstMatch(b)?.group(1);
+    // Eingabefelder tragen den Text als `value`.
+    final String? shown =
+        label ?? RegExp(r'value: "([^"]*)"').firstMatch(b)?.group(1);
+    final double? ratio = double.tryParse(
+      RegExp(r'found (\d+\.\d+)').firstMatch(b)?.group(1) ?? '',
+    );
+    bool known = false;
+    if (nav != null &&
+        label != null &&
+        ratio != null &&
+        activeLabels.contains(label)) {
+      final Iterable<Rect> same = nodes
+          .where(((String, Rect) n) => n.$1 == label)
+          .map(((String, Rect) n) => n.$2);
+      known =
+          same.isNotEmpty &&
+          same.every((Rect r) => _contains(nav, r)) &&
+          ratio >= 2.0 &&
+          ratio < 2.5;
+    }
+    // Eingabefelder: Der Wert ist wenig Text auf einem Glas-Verlauf. Die
+    // Leitlinie liest die zwei häufigsten Farben aus dem Bild und trifft dabei
+    // zwei Stufen des Verlaufs statt der Textfarbe (gemeldete Paare liegen bei
+    // 1,01 bis 1,02, beide Farben Untergrund). Messartefakt: `text1` auf Glas
+    // und auf `surface-opaque` ist durch den Token-Test (UI-3) belegt. Die
+    // Ausnahme gilt nur für diese Eigenheit ([isKnownTextFieldArtifact]):
+    // Feld des Bausteins `CuraTextField` und die zwei gemessenen Paare
+    // (R-AB-4, L1K).
+    final bool field = b.contains('isTextField');
+    if (field &&
+        isKnownTextFieldArtifact(
+          ratio: ratio,
+          insideCuraTextField:
+              shown != null && _onlyInCuraTextField(tester, shown),
+          value: shown,
+        )) {
+      continue;
+    }
+    if (known) continue;
     out.add(
       Finding('Text-Kontrast (Leitlinie)', b.split('\n').take(3).join(' | ')),
     );

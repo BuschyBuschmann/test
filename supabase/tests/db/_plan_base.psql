@@ -1,0 +1,2 @@
+-- gemeinsame Plan-Payloads fuer save_plan-Tests (psql-Variablen, Platzhalter {{name}} -> t.id(name))
+\set base '{"current_phase_id":"{{ph1}}","phases":[{"id":"{{ph1}}","position":0,"title":"Phase 1","planned_weeks":2},{"id":"{{ph2}}","position":1,"title":"Phase 2","planned_weeks":3}],"items":[{"id":"{{it1}}","phase_id":"{{ph1}}","exercise_id":"{{ex_cat1}}","position":0,"sets":3,"reps":10},{"id":"{{it2}}","phase_id":"{{ph1}}","exercise_id":"{{ex_cat2}}","position":1,"sets":2},{"id":"{{it3}}","phase_id":"{{ph2}}","exercise_id":"{{ex_a1}}","position":0,"duration_sec":30}]}'

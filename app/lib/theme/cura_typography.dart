@@ -46,9 +46,13 @@ TextStyle textStyleFromSpec(TypeSpec spec, {Color? color}) {
 class CuraTypography extends ThemeExtension<CuraTypography> {
   const CuraTypography({
     required this.display,
+    required this.titleHeader,
     required this.title,
     required this.heading,
+    required this.counter,
+    required this.counterUnit,
     required this.numeral,
+    required this.numeralSmall,
     required this.numeralLarge,
     required this.button,
     required this.body,
@@ -56,6 +60,7 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
     required this.secondary,
     required this.label,
     required this.caption,
+    required this.chip,
     required this.bubble,
     required this.segment,
     required this.segmentSelected,
@@ -64,9 +69,13 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
   factory CuraTypography.from(CuraColors colors) {
     return CuraTypography(
       display: textStyleFromSpec(TypeScale.display),
+      titleHeader: textStyleFromSpec(TypeScale.titleHeader),
       title: textStyleFromSpec(TypeScale.title),
       heading: textStyleFromSpec(TypeScale.heading),
+      counter: textStyleFromSpec(TypeScale.counter),
+      counterUnit: textStyleFromSpec(TypeScale.counterUnit),
       numeral: textStyleFromSpec(TypeScale.numeral),
+      numeralSmall: textStyleFromSpec(TypeScale.numeralSmall),
       numeralLarge: textStyleFromSpec(TypeScale.numeralLarge),
       button: textStyleFromSpec(TypeScale.button),
       body: textStyleFromSpec(TypeScale.body),
@@ -74,6 +83,7 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
       secondary: textStyleFromSpec(TypeScale.secondary),
       label: textStyleFromSpec(TypeScale.label),
       caption: textStyleFromSpec(TypeScale.caption),
+      chip: textStyleFromSpec(TypeScale.chip),
       bubble: textStyleFromSpec(TypeScale.bubble),
       segment: textStyleFromSpec(TypeScale.segment, color: colors.text2),
       segmentSelected: textStyleFromSpec(
@@ -84,9 +94,19 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
   }
 
   final TextStyle display;
+
+  /// Titel der Kopf-Karte 30/32 (`title` ist 24/28).
+  final TextStyle titleHeader;
   final TextStyle title;
   final TextStyle heading;
+
+  /// Zähler-Orb 52/52 und seine Einheit 30.
+  final TextStyle counter;
+  final TextStyle counterUnit;
+
+  /// Zahl in Kacheln 28/30; [numeralSmall] 18/24.
   final TextStyle numeral;
+  final TextStyle numeralSmall;
 
   /// Zahl 24/28 (z. B. Uhrzeit auf Karten).
   final TextStyle numeralLarge;
@@ -99,6 +119,9 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
   final TextStyle label;
   final TextStyle caption;
 
+  /// Chip 13/16, 700.
+  final TextStyle chip;
+
   /// Sprechblase, 14,5 sp.
   final TextStyle bubble;
   final TextStyle segment;
@@ -107,9 +130,13 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
   /// Alle Stile mit Namen (für Typo-Tafel und Tests).
   Map<String, TextStyle> get all => <String, TextStyle>{
     'display': display,
+    'titleHeader': titleHeader,
     'title': title,
     'heading': heading,
+    'counter': counter,
+    'counterUnit': counterUnit,
     'numeral': numeral,
+    'numeralSmall': numeralSmall,
     'numeralLarge': numeralLarge,
     'button': button,
     'body': body,
@@ -117,12 +144,17 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
     'secondary': secondary,
     'label': label,
     'caption': caption,
+    'chip': chip,
     'bubble': bubble,
     'segment': segment,
     'segmentSelected': segmentSelected,
   };
 
+  static final CuraTypography light = CuraTypography.from(CuraColors.light);
   static final CuraTypography dark = CuraTypography.from(CuraColors.dark);
+  static final CuraTypography lightHighContrast = CuraTypography.from(
+    CuraColors.lightHighContrast,
+  );
   static final CuraTypography darkHighContrast = CuraTypography.from(
     CuraColors.darkHighContrast,
   );
@@ -139,9 +171,13 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
   @override
   CuraTypography copyWith({
     TextStyle? display,
+    TextStyle? titleHeader,
     TextStyle? title,
     TextStyle? heading,
+    TextStyle? counter,
+    TextStyle? counterUnit,
     TextStyle? numeral,
+    TextStyle? numeralSmall,
     TextStyle? numeralLarge,
     TextStyle? button,
     TextStyle? body,
@@ -149,15 +185,20 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
     TextStyle? secondary,
     TextStyle? label,
     TextStyle? caption,
+    TextStyle? chip,
     TextStyle? bubble,
     TextStyle? segment,
     TextStyle? segmentSelected,
   }) {
     return CuraTypography(
       display: display ?? this.display,
+      titleHeader: titleHeader ?? this.titleHeader,
       title: title ?? this.title,
       heading: heading ?? this.heading,
+      counter: counter ?? this.counter,
+      counterUnit: counterUnit ?? this.counterUnit,
       numeral: numeral ?? this.numeral,
+      numeralSmall: numeralSmall ?? this.numeralSmall,
       numeralLarge: numeralLarge ?? this.numeralLarge,
       button: button ?? this.button,
       body: body ?? this.body,
@@ -165,6 +206,7 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
       secondary: secondary ?? this.secondary,
       label: label ?? this.label,
       caption: caption ?? this.caption,
+      chip: chip ?? this.chip,
       bubble: bubble ?? this.bubble,
       segment: segment ?? this.segment,
       segmentSelected: segmentSelected ?? this.segmentSelected,
@@ -176,9 +218,13 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
     if (other is! CuraTypography) return this;
     return CuraTypography(
       display: TextStyle.lerp(display, other.display, t)!,
+      titleHeader: TextStyle.lerp(titleHeader, other.titleHeader, t)!,
       title: TextStyle.lerp(title, other.title, t)!,
       heading: TextStyle.lerp(heading, other.heading, t)!,
+      counter: TextStyle.lerp(counter, other.counter, t)!,
+      counterUnit: TextStyle.lerp(counterUnit, other.counterUnit, t)!,
       numeral: TextStyle.lerp(numeral, other.numeral, t)!,
+      numeralSmall: TextStyle.lerp(numeralSmall, other.numeralSmall, t)!,
       numeralLarge: TextStyle.lerp(numeralLarge, other.numeralLarge, t)!,
       button: TextStyle.lerp(button, other.button, t)!,
       body: TextStyle.lerp(body, other.body, t)!,
@@ -186,6 +232,7 @@ class CuraTypography extends ThemeExtension<CuraTypography> {
       secondary: TextStyle.lerp(secondary, other.secondary, t)!,
       label: TextStyle.lerp(label, other.label, t)!,
       caption: TextStyle.lerp(caption, other.caption, t)!,
+      chip: TextStyle.lerp(chip, other.chip, t)!,
       bubble: TextStyle.lerp(bubble, other.bubble, t)!,
       segment: TextStyle.lerp(segment, other.segment, t)!,
       segmentSelected: TextStyle.lerp(

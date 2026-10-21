@@ -1,22 +1,25 @@
-// ContentFrame, GlowBackground, CuraBlur, GlassCard (U2a, UI-1, UI-6, UI-7, UI-9).
+// ContentFrame, WorldBackground, CuraBlur, GlassCard (U2a, UI-1, UI-6; V2-2, V2-9).
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_metrics.dart';
 import 'package:curaone/theme/cura_roles.dart';
-import 'package:curaone/theme/glow.dart';
+import 'package:curaone/logic/world_time.dart';
+import 'package:curaone/theme/world_painter.dart';
+import 'package:curaone/theme/world_tokens.dart';
 import 'package:curaone/theme/tokens.dart';
 import 'package:curaone/ui/components/content_frame.dart';
 import 'package:curaone/ui/components/cura_blur.dart';
 import 'package:curaone/ui/components/glass_card.dart';
-import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/world_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
 import '../support/pump_app.dart';
+import '../support/backdrops.dart';
 
 void main() {
   group('ContentFrame (B-3)', () {
@@ -44,24 +47,24 @@ void main() {
     });
   });
 
-  group('GlowBackground (UI-7, UI-9)', () {
+  group('WorldBackground (V2-2, V2-9, V2-12, V2-14)', () {
     testWidgets('Baum: ExcludeSemantics > IgnorePointer > RepaintBoundary > '
         'CustomPaint, ohne Animation', (WidgetTester tester) async {
       await pumpApp(
         tester,
         const Stack(
-          children: <Widget>[Positioned.fill(child: GlowBackground())],
+          children: <Widget>[Positioned.fill(child: WorldBackground())],
         ),
       );
-      final Finder glow = find.byType(GlowBackground);
+      final Finder world = find.byType(WorldBackground);
       expect(
-        find.descendant(of: glow, matching: find.byType(ExcludeSemantics)),
+        find.descendant(of: world, matching: find.byType(ExcludeSemantics)),
         findsOneWidget,
       );
       final Finder chain = find.descendant(
         of: find.descendant(
           of: find.descendant(
-            of: glow,
+            of: world,
             matching: find.byType(ExcludeSemantics),
           ),
           matching: find.byType(IgnorePointer),
@@ -70,33 +73,45 @@ void main() {
       );
       expect(chain, findsWidgets);
       final Finder paint = find.descendant(
-        of: glow,
+        of: world,
         matching: find.byType(CustomPaint),
       );
       expect(paint, findsOneWidget);
       expect(tester.hasRunningAnimations, isFalse);
+      // Kein BackdropFilter: die Welt ist Gemaltes, kein Blur (V2-11).
+      expect(backdropCount(tester), 0);
     });
 
-    testWidgets('Hoher Kontrast: nicht gebaut', (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const Stack(
-          children: <Widget>[Positioned.fill(child: GlowBackground())],
-        ),
-        highContrast: true,
-      );
-      expect(
-        find.byType(CustomPaint).evaluate().where((Element e) {
-          return e.widget is CustomPaint &&
-              (e.widget as CustomPaint).painter is GlowPainter;
-        }),
-        isEmpty,
-      );
-    });
+    testWidgets(
+      'Hoher Kontrast: Welt ohne Körnung, Dunst, Sterne, Sonne/Mond',
+      (WidgetTester tester) async {
+        await pumpApp(
+          tester,
+          const Stack(
+            children: <Widget>[Positioned.fill(child: WorldBackground())],
+          ),
+          highContrast: true,
+        );
+        final WorldPainter p =
+            tester
+                    .widget<CustomPaint>(
+                      find.descendant(
+                        of: find.byType(WorldBackground),
+                        matching: find.byType(CustomPaint),
+                      ),
+                    )
+                    .painter!
+                as WorldPainter;
+        expect(p.decor, isFalse);
+      },
+    );
 
-    testWidgets('Pixel: Spitze oben links 24 %, unten rechts 14 %, Mitte frei', (
+    /// Rendert die Welt [phase] und liefert das Bild (dp = Pixel).
+    Future<(ui.Image, ByteData)> render(
       WidgetTester tester,
-    ) async {
+      WorldPhase phase, {
+      bool decor = true,
+    }) async {
       final GlobalKey key = GlobalKey();
       const Size size = Viewports.phone;
       setViewport(tester, size);
@@ -105,13 +120,13 @@ void main() {
           textDirection: TextDirection.ltr,
           child: RepaintBoundary(
             key: key,
-            child: ColoredBox(
-              color: CuraColors.dark.bg,
-              child: Theme(
-                data: ThemeData(
-                  extensions: <ThemeExtension<dynamic>>[CuraColors.dark],
+            child: SizedBox.fromSize(
+              size: size,
+              child: CustomPaint(
+                painter: WorldPainter(
+                  palette: WorldPalette.of(phase),
+                  decor: decor,
                 ),
-                child: const SizedBox.expand(child: GlowBackground()),
               ),
             ),
           ),
@@ -125,37 +140,87 @@ void main() {
       final ByteData data = (await tester.runAsync<ByteData?>(
         () => image.toByteData(),
       ))!;
-      Color pixel(int x, int y) {
-        final int i = (y * image.width + x) * 4;
-        return Color.fromARGB(
-          data.getUint8(i + 3),
-          data.getUint8(i),
-          data.getUint8(i + 1),
-          data.getUint8(i + 2),
-        );
-      }
+      return (image, data);
+    }
 
-      // Erwartung: Ember über bg mit Alpha am Punkt.
-      Color expected(double alpha) => Color.alphaBlend(
-        CuraColors.dark.glowEmber.withValues(alpha: alpha),
-        CuraColors.dark.bg,
+    Color pixel(ui.Image image, ByteData data, int x, int y) {
+      final int i = (y * image.width + x) * 4;
+      return Color.fromARGB(
+        data.getUint8(i + 3),
+        data.getUint8(i),
+        data.getUint8(i + 1),
+        data.getUint8(i + 2),
       );
-      void expectNear(Color a, Color b) {
-        expect((a.r * 255 - b.r * 255).abs(), lessThanOrEqualTo(3));
-        expect((a.g * 255 - b.g * 255).abs(), lessThanOrEqualTo(3));
-        expect((a.b * 255 - b.b * 255).abs(), lessThanOrEqualTo(3));
-      }
+    }
 
-      const GlowGeometry g = GlowGeometry(390, 844);
-      // Pixel (0, 40): Abstand 30 zur Mitte (-30, 40) + Beitrag unten rechts 0.
-      expectNear(pixel(0, 40), expected(g.alphaAt(0.5, 40.5)));
-      expect(g.alphaAt(0.5, 40.5), closeTo(0.24 * (1 - 30.5 / 182), 0.01));
-      // Unten rechts nahe der Mitte (440, 820): Pixel (389, 820).
-      expectNear(pixel(389, 820), expected(g.alphaAt(389.5, 820.5)));
-      // Bildschirmmitte: kein Glow.
-      expectNear(pixel(195, 422), CuraColors.dark.bg);
-      expect(GlowTokens.topLeftPeak, 0.24);
-      expect(GlowTokens.bottomRightPeak, 0.14);
+    int channelDiff(Color a, Color b) {
+      int d(double x, double y) => ((x - y) * 255).abs().round();
+      return <int>[
+        d(a.r, b.r),
+        d(a.g, b.g),
+        d(a.b, b.b),
+      ].reduce((int m, int v) => v > m ? v : m);
+    }
+
+    for (final WorldPhase phase in WorldPhase.values) {
+      testWidgets('V2-2 Pixel: ${phase.name}: Himmel oben, Boden unten', (
+        WidgetTester tester,
+      ) async {
+        final (ui.Image image, ByteData data) = await render(
+          tester,
+          phase,
+          decor: false,
+        );
+        final WorldPalette p = WorldPalette.of(phase);
+        // Oben links ohne Dekor: Himmelsfarbe oben (Toleranz Rundung).
+        expect(
+          channelDiff(pixel(image, data, 2, 0), p.skyTop),
+          lessThanOrEqualTo(2),
+        );
+        // Ganz unten: Bodenfarbe (die Ebenen laufen in Transparenz aus).
+        expect(
+          channelDiff(pixel(image, data, 195, image.height - 1), p.floor),
+          lessThanOrEqualTo(3),
+        );
+      });
+
+      testWidgets(
+        'V2-9 Pixel: ${phase.name}: keine harte Kontur zwischen den Ebenen',
+        (WidgetTester tester) async {
+          final (ui.Image image, ByteData data) = await render(
+            tester,
+            phase,
+            decor: false,
+          );
+          // Spalten ohne Sonne/Mond; größter Sprung zwischen benachbarten
+          // Pixeln (je Kanal, 0 … 255). Eine harte Kontur zwischen Ebenen
+          // wäre ein Sprung von dutzenden Stufen.
+          int worst = 0;
+          for (final int x in <int>[20, 120, 195, 270, 370]) {
+            for (int y = 1; y < image.height; y++) {
+              final int d = channelDiff(
+                pixel(image, data, x, y),
+                pixel(image, data, x, y - 1),
+              );
+              if (d > worst) worst = d;
+            }
+          }
+          expect(worst, lessThanOrEqualTo(8), reason: '${phase.name}: $worst');
+        },
+      );
+    }
+
+    testWidgets('Mitte der Mischung 50:50 liegt zwischen beiden Welten', (
+      WidgetTester tester,
+    ) async {
+      final WorldPalette m = WorldPalette.forMix(
+        const WorldMix(WorldPhase.midday, WorldPhase.night, 0.5),
+      );
+      expect(
+        channelDiff(m.skyTop, WorldPalette.midday.skyTop),
+        greaterThan(20),
+      );
+      expect(channelDiff(m.skyTop, WorldPalette.night.skyTop), greaterThan(20));
     });
   });
 
@@ -168,7 +233,7 @@ void main() {
         const CuraBlur(child: SizedBox(width: 40, height: 40)),
       );
       expect(backdropCount(tester), 1);
-      final BackdropFilter f = tester.widget(find.byType(BackdropFilter));
+      final BackdropFilter f = tester.widget(activeBackdrops());
       expect(
         f.filter,
         ui.ImageFilter.blur(sigmaX: BlurTokens.sigma, sigmaY: BlurTokens.sigma),
@@ -188,8 +253,8 @@ void main() {
   });
 
   group('GlassCard (Brief 5.1, E1)', () {
-    testWidgets('Normal: Verlauf, Rand 1 dp hair, Radius 24, Lichtkante, '
-        'kein Blur, kein Schatten', (WidgetTester tester) async {
+    testWidgets('Normal: card 92 %, Rand 1 dp hair, Radius 28, Lichtkante, '
+        'Schatten 0/18/30 ohne Blur', (WidgetTester tester) async {
       await pumpApp(
         tester,
         const Center(child: GlassCard(child: Text('Inhalt'))),
@@ -198,12 +263,21 @@ void main() {
       final CuraColors c = colorsAt(tester, card);
       final List<BoxDecoration> d = decorationsUnder(tester, card).toList();
       expect(d.first.gradient, c.cardFill);
-      expect(d.first.borderRadius, BorderRadius.circular(24));
+      expect(d.first.borderRadius, BorderRadius.circular(28));
       final BoxDecoration border = d.firstWhere(
         (BoxDecoration x) => x.border != null,
       );
       expect(border.border, Border.all(color: c.borderHair, width: 1));
-      expect(d.every((BoxDecoration x) => x.boxShadow == null), isTrue);
+      // Schatten der Karte (E1): 0/18/30 mit negativem Spread, warm getönt.
+      expect(d.first.boxShadow, CuraShadow.card(dark: false));
+      final BoxShadow shadow = d.first.boxShadow!.single;
+      expect(shadow.offset, const Offset(0, 18));
+      expect(shadow.blurRadius, 30);
+      expect(shadow.spreadRadius, lessThan(0));
+      expect(shadow.color.toARGB32() & 0xFFFFFF, 0x2A211C);
+      expect(d.skip(1).every((BoxDecoration x) => x.boxShadow == null), isTrue);
+      // card 92 % (Hell: Weiß), kein Blur (V2-10).
+      expect(c.card, const Color(0xFFFFFFFF).withValues(alpha: 0.92));
       expect(backdropCount(tester), 0);
       // Lichtkante: ColoredBox 1 dp hoch in `lightEdge`.
       final Finder edge = find.descendant(
@@ -231,14 +305,13 @@ void main() {
       );
       final Finder card = find.byType(GlassCard);
       final CuraColors c = colorsAt(tester, card);
-      expect(c.cardFillTop, const Color(0xFF1B2129));
-      expect(c.cardFillBottom, const Color(0xFF1B2129));
+      expect(c.cardFillTop, c.surfaceOpaque);
+      expect(c.cardFillBottom, c.surfaceOpaque);
+      expect(c.surfaceOpaque.a, 1);
       final List<BoxDecoration> d = decorationsUnder(tester, card).toList();
       final LinearGradient g = d.first.gradient! as LinearGradient;
-      expect(g.colors, <Color>[
-        const Color(0xFF1B2129),
-        const Color(0xFF1B2129),
-      ]);
+      expect(g.colors, <Color>[c.surfaceOpaque, c.surfaceOpaque]);
+      expect(d.first.boxShadow, isNull, reason: 'kein Schatten bei HC');
       expect(
         d.firstWhere((BoxDecoration x) => x.border != null).border,
         Border.all(color: c.borderControlHc, width: 1),

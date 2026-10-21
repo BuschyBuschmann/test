@@ -1,13 +1,18 @@
-// Goldens der geteilten Bausteine (U2a, Plan 12.2 G): Typo-Tafel, Bausteine
-// einzeln (Normal und Hoher Kontrast), Flächen mit Glow, Manny-Posen. Referenz
-// ist ausschließlich diese Linux-Umgebung; Erzeugung mit `--update-goldens`,
-// Sichtung durch den `ui-designer`, Freigabe durch den Nutzer (Plan 12.1).
+// Goldens der geteilten Bausteine (Plan 12.2 G; F2-R2): Typo-Tafel, Bausteine
+// einzeln (Normal und Hoher Kontrast), Flächen auf der Welt, Manny-Posen je
+// Variante und die Tafel aller Komponenten des Briefs v2 in einer Auswahl von
+// vier Darstellungen (`showcase_*`: Mittag hell, Abend hell, Nacht dunkel, Nacht
+// dunkel mit Hohem Kontrast). Referenz ist ausschließlich diese
+// Linux-Umgebung; Erzeugung mit `--update-goldens`, Sichtung durch den
+// `ui-designer`, Freigabe durch den Nutzer (Plan 12.1). Die Szenario-Goldens
+// (`scenario_golden_test.dart`) bleiben für F2-R4.
 @Tags(<String>['golden'])
 library;
 
+import 'package:curaone/logic/manny_look.dart';
+import 'package:curaone/logic/world_time.dart';
 import 'package:curaone/theme/cura_colors.dart';
 import 'package:curaone/theme/cura_typography.dart';
-import 'package:curaone/ui/components/action_cluster.dart';
 import 'package:curaone/ui/components/choice_card.dart';
 import 'package:curaone/ui/components/cura_dialog.dart';
 import 'package:curaone/ui/components/cura_label.dart';
@@ -16,12 +21,11 @@ import 'package:curaone/ui/components/cura_text_field.dart';
 import 'package:curaone/ui/components/date_card.dart';
 import 'package:curaone/ui/components/floating_nav.dart';
 import 'package:curaone/ui/components/glass_card.dart';
-import 'package:curaone/ui/components/glow_background.dart';
+import 'package:curaone/ui/components/world_background.dart';
 import 'package:curaone/ui/components/header_icon_button.dart';
 import 'package:curaone/ui/components/manny.dart';
 import 'package:curaone/ui/components/manny_bubble.dart';
 import 'package:curaone/ui/components/manny_chat_button.dart';
-import 'package:curaone/ui/components/messages_button.dart';
 import 'package:curaone/ui/components/mic_button.dart';
 import 'package:curaone/ui/components/pill_button.dart';
 import 'package:curaone/ui/components/step_progress.dart';
@@ -29,12 +33,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/pump_app.dart';
+import '../support/showcase.dart';
+import '../support/world_app.dart';
 
 const Size _board = Size(390, 844);
 
-Widget _withGlow(Widget content) => Stack(
+Widget _withWorld(Widget content) => Stack(
   children: <Widget>[
-    const Positioned.fill(child: GlowBackground()),
+    const Positioned.fill(child: WorldBackground()),
     content,
   ],
 );
@@ -47,7 +53,7 @@ Future<void> _golden(
   Size size = _board,
 }) async {
   await pumpApp(tester, board, size: size, highContrast: hc);
-  await tester.pumpAndSettle();
+  await precacheImages(tester);
   await expectLater(
     find.byType(Scaffold),
     matchesGoldenFile('goldens/$name.png'),
@@ -57,7 +63,7 @@ Future<void> _golden(
 Widget _gap() => const SizedBox(height: 12);
 
 /// Bausteine einzeln: Tasten, Auswahl, Felder, Kreise, Fortschritt, Label.
-Widget _controls() => _withGlow(
+Widget _controls() => _withWorld(
   SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(
@@ -131,9 +137,8 @@ Widget _controls() => _withGlow(
               onPressed: () {},
             ),
             const SizedBox(width: 8),
-            MessagesButton(onPressed: () {}),
             const SizedBox(width: 8),
-            MannyChatButton(onPressed: () {}),
+            MannyButton(onPressed: () {}),
           ],
         ),
       ],
@@ -142,7 +147,7 @@ Widget _controls() => _withGlow(
 );
 
 /// Flächen: Glas-Karte, Snackbar, Sprechblasen, Dialog.
-Widget _surfaces() => _withGlow(
+Widget _surfaces() => _withWorld(
   SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(
@@ -155,7 +160,7 @@ Widget _surfaces() => _withGlow(
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const MannyPlaceholder(height: 80),
+            const MannyIllustration(height: 88),
             const SizedBox(width: 4),
             Expanded(
               child: MannyBubble(
@@ -177,7 +182,7 @@ Widget _surfaces() => _withGlow(
         const SizedBox(height: 4),
         const Padding(
           padding: EdgeInsets.only(left: 40),
-          child: MannyPlaceholder(height: 80, pose: MannyPose.feiernd),
+          child: MannyIllustration(height: 88, pose: MannyPose.feiernd),
         ),
         _gap(),
         CuraSnackbar(
@@ -213,8 +218,8 @@ Widget _surfaces() => _withGlow(
   ),
 );
 
-/// Nav und Button-Gruppe über scrollendem Inhalt (Blur, Ausblenden).
-Widget _navBoard() => _withGlow(
+/// Leiste (Ruhe) und Button-Gruppe über scrollendem Inhalt (Blur, Schleier).
+Widget _navBoard() => _withWorld(
   Stack(
     children: <Widget>[
       Positioned.fill(
@@ -233,55 +238,51 @@ Widget _navBoard() => _withGlow(
         child: FloatingNav(
           currentIndex: 1,
           onSelected: (_) {},
-          items: const <NavItem>[
-            NavItem(icon: Icons.route_rounded, label: 'Pfad'),
-            NavItem(icon: Icons.event_available_rounded, label: 'Heute'),
-          ],
+          items: kShowcaseNav,
         ),
       ),
       Positioned(
-        right: 16,
-        bottom: 22 + 64 + 16,
-        child: ActionCluster(
-          mode: ActionClusterMode.path,
-          onOpenChat: () {},
-          onOpenMessages: () {},
-        ),
+        right: 18,
+        bottom: 24 + 72 + 16,
+        child: MannyButton(onPressed: () {}),
       ),
     ],
   ),
 );
 
-Widget _manny() => _withGlow(
-  Padding(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: <Widget>[
-            for (final MannyPose p in MannyPose.values) ...<Widget>[
-              MannyPlaceholder(height: 120, pose: p),
-              const SizedBox(width: 16),
-            ],
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: <Widget>[
-            for (final MannyPose p in MannyPose.values) ...<Widget>[
-              MannyPlaceholder(height: 56, pose: p),
-              const SizedBox(width: 16),
-            ],
-            for (final MannyPose p in MannyPose.values) ...<Widget>[
-              MannyPlaceholder(height: 38, pose: p, crop: MannyCrop.head),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ],
-    ),
+/// Die drei Posen und der Kopf einer Variante: auf der Welt Nacht mit Halo (Pfad)
+/// und, darunter, Kopf auf heller Scheibe in 48, 56 und 80 dp.
+Widget _manny(MannyLook look) => Padding(
+  padding: const EdgeInsets.all(16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          for (final MannyPose p in const <MannyPose>[
+            MannyPose.neutral,
+            MannyPose.feiernd,
+            MannyPose.troestend,
+          ])
+            MannyIllustration(height: 120, pose: p, look: look, onWorld: true),
+        ],
+      ),
+      const SizedBox(height: 24),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          MannyAvatar(size: 48, look: look),
+          const SizedBox(width: 16),
+          MannyAvatar(size: 56, look: look),
+          const SizedBox(width: 16),
+          MannyAvatar(size: 80, look: look),
+          const SizedBox(width: 16),
+          MannyButton(onPressed: () {}),
+        ],
+      ),
+    ],
   ),
 );
 
@@ -299,7 +300,7 @@ Widget _typoBoard() => Builder(
             Text(
               '${e.key} · ${e.value.fontFamily} ${e.value.fontSize} '
               '${e.value.fontWeight?.value}',
-              style: t.caption.copyWith(color: c.text3),
+              style: t.caption.copyWith(color: c.text2),
             ),
             Text(
               e.key == 'label' ? 'ABSCHNITTSTITEL' : 'Heute, Jakob 17:00',
@@ -372,17 +373,56 @@ void main() {
       await _golden(tester, _navBoard(), 'nav_cluster_hc', hc: true);
     });
 
-    testWidgets('manny_poses', (WidgetTester tester) async {
-      await _golden(
-        tester,
-        _manny(),
-        'manny_poses',
-        size: const Size(390, 300),
-      );
-    });
+    for (final MannyLook look in MannyLook.values) {
+      testWidgets('manny_poses_${look.name}', (WidgetTester tester) async {
+        await pumpWorld(
+          tester,
+          _manny(look),
+          phase: WorldPhase.night,
+          brightness: Brightness.dark,
+          size: const Size(390, 320),
+        );
+        await precacheImages(tester);
+        await expectLater(
+          find.byType(Scaffold),
+          matchesGoldenFile('goldens/manny_poses_${look.name}.png'),
+        );
+      });
+    }
+  });
 
-    testWidgets('glow', (WidgetTester tester) async {
-      await _golden(tester, _withGlow(const SizedBox.expand()), 'glow');
-    });
+  // Auswahl statt aller zehn Darstellungen (Design-Abnahme L1, Punkt 8): Mittag
+  // hell (Referenz), Abend hell, Nacht dunkel und Nacht dunkel mit Hohem
+  // Kontrast. Der Kontrast je Welt ist durch `contrast_world_test.dart` belegt.
+  const Set<String> showcaseLooks = <String>{
+    'midday_light',
+    'night_dark_hc',
+    'evening_light',
+    'night_dark',
+  };
+  group('Tafel aller Komponenten (Auswahl der Welten)', () {
+    for (final WorldLook l in allWorldLooks().where(
+      (WorldLook l) => showcaseLooks.contains(l.name),
+    )) {
+      testWidgets('showcase_${l.name}', (WidgetTester tester) async {
+        await pumpWorld(
+          tester,
+          v2Showcase(
+            look: l.brightness == Brightness.dark
+                ? MannyLook.ohne
+                : MannyLook.brille,
+          ),
+          phase: l.phase,
+          brightness: l.brightness,
+          highContrast: l.highContrast,
+          size: const Size(390, 2300),
+        );
+        await precacheImages(tester);
+        await expectLater(
+          find.byType(Scaffold),
+          matchesGoldenFile('goldens/showcase_${l.name}.png'),
+        );
+      });
+    }
   });
 }

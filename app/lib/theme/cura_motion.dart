@@ -39,6 +39,14 @@ class CuraMotion {
   static const Duration fastDuration = MotionTokens.fast;
   static const Duration baseDuration = MotionTokens.base;
   static const Duration slowDuration = MotionTokens.slow;
+
+  /// Feier höchstens 1800 ms, Feder höchstens 600 ms (Brief 3.6).
+  static const Duration celebrateDuration = MotionTokens.celebrate;
+  static const Duration springDuration = MotionTokens.springMax;
+
+  /// Ein laufender Vorgang zeigt seinen Fortschrittskreis erst nach dieser
+  /// Zeit (Erratum E-3, UI-52).
+  static const Duration busyDelay = MotionTokens.busyDelay;
   static const Curve easing = MotionTokens.curve;
 
   /// Bewegung reduzieren ist aktiv.
@@ -48,6 +56,11 @@ class CuraMotion {
   Duration get base => baseDuration;
   Duration get slow => slowDuration;
   Curve get curve => easing;
+
+  /// Feder (einmaliges Überschwingen ≤ 8 %) nur für Fortschrittsfüllung,
+  /// Kugel-Pop und Zähler-Orb; bei reduzierter Bewegung entfällt sie
+  /// (lineare Überblendung, höchstens `fast`).
+  Curve get spring => reduced ? easing : MotionTokens.spring;
 
   /// Dauer für ein Ein-/Überblenden: bei reduzierter Bewegung höchstens
   /// `fast` (Brief 3.6).

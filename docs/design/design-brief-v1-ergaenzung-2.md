@@ -38,6 +38,7 @@ Orientierungsbilder (kein Pixel-Vorbild, Datum und Wochentage darin sind keine V
 - **UI-39 (Zusatz am Ende):** "Auch das Öffnen des Manny-Chats oder der Nachrichten beendet das Fenster."
 - **UI-37 und UI-41 (Präzisierung "direkt über dem Button"):** Die Snackbar steht 12 dp über der Button-Gruppe (Oberkante des Nachrichten-Buttons), verdeckt weder Nav noch Primärbutton-Reihe noch Button-Gruppe.
 - **UI-63 (letzter Satz neu):** "Die Zone unten links (UI-24) ist weiterhin frei; unten rechts steht nur die Button-Gruppe. Auf dem Pfad erscheint keine Snackbar."
+- **K6 (Änderung vom 2026-10-08, Nutzer freigegeben; Anlass Abnahme A-U3, Befund B2):** Die Hinweiskarte (`ExampleNotice`) im Manny-Chat, in den Nachrichten und im Beispiel-Chat ist nur bei normaler Schrift und ausreichender Höhe fest. **Sie wandert als erstes Element in die Liste (scrollt mit), sobald die Textskalierung mindestens 1,5 beträgt ODER die verfügbare Höhe unter 400 dp liegt.** Begründung der Schwelle: Bei 320 × 568 dp und 200 % (Kopf 143 dp, Karte 131 dp, Leiste 110 dp) blieben nur ca. 150 dp, im Querformat (Höhe 320 dp) nur ca. 55 dp für den Verlauf, sodass beim Öffnen keine Nachricht sichtbar war. Bei 400 dp Höhe und mehr (alle Hochformat-Telefone ab 568 dp, auch mit Tastatur außerhalb dieser Regel) bleibt die Karte fest. "Verfügbare Höhe" ist die Höhe der Route ohne Systemleisten und ohne Tastatur. Die frühere Fassung ("fest, scrollt nicht weg", 3.2 und 3.4) bleibt zur Nachvollziehbarkeit stehen und gilt nicht mehr. Betroffen: 2.2 (letzter Punkt), 3.2, 3.3, 3.4, UI-76, UI-80, UI-88 (Wortlaut unten in Abschnitt 6).
 - **Brief v1 Abschnitt 13 (Nicht enthalten):** Der Eintrag "Manny-Chat und Sprachfunktion (Spec 7), Community und Freunde und Familie (Spec 8)" wird laut K9 teilweise aufgehoben.
 
 ---
@@ -83,7 +84,7 @@ Alle mit vorhandenen Tokens. **Keine neuen Tokens.** Neue Widgets sind unten mar
 - **Zustand aktiv:** folgt in KI-D (Brief des KI-Ausschnitts). Er wird in diesem Ausschnitt weder gestaltet noch vorbereitet.
 - Im ersten Ausschnitt gibt es keinen Wert "darf senden" und keine Umschaltung; die Leiste ist fest deaktiviert.
 - **Disclaimer** (nur im Manny-Chat): unter der Leiste, mittig, `caption` (13 sp) `text-3` (7,24:1 auf `bg`), dauerhaft sichtbar: "Manny ersetzt keine medizinische Beratung."
-- Der feste Fußbereich (Hinweiszeile, Leiste, Disclaimer) belegt höchstens 40 % der Bildschirmhöhe. Würde er bei großer Schrift mehr brauchen, scrollen Hinweiszeile und Disclaimer ab Skalierung 1,5 am Ende des Verlaufs mit (der Disclaimer bleibt am Ende der Liste erreichbar und die Leiste bleibt unten fest).
+- Der feste Fußbereich (Hinweiszeile, Leiste, Disclaimer) belegt höchstens 40 % der Bildschirmhöhe. Würde er bei großer Schrift mehr brauchen, scrollen Hinweiszeile und Disclaimer ab Skalierung 1,5 am Ende des Verlaufs mit (der Disclaimer bleibt am Ende der Liste erreichbar und die Leiste bleibt unten fest). **K6:** Unter denselben Bedingungen (Skalierung ab 1,5 oder verfügbare Höhe unter 400 dp) scrollt auch die Hinweiskarte des Screens mit; Hinweiszeile und Disclaimer wandern bei Höhe unter 400 dp ebenfalls ans Listenende.
 
 ---
 
@@ -114,7 +115,7 @@ Alle mit vorhandenen Tokens. **Keine neuen Tokens.** Neue Widgets sind unten mar
 
 **Aufbau von oben nach unten:**
 1. `ChatHeader`: Zurück, Manny-Emblem 34 dp, Titel "Manny" (`heading`), Untertitel "Dein Reha-Begleiter". Kein "Neuer Chat", kein Mikrofon, kein Menü.
-2. `ExampleNotice` (fest unter dem Kopf, scrollt nicht weg): Label "BEISPIELVERLAUF" (`label`, `text-1`; Großbuchstaben nur im Stil, Text "Beispielverlauf") und `secondary`: "So sieht dein Chat bald aus."
+2. `ExampleNotice` (fest unter dem Kopf; **geändert durch K6:** scrollt nur bei Textskalierung ab 1,5 oder verfügbarer Höhe unter 400 dp als erstes Listenelement mit, sonst nicht): Label "BEISPIELVERLAUF" (`label`, `text-1`; Großbuchstaben nur im Stil, Text "Beispielverlauf") und `secondary`: "So sieht dein Chat bald aus."
 3. `ChatMessageList` mit dem **Beispielverlauf** (feste Platzhalter, nicht gespeichert, "Jakob" ist der Name aus dem Onboarding):
    - Manny: "Moin Jakob. Wie läuft dein Tag?"
    - Nutzer: "Ich hab heute keine Zeit."
@@ -128,7 +129,7 @@ Alle mit vorhandenen Tokens. **Keine neuen Tokens.** Neue Widgets sind unten mar
 
 ### 3.3 Nachrichten (Vollbild-Route, Orientierung: `nachrichten-v1.png`)
 
-**Einstieg:** Nachrichten-Button. Kopf: Zurück, Titel "Nachrichten" (`title`). Darunter `ExampleNotice`: "Beispiel-Ansicht. Echte Chats folgen." (fest; ab Textskalierung 1,5 scrollt sie als erstes Element der Liste mit).
+**Einstieg:** Nachrichten-Button. Kopf: Zurück, Titel "Nachrichten" (`title`). Darunter `ExampleNotice`: "Beispiel-Ansicht. Echte Chats folgen." (fest; ab Textskalierung 1,5 **oder bei verfügbarer Höhe unter 400 dp (K6)** scrollt sie als erstes Element der Liste mit).
 
 **Liste in vier Abschnitten** mit `label`-Überschriften (Screenreader: Überschrift): PHYSIO, FAMILIE, FREUNDE, ÄRZTE (Text "Physio", "Familie", "Freunde", "Ärzte"). Gruppierung statt Filter. Keine Suche, kein "Neuer Chat", kein Ungelesen-Badge, keine Zähler.
 
@@ -153,7 +154,7 @@ Inhalte sind rein organisatorisch, **keine** Reha- oder Medizinaussagen von Mens
 ### 3.4 Beispiel-Chat (Vollbild-Route, Orientierung: `nachrichten-chat-v1.png`)
 
 - Kopf: Zurück, Avatar 36 dp, Name (`heading`), Untertitel Rolle plus "Beispiel" (z. B. "Physio · Beispiel", "Familie · Beispiel").
-- `ExampleNotice`: "Beispiel-Chat. Nur zum Ansehen." (fest).
+- `ExampleNotice`: "Beispiel-Chat. Nur zum Ansehen." (fest; **K6:** ab Textskalierung 1,5 oder bei verfügbarer Höhe unter 400 dp scrollt sie als erstes Listenelement mit).
 - Verlauf aus `ChatBubble` Mensch (3.3, Tabelle): eigene Nachrichten rechts, Gegenüber links, optional eine Tagesüberschrift (`label`, mittig, z. B. "Montag", Platzhalter). Zugehörigkeit ist über Ausrichtung **und** Screenreader-Präfix ("Du:", Name) erkennbar, nie über Farbe allein. Der Chat sieht bewusst anders aus als der Manny-Chat (Blasen beidseitig gegenüber Manny-Text ohne Blase), damit KI und Mensch nicht verwechselt werden.
 - Fest unten: Hinweiszeile "Schreiben in Chats folgt bald.", `ChatComposer` deaktiviert (Platzhalter "Nachricht"). **Kein** Disclaimer (der Hinweis zu Manny gehört nur in den Manny-Chat).
 - Zurück führt in die Übersicht, von dort Zurück auf den Tab (Pfad oder Heute), von dem aus geöffnet wurde.
@@ -227,13 +228,13 @@ Weitere Hinweise: Die Button-Gruppe liegt in einer eigenen Ebene (Overlay oder S
 - UI-75: Die Blase und der `NodeHint` überdecken die Button-Gruppe nie (Blase wechselt über Manny, Hinweis weicht aus). Der Pfad hat unten Scroll-Reserve, sodass die unterste Unit über die Gruppe geschoben werden kann.
 
 **Manny-Chat**
-- UI-76: Der Manny-Chat zeigt Kopf (Zurück, Manny-Emblem, "Manny", "Dein Reha-Begleiter"), eine feste Karte "Beispielverlauf / So sieht dein Chat bald aus." und den Beispielverlauf (3.2). Manny-Nachrichten stehen ohne Blase auf `bg` (Emblem je Manny-Block), Nutzer-Nachrichten in einer Blase rechts (`surface-opaque`, Rand `border-hair`, höchstens 80 % Breite). Die Nachrichten werden aus Datenobjekten (Autor, Art, Status) durch `ChatMessageList` gerendert; ein Widget-Test mit einer letzten Nachricht, deren Text wächst, zeigt: nichts wird abgeschnitten oder überlagert, am Ende folgt die Liste dem Text, nach Hochscrollen springt sie nicht.
+- UI-76: Der Manny-Chat zeigt Kopf (Zurück, Manny-Emblem, "Manny", "Dein Reha-Begleiter"), eine Karte "Beispielverlauf / So sieht dein Chat bald aus." (fest; **K6 (ersetzt "feste Karte"):** ab Textskalierung 1,5 oder bei verfügbarer Höhe unter 400 dp erstes Element der scrollenden Liste, dann steht beim Öffnen der Beispielverlauf sichtbar unter dem Kopf) und den Beispielverlauf (3.2). Manny-Nachrichten stehen ohne Blase auf `bg` (Emblem je Manny-Block), Nutzer-Nachrichten in einer Blase rechts (`surface-opaque`, Rand `border-hair`, höchstens 80 % Breite). Die Nachrichten werden aus Datenobjekten (Autor, Art, Status) durch `ChatMessageList` gerendert; ein Widget-Test mit einer letzten Nachricht, deren Text wächst, zeigt: nichts wird abgeschnitten oder überlagert, am Ende folgt die Liste dem Text, nach Hochscrollen springt sie nicht.
 - UI-77: Unten stehen die Hinweiszeile "Schreiben kann ich bald, heute noch nicht.", die deaktivierte Eingabeleiste "Schreib Manny" mit deaktiviertem Senden-Kreis und der Disclaimer "Manny ersetzt keine medizinische Beratung." Tipp auf die Leiste öffnet keine Tastatur und löst nichts aus. Hinweiszeile und Disclaimer sind dauerhaft sichtbar, nicht nur als Platzhalter.
 - UI-78: Im Manny-Chat gibt es kein Mikrofon, keinen "Neuer Chat"-Eintrag, kein Menü, keine Vorschlags-Chips und kein `accent` (Code-Suche und Screenshot).
 
 **Nachrichten**
 - UI-79: Die Nachrichten-Übersicht zeigt Kopf "Nachrichten", die feste Karte "Beispiel-Ansicht. Echte Chats folgen." und vier Abschnitte (Physio, Familie, Freunde, Ärzte) mit den Beispielkontakten aus 3.3. Jede Zeile hat Avatar (Ringfarbe Physio `cat-physio`, Ärzte `cat-arzt`, sonst neutral), Name, umbrechende letzte Nachricht und Zeitangabe, Hit-Area die ganze Zeile (≥ 72 dp), `focus-ring`. Es gibt weder Badge noch Suche noch Neuer-Chat-Aktion.
-- UI-80: Tipp auf eine Zeile öffnet den Beispiel-Chat des Kontakts: Kopf mit Avatar, Name und "[Rolle] · Beispiel", Karte "Beispiel-Chat. Nur zum Ansehen.", Verlauf aus Blasen (eigene rechts `surface-opaque`, Gegenüber links Glas ohne Blur), Hinweiszeile "Schreiben in Chats folgt bald." und deaktivierte Leiste ohne Disclaimer. Zugehörigkeit ist auch per Screenreader erkennbar ("Du:", Name). Zurück führt in die Übersicht, danach auf den Tab, von dem aus geöffnet wurde.
+- UI-80: Tipp auf eine Zeile öffnet den Beispiel-Chat des Kontakts: Kopf mit Avatar, Name und "[Rolle] · Beispiel", Karte "Beispiel-Chat. Nur zum Ansehen." (Lage wie in UI-76, K6), Verlauf aus Blasen (eigene rechts `surface-opaque`, Gegenüber links Glas ohne Blur), Hinweiszeile "Schreiben in Chats folgt bald." und deaktivierte Leiste ohne Disclaimer. Zugehörigkeit ist auch per Screenreader erkennbar ("Du:", Name). Zurück führt in die Übersicht, danach auf den Tab, von dem aus geöffnet wurde.
 
 **Texte, Löschen, Entkopplung**
 - UI-81: Alle neuen sichtbaren Texte (3.5) und Semantik-Labels liegen in `strings_de.dart`, sind Deutsch, in "du"-Form. Der Disclaimer steht wörtlich wie in Spec 7. Farben, Abstände und Schriften nur aus `lib/theme/`.
@@ -245,7 +246,7 @@ Weitere Hinweise: Die Button-Gruppe liegt in einer eigenen Ebene (Overlay oder S
 - UI-85: Die neuen Screens enthalten keinen `BackdropFilter`. Auf Pfad und Heute sind höchstens 2 `BackdropFilter` sichtbar (Nav plus Blase oder Sheet), auch mit Button-Gruppe und Snackbar (erweitert UI-6/UI-47).
 - UI-86: Öffnen und Schließen der neuen Routen: Fokus kehrt zum auslösenden Element zurück, Zurück, Android-Zurück und Escape schließen. Mit "Bewegung reduzieren" keine Schiebung und höchstens 120 ms Einblenden. Das Rückgängig-Fenster endet beim Öffnen von Chat oder Nachrichten (UI-39).
 - UI-87: Bei "Hoher Kontrast" sind Buttons, Karten, Eingabeleiste, Blasen und Avatare opak (`surface-opaque`) mit `border-control-hc`, ohne Blur und Glow. Der Glow genügt auf den neuen Screens Errata E-1 (Alpha-Prüfung wie UI-7).
-- UI-88: Bei 200 % Systemschrift und bei 320 × 568 dp sind Manny-Chat, Nachrichten und Beispiel-Chat vollständig erreichbar: nichts abgeschnitten oder überlagert, kein horizontales Scrollen, Eingabeleiste und Disclaimer erreichbar (Chat-Fuß höchstens 40 % der Höhe, ab Skalierung 1,5 scrollt der Hinweis mit). Auf Heute und Pfad sind beide Buttons vollständig sichtbar, und am Listenende ist nichts verdeckt (UI-31 neu).
+- UI-88: Bei 200 % Systemschrift und bei 320 × 568 dp sind Manny-Chat, Nachrichten und Beispiel-Chat vollständig erreichbar: nichts abgeschnitten oder überlagert, kein horizontales Scrollen, Eingabeleiste und Disclaimer erreichbar (Chat-Fuß höchstens 40 % der Höhe, ab Skalierung 1,5 scrollt der Hinweis mit; **K6:** ab Skalierung 1,5 oder bei verfügbarer Höhe unter 400 dp scrollt auch die Hinweiskarte mit, und beim Öffnen ist mindestens die erste Nachricht des Verlaufs sichtbar, zu prüfen bei 320 × 568 dp mit 200 % und bei 568 × 320 dp). Auf Heute und Pfad sind beide Buttons vollständig sichtbar, und am Listenende ist nichts verdeckt (UI-31 neu).
 - UI-89: Alle neuen Elemente sind per TalkBack/VoiceOver und Tastatur bedienbar, mit den Labels aus 3.5 und der Fokusreihenfolge aus Abschnitt 4.
 
 ---

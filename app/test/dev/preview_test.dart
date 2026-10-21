@@ -146,7 +146,14 @@ void main() {
       WidgetTester tester,
     ) async {
       await pump(tester, const PreviewConfig(scenarioId: 'gibt-es-nicht'));
+      // Die Liste ist lang und baut lazy: jede Kennung wird erst gescrollt.
+      final ScrollableState list = tester.state(find.byType(Scrollable));
       for (final Scenario s in kScenarios) {
+        // Jede Suche beginnt oben: Der Rest der Wischbewegung der vorigen Suche
+        // würde sonst bei langer Liste am gesuchten Eintrag vorbeitragen.
+        list.position.jumpTo(0);
+        await tester.pump();
+        await tester.scrollUntilVisible(find.text(s.id), 200);
         expect(find.text(s.id), findsOneWidget);
       }
     });
@@ -205,9 +212,23 @@ void main() {
       expect(registry.containsAll(ids(land['scenarios'])), isTrue);
       expect(registry.containsAll(ids(blind['scenarios'])), isTrue);
       expect(
+        registry.containsAll(
+          ids((json['worlds'] as Map<String, dynamic>)['scenarios']),
+        ),
+        isTrue,
+      );
+      expect(
         registry,
         contains((json['pipette'] as Map<String, dynamic>)['scenario']),
       );
+    });
+
+    test('Szenarien mit festem Skalierungswert stehen in fixedScale', () {
+      final Set<String> fromRegistry = <String>{
+        for (final Scenario s in kScenarios)
+          if (s.fixedTextScale != null) s.id,
+      };
+      expect(ids(json['fixedScale']), fromRegistry);
     });
 
     test('Tablet-Szenarien entsprechen dem Flag der Registry', () {
@@ -231,7 +252,7 @@ void main() {
       if (path.startsWith('lib/dev/') || path == 'lib/main_preview.dart') {
         continue;
       }
-      if (RegExp(r'''import\s+['"][^'"]*(dev/|main_preview)''')
+      if (RegExp(r'''(?:import|export|part)\s+['"][^'"]*(dev/|main_preview)''')
           .hasMatch(e.readAsStringSync())) {
         offenders.add(path);
       }

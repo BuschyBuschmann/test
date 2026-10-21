@@ -53,6 +53,16 @@ class TransientUi extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Das offene Fenster läuft ab jetzt ohne eigenen Zeitgeber weiter: sein
+  /// Besitzer, die sichtbare Snackbar mit „Rückgängig“, entscheidet über das
+  /// Ende (Ablauf mit Pause bei Fokus/Zeiger, kein Ablauf bei Screenreader,
+  /// Ergänzung 1, 3.3) und ruft dann [endUndoWindow]. Ohne offenes Fenster
+  /// wirkungslos.
+  void holdUndoWindow() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
   /// Beendet das Fenster; der Eintrag bleibt bestehen, es gibt nur kein
   /// „Rückgängig“ mehr.
   void endUndoWindow() {

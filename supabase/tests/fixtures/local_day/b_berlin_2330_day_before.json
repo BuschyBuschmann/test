@@ -1,0 +1,23 @@
+{
+  "id": "b",
+  "plan_ref": "Plan 6.7 Nr. 5 (b), DB-T68a",
+  "description": "Gleiche Lage 23:30 am Tag D-1: noch nicht freigegeben, Uebung trotzdem lesbar (Position des Plans)",
+  "case": {
+    "timezone": "Europe/Berlin",
+    "device_time": "2026-07-14T23:30:00+02:00",
+    "utc_instant": "2026-07-14T21:30:00Z",
+    "local_day": "2026-07-14",
+    "utc_date": "2026-07-14",
+    "offset_days": 0,
+    "utc_offset": "+0200"
+  },
+  "item": {
+    "release": "prepared",
+    "release_on": "2026-07-15"
+  },
+  "expect": {
+    "is_released": false,
+    "exercise_readable_for_patient": true,
+    "image_readable_for_patient": true
+  }
+}

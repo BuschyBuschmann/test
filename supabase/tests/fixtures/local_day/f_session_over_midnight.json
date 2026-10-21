@@ -1,0 +1,36 @@
+{
+  "id": "f",
+  "plan_ref": "Plan 6.7 Nr. 5 (f), 8.5",
+  "description": "Session ueber Mitternacht: alle Ergebnisse tragen den local_day des Session-Starts",
+  "session_start": {
+    "timezone": "Europe/Berlin",
+    "device_time": "2026-07-14T23:50:00+02:00",
+    "utc_instant": "2026-07-14T21:50:00Z",
+    "local_day": "2026-07-14",
+    "utc_date": "2026-07-14",
+    "offset_days": 0,
+    "utc_offset": "+0200"
+  },
+  "session_end": {
+    "timezone": "Europe/Berlin",
+    "device_time": "2026-07-15T00:20:00+02:00",
+    "utc_instant": "2026-07-14T22:20:00Z",
+    "local_day": "2026-07-15",
+    "utc_date": "2026-07-14",
+    "offset_days": 1,
+    "utc_offset": "+0200"
+  },
+  "results": [
+    {
+      "logged_at_local": "2026-07-14T23:55:00+02:00",
+      "local_day": "2026-07-14"
+    },
+    {
+      "logged_at_local": "2026-07-15T00:15:00+02:00",
+      "local_day": "2026-07-14"
+    }
+  ],
+  "expect": {
+    "local_day": "2026-07-14"
+  }
+}

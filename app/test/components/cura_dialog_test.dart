@@ -9,6 +9,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/component_support.dart';
+import '../support/line_breaks.dart';
 import '../support/pump_app.dart';
 
 const String _msg =
@@ -55,8 +56,8 @@ void main() {
     final Finder f = find.byType(CuraDialog);
     final CuraColors c = colorsAt(tester, f);
     final BoxDecoration d = decorationsUnder(tester, f).first;
-    expect(d.color, const Color(0xFF1B2129));
-    expect(d.borderRadius, BorderRadius.circular(24));
+    expect(d.color, c.surfaceOpaque);
+    expect(d.borderRadius, BorderRadius.circular(28));
     expect(d.border, Border.all(color: c.borderHair, width: 1));
     expect(d.boxShadow, isNull);
     expect(backdropCount(tester), 0);
@@ -98,15 +99,17 @@ void main() {
     expect(tester.getSize(decoratedDialog(tester)).width, 400);
   });
 
-  testWidgets('Buttons gestapelt, volle Breite, 56 dp, Abstand 8 dp; sichere '
-      'Aktion oben mit Anfangsfokus', (WidgetTester tester) async {
+  testWidgets('Buttons gestapelt, volle Breite (Glas 52 dp, Umriss 56 dp), '
+      'Abstand 8 dp; sichere Aktion oben mit Anfangsfokus', (
+    WidgetTester tester,
+  ) async {
     await pumpApp(tester, _dialog());
     await tester.pumpAndSettle();
     final Rect a = tester.getRect(find.widgetWithText(PillButton, 'Abbrechen'));
     final Rect b = tester.getRect(
       find.widgetWithText(PillButton, 'Ja, alles löschen'),
     );
-    expect(a.height, 56);
+    expect(a.height, 52, reason: 'GlassPill (Abbrechen)');
     expect(b.height, 56);
     expect(a.width, b.width);
     expect(b.top - a.bottom, 8);
@@ -142,13 +145,13 @@ void main() {
     );
   });
 
-  testWidgets('Enge (320 × 568, 200 %): Inhalt scrollt, Buttons bleiben '
-      'sichtbar', (WidgetTester tester) async {
+  testWidgets('Enge unter 150 % (320 × 568, 130 %): Inhalt scrollt, Buttons '
+      'bleiben unten stehen', (WidgetTester tester) async {
     await pumpApp(
       tester,
-      _dialog(screen: Viewports.small, message: '$_msg $_msg'),
+      _dialog(screen: Viewports.small, message: '$_msg $_msg $_msg'),
       size: Viewports.small,
-      textScale: 2,
+      textScale: 1.3,
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -177,6 +180,162 @@ void main() {
       tester.getRect(find.widgetWithText(PillButton, 'Abbrechen')),
       cancel,
     );
+  });
+
+  group('F-4: ab 150 % scrollt der ganze Dialog', () {
+    for (final double scale in <double>[1.5, 2.0]) {
+      testWidgets('320 × 568 × $scale: Titel höchstens 150 %, Buttons laufen '
+          'mit, kein Symbol in den Buttons, Seitenrand s4, ohne Wortbruch', (
+        WidgetTester tester,
+      ) async {
+        await pumpApp(
+          tester,
+          _dialog(screen: Viewports.small, message: '$_msg $_msg'),
+          size: Viewports.small,
+          textScale: scale,
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final Finder scroll = find.descendant(
+          of: find.byType(CuraDialog),
+          matching: find.byType(SingleChildScrollView),
+        );
+        // Nur ein Scrollbereich: der ganze Dialog (Titel, Text, Buttons).
+        expect(scroll, findsOneWidget);
+        expect(
+          find.descendant(of: scroll, matching: find.byType(PillButton)),
+          findsNWidgets(2),
+        );
+        // Titel auf 150 % geklemmt.
+        expect(
+          MediaQuery.textScalerOf(tester.element(find.text('Alles löschen?')))
+              .scale(10),
+          lessThanOrEqualTo(15 + 0.01),
+        );
+        // Kein Symbol in den Dialog-Buttons.
+        expect(
+          find.descendant(
+            of: find.byType(PillButton),
+            matching: find.byType(Icon),
+          ),
+          findsNothing,
+        );
+        // Seitenrand s4 (16 dp) statt s6 (24 dp).
+        final Rect button = tester.getRect(
+          find.widgetWithText(PillButton, 'Abbrechen'),
+        );
+        final Rect label = tester.getRect(find.text('Abbrechen'));
+        expect(label.left - button.left, greaterThanOrEqualTo(16));
+        expect(label.left - button.left, lessThan(24 + 40));
+        final Rect padded = tester.getRect(
+          find
+              .descendant(
+                of: find.widgetWithText(PillButton, 'Ja, alles löschen'),
+                matching: find.byType(Padding),
+              )
+              .first,
+        );
+        expect(padded.width, button.width);
+        // Wortbruch: nur an Wortgrenzen.
+        for (final String t in <String>['Abbrechen', 'Ja, alles löschen']) {
+          final List<String> lines = paragraphLines(tester, find.text(t));
+          expect(lines.join(), t);
+          expect(midWordBreaks(lines), isEmpty, reason: '$t: $lines');
+        }
+        // Die Buttons laufen mit dem Inhalt (der ganze Dialog scrollt).
+        final Rect before = tester.getRect(
+          find.widgetWithText(PillButton, 'Abbrechen'),
+        );
+        await tester.drag(scroll, const Offset(0, -80));
+        await tester.pump();
+        expect(
+          tester.getRect(find.widgetWithText(PillButton, 'Abbrechen')).top,
+          lessThan(before.top),
+        );
+        // Am Ende des Wegs sind beide Buttons ganz zu sehen.
+        final ScrollableState st = tester.state(
+          find.descendant(of: scroll, matching: find.byType(Scrollable)),
+        );
+        st.position.jumpTo(st.position.maxScrollExtent);
+        await tester.pump();
+        expect(
+          tester
+              .getRect(find.widgetWithText(PillButton, 'Ja, alles löschen'))
+              .bottom,
+          lessThanOrEqualTo(568),
+        );
+      });
+    }
+
+    testWidgets('R-1: im scrollenden Dialog liegt ein Innenrand um die '
+        'Buttons (Fokusring wird seitlich nicht abgeschnitten)', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(
+        tester,
+        _dialog(screen: Viewports.small),
+        size: Viewports.small,
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      final Rect view = tester.getRect(
+        find.descendant(
+          of: find.byType(CuraDialog),
+          matching: find.byType(SingleChildScrollView),
+        ),
+      );
+      for (final String t in <String>['Abbrechen', 'Ja, alles löschen']) {
+        final Rect b = tester.getRect(find.widgetWithText(PillButton, t));
+        expect(b.left - view.left, greaterThanOrEqualTo(4 - 0.01), reason: t);
+        expect(view.right - b.right, greaterThanOrEqualTo(4 - 0.01), reason: t);
+      }
+    });
+
+    testWidgets('320 × 568 × 2,0: der Zusatz (Fehlerhinweis) steht gleich '
+        'unter dem Titel und ist ohne Scrollen sichtbar', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(
+        tester,
+        _dialog(
+          screen: Viewports.small,
+          extra: const Text('Fehlerhinweis', key: Key('extra')),
+        ),
+        size: Viewports.small,
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      final Rect extra = tester.getRect(find.byKey(const Key('extra')));
+      expect(extra.top, greaterThanOrEqualTo(0));
+      expect(extra.bottom, lessThanOrEqualTo(568));
+      expect(
+        extra.top,
+        lessThan(tester.getRect(find.textContaining('Name, Verletzung')).top),
+      );
+    });
+
+    testWidgets('bis 130 %: Symbol bleibt, Seitenrand s6, Zusatz unter dem '
+        'Text', (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        _dialog(extra: const Text('Fehlerhinweis', key: Key('extra'))),
+        textScale: 1.3,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.widgetWithText(PillButton, 'Ja, alles löschen'),
+          matching: find.byType(Icon),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('extra'))).top,
+        greaterThan(
+          tester.getRect(find.textContaining('Name, Verletzung')).top,
+        ),
+      );
+    });
   });
 
   testWidgets('Semantik: alertdialog, Route umfasst den Dialog, Titel '
@@ -221,7 +380,7 @@ void main() {
       tester,
       find.byType(CuraDialog),
     ).first;
-    expect(d.color, const Color(0xFF1B2129));
+    expect(d.color, c.surfaceOpaque);
     expect(d.border, Border.all(color: c.borderControlHc, width: 1));
     expect(backdropCount(tester), 0);
   });

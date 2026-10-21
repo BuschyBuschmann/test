@@ -1,5 +1,6 @@
-// `MannyBubble` (Brief 5.6, Plan 9): Sprechblase E2 mit `CuraBlur`
-// (`surface-float`, Radius 20, Rand `border-hair`), Text `bubble` (14,5 sp),
+// `MannyBubble` (Brief 5.6, Plan 9; Brief v2 3.5): Sprechblase als Karte E1
+// (`card` 92 %, Radius 20, Rand `border-hair`, **kein Blur**: Blur gibt es nur
+// in Leiste, Kopf-Karte und Manny-Knopf, V2-11), Text `bubble` (14,5 sp),
 // X-Button oben rechts (Hit-Area 48 dp), höchstens 280 dp breit, Live-Region,
 // nicht modal. Platzierung: rechts neben Manny mit Pfeil nach links; bleiben
 // rechts weniger als 140 dp, steht sie oberhalb von Manny (Pfeil nach unten),
@@ -19,7 +20,6 @@ import '../../theme/cura_motion.dart';
 import '../../theme/cura_roles.dart';
 import '../../theme/cura_typography.dart';
 import '../../theme/tokens.dart';
-import 'cura_blur.dart';
 import 'cura_pressable.dart';
 
 enum BubbleArrow { left, down }
@@ -31,6 +31,7 @@ class MannyBubble extends StatelessWidget {
     required this.onClose,
     this.arrow = BubbleArrow.left,
     this.arrowOffset = CuraSpace.s6,
+    this.maxBodyHeight,
   });
 
   final String text;
@@ -40,6 +41,11 @@ class MannyBubble extends StatelessWidget {
   /// Abstand der Pfeilspitze vom Anfang der Blasenkante (oben bei `left`,
   /// links bei `down`), in dp.
   final double arrowOffset;
+
+  /// Höhe des Körpers (ohne Pfeil), wenn der Platz begrenzt ist (Rückfall der
+  /// Pfad-Platzierung, Plan 4.6): der Text scrollt dann innen. Ohne Wert so
+  /// hoch wie der Text.
+  final double? maxBodyHeight;
 
   /// Platzierung nach Brief 5.6: bleibt rechts neben Manny weniger als
   /// 140 dp, steht die Blase oberhalb.
@@ -56,68 +62,73 @@ class MannyBubble extends StatelessWidget {
     final BorderRadius shape = BorderRadius.circular(CuraRadius.bubble);
 
     final Widget body = ConstrainedBox(
-      constraints: const BoxConstraints(
+      constraints: BoxConstraints(
         maxWidth: CuraComponent.bubbleMaxWidth,
         minHeight: CuraSize.touchTarget,
+        maxHeight: maxBodyHeight ?? double.infinity,
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         excludeFromSemantics: true,
         onTap: onClose,
-        child: CuraBlur(
-          borderRadius: shape,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.floatFill,
-              borderRadius: shape,
-              border: Border.all(
-                color: colors.cardBorder,
-                width: CuraSize.hairline,
-              ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.cardFillTop,
+            borderRadius: shape,
+            border: Border.all(
+              color: colors.cardBorder,
+              width: CuraSize.hairline,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: CuraSize.bubblePaddingHorizontal,
-                      top: CuraSize.bubblePaddingVertical,
-                      bottom: CuraSize.bubblePaddingVertical,
-                    ),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        text,
-                        style: type.bubble.copyWith(color: colors.text1),
-                      ),
-                    ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: CuraSize.bubblePaddingHorizontal,
+                    top: CuraSize.bubblePaddingVertical,
+                    bottom: CuraSize.bubblePaddingVertical,
+                  ),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: maxBodyHeight == null
+                        ? Text(
+                            text,
+                            style: type.bubble.copyWith(color: colors.text1),
+                          )
+                        : SingleChildScrollView(
+                            child: Text(
+                              text,
+                              style: type.bubble.copyWith(color: colors.text1),
+                            ),
+                          ),
                   ),
                 ),
-                CuraPressable(
-                  onPressed: onClose,
-                  semanticLabel: S.bubbleClose,
-                  tooltip: S.bubbleClose,
-                  builder: (BuildContext context, bool pressed) {
-                    return SizedBox.square(
-                      dimension: CuraSize.touchTarget,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: pressed ? colors.pressedOverlay : null,
-                        ),
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: CuraComponent.iconSize,
-                          color: colors.text2,
-                        ),
+              ),
+              CuraPressable(
+                onPressed: onClose,
+                semanticLabel: S.bubbleClose,
+                tooltip: S.bubbleClose,
+                builder: (BuildContext context, bool pressed) {
+                  return SizedBox.square(
+                    dimension: CuraSize.touchTarget,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: pressed ? colors.pressedOverlay : null,
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: CuraComponent.iconSize,
+                        color: colors.text2,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -136,7 +147,7 @@ class MannyBubble extends StatelessWidget {
               ),
         painter: _ArrowPainter(
           direction: arrow,
-          fill: colors.floatFill,
+          fill: colors.cardFillTop,
           border: colors.cardBorder,
         ),
       ),

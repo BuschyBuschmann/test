@@ -129,3 +129,37 @@ int inRange(int value, int min, int max, String name) {
   }
   return value;
 }
+
+int? optIntOrNull(Json j, String key) {
+  final Object? v = j[key];
+  if (v == null) return null;
+  if (v is int) return v;
+  return unreadable('$key: ganze Zahl erwartet');
+}
+
+/// Zahl mit oder ohne Nachkommastellen (z. B. `numeric` aus der Datenbank,
+/// das JSON je nach Wert als `int` oder `double` liefert).
+double? optDoubleOrNull(Json j, String key) {
+  final Object? v = j[key];
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  return unreadable('$key: Zahl erwartet');
+}
+
+/// Zeitpunkt als ISO-8601-Text; immer in UTC gelesen.
+DateTime? optInstant(Json j, String key) {
+  final String? text = optStringOrNull(j, key);
+  if (text == null) return null;
+  final DateTime? t = DateTime.tryParse(text);
+  if (t == null) unreadable('$key: ungültiger Zeitpunkt');
+  return t.toUtc();
+}
+
+DateTime reqInstant(Json j, String key) =>
+    optInstant(j, key) ?? unreadable('$key fehlt');
+
+/// Liste von Objekten; ein fehlendes Feld ist unlesbar.
+List<Json> reqJsonList(Json j, String key) {
+  if (j[key] == null) unreadable('$key fehlt');
+  return optJsonList(j, key);
+}

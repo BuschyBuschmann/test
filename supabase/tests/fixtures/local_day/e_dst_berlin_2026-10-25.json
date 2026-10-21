@@ -1,0 +1,49 @@
+{
+  "id": "e",
+  "plan_ref": "Plan 6.7 Nr. 5 (e)",
+  "description": "Umstellung Sommer-/Winterzeit Europe/Berlin am 2026-10-25 (03:00 MESZ -> 02:00 MEZ, Tag mit 25 Stunden); alle Zeitpunkte gehoeren zum lokalen Tag 2026-10-25",
+  "cases": [
+    {
+      "timezone": "Europe/Berlin",
+      "device_time": "2026-10-25T00:30:00+02:00",
+      "utc_instant": "2026-10-24T22:30:00Z",
+      "local_day": "2026-10-25",
+      "utc_date": "2026-10-24",
+      "offset_days": 1,
+      "utc_offset": "+0200"
+    },
+    {
+      "timezone": "Europe/Berlin",
+      "device_time": "2026-10-25T02:30:00+02:00",
+      "utc_instant": "2026-10-25T00:30:00Z",
+      "local_day": "2026-10-25",
+      "utc_date": "2026-10-25",
+      "offset_days": 0,
+      "utc_offset": "+0200",
+      "note": "erste 02:30 (MESZ)"
+    },
+    {
+      "timezone": "Europe/Berlin",
+      "device_time": "2026-10-25T02:30:00+01:00",
+      "utc_instant": "2026-10-25T01:30:00Z",
+      "local_day": "2026-10-25",
+      "utc_date": "2026-10-25",
+      "offset_days": 0,
+      "utc_offset": "+0100",
+      "note": "zweite 02:30 (MEZ)"
+    },
+    {
+      "timezone": "Europe/Berlin",
+      "device_time": "2026-10-25T23:30:00+01:00",
+      "utc_instant": "2026-10-25T22:30:00Z",
+      "local_day": "2026-10-25",
+      "utc_date": "2026-10-25",
+      "offset_days": 0,
+      "utc_offset": "+0100"
+    }
+  ],
+  "expect": {
+    "local_day": "2026-10-25",
+    "day_length_hours": 25
+  }
+}

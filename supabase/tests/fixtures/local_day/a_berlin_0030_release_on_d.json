@@ -1,0 +1,23 @@
+{
+  "id": "a",
+  "plan_ref": "Plan 6.7 Nr. 5 (a), DB-T68a",
+  "description": "Europe/Berlin 00:30 MESZ am Tag D (UTC noch D-1); Position prepared mit release_on = D",
+  "case": {
+    "timezone": "Europe/Berlin",
+    "device_time": "2026-07-15T00:30:00+02:00",
+    "utc_instant": "2026-07-14T22:30:00Z",
+    "local_day": "2026-07-15",
+    "utc_date": "2026-07-14",
+    "offset_days": 1,
+    "utc_offset": "+0200"
+  },
+  "item": {
+    "release": "prepared",
+    "release_on": "2026-07-15"
+  },
+  "expect": {
+    "is_released": true,
+    "exercise_readable_for_patient": true,
+    "image_readable_for_patient": true
+  }
+}

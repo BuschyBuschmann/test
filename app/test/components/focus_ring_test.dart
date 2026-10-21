@@ -48,19 +48,34 @@ void main() {
         ),
       ),
     );
-    final Finder ring = find.descendant(
+    final Finder rings = find.descendant(
       of: find.byType(FocusRing),
       matching: find.byType(DecoratedBox),
     );
-    final Rect r = tester.getRect(ring);
+    expect(rings, findsNWidgets(2), reason: 'Ring 3 dp plus Außenrand 2 dp');
+    final Finder outer = rings.first;
+    final Finder ring = rings.last;
     final Rect t = tester.getRect(find.byKey(const Key('t')));
-    expect(r.inflate(-4), t);
-    expect(FocusRing.outset, 4);
+    // Ring 3 dp mit 2 dp Abstand, Außenrand 2 dp (Brief 3.2).
+    expect(tester.getRect(ring).inflate(-5), t);
+    expect(tester.getRect(outer).inflate(-7), t);
+    expect(FocusRing.outset, 5);
+    expect(FocusRing.outsetOuter, 7);
     final BoxDecoration d =
         tester.widget<DecoratedBox>(ring).decoration as BoxDecoration;
-    expect(d.borderRadius, BorderRadius.circular(16));
-    expect(d.border!.top.width, 2);
-    expect(d.border!.top.color, const Color(0xFFF2F0EB));
+    expect(d.borderRadius, BorderRadius.circular(17));
+    expect(d.border!.top.width, 3);
+    expect(
+      d.border!.top.color,
+      colorsAt(tester, find.byType(FocusRing)).focusRing,
+    );
+    final BoxDecoration o =
+        tester.widget<DecoratedBox>(outer).decoration as BoxDecoration;
+    expect(o.border!.top.width, 2);
+    expect(
+      o.border!.top.color,
+      colorsAt(tester, find.byType(FocusRing)).focusRingOuter,
+    );
     // Der Ring fängt keine Tipps ab und ist nicht in der Semantik.
     expect(
       find.ancestor(of: ring, matching: find.byType(IgnorePointer)),
@@ -149,7 +164,7 @@ void main() {
         tester,
         Column(
           children: <Widget>[
-            MannyPlaceholder(height: 80, onTap: () {}),
+            MannyIllustration(height: 80, onTap: () {}),
             Focus(
               focusNode: other,
               child: const SizedBox(width: 20, height: 20),
@@ -162,12 +177,12 @@ void main() {
       expect(other.hasFocus, isTrue);
       expect(
         find.ancestor(
-          of: find.byType(CustomPaint),
+          of: find.byType(Image),
           matching: find.byType(ExcludeFocus),
         ),
         findsWidgets,
       );
-      expect(decorationsUnder(tester, find.byType(MannyPlaceholder)), isEmpty);
+      expect(decorationsUnder(tester, find.byType(MannyIllustration)), isEmpty);
     },
   );
 }

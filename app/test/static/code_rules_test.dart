@@ -182,7 +182,7 @@ void main() {
         ),
         isEmpty,
       );
-      // Ausnahmen: lib/theme und manny.dart
+      // Ausnahme: lib/theme. manny.dart ist seit Brief v2 keine mehr (PNGs).
       expect(
         checkRule2(<String, String>{'lib/theme/x.dart': 'EdgeInsets.all(16)'}),
         isEmpty,
@@ -191,7 +191,7 @@ void main() {
         checkRule2(<String, String>{
           'lib/ui/components/manny.dart': 'BoxConstraints(maxWidth: 560)',
         }),
-        isEmpty,
+        hasLength(1),
       );
     });
 
@@ -218,18 +218,31 @@ void main() {
         }),
         isEmpty,
       );
-      expect(
-        checkRule3(<String, String>{
-          'lib/ui/components/manny_bubble.dart': 'CuraBlur(child: x)',
-        }),
-        isEmpty,
-      );
-      expect(
-        checkRule3(<String, String>{
-          'lib/ui/routes/cura_sheet_route.dart': 'CuraBlur(child: x)',
-        }),
-        isEmpty,
-      );
+      // Brief v2 (V2-11): Leiste, Kopf-Karte, Manny-Knopf; Blase und Sheet nicht.
+      for (final String ok in <String>[
+        'lib/ui/components/header_card.dart',
+        'lib/ui/components/manny_chat_button.dart',
+      ]) {
+        expect(
+          checkRule3(<String, String>{ok: 'CuraBlur(child: x)'}),
+          isEmpty,
+          reason: ok,
+        );
+      }
+      for (final String no in <String>[
+        'lib/ui/components/manny_bubble.dart',
+        'lib/ui/routes/cura_sheet_route.dart',
+        'lib/ui/components/cura_dialog.dart',
+        'lib/ui/components/cura_snackbar.dart',
+        'lib/ui/components/status_chip.dart',
+        'lib/ui/components/orb_node.dart',
+      ]) {
+        expect(
+          checkRule3(<String, String>{no: 'CuraBlur(child: x)'}),
+          hasLength(1),
+          reason: no,
+        );
+      }
       expect(
         checkRule3(<String, String>{
           'lib/ui/components/glass_card.dart': 'CuraBlur(child: x)',
@@ -286,9 +299,9 @@ void main() {
         }),
         hasLength(1),
       );
-      // accent/accentHi nicht in Fehler-/Status-Widgets
+      // accent/accentText nicht in Fehler-/Status-Widgets
       expect(
-        checkRule4(<String, String>{errView: 'Icon(color: c.accentHi)'}),
+        checkRule4(<String, String>{errView: 'Icon(color: c.accentText)'}),
         hasLength(1),
       );
       expect(
@@ -325,7 +338,7 @@ void main() {
         hasLength(1),
       );
       // erlaubt
-      expect(checkRule5(f('TextStyle(color: c.accentHi)')), isEmpty);
+      expect(checkRule5(f('TextStyle(color: c.accentText)')), isEmpty);
       expect(checkRule5(f('TextStyle(color: c.text1)')), isEmpty);
       expect(
         checkRule5(f('BoxDecoration(color: c.accent)')),
@@ -336,7 +349,9 @@ void main() {
         isEmpty,
       ); // Symbol
       expect(
-        checkRule5(f('TextButton.styleFrom(foregroundColor: colors.accentHi)')),
+        checkRule5(
+          f('TextButton.styleFrom(foregroundColor: colors.accentText)'),
+        ),
         isEmpty,
       );
     });
@@ -448,38 +463,41 @@ void main() {
       );
     });
 
-    test('Regel 9: keine Animation in glow_background.dart und manny.dart', () {
-      for (final String name in <String>[
-        'glow_background.dart',
-        'manny.dart',
-      ]) {
-        final String p = 'lib/ui/components/$name';
-        expect(
-          checkRule9(<String, String>{p: 'late AnimationController c;'}),
-          hasLength(1),
-        );
+    test(
+      'Regel 9: keine Animation in world_background.dart und manny.dart',
+      () {
+        for (final String name in <String>[
+          'world_background.dart',
+          'manny.dart',
+        ]) {
+          final String p = 'lib/ui/components/$name';
+          expect(
+            checkRule9(<String, String>{p: 'late AnimationController c;'}),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{
+              p: 'class X extends State with SingleTickerProviderStateMixin {}',
+            }),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{p: 'final t = Ticker(cb);'}),
+            hasLength(1),
+          );
+          expect(
+            checkRule9(<String, String>{p: 'CustomPaint(painter: p)'}),
+            isEmpty,
+          );
+        }
         expect(
           checkRule9(<String, String>{
-            p: 'class X extends State with SingleTickerProviderStateMixin {}',
+            'lib/ui/components/path_node.dart': 'AnimationController c;',
           }),
-          hasLength(1),
-        );
-        expect(
-          checkRule9(<String, String>{p: 'final t = Ticker(cb);'}),
-          hasLength(1),
-        );
-        expect(
-          checkRule9(<String, String>{p: 'CustomPaint(painter: p)'}),
           isEmpty,
         );
-      }
-      expect(
-        checkRule9(<String, String>{
-          'lib/ui/components/path_node.dart': 'AnimationController c;',
-        }),
-        isEmpty,
-      );
-    });
+      },
+    );
 
     test('Regel 10: Ton in strings_de.dart', () {
       Map<String, String> f(String code) => <String, String>{
@@ -516,6 +534,48 @@ void main() {
       expect(
         checkRule10(f("static const a = 'Compliance zählt.';")),
         hasLength(1),
+      );
+      // Stufe 1 (erweitert): verboten
+      for (final String w in <String>[
+        'Adhärenz',
+        'Adhaerenz',
+        'Kontraindikation',
+        'Behandlungsplan',
+        'Klient',
+        'Rehabilitand',
+        'Pathologie',
+        'Anamnese',
+      ]) {
+        expect(
+          checkRule10(f("static const a = 'Das $w zählt.';")),
+          hasLength(1),
+          reason: w,
+        );
+      }
+      // Stufe 2: Beobachtungsliste, ohne Allowlist-Eintrag Fehler
+      for (final String w in <String>[
+        'Diagnose',
+        'Symptom',
+        'Befund',
+        'Medikation',
+        'Dosierung',
+        'Läsion',
+        'Ruptur',
+      ]) {
+        expect(
+          checkRule10(f("static const a = 'Die $w zählt.';")),
+          hasLength(1),
+          reason: w,
+        );
+      }
+      // „Therapie“ allein und Physiotherapie bleiben erlaubt
+      expect(
+        checkRule10(f("static const a = 'Physiotherapie, Praxis Müller';")),
+        isEmpty,
+      );
+      expect(
+        checkRule10(f("static const a = 'Die Therapie läuft.';")),
+        isEmpty,
       );
       expect(
         checkRule10(f("static const a = 'Indikation und Proband.';")),
@@ -572,11 +632,27 @@ void main() {
       };
       const String cluster = 'lib/ui/components/action_cluster.dart';
       expect(checkRule12(f(cluster, 'c.accent')), hasLength(1));
-      expect(checkRule12(f(cluster, 'c.accentHi')), hasLength(1));
+      expect(checkRule12(f(cluster, 'c.accentText')), hasLength(1));
+      // Der Manny-Knopf ist seit Brief v2 Glas (Blur über CuraBlur erlaubt).
       expect(
         checkRule12(
           f('lib/ui/components/manny_chat_button.dart', 'CuraBlur(child: x)'),
         ),
+        isEmpty,
+      );
+      expect(
+        checkRule12(
+          f('lib/ui/components/manny_chat_button.dart', 'BackdropFilter(x)'),
+        ),
+        isEmpty,
+        reason: 'Regel 3 prüft BackdropFilter, nicht Regel 12',
+      );
+      expect(
+        checkRule12(f('lib/ui/components/messages_button.dart', 'CuraBlur(x)')),
+        hasLength(1),
+      );
+      expect(
+        checkRule12(f('lib/ui/components/manny_chat_button.dart', 'c.accent')),
         hasLength(1),
       );
       expect(
@@ -585,13 +661,13 @@ void main() {
       );
       expect(
         checkRule12(
-          f('lib/ui/components/chat_composer.dart', 'GlowBackground()'),
+          f('lib/ui/components/chat_composer.dart', 'WorldBackground()'),
         ),
         hasLength(1),
       );
       expect(
         checkRule12(
-          f('lib/ui/components/chat_screen_scaffold.dart', 'GlowBackground()'),
+          f('lib/ui/components/chat_screen_scaffold.dart', 'WorldBackground()'),
         ),
         isEmpty,
       );
@@ -767,6 +843,72 @@ void main() {
       );
     });
   });
+  group('Regel 17: Blur-Budget und Uhr der Welt', () {
+    test('Budget im Token: 3 ist erlaubt, 4 und fehlend nicht', () {
+      expect(
+        checkRule17(<String, String>{
+          kTokensFile: 'static const int maxPerScreen = 3;',
+        }),
+        isEmpty,
+      );
+      expect(
+        checkRule17(<String, String>{
+          kTokensFile: 'static const int maxPerScreen = 4;',
+        }),
+        hasLength(1),
+      );
+      expect(
+        checkRule17(<String, String>{kTokensFile: 'static const int x = 3;'}),
+        hasLength(1),
+      );
+    });
+
+    test('CuraBlur muss gegen das Budget zählen', () {
+      expect(
+        checkRule17(<String, String>{kBlurFile: 'budget.tryAcquire();'}),
+        isEmpty,
+      );
+      expect(
+        checkRule17(<String, String>{kBlurFile: 'BackdropFilter(filter: f)'}),
+        hasLength(1),
+      );
+    });
+
+    test('DateTime.now nur im Kompositions- und Weltuhr-Code', () {
+      for (final String path in <String>[
+        'lib/ui/components/world_background.dart',
+        'lib/theme/world_tokens.dart',
+        'lib/state/world_scope.dart',
+        'lib/logic/streak.dart',
+      ]) {
+        expect(
+          checkRule17(<String, String>{path: 'final t = DateTime.now();'}),
+          hasLength(1),
+          reason: path,
+        );
+      }
+      for (final String path in <String>[
+        'lib/logic/world_time.dart',
+        'lib/logic/clock.dart',
+        'lib/main.dart',
+        'lib/dev/preview_app.dart',
+      ]) {
+        expect(
+          checkRule17(<String, String>{path: 'final t = DateTime.now;'}),
+          isEmpty,
+          reason: path,
+        );
+      }
+      // Kommentare zählen nicht.
+      expect(
+        checkRule17(<String, String>{
+          'lib/ui/a.dart': '// DateTime.now ist verboten',
+        }),
+        isEmpty,
+      );
+    });
+  });
+
   group('Selbsttest R-U1 MINOR-2: bisher übersehene Muster', () {
     const String u = 'lib/ui/today/a.dart';
     List<Violation> r(int rule, String code, [String path = u]) =>
@@ -832,8 +974,11 @@ void main() {
         ),
         isNotEmpty,
       );
-      expect(r(5, 'type.body.apply(color: colors.accentHi)'), isEmpty);
-      expect(r(5, 'final c = colors.accentHi;\nTextStyle(color: c)'), isEmpty);
+      expect(r(5, 'type.body.apply(color: colors.accentText)'), isEmpty);
+      expect(
+        r(5, 'final c = colors.accentText;\nTextStyle(color: c)'),
+        isEmpty,
+      );
       // accent als Fläche/Symbol bleibt erlaubt
       expect(r(5, 'Icon(Icons.add, color: colors.accent)'), isEmpty);
       expect(
@@ -876,8 +1021,45 @@ void main() {
       );
       expect(
         r(3, 'CuraBlur(child: x)', 'lib/ui/routes/cura_sheet_route.dart'),
+        isNotEmpty,
+        reason: 'Sheets sind opak ohne Blur (V2-11)',
+      );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/components/header_card.dart'),
         isEmpty,
       );
+      expect(
+        r(3, 'CuraBlur(child: x)', 'lib/ui/components/manny_chat_button.dart'),
+        isEmpty,
+      );
+    });
+
+    test('Regel 18: Manny nur aus PNGs, kein Painter, kein Platzhalter', () {
+      const String m = 'lib/ui/components/manny.dart';
+      expect(
+        r(18, 'class _MannyPainter extends CustomPainter {}', m),
+        isNotEmpty,
+      );
+      expect(r(18, 'CustomPaint(painter: p)', m), isNotEmpty);
+      expect(r(18, 'const MannyPlaceholder(height: 80)', u), isNotEmpty);
+      expect(r(18, 'MannyGeometry.baseline', u), isNotEmpty);
+      expect(
+        r(18, "const t = 'Manny (Platzhalter)';", 'lib/l10n/strings_de.dart'),
+        isNotEmpty,
+      );
+      expect(r(18, "Text('Manny: Platzhalter-Grafik');", u), isNotEmpty);
+      // andere Platzhalter und gezeichnete Nicht-Manny-Dinge bleiben erlaubt
+      expect(r(18, "const t = 'Platzhalter für Übungsbild';", u), isEmpty);
+      expect(
+        r(18, 'CustomPaint(painter: p)', 'lib/ui/components/orb_node.dart'),
+        isEmpty,
+      );
+      expect(
+        r(18, 'MannyIllustration(height: 88)', 'lib/ui/path/path_view.dart'),
+        isEmpty,
+      );
+      // Kommentare zählen nicht
+      expect(r(18, '// früher MannyPlaceholder', m), isEmpty);
     });
 
     test('Regel 4: Status-Token über Variable und in Handlungselement', () {

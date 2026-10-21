@@ -1,4 +1,4 @@
-// Statische Code-Regeln 1–16 (Plan 12.3, Test C) als prüfbare Funktionen.
+// Statische Code-Regeln 1–17 (Plan 12.3, Test C) als prüfbare Funktionen.
 // Jede Regel bekommt die Dateien als `Map<Pfad, Quelltext>` (Pfade relativ zum
 // Paketstamm, mit `/`, z. B. `lib/ui/components/glass_card.dart`) und liefert
 // die Verstöße. `code_rules_test.dart` wendet sie auf `lib/` an und prüft sie
@@ -25,16 +25,20 @@ const Set<String> kAccentTextAllowlist = <String>{};
 
 /// Regel 10: `Sie` am Satzanfang ist mehrdeutig; erlaubte Texte mit Begründung
 /// (derzeit leer).
+/// Texte, die einen Begriff der Beobachtungsliste (Regel 10, Stufe 2) enthalten
+/// dürfen, mit Begründung. Derzeit leer.
+const Map<String, String> kToneWatchAllowlist = <String, String>{};
+
 const Map<String, String> kSieAllowlist = <String, String>{};
 
 /// Regel 11: Dateien, in denen `maxLines` erlaubt ist (mit Tooltip-Alternative;
 /// derzeit leer).
 const Set<String> kMaxLinesAllowlist = <String>{};
 
-/// Regel 2: Dateien, in denen Painter-Geometrie Zahlen enthalten darf.
-const Set<String> kNumberLiteralExempt = <String>{
-  'lib/ui/components/manny.dart',
-};
+/// Regel 2: Dateien, in denen Painter-Geometrie Zahlen enthalten darf (seit
+/// Brief v2 keine: Manny kommt aus PNGs, die Kugeln malt `orb_node.dart` mit
+/// Tokens aus `OrbGeometry`).
+const Set<String> kNumberLiteralExempt = <String>{};
 
 const String kStringsFile = 'lib/l10n/strings_de.dart';
 
@@ -178,11 +182,14 @@ List<Violation> checkRule2(Map<String, String> files) {
 const Set<String> _r3BackdropFiles = <String>{
   'lib/ui/components/cura_blur.dart',
 };
+
+/// Brief v2 (3.5, V2-11): Blur nur in Leiste, Kopf-Karte und Manny-Knopf.
+/// Sheets, Dialoge, Blasen, Karten, Chips und Listenzeilen haben keinen.
 const Set<String> _r3BlurFiles = <String>{
   'lib/ui/components/cura_blur.dart',
   'lib/ui/components/floating_nav.dart',
-  'lib/ui/components/manny_bubble.dart',
-  'lib/ui/routes/cura_sheet_route.dart',
+  'lib/ui/components/header_card.dart',
+  'lib/ui/components/manny_chat_button.dart',
 };
 final RegExp _r3Backdrop = RegExp(
   r'\b(?:BackdropFilter|ImageFiltered)\b|\bImageFilter\s*\.\s*blur\b',
@@ -209,7 +216,7 @@ List<Violation> checkRule3(Map<String, String> files) {
         path,
         code,
         _r3Blur,
-        'CuraBlur nur in floating_nav, manny_bubble, cura_sheet_route',
+        'CuraBlur nur in floating_nav, header_card, manny_chat_button (V2-11)',
       );
     }
   });
@@ -223,7 +230,7 @@ List<Violation> checkRule3(Map<String, String> files) {
 final RegExp _r4Token = RegExp(
   r'\b(?:statusError|catFrist|tri(?:Gruen|Gelb|Orange|Rot))\b',
 );
-final RegExp _r4Accent = RegExp(r'\baccent(?:Hi)?\b');
+final RegExp _r4Accent = RegExp(r'\baccent(?:Text|Top)?\b');
 final RegExp _anyCall = RegExp(r'\b[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*\s*\(');
 final RegExp _handlerArg = RegExp(r'^on(?:Pressed|Tap)\w*$');
 const Set<String> _r4ActionFiles = <String>{
@@ -249,7 +256,7 @@ List<Violation> checkRule4(Map<String, String> files) {
         path,
         code,
         _r4Accent,
-        'accent/accentHi nicht in Fehler-/Status-Widgets',
+        'accent/accentText nicht in Fehler-/Status-Widgets',
       );
     }
     if (hits.isEmpty) return;
@@ -309,7 +316,7 @@ List<Violation> checkRule4(Map<String, String> files) {
 // Regel 5: accent nie als Textfarbe (Brief-E-2)
 // ---------------------------------------------------------------------------
 
-final RegExp _r5Accent = RegExp(r'\baccent\b');
+final RegExp _r5Accent = RegExp(r'\baccent(?:Top)?\b');
 final RegExp _r5Calls = RegExp(
   r'\b(?:TextStyle|ButtonStyle|DefaultTextStyle)\s*\(|\.\s*(?:copyWith|apply|merge|styleFrom)\s*\(',
 );
@@ -339,7 +346,7 @@ List<Violation> checkRule5(Map<String, String> files) {
               5,
               path,
               lineOf(code, arg.offset),
-              'accent als Textfarbe in ${call.name}(${arg.name}: …): accentHi oder text1 verwenden',
+              'accent als Textfarbe in ${call.name}(${arg.name}: …): accentText oder text1 verwenden',
             ),
           );
         }
@@ -592,7 +599,7 @@ List<Violation> checkRule8(Map<String, String> files) {
 }
 
 // ---------------------------------------------------------------------------
-// Regel 9: keine Animation in glow_background.dart und manny.dart
+// Regel 9: keine Animation in world_background.dart und manny.dart
 // ---------------------------------------------------------------------------
 
 final RegExp _r9Anim = RegExp(
@@ -603,7 +610,7 @@ List<Violation> checkRule9(Map<String, String> files) {
   final List<Violation> out = <Violation>[];
   _stripped(files).forEach((String path, String code) {
     final String name = baseName(path);
-    if (name != 'glow_background.dart' && name != 'manny.dart') return;
+    if (name != 'world_background.dart' && name != 'manny.dart') return;
     _addMatches(
       out,
       9,
@@ -624,8 +631,18 @@ final RegExp _r10Ihr = RegExp(
   r'\b(?:Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres|Ihnen)\b',
 );
 final RegExp _r10Sie = RegExp(r'\bSie\b');
+// Stufe 1: verboten (Nutzerentscheidung 2026-10-08; „therapie“ allein bewusst
+// nicht, wegen „Physiotherapie“).
 final RegExp _r10Clinical = RegExp(
-  r'\b(?:patient|indikation|therapieplan|compliance|proband)',
+  r'\b(?:patient|indikation|therapieplan|compliance|proband|adh[äa]e?renz|'
+  r'kontraindikation|behandlungsplan|klient|rehabilitand|pathologi|anamnes)',
+  caseSensitive: false,
+);
+
+// Stufe 2: Beobachtungsliste. Treffer sind nur mit begründetem Eintrag in
+// [kToneWatchAllowlist] erlaubt (Schlüssel: kompletter Text), sonst Fehler.
+final RegExp _r10Watch = RegExp(
+  r'\b(?:diagnos|symptom|befund|medikation|dosierung|läsion|ruptur)',
   caseSensitive: false,
 );
 
@@ -675,6 +692,19 @@ List<Violation> checkRule10(Map<String, String> files) {
         ),
       );
     }
+    if (!kToneWatchAllowlist.containsKey(text)) {
+      for (final RegExpMatch m in _r10Watch.allMatches(text)) {
+        out.add(
+          Violation(
+            10,
+            kStringsFile,
+            line,
+            'Beobachtungsbegriff „${m.group(0)}“ in „$text“ (nur mit '
+            'begründetem Allowlist-Eintrag erlaubt)',
+          ),
+        );
+      }
+    }
   }
   return out;
 }
@@ -723,8 +753,13 @@ List<Violation> checkRule11(Map<String, String> files) {
 }
 
 // ---------------------------------------------------------------------------
-// Regel 12: Ergänzung 2 (UI-72, UI-78, UI-85)
+// Regel 12: Ergänzung 2 (UI-72, UI-78, UI-85), angepasst an Brief v2
 // ---------------------------------------------------------------------------
+
+/// Der Manny-Knopf ist seit Brief v2 Glas (Weiß 78 %, Blur über `CuraBlur`):
+/// dort ist der Blur erlaubt (Regel 3 prüft die Stelle); alle übrigen
+/// Chat-/Button-Gruppen-Bausteine bleiben ohne Blur.
+const Set<String> kBlurAllowedChatFiles = <String>{'manny_chat_button.dart'};
 
 const Set<String> _r12Files = <String>{
   'manny_chat_button.dart',
@@ -732,9 +767,9 @@ const Set<String> _r12Files = <String>{
   'action_cluster.dart',
   'example_notice.dart',
 };
-final RegExp _r12Accent = RegExp(r'\baccent(?:Hi|Soft)?\b');
+final RegExp _r12Accent = RegExp(r'\baccent(?:Text|Top|Soft)?\b');
 final RegExp _r12Blur = RegExp(r'\b(?:CuraBlur|BackdropFilter)\b');
-final RegExp _r12Glow = RegExp(r'\bGlowBackground\b');
+final RegExp _r12World = RegExp(r'\bWorldBackground\b');
 final RegExp _r12Status = RegExp(
   r'\b(?:statusError|catFrist|tri(?:Gruen|Gelb|Orange|Rot))\b',
 );
@@ -769,22 +804,24 @@ List<Violation> checkRule12(Map<String, String> files) {
       _r12Accent,
       'kein Akzent in Chat-/Button-Gruppen-Bausteinen',
     );
-    _addMatches(
-      out,
-      12,
-      path,
-      code,
-      _r12Blur,
-      'kein Blur in Chat-/Button-Gruppen-Bausteinen',
-    );
+    if (!kBlurAllowedChatFiles.contains(baseName(path))) {
+      _addMatches(
+        out,
+        12,
+        path,
+        code,
+        _r12Blur,
+        'kein Blur in Chat-/Button-Gruppen-Bausteinen',
+      );
+    }
     if (baseName(path) != 'chat_screen_scaffold.dart') {
       _addMatches(
         out,
         12,
         path,
         code,
-        _r12Glow,
-        'GlowBackground nur im ChatScreenScaffold',
+        _r12World,
+        'WorldBackground nur im ChatScreenScaffold',
       );
     }
     _addMatches(
@@ -956,6 +993,142 @@ List<Violation> checkRule16(Map<String, String> files) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Regel 17: Blur-Budget und Uhr der Welt (Brief v2 3.1, 3.5, 9; Plan 3.6)
+// ---------------------------------------------------------------------------
+
+const String kTokensFile = 'lib/theme/tokens.dart';
+const String kBlurFile = 'lib/ui/components/cura_blur.dart';
+
+/// Höchstens so viele gleichzeitig sichtbare `BackdropFilter` je Screen
+/// (Brief 3.5: Leiste, Kopf-Karte, Manny-Knopf).
+const int kBlurBudgetMax = 3;
+
+final RegExp _r17Budget = RegExp(r'\bmaxPerScreen\s*=\s*(\d+)\s*;');
+final RegExp _r17Acquire = RegExp(r'\btryAcquire\b');
+final RegExp _r17Now = RegExp(r'\bDateTime\s*\.\s*now\b');
+
+/// Dateien in `lib/logic`, die eine Systemuhr nennen dürfen: `clock.dart`
+/// (Typ `Clock`) und `world_time.dart` (`WorldClock`, die Uhr der Welt).
+const Set<String> kSystemClockFiles = <String>{
+  'lib/logic/clock.dart',
+  'lib/logic/world_time.dart',
+};
+
+List<Violation> checkRule17(Map<String, String> files) {
+  final List<Violation> out = <Violation>[];
+  final Map<String, String> code = _stripped(files);
+  final String? tokens = code[kTokensFile];
+  if (tokens != null) {
+    final RegExpMatch? m = _r17Budget.firstMatch(tokens);
+    if (m == null) {
+      out.add(
+        const Violation(17, kTokensFile, 1, 'BlurTokens.maxPerScreen fehlt'),
+      );
+    } else if (int.parse(m.group(1)!) > kBlurBudgetMax) {
+      out.add(
+        Violation(
+          17,
+          kTokensFile,
+          lineOf(tokens, m.start),
+          'Blur-Budget über $kBlurBudgetMax (Brief 3.5)',
+        ),
+      );
+    }
+  }
+  final String? blur = code[kBlurFile];
+  if (blur != null && !_r17Acquire.hasMatch(blur)) {
+    out.add(
+      const Violation(
+        17,
+        kBlurFile,
+        1,
+        'CuraBlur zählt nicht gegen das Budget',
+      ),
+    );
+  }
+  code.forEach((String path, String src) {
+    final bool uiSide =
+        inDir(path, 'lib/ui') ||
+        inDir(path, 'lib/theme') ||
+        inDir(path, 'lib/state');
+    final bool logic =
+        inDir(path, 'lib/logic') && !kSystemClockFiles.contains(path);
+    if (!uiSide && !logic) return;
+    _addMatches(
+      out,
+      17,
+      path,
+      src,
+      _r17Now,
+      'Uhr nur über Clock bzw. lib/logic/world_time.dart, nie DateTime.now',
+    );
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Regel 18: Manny nur aus den PNGs (Ergänzung 1, V2-56)
+// ---------------------------------------------------------------------------
+
+final RegExp _r18Old = RegExp(
+  r'\bMannyPlaceholder\b|\b_?MannyPainter\b|\bMannyGeometry\b|\bMannyWing\b',
+);
+final RegExp _r18Painter = RegExp(r'\bCustomPainter\b|\bCustomPaint\b');
+
+/// Dateien des Manny-Bildes selbst (die Blase malt nur ihren Pfeil).
+const Set<String> kMannyFiles = <String>{
+  'manny.dart',
+  'manny_chat_button.dart',
+  'manny_look_picker.dart',
+};
+
+final RegExp _r18Hint = RegExp(r'Platzhalter', caseSensitive: false);
+final RegExp _r18Manny = RegExp(r'Manny', caseSensitive: false);
+
+/// Kein gezeichneter Manny: kein Platzhalter-Widget, kein `CustomPainter` in
+/// den Manny-Dateien und kein Text, der Manny als „Platzhalter“ kennzeichnet.
+List<Violation> checkRule18(Map<String, String> files) {
+  final List<Violation> out = <Violation>[];
+  _stripped(files).forEach((String path, String code) {
+    if (!inDir(path, 'lib')) return;
+    _addMatches(
+      out,
+      18,
+      path,
+      code,
+      _r18Old,
+      'gezeichneter Manny-Platzhalter ist entfallen (Ergänzung 1)',
+    );
+    if (kMannyFiles.contains(baseName(path))) {
+      _addMatches(
+        out,
+        18,
+        path,
+        code,
+        _r18Painter,
+        'kein CustomPainter für Manny (PNG-Grafiken)',
+      );
+    }
+    if (inDir(path, 'lib/ui') || path == kStringsFile) {
+      final List<String> lines = code.split('\n');
+      for (int i = 0; i < lines.length; i++) {
+        if (_r18Manny.hasMatch(lines[i]) && _r18Hint.hasMatch(lines[i])) {
+          out.add(
+            Violation(
+              18,
+              path,
+              i + 1,
+              'Manny als „Platzhalter“ gekennzeichnet (V2-56)',
+            ),
+          );
+        }
+      }
+    }
+  });
+  return out;
+}
+
 /// Alle Regeln in Reihenfolge.
 final Map<int, List<Violation> Function(Map<String, String>)> kRules =
     <int, List<Violation> Function(Map<String, String>)>{
@@ -975,4 +1148,6 @@ final Map<int, List<Violation> Function(Map<String, String>)> kRules =
       14: checkRule14,
       15: checkRule15,
       16: checkRule16,
+      17: checkRule17,
+      18: checkRule18,
     };

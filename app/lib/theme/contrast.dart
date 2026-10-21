@@ -1,9 +1,9 @@
-// WCAG-2.x-Kontrast (relative Luminanz, sRGB) für Test UI-3 und die
-// Glow-Prüfung UI-7 (Plan 8.2). Reiner Rechencode auf `Color`.
+// WCAG-2.x-Kontrast (relative Luminanz, sRGB) für die Tests V2-3 (Welt) und
+// V2-4 (Inhaltsflächen) und die Matrix. Reiner Rechencode auf `Color`.
 import 'dart:math' as math;
 import 'dart:ui' show Color;
 
-import 'cura_colors.dart';
+import 'world_tokens.dart';
 
 double _linear(double channel) {
   return channel <= 0.04045
@@ -41,48 +41,61 @@ Color compose(Color top, Color bottom) {
 /// (z. B. `border-control` Weiß 40 %): erst über `bg` komponieren.
 double contrastOver(Color fg, Color bg) => contrastRatio(compose(fg, bg), bg);
 
-/// Untergrund `bg` mit Glow-Alpha `glow` (`glow-ember` über `bg`).
-Color backgroundWithGlow(CuraColors c, {double glow = 0}) {
-  return compose(c.glowEmber.withValues(alpha: glow), c.bg);
-}
+/// Ungünstigste Untergründe unter einer halbtransparenten Fläche (Brief 3.1:
+/// Schwarz, Weiß, Mandarine; 3.2 zusätzlich Grau).
+const List<Color> kWorstCaseGrounds = <Color>[
+  Color(0xFF000000),
+  Color(0xFFFFFFFF),
+  Color(0xFFFF7A2E),
+  Color(0xFF808080),
+];
 
-/// Ungünstigste Stelle der Glas-Karte (Weiß 8,5 % über Untergrund) über einem
-/// Glow-Alpha `glow` (Glow liegt unter dem Glas, Plan 2).
-Color glassWithGlow(CuraColors c, {double glow = 0}) {
-  return compose(c.surfaceGlassTop, backgroundWithGlow(c, glow: glow));
-}
-
-/// `surface-float` (82 %) über `bg` (ca. `#161E27`, Nav-Fläche).
-Color floatOverBg(CuraColors c) => compose(c.surfaceFloat, c.bg);
-
-/// Größter Glow-Alpha (0 … 1), bei dem `fg` auf `bg` bzw. Glas noch mindestens
-/// `minRatio` erreicht (Zusatzbedingung für farbigen Text, N-19). `null`, wenn
-/// schon ohne Glow darunter. Der Kontrast sinkt mit steigendem Glow monoton
-/// (helle Schrift auf dunklem Grund), daher Intervallhalbierung.
-double? maxGlowAlphaForContrast(
+/// Kleinster Kontrast von [fg] gegen die Fläche [layer] (mit Alpha) über allen
+/// [grounds] (Worst Case).
+double worstCaseContrast(
   Color fg,
-  CuraColors c, {
-  required bool onGlass,
-  double minRatio = 4.5,
+  Color layer, {
+  List<Color> grounds = kWorstCaseGrounds,
 }) {
-  double ratioAt(double glow) {
-    final Color ground = onGlass
-        ? glassWithGlow(c, glow: glow)
-        : backgroundWithGlow(c, glow: glow);
-    return contrastRatio(fg, ground);
+  double worst = double.infinity;
+  for (final Color g in grounds) {
+    final double r = contrastRatio(fg, compose(layer, g));
+    if (r < worst) worst = r;
   }
+  return worst;
+}
 
-  if (ratioAt(0) < minRatio) return null;
-  if (ratioAt(1) >= minRatio) return 1;
-  double lo = 0;
-  double hi = 1;
-  for (int i = 0; i < 40; i++) {
-    final double mid = (lo + hi) / 2;
-    if (ratioAt(mid) >= minRatio) {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
+/// Kopf-Karte (Brief 3.1): weißer Text gegen `header-tint` über dem
+/// ungünstigsten Untergrund (oberste Himmelsfarbe oder reines Weiß).
+double worldHeaderContrast(WorldPalette p) {
+  const Color white = Color(0xFFFFFFFF);
+  return worstCaseContrast(
+    white,
+    p.headerTint,
+    grounds: <Color>[p.skyTop, white],
+  );
+}
+
+/// Label-Chip (Brief 3.1): `chip-world`-Text gegen die Chip-Fläche über
+/// Schwarz, Weiß und Mandarine.
+double worldChipContrast(WorldPalette p) => worstCaseContrast(
+  p.chipText,
+  p.chip,
+  grounds: kWorstCaseGrounds.take(3).toList(),
+);
+
+/// Leiste (Brief 3.1/4.1): `nav-ink` gegen die Leiste (Ruhe oder Aktiv) über
+/// dem Schleier (70 % `world-floor`) über Schwarz, Weiß und Mandarine.
+double worldNavContrast(WorldPalette p, {required bool active, Color? ink}) {
+  final Color glass = active ? p.navActive : p.navRest;
+  double worst = double.infinity;
+  for (final Color g in kWorstCaseGrounds.take(3)) {
+    final Color veil = compose(
+      p.floor.withValues(alpha: WorldGeometry.navVeilAlpha),
+      g,
+    );
+    final double r = contrastRatio(ink ?? p.navInk, compose(glass, veil));
+    if (r < worst) worst = r;
   }
-  return lo;
+  return worst;
 }
