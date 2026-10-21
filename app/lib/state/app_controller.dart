@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 
 import '../data/data_eraser.dart';
 import '../data/state_store.dart';
+import '../logic/account.dart' as account_logic;
 import '../logic/app_state.dart';
+import '../logic/framework.dart' show Framework;
 import '../logic/clock.dart';
 import '../logic/day_program.dart' as program;
 import '../logic/day_rollover.dart' as rollover_logic;
@@ -195,6 +197,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> retryLoad() => load();
 
+  /// Setzt den Hinweis für den nächsten Start-Bildschirm (nach einer beim
+  /// Start abgeschlossenen Löschung).
+  void setStartNotice(StartNotice notice) {
+    _startNotice = notice;
+    notifyListeners();
+  }
+
   /// Der Hinweis wurde gezeigt.
   void clearStartNotice() {
     if (_startNotice == StartNotice.none) return;
@@ -271,8 +280,104 @@ class AppController extends ChangeNotifier {
 
   /// Manny-Look (Ergänzung 1, 6a/6b): wird sofort gespeichert und gilt für die
   /// ganze App; „Alles löschen“ setzt ihn auf die Vorbelegung zurück.
-  void setMannyLook(MannyLook look) =>
-      _mutate((AppState s) => s.copyWith(mannyLook: look));
+  void setMannyLook(MannyLook look) {
+    _mutate((AppState s) => s.copyWith(mannyLook: look, mannyLookChosen: true));
+    onMannyLookChanged?.call(look);
+  }
+
+  /// Backend-Modus: jede Änderung des Looks (Plan 8.1, O-41). Der Empfänger
+  /// entscheidet, ob schon gebunden ist (vor der Bindung wird nichts gesendet).
+  void Function(MannyLook look)? onMannyLookChanged;
+
+  /// Der Look-Schritt des Code-Starts wurde bestätigt („Weiter“ mit der
+  /// Vorbelegung); kein Senden, nur die Merkung „nicht erneut fragen“.
+  void confirmLookChosen() =>
+      _mutate((AppState s) => s.copyWith(mannyLookChosen: true));
+
+  // -------------------------------------------------------------------------
+  // Backend-Modus (F2-4a, Plan 8.1)
+  // -------------------------------------------------------------------------
+
+  /// Nach dem Einlösen: lokaler Fortschritt startet neu, der Look bleibt bzw.
+  /// wird durch den Konto-Wert ersetzt ([adoptedLook], O-44).
+  void bindAccount(AccountState account, {MannyLook? adoptedLook}) {
+    _commit(
+      account_logic.stateAfterBinding(
+        old: _state,
+        account: account,
+        today: today,
+        adoptedLook: adoptedLook,
+      ),
+      force: true,
+    );
+  }
+
+  /// Einwilligung nach dem Einlösen (Version der Einwilligung, nicht des
+  /// Demo-Platzhaltertexts).
+  void applyConsent(String version) => _mutate(
+    (AppState s) => s.copyWith(
+      consent: ConsentState(acceptedAt: _clock().toUtc(), version: version),
+    ),
+  );
+
+  /// Brücke bis F2-4b: Name, Verletzung und Datum aus der Akte füllen den
+  /// lokalen Zustand, damit die bestehenden Ziele (Pfad, Heute, Profil)
+  /// laufen. Ändert nichts, wenn alles schon passt.
+  void adoptFramework(Framework f) {
+    _mutate((AppState s) {
+      final OnboardingState o = s.onboarding;
+      final String label = f.injury?.label ?? '';
+      final LocalDay date = f.injury?.referenceDate ?? today;
+      final OnboardingState next = o.copyWith(
+        completed: s.consent != null,
+        step: kLastOnboardingStep,
+        name: f.patient.firstName,
+        injuryType: InjuryType.other,
+        injuryOther: label,
+        injuryDate: date,
+      );
+      if (next == o) return s;
+      return s.copyWith(
+        onboarding: next,
+        manny: o.completed ? s.manny : s.manny.copyWith(greetingPending: true),
+      );
+    });
+  }
+
+  /// Bindung gelöst (anderes Gerät, Zugang beendet): alles Lokale ist schon
+  /// gelöscht, der Zustand startet leer (Look auf der Vorbelegung).
+  void resetStateLocally() {
+    _state = AppState.initial(today);
+    _transient.reset();
+    _startNotice = StartNotice.none;
+    notifyListeners();
+  }
+
+  /// „Alles löschen“ mit Backend: sperrt das Schreiben und wartet auf die
+  /// Schreibschlange (wie [deleteAll]).
+  Future<void> lockForExternalDelete() async {
+    _deleting = true;
+    notifyListeners();
+    await _writeChain;
+  }
+
+  /// Das Löschen ist gescheitert, ohne dass der Server gelöscht hat.
+  void unlockAfterFailedExternalDelete() {
+    _deleting = false;
+    _enqueueWrite();
+    notifyListeners();
+  }
+
+  /// Der Server (und lokal alles) ist gelöscht: Zustand zurücksetzen. Die
+  /// Schreibsperre bleibt bis [completeDeletion] (Vertrag wie bei [deleteAll]).
+  void resetAfterExternalDelete() {
+    _state = AppState.initial(today);
+    _stateAfterDelete = _state;
+    _deleteFuture = Future<void>.value();
+    _transient.reset();
+    _startNotice = StartNotice.deleted;
+    notifyListeners();
+  }
 
   /// Speichert die Einwilligung (UTC-Zeitstempel, Version `prototype-0`);
   /// erneutes Bestätigen überschreibt den Zeitstempel (A-2).

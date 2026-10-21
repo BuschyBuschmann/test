@@ -6,8 +6,9 @@
 // Die Datei `app/config/supabase.local.json` ist nicht eingecheckt
 // (`.gitignore`) und enthält die Schlüssel `SUPABASE_URL`,
 // `SUPABASE_ANON_KEY` und optional `INVITE_LINK_BASE`. Ohne Konfiguration
-// bleibt die App im Demo-Modus ohne Backend ([SupabaseConfig.fromEnvironment]
-// liefert `null`).
+// startet die App ohne Backend wie bisher (Onboarding mit lokalen Daten);
+// [SupabaseConfig.fromEnvironment] liefert dann `null`. Die Prüfumgebung
+// (`main_preview`) und `CURAONE_DEMO=true` (Plan 8.12) sind davon unabhängig.
 
 class SupabaseConfig {
   const SupabaseConfig._({

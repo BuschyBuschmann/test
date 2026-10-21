@@ -662,4 +662,156 @@ abstract final class S {
       '$title, ${selected ? 'ausgewählt' : 'nicht ausgewählt'}';
   static String displaySwitchLabel(String title, bool on) =>
       '$title, ${on ? switchOn : switchOff}';
+
+  // -------------------------------------------------------------------------
+  // Code-Start, Einwilligung, Hinweise, Löschen mit Backend (Brief-Ergänzung 2,
+  // Teil A; Wortlaute freigegeben, Offene Fragen 2 und 3)
+  // -------------------------------------------------------------------------
+  static const String accessTitle = 'Zugang über deinen Physio';
+  static const String codeLabel = 'Dein Code';
+  static const String accessMannyBubble =
+      'Moin! Den Code bekommst du von deinem Physio.';
+  static const String accessExplain =
+      'Dein Physio legt dich an und gibt dir einen Code oder QR-Code. Ohne '
+      'Code geht es nicht weiter. Hast du einen Link bekommen, öffne ihn: Der '
+      'Code steht dann schon im Feld.';
+  static const String codeFromLink = 'Code aus dem Link übernommen';
+  static const String codeEmptyHint = 'Gib zuerst deinen Code ein';
+  static const String codeChecking = 'Wird geprüft';
+  static const String codeInvalid =
+      'Dieser Code passt nicht. Prüfe ihn noch einmal oder frag deinen Physio.';
+  static const String codeAlreadyUsed =
+      'Dieser Code wurde schon benutzt. Bitte deinen Physio um einen neuen '
+      'Code.';
+  static const String codeExpired =
+      'Dieser Code ist abgelaufen. Bitte deinen Physio um einen neuen Code.';
+  static const String codeTooManyAttempts =
+      'Zu viele Versuche. Warte etwa 15 Minuten und versuche es dann noch '
+      'einmal.';
+  static const String codeNotAllowed =
+      'Das geht auf diesem Gerät gerade nicht. Starte die App neu und '
+      'versuche es noch einmal.';
+  static const String codeNetwork =
+      'Keine Verbindung oder der Server antwortet nicht. Prüfe dein Internet '
+      'und versuche es noch einmal.';
+
+  static const String consentTitle = 'Was dein Physio sieht';
+  static String consentGreeting(String name) =>
+      'Hallo $name, ein letzter Schritt.';
+  static const String consentSeesTitle =
+      'Damit dein Physio dich begleiten kann, sieht er:';
+  static const String consentSees1Lead = 'Deinen Verlauf:';
+  static const String consentSees1 =
+      ' erledigte und übersprungene Übungen, bei übersprungenen mit Grund.';
+  static const String consentSees2Lead = 'Deine Check-ups:';
+  static const String consentSees2 =
+      ' Schmerz, Schwellung, Einschränkungen, Wohlbefinden, Motivation und '
+      'Stimmung.';
+  static const String consentSees3Lead = 'Deine Fragen';
+  static const String consentSees3 = ' an deinen Physio.';
+  static const String consentSees4Lead = 'Warnzeichen,';
+  static const String consentSees4 =
+      ' zum Beispiel bei hohem Schmerz oder starker Schwellung. Auch '
+      'Warnzeichen aus deinem Chat mit Manny, bis hin zu Hinweisen auf eine '
+      'Krise. Dazu sieht er nur Stufe und Zeitpunkt, keinen Text aus dem Chat.';
+  static const String consentSees5Lead = 'Eine Meldung zur Stimmung:';
+  static const String consentSees5 =
+      ' War sie an 5 Tagen mit Check-up hintereinander sehr schlecht (die '
+      'zwei schlechtesten Smileys), bekommt er eine Meldung, an jedem '
+      'weiteren Tag wieder. Details sieht er nicht. Ein Tag ohne Check-up '
+      'beendet die Zählung; bei einer neuen Verletzung beginnt sie neu. Die '
+      'App zeigt dir diese Meldung nicht an.';
+  static const String consentNeverTitle = 'Das sieht er nie';
+  static const String consentNever = 'Deinen Chat mit Manny. Er bleibt privat.';
+  static const String consentDeleteTitle = 'Dein Recht auf Löschung';
+  static const String consentDelete =
+      'Du kannst alles jederzeit löschen (Profil, Deine Daten). Dann nimmst '
+      'du auch deine Einwilligung zurück.';
+  static const String consentAgree = 'Ich bin einverstanden';
+  static const String consentDecline = 'Nicht einverstanden';
+  static const String consentSending = 'Wird gesendet';
+  static const String consentError =
+      'Das hat nicht geklappt. Versuch es noch einmal.';
+  static const String consentOffline =
+      'Ohne Verbindung geht das nicht. Verbinde dich und versuche es noch '
+      'einmal.';
+  static const String declineTitle = 'Ohne Einwilligung geht es nicht';
+  static const String declineText =
+      'Ohne deine Einwilligung kann die App nicht genutzt werden. Wenn du '
+      'nicht einverstanden bist, löschen wir deinen Zugang. Danach brauchst '
+      'du einen neuen Code von deinem Physio.';
+  static const String declineDelete = 'Zugang löschen';
+
+  static const String reboundTitle = 'Du bist neu angemeldet';
+  static const String reboundKept =
+      'Dein Plan, dein Verlauf und deine Check-ups sind noch da.';
+  static const String reboundChat =
+      'Dein Chat mit Manny bleibt auf dem alten Gerät und wird dort gelöscht.';
+  static String reboundLook(String lookName) =>
+      'Manny sieht so aus wie bei dir zuvor: $lookName. Du kannst das im '
+      'Profil ändern.';
+  static const String reboundAck = 'Verstanden';
+
+  static const String lostOtherTitle =
+      'Du bist auf einem anderen Gerät angemeldet';
+  static const String lostOtherText =
+      'Die Daten auf diesem Gerät wurden gelöscht, auch dein Chat mit Manny. '
+      'Um hier weiterzumachen, brauchst du einen neuen Code von deinem '
+      'Physio.';
+  static const String lostAccessTitle = 'Dein Zugang wurde beendet';
+  static const String lostAccessText =
+      'Die Daten auf diesem Gerät wurden gelöscht. Brauchst du wieder Zugang, '
+      'frag deinen Physio nach einem neuen Code.';
+  static const String lostContinue = 'Weiter';
+
+  static const String backendLoading = 'Dein Plan wird geladen';
+  static const String backendLoadError =
+      'Dein Plan konnte nicht geladen werden.';
+
+  static const String syncNoticeOne =
+      'Ein Eintrag konnte nicht gesendet werden.';
+  static String syncNoticeMany(int n) =>
+      '$n Einträge konnten nicht gesendet werden.';
+  static const String syncNoticeDetail =
+      'Er bleibt auf diesem Gerät. Die App versucht es weiter.';
+  static const String syncNoticeDetailMany =
+      'Die Einträge bleiben auf diesem Gerät. Die App versucht es weiter.';
+  static const String syncResend = 'Nochmal senden';
+  static const String syncHide = 'Hinweis ausblenden';
+  static const String syncSent = 'Gesendet.';
+
+  static const String deletePendingTitle = 'Löschen noch nicht abgeschlossen';
+  static const String deletePendingText =
+      'Du hast alles löschen lassen. Das ist noch nicht abgeschlossen. '
+      'Verbinde dich mit dem Internet und versuche es noch einmal.';
+  static const String deleteBackendText =
+      'Dein Konto, dein Verlauf, deine Check-ups, deine Fragen und deine '
+      'eigenen Termine werden gelöscht, auf diesem Gerät und bei deinem '
+      'Physio-Zugang. Was dein Physio selbst eingetragen hat (Plan, Akte, '
+      'Notizen), bleibt in der Praxis, ohne Verbindung zu dir. Das lässt sich '
+      'nicht rückgängig machen. Danach startest du neu.';
+  static const String deleteSendingPending =
+      'Offene Einträge werden noch gesendet …';
+  static const String deleteUnclear =
+      'Wir konnten nicht bestätigen, ob alles gelöscht wurde. Prüfe deine '
+      'Verbindung und versuche es noch einmal.';
+  static const String deleteLocalFailure =
+      'Auf dem Server ist alles gelöscht. Auf diesem Gerät konnte nicht alles '
+      'entfernt werden. Versuch es nochmal.';
+  static const String deleteOffline =
+      'Ohne Verbindung kannst du nichts löschen. Verbinde dich und versuche '
+      'es noch einmal.';
+  static const String deleteRejected =
+      'Es wurde nichts gelöscht. Versuch es noch einmal.';
+  static const String deleteClose = 'Schließen';
+
+  static const String dataSheetSubtitleBackend =
+      'Deine Angaben liegen bei deinem Physio-Zugang. Hier kannst du sie '
+      'ansehen oder alles löschen.';
+  static const String dataDeleteTextBackend =
+      'Löscht dein Konto und alles auf diesem Gerät, auch bei deinem '
+      'Physio-Zugang, und nimmt deine Einwilligung zurück. Danach startest du '
+      'neu.';
+  static const String dataReadOnlyNote = 'Diese Angaben trägt dein Physio ein.';
+  static const String dataValueNone = 'Nicht eingetragen';
 }

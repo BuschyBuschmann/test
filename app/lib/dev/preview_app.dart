@@ -13,6 +13,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../app.dart';
 import '../data/data_eraser.dart';
+import '../data/key_value_store.dart';
 import '../data/prefs_state_store.dart';
 import '../data/state_store.dart';
 import '../logic/clock.dart';
@@ -22,6 +23,7 @@ import '../logic/world_time.dart';
 import '../ui/path/path_source.dart';
 import '../ui/today/today_source.dart';
 import '../state/app_controller.dart';
+import '../state/backend_controller.dart';
 import '../state/display_controller.dart';
 import '../theme/cura_colors.dart';
 import '../theme/cura_metrics.dart';
@@ -200,7 +202,11 @@ class _AppRuntime {
     this.startup,
     this.display, [
     this._clock,
+    this.backend,
   ]);
+
+  /// Backend-Modus des Szenarios (F2-4a); `null` im Demo-Modus.
+  final BackendController? backend;
 
   /// Szenario-Uhr (veränderlich für Zeitsprünge); `null` bei `live`.
   final _PreviewClock? _clock;
@@ -255,8 +261,21 @@ class _AppRuntime {
             DeleteSeedMode.failing => FailingDeleteStateStore(seed.state),
           };
     final _PreviewClock clock = _PreviewClock(now);
+    final AppController controller = _controller(() => clock.now, store, store);
+    final BackendSeed? bs = seed.backend;
+    final BackendController? backend = bs == null
+        ? null
+        : BackendController.wire(
+            backend: bs.fake,
+            app: controller,
+            store: MemoryKeyValueStore(
+              bs.stored == null ? null : <String, String>{...bs.stored!},
+            ),
+            clock: () => clock.now,
+            localErasers: <DataEraser>[store],
+          );
     return _AppRuntime._(
-      _controller(() => clock.now, store, store),
+      controller,
       seed,
       seed.deleteFirst
           ? (AppController c) async {
@@ -270,6 +289,7 @@ class _AppRuntime {
         initial: DisplaySettings(world: config.world, theme: config.theme),
       ),
       clock,
+      backend,
     );
   }
 
@@ -292,6 +312,7 @@ class _AppRuntime {
   final DisplayController display;
 
   void dispose() {
+    backend?.dispose();
     controller.dispose();
     display.dispose();
   }
@@ -370,6 +391,8 @@ class _PreviewAppState extends State<PreviewApp> {
     if (runtime != null) {
       return CuraApp(
         controller: runtime.controller,
+        backend: runtime.backend,
+        initialInviteCode: runtime.seed.backend?.link,
         display: runtime.display,
         startup: runtime.startup,
         pathSource: runtime.pathSource,

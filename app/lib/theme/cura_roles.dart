@@ -246,6 +246,18 @@ abstract final class CuraComponent {
   static const double dialogPadding = CuraSpace.s6;
   static const double dialogGap = CuraSpace.s3;
 
+  // Hinweiskarte `NoticeCard` (Brief-Ergänzung 2, 1.1).
+  static const double noticeCircle = 36;
+  static const double noticeBorderError = 2;
+  static const double noticeBorderFixed = 2.5;
+
+  // Code-Feld `CodeField` (Brief-Ergänzung 2, 1.3).
+  static const double codeFieldHeight = 68;
+  static const double codeFieldRadius = 22;
+  static const double codeFieldBorder = 3;
+  static const double codeLetterSpacing = 2;
+  static const double codeMaxTextScale = 1.3;
+
   // Auswahlkarte: Icon-Abstand.
   static const double choiceIconGap = CuraSpace.s3;
   static const double choiceInnerMinHeight =

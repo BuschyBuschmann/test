@@ -51,3 +51,6 @@ app.*.map.json
 /tool/screens/node_modules/
 /tool/screens/out/
 test/golden/failures/
+
+# Backend-Konfiguration mit den echten Werten (nicht einchecken, Plan 5)
+/config/supabase.local.json

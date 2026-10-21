@@ -10,7 +10,14 @@
 // Pipette. Fehlt ein Marker, entfällt die jeweilige Prüfung.
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
+
+import '../data/state_store.dart';
 import '../l10n/strings_de.dart';
+import '../logic/account.dart';
+import '../logic/backend_failure.dart';
+import '../logic/outbox.dart';
+import 'preview_backend.dart';
 import '../logic/app_state.dart';
 import '../logic/clock.dart';
 import '../logic/day_program.dart';
@@ -119,7 +126,12 @@ class AppSeed {
     this.scrollPathToEnd = false,
     this.daysAfterTaps = 0,
     this.deleteMode = DeleteSeedMode.normal,
+    this.backend,
   });
+
+  /// Backend-Modus (F2-4a): die App startet mit einem [PreviewBackend] statt im
+  /// Demo-Modus.
+  final BackendSeed? backend;
 
   /// Verhalten des Löschens (Löschdialog-Szenarien).
   final DeleteSeedMode deleteMode;
@@ -166,6 +178,23 @@ class AppSeed {
   /// [kPreviewScrollEnd] scrollt an dieser Stelle den sichtbaren Hauptbereich
   /// ans Ende.
   final List<String> taps;
+}
+
+/// Aufbau eines Backend-Szenarios (F2-4a): das gescriptete Backend, der
+/// Inhalt des Schlüssel-Speichers (Warteschlange, Merkzeichen) und ein Code aus
+/// einem Einladungslink.
+class BackendSeed {
+  const BackendSeed({required this.fake, this.stored, this.link});
+
+  final PreviewBackend fake;
+
+  /// Vorbelegte Schlüssel des Speichers (z. B. zurückgestellter Eintrag,
+  /// Merkzeichen der Löschung).
+  final Map<String, String>? stored;
+
+  /// Code aus dem Einladungslink (Feld ist gefüllt, eingelöst wird erst nach
+  /// „Weiter“).
+  final String? link;
 }
 
 typedef AppSeedBuilder = AppSeed Function(ScenarioEnv env);
@@ -1470,6 +1499,267 @@ AppSeed _dataSheetKeyboard(ScenarioEnv env) =>
     AppSeed(state: _completedState(env), taps: _openData, focusField: true);
 
 /// Alle Szenarien, in der Reihenfolge der Kontaktbögen.
+// ---------------------------------------------------------------------------
+// Backend-Szenarien (F2-4a): Code-Start, Einwilligung, Hinweise, Löschen
+// ---------------------------------------------------------------------------
+
+const String _previewCode = 'ABCDEFGHJK';
+
+/// Look schon gewählt, nicht gebunden: der Code-Start beginnt beim Zugang.
+AppState _backendFresh(ScenarioEnv env) =>
+    AppState.initial(_today(env)).copyWith(mannyLookChosen: true);
+
+/// Gebunden, ohne Einwilligung (Neustart nach dem Einlösen).
+AppState _backendBound(ScenarioEnv env) => _backendFresh(env).copyWith(
+  account: AccountState(
+    patientId: kPreviewPatientId,
+    boundAt: DateTime.utc(2026, 7, 1, 8),
+  ),
+);
+
+/// Gebunden und eingewilligt.
+AppState _backendReady(ScenarioEnv env) => _backendBound(env).copyWith(
+  consent: ConsentState(
+    acceptedAt: env.now.toUtc(),
+    version: 'physio_sharing-2',
+  ),
+);
+
+PreviewBackend _fake(
+  ScenarioEnv env, {
+  bool hangRedeem = false,
+  bool hangConsent = false,
+  bool hangFramework = false,
+  bool hangDelete = false,
+}) => PreviewBackend(
+  framework: previewFramework(_today(env)),
+  patientId: kPreviewPatientId,
+  hangRedeem: hangRedeem,
+  hangConsent: hangConsent,
+  hangFramework: hangFramework,
+  hangDelete: hangDelete,
+);
+
+AppSeed _csLook(ScenarioEnv env) =>
+    AppSeed(backend: BackendSeed(fake: _fake(env)));
+
+AppSeed _csCode(ScenarioEnv env) => AppSeed(
+  state: _backendFresh(env),
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _csCodeWithout(ScenarioEnv env) => AppSeed(
+  state: _backendFresh(env).copyWith(mannyLook: MannyLook.ohne),
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _csCodeLink(ScenarioEnv env) => AppSeed(
+  state: _backendFresh(env),
+  backend: BackendSeed(fake: _fake(env), link: _previewCode),
+);
+
+AppSeed _csCodeBusy(ScenarioEnv env) => AppSeed(
+  state: _backendFresh(env),
+  taps: const <String>[S.next],
+  backend: BackendSeed(fake: _fake(env, hangRedeem: true), link: _previewCode),
+);
+
+AppSeed _csCodeError(ScenarioEnv env, RedeemResult result) {
+  final PreviewBackend fake = _fake(env)
+    ..redeemResult = result
+    ..bound = false;
+  return AppSeed(
+    state: _backendFresh(env),
+    taps: const <String>[S.next],
+    backend: BackendSeed(fake: fake, link: _previewCode),
+  );
+}
+
+AppSeed _csCodeInvalid(ScenarioEnv env) =>
+    _csCodeError(env, RedeemResult.invalid);
+AppSeed _csCodeUsed(ScenarioEnv env) =>
+    _csCodeError(env, RedeemResult.alreadyUsed);
+AppSeed _csCodeExpired(ScenarioEnv env) =>
+    _csCodeError(env, RedeemResult.expired);
+AppSeed _csCodeTooMany(ScenarioEnv env) =>
+    _csCodeError(env, RedeemResult.tooManyAttempts);
+AppSeed _csCodeNotAllowed(ScenarioEnv env) =>
+    _csCodeError(env, RedeemResult.notAllowed);
+
+AppSeed _csCodeNetwork(ScenarioEnv env) {
+  final PreviewBackend fake = _fake(env)
+    ..redeemError = const BackendFailure(FailureKind.unreachable);
+  return AppSeed(
+    state: _backendFresh(env),
+    taps: const <String>[S.next],
+    backend: BackendSeed(fake: fake, link: _previewCode),
+  );
+}
+
+AppSeed _consent(ScenarioEnv env) => AppSeed(
+  state: _backendBound(env),
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _consentWithout(ScenarioEnv env) => AppSeed(
+  state: _backendBound(env).copyWith(mannyLook: MannyLook.ohne),
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _consentBusy(ScenarioEnv env) => AppSeed(
+  state: _backendBound(env),
+  taps: const <String>[S.consentAgree],
+  backend: BackendSeed(fake: _fake(env, hangConsent: true)),
+);
+
+AppSeed _consentError(ScenarioEnv env) {
+  final PreviewBackend fake = _fake(env)
+    ..consentError = const BackendFailure(FailureKind.server);
+  return AppSeed(
+    state: _backendBound(env),
+    taps: const <String>[S.consentAgree],
+    backend: BackendSeed(fake: fake),
+  );
+}
+
+AppSeed _consentOffline(ScenarioEnv env) {
+  final PreviewBackend fake = _fake(env)
+    ..consentError = const BackendFailure(FailureKind.unreachable);
+  return AppSeed(
+    state: _backendBound(env),
+    taps: const <String>[S.consentAgree],
+    backend: BackendSeed(fake: fake),
+  );
+}
+
+AppSeed _consentDecline(ScenarioEnv env) => AppSeed(
+  state: _backendBound(env),
+  taps: const <String>[S.consentDecline],
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _reboundNotice(ScenarioEnv env, {required bool differs}) {
+  final PreviewBackend fake = _fake(env)
+    ..redeemResult = RedeemResult.okRebound
+    ..accountLook = differs ? MannyLook.ohne : MannyLook.brille;
+  return AppSeed(
+    state: _backendFresh(env),
+    taps: const <String>[S.next],
+    backend: BackendSeed(fake: fake, link: _previewCode),
+  );
+}
+
+AppSeed _reboundLook(ScenarioEnv env) => _reboundNotice(env, differs: true);
+AppSeed _reboundPlain(ScenarioEnv env) => _reboundNotice(env, differs: false);
+
+AppSeed _lostOther(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  backend: BackendSeed(fake: _fake(env)..bound = false),
+);
+
+AppSeed _lostAccess(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  backend: BackendSeed(
+    fake: _fake(env)
+      ..fetchFrameworkError = const BindingLostException('access_deleted'),
+  ),
+);
+
+AppSeed _backendLoading(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  backend: BackendSeed(fake: _fake(env, hangFramework: true)),
+);
+
+AppSeed _backendLoadError(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  backend: BackendSeed(
+    fake: _fake(env)
+      ..fetchFrameworkError = const BackendFailure(FailureKind.unreachable),
+  ),
+);
+
+AppSeed _deletionPending(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  backend: BackendSeed(
+    fake: _fake(env),
+    stored: const <String, String>{kDeletionStorageKey: 'requested'},
+  ),
+);
+
+AppSeed _backendData(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  taps: _openData,
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _backendDataBottom(ScenarioEnv env) => AppSeed(
+  state: _backendReady(env),
+  taps: <String>[..._openData, kPreviewScrollSheetEnd],
+  backend: BackendSeed(fake: _fake(env)),
+);
+
+AppSeed _backendDelete(
+  ScenarioEnv env, {
+  Object? deleteError,
+  bool confirm = false,
+  bool hang = false,
+  DeleteSeedMode mode = DeleteSeedMode.normal,
+}) {
+  final PreviewBackend fake = _fake(env, hangDelete: hang)
+    ..deleteError = deleteError;
+  return AppSeed(
+    state: _backendReady(env),
+    taps: <String>[
+      ..._openData,
+      S.dataDeleteButton,
+      if (confirm) S.deleteConfirm,
+    ],
+    deleteMode: mode,
+    backend: BackendSeed(fake: fake),
+  );
+}
+
+AppSeed _backendDeleteDialog(ScenarioEnv env) => _backendDelete(env);
+AppSeed _backendDeleteBusy(ScenarioEnv env) =>
+    _backendDelete(env, confirm: true, hang: true);
+AppSeed _backendDeleteUnclear(ScenarioEnv env) => _backendDelete(
+  env,
+  confirm: true,
+  deleteError: const BackendFailure(FailureKind.timeout),
+);
+AppSeed _backendDeleteOffline(ScenarioEnv env) => _backendDelete(
+  env,
+  confirm: true,
+  deleteError: const BackendFailure(FailureKind.unreachable),
+);
+AppSeed _backendDeleteLocal(ScenarioEnv env) =>
+    _backendDelete(env, confirm: true, mode: DeleteSeedMode.failing);
+
+AppSeed _todaySyncNotice(ScenarioEnv env) {
+  final Outbox outbox = Outbox(<OutboxEntry>[
+    dailyCheckupEntry(
+      entryId: 'preview-e1',
+      now: env.now.toUtc(),
+      checkupId: 'preview-c1',
+      localDay: const LocalDay(2026, 6, 1),
+      pain: 2,
+      wellbeing: 3,
+      motivation: 3,
+      swelling: 0,
+      limitations: 'none',
+      mood: 3,
+    ).copyWith(deferred: true),
+  ]);
+  return AppSeed(
+    state: _backendReady(env),
+    taps: const <String>[S.navToday],
+    backend: BackendSeed(
+      fake: _fake(env),
+      stored: <String, String>{kOutboxStorageKey: jsonEncode(outbox.toJson())},
+    ),
+  );
+}
+
 final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'cmp-typo', builder: _typo),
   Scenario(id: 'cmp-buttons', builder: _buttons, expectsPrimary: true),
@@ -1709,6 +1999,60 @@ final List<Scenario> kScenarios = <Scenario>[
   Scenario(id: 'data-privacy', app: _dataPrivacy, expectsHeader: true),
   Scenario(id: 'data-sheet-dirty', app: _dataSheetDirty, expectsPrimary: true),
   Scenario(id: 'data-discard-dialog', app: _dataDiscardDialog),
+  Scenario(id: 'cs-look', app: _csLook, expectsPrimary: true),
+  Scenario(id: 'cs-code', app: _csCode, expectsPrimary: true),
+  Scenario(id: 'cs-code-ohne', app: _csCodeWithout, expectsPrimary: true),
+  Scenario(id: 'cs-code-link', app: _csCodeLink, expectsPrimary: true),
+  Scenario(
+    id: 'cs-code-busy',
+    app: _csCodeBusy,
+    expectsPrimary: true,
+    loops: true,
+  ),
+  Scenario(id: 'cs-code-invalid', app: _csCodeInvalid, expectsPrimary: true),
+  Scenario(id: 'cs-code-used', app: _csCodeUsed, expectsPrimary: true),
+  Scenario(id: 'cs-code-expired', app: _csCodeExpired, expectsPrimary: true),
+  Scenario(id: 'cs-code-toomany', app: _csCodeTooMany, expectsPrimary: true),
+  Scenario(
+    id: 'cs-code-notallowed',
+    app: _csCodeNotAllowed,
+    expectsPrimary: true,
+  ),
+  Scenario(id: 'cs-code-network', app: _csCodeNetwork, expectsPrimary: true),
+  Scenario(id: 'consent', app: _consent, expectsPrimary: true),
+  Scenario(id: 'consent-ohne', app: _consentWithout, expectsPrimary: true),
+  Scenario(
+    id: 'consent-busy',
+    app: _consentBusy,
+    expectsPrimary: true,
+    loops: true,
+  ),
+  Scenario(id: 'consent-error', app: _consentError, expectsPrimary: true),
+  Scenario(id: 'consent-offline', app: _consentOffline, expectsPrimary: true),
+  Scenario(id: 'consent-decline', app: _consentDecline),
+  Scenario(id: 'rebound-look', app: _reboundLook, expectsPrimary: true),
+  Scenario(id: 'rebound-plain', app: _reboundPlain, expectsPrimary: true),
+  Scenario(id: 'lost-other', app: _lostOther, expectsPrimary: true),
+  Scenario(id: 'lost-access', app: _lostAccess, expectsPrimary: true),
+  Scenario(id: 'backend-loading', app: _backendLoading, loops: true),
+  Scenario(
+    id: 'backend-load-error',
+    app: _backendLoadError,
+    expectsPrimary: true,
+  ),
+  Scenario(id: 'deletion-pending', app: _deletionPending, expectsPrimary: true),
+  Scenario(id: 'backend-data', app: _backendData, expectsPrimary: true),
+  Scenario(
+    id: 'backend-data-bottom',
+    app: _backendDataBottom,
+    expectsPrimary: true,
+  ),
+  Scenario(id: 'backend-delete-dialog', app: _backendDeleteDialog),
+  Scenario(id: 'backend-delete-busy', app: _backendDeleteBusy, loops: true),
+  Scenario(id: 'backend-delete-unclear', app: _backendDeleteUnclear),
+  Scenario(id: 'backend-delete-offline', app: _backendDeleteOffline),
+  Scenario(id: 'backend-delete-local', app: _backendDeleteLocal),
+  _todayScenario('today-sync-notice', _todaySyncNotice),
   Scenario(id: 'data-delete-dialog', app: _dataDeleteDialog),
   Scenario(id: 'data-delete-dialog-bottom', app: _dataDeleteDialogBottom),
   Scenario(id: 'data-delete-busy', app: _dataDeleteBusy, loops: true),

@@ -35,6 +35,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import '../../state/backend_controller.dart';
+import '../../state/backend_scope.dart';
+import '../components/notice_card.dart';
 import '../../l10n/strings_de.dart';
 import '../../logic/app_state.dart';
 import '../../logic/clock.dart';
@@ -374,7 +377,24 @@ class _TodayScreenState extends State<TodayScreen> {
       ],
     );
 
+    final BackendController? backend = BackendScope.maybeOf(context);
     final List<Widget> content = <Widget>[
+      // Zurückgestellte Warteschlangen-Einträge (NIT-2, A10): dezent, nicht
+      // modal, ohne Werte.
+      if (backend != null && backend.deferredNoticeVisible)
+        NoticeCard(
+          kind: NoticeKind.sync,
+          text: backend.deferredCount == 1
+              ? S.syncNoticeOne
+              : S.syncNoticeMany(backend.deferredCount),
+          detail: backend.deferredCount == 1
+              ? S.syncNoticeDetail
+              : S.syncNoticeDetailMany,
+          actionLabel: S.syncResend,
+          onAction: backend.resendDeferred,
+          onDismiss: backend.dismissDeferredNotice,
+          dismissLabel: S.syncHide,
+        ),
       TimeSegment(
         choices: kTimeChoices,
         selected: state.prefs.timeChoice,

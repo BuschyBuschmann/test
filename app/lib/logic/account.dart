@@ -123,6 +123,10 @@ AppState stateAfterBinding({
   required AccountState account,
   required LocalDay today,
   MannyLook? adoptedLook,
-}) =>
-    AppState.initial(today)
-        .copyWith(mannyLook: adoptedLook ?? old.mannyLook, account: account);
+}) => AppState.initial(today).copyWith(
+  mannyLook: adoptedLook ?? old.mannyLook,
+  account: account,
+  // Der Look ist nach dem Code-Start entschieden (gewählt oder aus dem
+  // Konto übernommen): er wird nicht erneut gefragt.
+  mannyLookChosen: true,
+);

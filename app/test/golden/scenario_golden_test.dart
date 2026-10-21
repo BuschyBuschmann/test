@@ -10,6 +10,7 @@
 library;
 
 import 'package:curaone/dev/preview_app.dart';
+import 'package:curaone/dev/scenarios.dart';
 import 'package:curaone/logic/display_settings.dart';
 import 'package:curaone/logic/world_time.dart';
 
@@ -24,9 +25,17 @@ void _golden(String name, PreviewConfig config, {Size size = Viewports.phone}) {
   testWidgets('scenario_$name', (WidgetTester tester) async {
     setViewport(tester, size);
     await tester.pumpWidget(PreviewApp(config: config));
-    await tester.pumpAndSettle();
+    final bool loops = scenarioById(config.scenarioId ?? '')?.loops ?? false;
+    if (loops) {
+      // Dauer-Animation (Fortschrittskreis): feste Zeit statt Einschwingen.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+    } else {
+      await tester.pumpAndSettle();
+    }
     // Manny-Bilder laden, bevor das Bild entsteht.
-    await precacheImages(tester);
+    await precacheImages(tester, settle: !loops);
     await expectLater(
       find.byType(PreviewApp),
       matchesGoldenFile('goldens/scenario_$name.png'),
@@ -64,9 +73,65 @@ void main() {
     'ob3-muscle',
     'ob4-date',
     'ob2-privacy',
+    // F2-4a: Code-Start, Einwilligung, Hinweise, Löschen mit Backend.
+    'cs-look',
+    'cs-code',
+    'cs-code-ohne',
+    'cs-code-link',
+    'cs-code-busy',
+    'cs-code-invalid',
+    'cs-code-used',
+    'cs-code-expired',
+    'cs-code-toomany',
+    'cs-code-notallowed',
+    'cs-code-network',
+    'consent',
+    'consent-ohne',
+    'consent-busy',
+    'consent-error',
+    'consent-offline',
+    'consent-decline',
+    'rebound-look',
+    'rebound-plain',
+    'lost-other',
+    'lost-access',
+    'backend-loading',
+    'backend-load-error',
+    'deletion-pending',
+    'backend-data',
+    'backend-data-bottom',
+    'backend-delete-dialog',
+    'backend-delete-busy',
+    'backend-delete-unclear',
+    'backend-delete-offline',
+    'backend-delete-local',
+    'today-sync-notice',
   ]) {
     _golden(id, PreviewConfig(scenarioId: id));
   }
+
+  // F2-4a: Zugang, Einwilligung und Hinweis dunkel und mit 200 % Schrift.
+  for (final String id in <String>[
+    'cs-code-invalid',
+    'consent',
+    'rebound-look',
+  ]) {
+    _golden(
+      '${id}_dark',
+      PreviewConfig(scenarioId: id, theme: ThemeChoice.dark),
+    );
+    _golden('${id}_scale2', PreviewConfig(scenarioId: id, textScale: 2));
+  }
+  _golden(
+    'consent_320',
+    const PreviewConfig(scenarioId: 'consent'),
+    size: Viewports.small,
+  );
+  _golden(
+    'cs-code-invalid_320',
+    const PreviewConfig(scenarioId: 'cs-code-invalid'),
+    size: Viewports.small,
+  );
 
   // Look-Schritt: Dunkel, 200 % Schrift und 320 dp (Ergänzung 1, 10).
   _golden(

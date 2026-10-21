@@ -785,6 +785,30 @@ const storageKeys = (page) => page.evaluate(() => Object.keys(localStorage));
   await ctx.close();
 }
 
+// 9. Backend-Modus (F2-4a): Code-Start mit Link, Einwilligung, Nicht einverstanden.
+//    Die Szenarien starten die App mit einem gescripteten Fake-Backend (kein Netz).
+{
+  const ctx = await browser.newContext(ctxOptions);
+  const s = await openScenario(ctx, base, { scenario: 'cs-code-link', a11y: 1 }, { clock: 'fixed', now: '2026-10-07T12:00:00+02:00' });
+  const page = s.page;
+  check('Code-Start: „Zugang über deinen Physio“, Schritt 1 von 2', (await seen(page, 'Zugang über deinen Physio')) && (await seen(page, 'Schritt 1 von 2')));
+  check('Code-Start: Code aus dem Link steht im Feld, Hinweis „Code aus dem Link übernommen“', await seen(page, 'Code aus dem Link übernommen'));
+  await shot(page, 'backend-code-link');
+  await click(page, 'Weiter');
+  check('Einlösen führt zur Einwilligung „Was dein Physio sieht“ (Schritt 2 von 2)', (await seen(page, 'Was dein Physio sieht')) && (await seen(page, 'Schritt 2 von 2')));
+  check('Einwilligung: „Ich bin einverstanden“ und „Nicht einverstanden“ sind Schaltflächen', (await button(page, 'Ich bin einverstanden').count()) > 0 && (await button(page, 'Nicht einverstanden').count()) > 0);
+  await shot(page, 'backend-einwilligung');
+  await click(page, 'Nicht einverstanden');
+  check('Nicht einverstanden: Dialog mit „Zugang löschen“ und „Zurück“', (await seen(page, 'Ohne Einwilligung geht es nicht')) && (await button(page, 'Zugang löschen').count()) > 0);
+  await shot(page, 'backend-einwilligung-ablehnen');
+  await click(page, 'Zurück');
+  check('Zurück im Dialog: Einwilligung bleibt', (await gone(page, 'Ohne Einwilligung geht es nicht')) && (await seen(page, 'Was dein Physio sieht')));
+  await click(page, 'Ich bin einverstanden');
+  check('Zustimmen: die App lädt und zeigt den Pfad (Leiste mit Heute)', await seen(page, 'Heute', 12000));
+  await shot(page, 'backend-nach-einwilligung');
+  await ctx.close();
+}
+
 await browser.close();
 const bad = results.filter((r) => r.ok === false);
 console.log(`\n${results.filter((r) => r.ok !== null).length - bad.length}/${results.filter((r) => r.ok !== null).length} ohne Fehler`);

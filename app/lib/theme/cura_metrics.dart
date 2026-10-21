@@ -224,6 +224,7 @@ abstract final class CuraSize {
   static const double mannyOnboardingMinHeight = 56;
   static const double mannyOnboardingMaxHeight = 64;
   static const double mannyOnboardingStep1Height = 120;
+  static const double mannyLoading = 96;
   static const double mannyChoiceMaxHeight = 190;
 
   /// Kein Manny-Kopf kleiner als 40 dp (6.5); die Scheibe misst `Kopf / 0,86`.

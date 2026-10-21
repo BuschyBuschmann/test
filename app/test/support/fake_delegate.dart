@@ -27,6 +27,10 @@ class FakePatientBackendDelegate implements PatientBackend {
       inner.acceptConsent(kind, version);
 
   @override
+  Future<bool> hasConsent(String kind, String version) =>
+      inner.hasConsent(kind, version);
+
+  @override
   Future<MannyLook?> fetchMannyLook() => inner.fetchMannyLook();
 
   @override

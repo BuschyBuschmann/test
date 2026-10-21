@@ -97,6 +97,20 @@ class SupabasePatientBackend implements PatientBackend {
   });
 
   @override
+  Future<bool> hasConsent(String kind, String version) => _guard(() async {
+    final List<Json> rows = _rows(
+      await _client
+          .from('consents')
+          .select('id')
+          .eq('kind', kind)
+          .eq('version', version)
+          .isFilter('revoked_at', null)
+          .limit(1),
+    );
+    return rows.isNotEmpty;
+  });
+
+  @override
   Future<MannyLook?> fetchMannyLook() => _guard(() async {
     final Object? answer = await _client.rpc('get_my_manny_look');
     if (answer is! String) return null;

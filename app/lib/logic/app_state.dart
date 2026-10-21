@@ -298,6 +298,7 @@ class AppState {
     required this.celebration,
     this.mannyLook = MannyLook.defaultLook,
     this.account,
+    this.mannyLookChosen = false,
   });
 
   /// Ausgangszustand (Erststart, nach Löschen): Streak 0, Freezes 2, Zeitwahl
@@ -357,6 +358,7 @@ class AppState {
           : CelebrationState.fromJson(celebration),
       mannyLook: MannyLook.fromJson(j['mannyLook']),
       account: account == null ? null : AccountState.fromJson(account),
+      mannyLookChosen: optBool(j, 'mannyLookChosen', false),
     );
   }
 
@@ -375,6 +377,15 @@ class AppState {
   /// Bindung an das Backend (Schema 3); `null` = nicht gebunden.
   final AccountState? account;
 
+  /// Der Look wurde bewusst gewählt (Look-Schritt des Code-Starts bestätigt,
+  /// Karte getippt oder im Profil geändert). Optionales Feld ohne
+  /// Schema-Sprung (Plan 6.2): fehlt es, gilt `false`.
+  final bool mannyLookChosen;
+
+  /// Der Look-Schritt wird nicht (erneut) gefragt (Plan 8.1, V2-77): wer schon
+  /// aus L1 einen Look gewählt hat, hat das Onboarding abgeschlossen.
+  bool get lookAlreadyChosen => mannyLookChosen || onboarding.completed;
+
   AppState copyWith({
     OnboardingState? onboarding,
     ConsentState? consent,
@@ -388,6 +399,7 @@ class AppState {
     MannyLook? mannyLook,
     AccountState? account,
     bool clearAccount = false,
+    bool? mannyLookChosen,
   }) {
     return AppState(
       onboarding: onboarding ?? this.onboarding,
@@ -400,6 +412,7 @@ class AppState {
       celebration: clearCelebration ? null : (celebration ?? this.celebration),
       mannyLook: mannyLook ?? this.mannyLook,
       account: clearAccount ? null : (account ?? this.account),
+      mannyLookChosen: mannyLookChosen ?? this.mannyLookChosen,
     );
   }
 
@@ -416,6 +429,8 @@ class AppState {
     'mannyLook': mannyLook.jsonName,
     // Nur mit Bindung: ohne Backend bleibt das Dokument unverändert.
     if (account != null) 'account': account!.toJson(),
+    // Nur wenn gewählt: bei allen anderen bleibt das Dokument unverändert.
+    if (mannyLookChosen) 'mannyLookChosen': true,
   };
 
   @override
@@ -430,7 +445,8 @@ class AppState {
       other.manny == manny &&
       other.celebration == celebration &&
       other.mannyLook == mannyLook &&
-      other.account == account;
+      other.account == account &&
+      other.mannyLookChosen == mannyLookChosen;
 
   @override
   int get hashCode => Object.hash(
@@ -444,5 +460,6 @@ class AppState {
     celebration,
     mannyLook,
     account,
+    mannyLookChosen,
   );
 }

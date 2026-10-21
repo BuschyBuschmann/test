@@ -56,6 +56,7 @@ class FakePatientBackend implements PatientBackend {
   Object? redeemError;
   Object? fetchFrameworkError;
   Object? fetchLookError;
+  Object? consentError;
   Object? deleteError;
   DeleteResult deleteResult = DeleteResult.ok;
   SessionRefresh refreshResult = SessionRefresh.refreshed;
@@ -97,7 +98,20 @@ class FakePatientBackend implements PatientBackend {
   @override
   Future<void> acceptConsent(String kind, String version) async {
     calls.add('acceptConsent');
+    if (consentError != null) throw consentError!;
     consents.add('$kind:$version');
+  }
+
+  /// Einwilligungen, die der „Server“ schon kennt (Neubindung).
+  final Set<String> knownConsents = <String>{};
+  Object? hasConsentError;
+
+  @override
+  Future<bool> hasConsent(String kind, String version) async {
+    calls.add('hasConsent');
+    if (hasConsentError != null) throw hasConsentError!;
+    final String key = '$kind:$version';
+    return knownConsents.contains(key) || consents.contains(key);
   }
 
   @override

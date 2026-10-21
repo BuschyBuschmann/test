@@ -9,6 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'backend/patient_backend.dart';
+import 'backend/supabase_bootstrap.dart';
+import 'backend/supabase_config.dart';
+import 'data/key_value_store.dart';
+import 'logic/invite_code.dart';
+import 'state/backend_controller.dart';
 import 'data/data_eraser.dart';
 import 'data/display_store.dart';
 import 'data/prefs_state_store.dart';
@@ -28,14 +34,38 @@ AppController buildProductionController({
   Clock? clock,
   SharedPreferencesAsync? prefs,
   DisplayController? display,
+  PrefsStateStore? store,
 }) {
   final Clock now = clock ?? DateTime.now;
-  final PrefsStateStore store = PrefsStateStore(clock: now, prefs: prefs);
+  final PrefsStateStore stateStore =
+      store ?? PrefsStateStore(clock: now, prefs: prefs);
   return AppController(
     clock: now,
-    store: store,
+    store: stateStore,
     mannyText: const PlaceholderMannyTextSource(),
-    erasers: <DataEraser>[store, ?display],
+    erasers: <DataEraser>[stateStore, ?display],
+  );
+}
+
+/// Verdrahtung des Backend-Modus (F2-4a): Warteschlange, Zwischenspeicher,
+/// Merkzeichen und Löscher liegen im Schlüssel-Speicher von
+/// `shared_preferences`. Die lokalen Löscher sind der Zustandsspeicher
+/// ([store]) und die Darstellung ([display]); Zwischenspeicher und Warteschlange
+/// ergänzt der [BackendController].
+BackendController buildProductionBackend({
+  required PatientBackend backend,
+  required AppController controller,
+  required PrefsStateStore store,
+  DisplayController? display,
+  Clock? clock,
+  SharedPreferencesAsync? prefs,
+}) {
+  return BackendController.wire(
+    backend: backend,
+    app: controller,
+    store: PrefsKeyValueStore(prefs: prefs),
+    clock: clock ?? DateTime.now,
+    localErasers: <DataEraser>[store, ?display],
   );
 }
 
@@ -51,10 +81,29 @@ Future<void> main() async {
   final DisplayController display = buildProductionDisplay();
   // Einstellungen vor dem ersten Frame laden (Thema und Welt ohne Flackern).
   await display.load();
+  final PrefsStateStore store = PrefsStateStore(clock: DateTime.now);
+  final AppController controller = buildProductionController(
+    display: display,
+    store: store,
+  );
+  // Ohne Konfiguration (`--dart-define-from-file=config/supabase.local.json`)
+  // startet die App wie bisher im Demo-Modus ohne Backend.
+  final PatientBackend? backend = await createPatientBackend(
+    SupabaseConfig.fromEnvironment(),
+  );
   runApp(
     CuraApp(
-      controller: buildProductionController(display: display),
+      controller: controller,
       display: display,
+      backend: backend == null
+          ? null
+          : buildProductionBackend(
+              backend: backend,
+              controller: controller,
+              store: store,
+              display: display,
+            ),
+      initialInviteCode: backend == null ? null : inviteCodeFromLink(Uri.base),
     ),
   );
 }

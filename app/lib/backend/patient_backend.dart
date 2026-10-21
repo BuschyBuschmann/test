@@ -26,6 +26,11 @@ abstract class PatientBackend {
   /// `accept_consent(kind, version)`.
   Future<void> acceptConsent(String kind, String version);
 
+  /// Liegt für diesen Patienten eine nicht widerrufene Einwilligung dieser Art
+  /// und Version vor? (Neuanmeldung: keine erneute Einwilligung, wenn ja;
+  /// Brief-Ergänzung 2, Offene Frage 14.)
+  Future<bool> hasConsent(String kind, String version);
+
   /// Eigener Manny-Look im Konto über `get_my_manny_look()`; `null` = noch
   /// nicht übertragen.
   Future<MannyLook?> fetchMannyLook();

@@ -17,6 +17,8 @@ const Set<String> kStatusTokenAllowlist = <String>{
   'lib/ui/path/path_error_view.dart', // Fehleransicht Pfad
   'lib/ui/today/today_error_view.dart', // Fehleransicht Heute
   'lib/ui/data_sheet/delete_error_notice.dart', // Löschfehler im Dialog
+  'lib/ui/components/notice_card.dart', // Hinweiskarte, Variante error (F2-4a)
+  'lib/ui/components/code_field.dart', // Fehlerrand des Code-Felds (F2-4a)
 };
 
 /// Regel 5: Dateien, deren Text nachweislich auf `bg` liegt und die `accent`

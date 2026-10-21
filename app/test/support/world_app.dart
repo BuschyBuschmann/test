@@ -129,11 +129,15 @@ Future<void> pumpWorld(
 }
 
 /// Lädt alle Bilder der Tafel vor, damit Pixel und Goldens sie zeigen.
-Future<void> precacheImages(WidgetTester tester) async {
+Future<void> precacheImages(WidgetTester tester, {bool settle = true}) async {
   await tester.runAsync(() async {
     for (final Element e in find.byType(Image).evaluate()) {
       await precacheImage((e.widget as Image).image, e);
     }
   });
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }

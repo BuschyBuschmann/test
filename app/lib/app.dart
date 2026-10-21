@@ -21,6 +21,8 @@ import 'data/manny_chat_source.dart';
 import 'l10n/strings_de.dart';
 import 'state/app_controller.dart';
 import 'state/app_scope.dart';
+import 'state/backend_controller.dart';
+import 'state/backend_scope.dart';
 import 'state/chat_source_scope.dart';
 import 'state/display_controller.dart';
 import 'state/display_scope.dart';
@@ -30,6 +32,7 @@ import 'logic/display_settings.dart';
 import 'ui/components/cura_blur.dart';
 import 'ui/path/path_source.dart';
 import 'ui/today/today_source.dart';
+import 'ui/start/backend_root.dart';
 import 'ui/start/start_gate.dart';
 
 /// Wählt den Token-Satz: Thema (System/Hell/Dunkel aus den Einstellungen,
@@ -75,7 +78,16 @@ class CuraApp extends StatelessWidget {
     this.chatSource = const ExampleMannyChatSource(),
     this.pathSource = const ImmediatePathSource(),
     this.todaySource = const ImmediateTodaySource(),
+    this.backend,
+    this.initialInviteCode,
   });
+
+  /// Backend-Modus (Code-Start, Einwilligung, Laden). Ohne Angabe läuft der
+  /// Demo-Modus wie bisher (Onboarding, lokale Daten).
+  final BackendController? backend;
+
+  /// Code aus einem Einladungslink (Plan 6.6); nur im Backend-Modus.
+  final String? initialInviteCode;
 
   final AppController controller;
 
@@ -103,7 +115,9 @@ class CuraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget app = _buildApp();
+    Widget app = _buildApp();
+    final BackendController? b = backend;
+    if (b != null) app = BackendScope(controller: b, child: app);
     final DisplayController? d = display;
     return d == null ? app : DisplayScope(controller: d, child: app);
   }
@@ -135,7 +149,12 @@ class CuraApp extends StatelessWidget {
                 final PreviewWrapper? wrap = previewWrapper;
                 return wrap == null ? themed : wrap(context, themed);
               },
-              home: StartGate(startup: startup),
+              home: backend == null
+                  ? StartGate(startup: startup)
+                  : BackendRoot(
+                      startup: startup,
+                      initialCode: initialInviteCode,
+                    ),
             ),
           ),
         ),

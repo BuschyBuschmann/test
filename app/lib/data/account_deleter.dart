@@ -115,9 +115,15 @@ class AccountDeleter {
   final DeletionMarkerStore marker;
   final List<DataEraser> _erasers;
 
+  /// Der Fehler des letzten Serveraufrufs, wenn [run] mit
+  /// [DeletionOutcome.notDeleted] oder [DeletionOutcome.unclear] endete (die
+  /// Oberfläche unterscheidet „offline“ von „abgelehnt“); sonst `null`.
+  BackendFailure? lastFailure;
+
   /// Führt die Löschung aus oder setzt sie fort. Wirft nicht; jede Folge steht
   /// in [DeletionOutcome].
   Future<DeletionOutcome> run() async {
+    lastFailure = null;
     final DeletionPhase? phase = await marker.read();
     if (phase == DeletionPhase.backendDeleted) {
       return _finishLocally();
@@ -131,6 +137,7 @@ class AccountDeleter {
     } on BindingLostException {
       // Konto existiert nicht mehr: bereits gelöscht = Erfolg.
     } on BackendFailure catch (failure) {
+      lastFailure = failure;
       if (_isCertainlyNotDeleted(failure)) {
         await marker.clear();
         sender.resume();

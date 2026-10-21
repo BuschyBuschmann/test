@@ -50,6 +50,8 @@ import '../routes/cura_sheet_route.dart';
 import '../components/cura_pressable.dart';
 import '../routes/cura_date_picker.dart';
 import '../routes/route_focus.dart';
+import '../../state/backend_scope.dart';
+import 'backend_data_sheet.dart';
 import 'delete_dialog.dart';
 import 'discard_dialog.dart';
 
@@ -62,7 +64,9 @@ class DataSheet extends StatefulWidget {
     return CuraSheetRoute<ProfileUpdateResult?>(
       context: context,
       routeLabel: S.dataSheetTitle,
-      builder: (BuildContext context) => const DataSheet(),
+      builder: (BuildContext context) => BackendScope.readOf(context) != null
+          ? const BackendDataSheet()
+          : const DataSheet(),
     );
   }
 
